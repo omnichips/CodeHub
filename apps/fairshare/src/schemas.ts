@@ -24,6 +24,9 @@ export const TripSchema = z.object({
 
 export const MemberSchema = z.object({ id, tripId: id, name: z.string().trim().min(1), active: z.boolean(), ...sync });
 
+/** A photo of a receipt: shrunk JPEG as base64 text, so it travels in the same JSON as everything else. Never edited, only added. */
+export const ReceiptPhotoSchema = z.object({ id, tripId: id, data: z.string().max(1_500_000).regex(/^[A-Za-z0-9+/]+={0,2}$/) });
+
 export const SplitModeSchema = z.enum(['equal', 'exact', 'shares', 'percent', 'items']);
 export const SplitInputSchema = z.object({ memberId: id, value: minor });
 export const OwedSchema = z.object({ memberId: id, amountMinor: minor });
@@ -45,6 +48,7 @@ export const ExpenseSchema = z
     splitInputs: z.array(SplitInputSchema).min(1),
     owed: z.array(OwedSchema).min(1),
     items: z.array(ItemSchema).min(1).optional(),
+    receipts: z.array(id).max(12).optional(), // ids of this expense's receipt photos (see ReceiptPhotoSchema)
     ...sync,
   })
   .refine((e) => (e.splitMode === 'items') === (e.items !== undefined), { message: 'items go with the items split mode' })
@@ -74,3 +78,4 @@ export type SplitMode = z.infer<typeof SplitModeSchema>;
 export type SplitInput = z.infer<typeof SplitInputSchema>;
 export type Owed = z.infer<typeof OwedSchema>;
 export type Item = z.infer<typeof ItemSchema>;
+export type ReceiptPhoto = z.infer<typeof ReceiptPhotoSchema>;

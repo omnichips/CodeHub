@@ -24,7 +24,7 @@ async function addExpense(page: Page, title: string, amount: string) {
 }
 
 async function backupFile(page: Page) {
-  await tab(page, 'Members');
+  await tab(page, 'Others');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Back up trip' }).click()]);
   await tab(page, 'Expenses');
   return (await download.path())!;
@@ -39,6 +39,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   await a.getByRole('button', { name: 'Create trip' }).click();
   await tab(a, 'Members');
   for (const m of ['Ana', 'Ben']) {
+    await a.getByRole('button', { name: 'New member' }).click();
     await a.getByLabel('Member name').fill(m);
     await a.getByRole('button', { name: 'Add member' }).click();
     await expect(a.getByLabel(`Name of ${m}`)).toBeVisible();
@@ -66,7 +67,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   await addExpense(a, 'Snacks', '50');
 
   // B to A.
-  await tab(a, 'Sync');
+  await tab(a, 'Others');
   await a.getByLabel('Trip file').setInputFiles(await backupFile(b));
   await expect(a.getByText('1 new, 1 deleted', { exact: true })).toBeVisible(); // Taxi new, Dinner deleted
   await a.getByRole('button', { name: 'Apply' }).click();
@@ -76,7 +77,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   await expect(a.getByRole('button', { name: /Dinner/ })).toHaveCount(0);
 
   // A back to B: only A's Snacks is news, and Dinner stays deleted.
-  await tab(b, 'Sync');
+  await tab(b, 'Others');
   await b.getByLabel('Trip file').setInputFiles(await backupFile(a));
   await expect(b.getByText('1 new', { exact: true })).toBeVisible();
   await b.getByRole('button', { name: 'Apply' }).click();
@@ -85,7 +86,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   await expect(b.getByRole('button', { name: /Dinner/ })).toHaveCount(0);
 
   // Repeating the same import changes nothing.
-  await tab(b, 'Sync');
+  await tab(b, 'Others');
   await b.getByLabel('Trip file').setInputFiles(await backupFile(a));
   await expect(b.getByText('Already up to date')).toBeVisible();
 });
@@ -133,7 +134,7 @@ test('60 expenses travel from one phone to another as QR codes', async ({ browse
   await heading(a, 'Sixty');
 
   // Phone A shows the codes; time is driven by hand so each frame can be captured.
-  await tab(a, 'Sync');
+  await tab(a, 'Others');
   await a.clock.install({ time: 0 });
   await a.clock.pauseAt(1000);
   await a.getByRole('button', { name: 'Show QR codes' }).click();
@@ -168,7 +169,7 @@ test('with some codes missing the receiver waits for the rest', async ({ browser
   await a.getByRole('button', { name: 'New trip' }).click();
   await a.getByLabel('Trip file').setInputFiles({ name: 'sixty.fairshare', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
   await a.getByRole('button', { name: 'Apply' }).click();
-  await tab(a, 'Sync');
+  await tab(a, 'Others');
   await a.clock.install({ time: 0 });
   await a.clock.pauseAt(1000);
   await a.getByRole('button', { name: 'Show QR codes' }).click();

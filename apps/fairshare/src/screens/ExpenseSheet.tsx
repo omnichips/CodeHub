@@ -3,7 +3,8 @@ import { formatAmount, parseAmount, parseUnits, RATE_RE } from '../engine/money'
 import { computeExpense, itemSplit } from '../engine/split';
 import { parseReceipt } from '../receipt/parse';
 import { ReceiptScanner } from '../receipt/ReceiptScanner';
-import type { Expense, Item, Member, SplitInput, SplitMode, Trip } from '../schemas';
+import { photoSrc, receiptFromBlob, useReceiptPhotos } from '../receipts';
+import type { Expense, Item, Member, ReceiptPhoto, SplitInput, SplitMode, Trip } from '../schemas';
 import { deleteExpense, saveExpense, today, type ExpenseDraft } from '../store';
 import { CurrencySelect, money } from '../ui';
 
@@ -47,11 +48,17 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   );
   const setItem = (key: string, patch: Partial<ItemRow>) => setItems(items.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
+  // Receipt photos: ones already saved with this expense, and ones added in this edit (stored when it is saved).
+  const [kept, setKept] = useState<string[]>(expense?.receipts ?? []);
+  const [fresh, setFresh] = useState<ReceiptPhoto[]>([]);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const saved = useReceiptPhotos(kept);
+  const shown = [...kept.map((id) => saved[id] ?? { id, tripId: trip.id, data: '' }), ...fresh];
   // Sum of the totals read from receipts so far; Amount follows it until the user types their own.
   const [scannedTotal, setScannedTotal] = useState(0);
 
   /** Adds the items of scanned receipts (one text per photo); returns a message when a photo gave nothing. */
-  function applyReceipts(texts: string[]): string | null {
+  async function applyReceipts(texts: string[], photos: Blob[]): Promise<string | null> {
     const found = texts.map((t) => parseReceipt(t, currency));
     const rows = found.flatMap((f) => f.items.map((i) => itemRow(ids, i.name, i.price)));
     const empty = found.flatMap((f, i) => (f.items.length ? [] : [i + 1]));
@@ -60,6 +67,9 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
       const seen = texts.join(' ').replace(/\s+/g, ' ').trim();
       return `No prices found on that receipt. Try a sharper, flatter photo with the receipt filling the frame, or add the items by hand. Read: "${seen.slice(0, 160) || 'nothing'}"`;
     }
+    // The photos that gave items are kept with the expense (limit 12).
+    const withItems = await Promise.all(photos.filter((_, i) => found[i].items.length > 0).map((p) => receiptFromBlob(trip.id, p)));
+    setFresh((prev) => [...prev, ...withItems].slice(0, Math.max(0, 12 - kept.length)));
     // Keep items already typed; replace the empty starter row.
     setItems((prev) => [...prev.filter((i) => i.name.trim() || i.price.trim()), ...rows]);
     setMode('items');
@@ -143,7 +153,8 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     };
     try {
       computeExpense({ ...input, baseCurrency: base });
-      draft = { ...input, title: title.trim(), date, payerId };
+      const receipts = [...kept, ...fresh.map((p) => p.id)];
+      draft = { ...input, title: title.trim(), date, payerId, ...(receipts.length > 0 && { receipts }) };
     } catch (e) {
       splitError = (e as Error).message;
     }
@@ -162,7 +173,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
           className="primary"
           disabled={!draft}
           onClick={async () => {
-            await saveExpense(trip.id, draft!, expense?.id);
+            await saveExpense(trip.id, draft!, expense?.id, fresh);
             onClose();
           }}
         >
@@ -210,6 +221,37 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         </div>
 
         <ReceiptScanner onRead={applyReceipts} />
+        {shown.length > 0 && (
+          <div className="receipt-strip" role="group" aria-label="Saved receipt photos">
+            {shown.map((p, i) => (
+              <div key={p.id} className="receipt-thumb">
+                {p.data ? (
+                  <button aria-label={`View receipt photo ${i + 1}`} onClick={() => setViewing(p.id)}>
+                    <img src={photoSrc(p)} alt="" />
+                  </button>
+                ) : (
+                  <span className="hint">Photo not on this phone</span>
+                )}
+                <button
+                  className="remove"
+                  aria-label={`Remove receipt photo ${i + 1}`}
+                  onClick={() => (setKept(kept.filter((id) => id !== p.id)), setFresh(fresh.filter((f) => f.id !== p.id)))}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {viewing && (
+          <div className="sheet" role="dialog" aria-modal="true" aria-label="Receipt photo">
+            <header className="bar">
+              <button onClick={() => setViewing(null)}>Close</button>
+              <h1>Receipt</h1>
+            </header>
+            <div className="screen">{shown.find((p) => p.id === viewing)?.data && <img className="receipt-full" src={photoSrc(shown.find((p) => p.id === viewing)!)} alt="Receipt" />}</div>
+          </div>
+        )}
         {mode === 'items' && items.length > 1 && <p className="hint">Check each line against the receipt, then tap who shared it.</p>}
 
         <h2>Split</h2>

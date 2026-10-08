@@ -8,6 +8,7 @@ async function tripWithExpense(page: Page) {
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
   for (const m of ['Ana', 'Beñat']) {
+    await page.getByRole('button', { name: 'New member' }).click();
     await page.getByLabel('Member name').fill(m);
     await page.getByRole('button', { name: 'Add member' }).click();
     await expect(page.getByLabel(`Name of ${m}`)).toBeVisible();

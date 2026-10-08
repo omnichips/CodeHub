@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CropSheet } from './CropSheet';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
-/** Language picker, pack download and "Scan receipts". onRead gets one text per photo and returns an error message or null. */
-export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string | null }) {
+/** Language picker, pack download and "Scan receipts". onRead gets one text and one (cropped) photo per photo and returns an error message or null. */
+export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: Blob[]) => string | null | Promise<string | null> }) {
   const [lang, setLang] = useState<Lang>(savedLang);
   const [ready, setReady] = useState(lang === 'eng');
   const [busy, setBusy] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
       const texts = await readReceipts(photos, lang, (i, p) =>
         progress(p, photos.length > 1 ? `Reading receipt ${i + 1} of ${photos.length}` : 'Reading receipt'),
       );
-      const problem = onRead(texts);
+      const problem = await onRead(texts, photos);
       if (problem) setError(problem);
     }, 'Could not read that photo. Try again, or add the items by hand.');
 

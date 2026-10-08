@@ -170,3 +170,19 @@ it('a deletion never comes back, whatever order phones sync in (property)', () =
     { numRuns: 300 },
   );
 });
+
+// ---- receipt photos: never edited, so merging is the union by id ----
+
+const photo = (n: number) => ({ id: uuid(300 + n), tripId: TRIP, data: `AAAA${n}` });
+
+it('receipt photos merge as a union, both ways, repeatably, and are counted', () => {
+  const a = snap({ photos: [photo(1), photo(2)] });
+  const b = snap({ photos: [photo(2), photo(3)] });
+  const ab = mergeSnapshots(a, b);
+  expect(ab.merged.photos?.map((p) => p.id)).toEqual([uuid(301), uuid(302), uuid(303)]);
+  expect(ab.summary.photos).toBe(1); // only photo 3 is news to A
+  expect(mergeSnapshots(b, a).merged).toEqual(ab.merged);
+  expect(mergeSnapshots(ab.merged, b).merged).toEqual(ab.merged);
+  expect(mergeSnapshots(ab.merged, b).summary.photos).toBeUndefined();
+  expect(mergeSnapshots(snap(), snap()).merged.photos).toBeUndefined(); // no key when there are none
+});

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Device, Expense, Member, Payment, Trip } from './schemas';
+import type { Device, Expense, Member, Payment, ReceiptPhoto, Trip } from './schemas';
 
 /**
  * A trip's cover photo (JPEG bytes). Kept on this phone only: not synced and not in backups (too big for QR codes).
@@ -14,6 +14,7 @@ export class FairShareDB extends Dexie {
   payments!: EntityTable<Payment, 'id'>;
   device!: EntityTable<Device, 'deviceId'>;
   photos!: EntityTable<TripPhoto, 'tripId'>;
+  receipts!: EntityTable<ReceiptPhoto, 'id'>;
 
   constructor(name = 'fairshare') {
     super(name);
@@ -26,6 +27,7 @@ export class FairShareDB extends Dexie {
       device: 'deviceId',
     });
     this.version(2).stores({ photos: 'tripId' });
+    this.version(3).stores({ receipts: 'id, tripId' }); // receipt photos: unlike cover photos, these sync (by file)
   }
 }
 

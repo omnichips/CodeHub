@@ -26,6 +26,7 @@ export function Sync({ data }: { data: TripData }) {
         >
           Show QR codes
         </button>
+        <p className="hint">QR codes carry the expenses but not receipt photos. To send the photos too, use <strong>Back up trip</strong> below and share the file (AirDrop, Messages), then use Import trip file on the other phone.</p>
       </div>
       <div className="card">
         <h2>Receive from another phone</h2>

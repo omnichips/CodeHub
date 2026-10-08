@@ -15,7 +15,7 @@ test('with motion on: opening and closing a trip animates, and the app is usable
   await expect(page.locator('html')).not.toHaveAttribute('data-nav', /./);
   await expect(page.getByRole('heading', { name: 'Cebu' })).toBeVisible();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
-  await expect(page.getByLabel('Member name')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New member' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Back to trips' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-nav', 'back');

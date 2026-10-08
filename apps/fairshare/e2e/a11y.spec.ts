@@ -21,6 +21,7 @@ test('no critical accessibility findings', async ({ page }) => {
   await check(page, 'expenses (empty)');
   await page.getByRole('button', { name: 'Members', exact: true }).click();
   for (const m of ['Ana', 'Ben']) {
+    await page.getByRole('button', { name: 'New member' }).click();
     await page.getByLabel('Member name').fill(m);
     await page.getByRole('button', { name: 'Add member' }).click();
     await expect(page.getByLabel(`Name of ${m}`)).toBeVisible();
@@ -38,7 +39,7 @@ test('no critical accessibility findings', async ({ page }) => {
     c.getContext('2d')!.fillRect(20, 20, 160, 260);
     return c.toDataURL('image/png').split(',')[1];
   });
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'r.png', mimeType: 'image/png', buffer: Buffer.from(photo, 'base64') });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'r.png', mimeType: 'image/png', buffer: Buffer.from(photo, 'base64') });
   await expect(page.getByTestId('crop-box')).toBeVisible();
   await check(page, 'crop screen');
   await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
@@ -46,6 +47,6 @@ test('no critical accessibility findings', async ({ page }) => {
   await check(page, 'expenses');
   await page.getByRole('button', { name: 'Settle up', exact: true }).click();
   await check(page, 'settle up');
-  await page.getByRole('button', { name: 'Sync', exact: true }).click();
+  await page.getByRole('button', { name: 'Others', exact: true }).click();
   await check(page, 'sync');
 });

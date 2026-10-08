@@ -84,6 +84,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.getByLabel('Trip name').fill('Offline trip');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
   await page.getByLabel('Member name').fill('Ana');
   await page.getByRole('button', { name: 'Add member' }).click();
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
@@ -109,7 +110,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   const png = await receiptPhoto(browser, 'Taxi            150.00\nTOTAL           150.00');
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
@@ -129,6 +130,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await page.getByLabel('Base currency').selectOption('JPY');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
   await page.getByLabel('Member name').fill('Ana');
   await page.getByRole('button', { name: 'Add member' }).click();
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
@@ -147,7 +149,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await page.getByRole('button', { name: 'Add expense' }).click();
   await expect(page.getByLabel('Receipt language')).toHaveValue('jpn'); // remembered on this device
   const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 2 price')).toHaveValue('500', { timeout: 120_000 });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('980');
@@ -162,8 +164,10 @@ test('backup file restores a trip after the data is gone', async ({ page }) => {
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
   await page.getByLabel('Member name').fill('Ana');
   await page.getByRole('button', { name: 'Add member' }).click();
+  await page.getByRole('button', { name: 'Others', exact: true }).click();
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Back up trip' }).click()]);
   expect(download.suggestedFilename()).toBe('Cebu.fairshare');
   const file = await download.path();

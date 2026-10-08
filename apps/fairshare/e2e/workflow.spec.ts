@@ -11,6 +11,7 @@ async function newTrip(page: Page, members: string[], name = 'Cebu') {
   await expect(page.getByText('No expenses yet')).toBeVisible();
   await tab(page, 'Members').click();
   for (const m of members) {
+    await page.getByRole('button', { name: 'New member' }).click();
     await page.getByLabel('Member name').fill(m);
     await page.getByRole('button', { name: 'Add member' }).click();
     await expect(page.getByLabel(`Name of ${m}`)).toBeVisible();
@@ -200,7 +201,7 @@ test('dashboard: two-column trip grid, photo or bunny cover, + button bottom rig
 
   // A photo can be added later from the trip's Members tab, and removed again.
   await page.getByRole('button', { name: /Cebu/ }).click();
-  await tab(page, 'Members').click();
+  await tab(page, 'Others').click();
   await page.getByLabel('Trip photo').setInputFiles(photo);
   await expect(page.getByRole('img', { name: 'Trip photo' })).toBeVisible();
   await page.getByRole('button', { name: 'Remove photo' }).click();

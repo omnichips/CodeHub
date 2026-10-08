@@ -1,8 +1,8 @@
-import type { Expense, Member, Payment, Trip } from '../schemas';
+import type { Expense, Member, Payment, ReceiptPhoto, Trip } from '../schemas';
 
-export type Snapshot = { trip: Trip; members: Member[]; expenses: Expense[]; payments: Payment[] };
+export type Snapshot = { trip: Trip; members: Member[]; expenses: Expense[]; payments: Payment[]; photos?: ReceiptPhoto[] };
 /** What applying a merge would change, as the preview screen shows it. */
-export type Summary = { newTrip: boolean; added: number; updated: number; deleted: number };
+export type Summary = { newTrip: boolean; added: number; updated: number; deleted: number; photos?: number };
 
 type Rec = { id: string; ver: number; deviceId: string };
 
@@ -16,6 +16,13 @@ function union<T extends Rec>(local: T[], remote: T[]): T[] {
     if (!l || beats(r, l)) byId.set(r.id, r);
   }
   return [...byId.values()].sort((a, b) => (a.id < b.id ? -1 : 1));
+}
+
+/** Receipt photos are never edited, so merging is just the union by id. */
+function unionPhotos(a: ReceiptPhoto[] = [], b: ReceiptPhoto[] = []): ReceiptPhoto[] {
+  const byId = new Map(a.map((p) => [p.id, p]));
+  for (const p of b) if (!byId.has(p.id)) byId.set(p.id, p);
+  return [...byId.values()].sort((x, y) => (x.id < y.id ? -1 : 1));
 }
 
 /** Pure and symmetric: merge(a, b) equals merge(b, a), and merging again changes nothing. */
@@ -35,7 +42,8 @@ export function mergeSnapshots(local: Snapshot | undefined, remote: Snapshot): {
 
   const tripWinner = local && !beats(remote.trip, local.trip) ? local.trip : remote.trip;
   const clock = Math.max(l.trip.clock, remote.trip.clock, ...[...members, ...expenses, ...payments].map((r) => r.ver));
-  const merged: Snapshot = { trip: { ...tripWinner, clock }, members, expenses, payments };
+  const photos = unionPhotos(l.photos, remote.photos);
+  const merged: Snapshot = { trip: { ...tripWinner, clock }, members, expenses, payments, ...(photos.length > 0 && { photos }) };
 
   // Everything that is the other phone's record, or was repaired above, is a new object; unchanged ones keep identity.
   const summary: Summary = { newTrip: !local, added: 0, updated: 0, deleted: 0 };
@@ -51,5 +59,7 @@ export function mergeSnapshots(local: Snapshot | undefined, remote: Snapshot): {
   count(l.members, members);
   count(l.expenses, expenses);
   count(l.payments, payments);
+  const newPhotos = photos.length - (l.photos?.length ?? 0);
+  if (newPhotos > 0) summary.photos = newPhotos;
   return { merged, summary };
 }

@@ -1,10 +1,10 @@
 import { db } from './db';
 import { canDeleteMember } from './engine/balances';
 import { computeExpense, type ExpenseInput } from './engine/split';
-import { ExpenseSchema, MemberSchema, PaymentSchema, TripSchema, type Trip } from './schemas';
+import { ExpenseSchema, MemberSchema, PaymentSchema, TripSchema, type ReceiptPhoto, type Trip } from './schemas';
 
 type Stamp = { ver: number; deviceId: string; updatedAt: number };
-export type ExpenseDraft = Omit<ExpenseInput, 'baseCurrency'> & { title: string; date: string; payerId: string };
+export type ExpenseDraft = Omit<ExpenseInput, 'baseCurrency'> & { title: string; date: string; payerId: string; receipts?: string[] };
 
 const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local time
 
@@ -76,8 +76,10 @@ export async function removeMember(id: string) {
   });
 }
 
-export function saveExpense(tripId: string, draft: ExpenseDraft, id?: string) {
+/** Saves an expense; `photos` are receipt photos added in this edit, stored in the same transaction. */
+export function saveExpense(tripId: string, draft: ExpenseDraft, id?: string, photos: ReceiptPhoto[] = []) {
   return inTrip(tripId, async (s) => {
+    await db.receipts.bulkPut(photos);
     const trip = await db.trips.get(tripId);
     const priced = computeExpense({ ...draft, baseCurrency: trip!.baseCurrency });
     await db.expenses.put(ExpenseSchema.parse({ id: id ?? crypto.randomUUID(), tripId, ...draft, ...priced, deleted: false, ...s }));

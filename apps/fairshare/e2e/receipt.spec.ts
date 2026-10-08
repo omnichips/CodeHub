@@ -33,6 +33,7 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
   for (const m of ['Ana', 'Ben']) {
+    await page.getByRole('button', { name: 'New member' }).click();
     await page.getByLabel('Member name').fill(m);
     await page.getByRole('button', { name: 'Add member' }).click();
     await expect(page.getByLabel(`Name of ${m}`)).toBeVisible();
@@ -41,7 +42,7 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await page.getByRole('button', { name: 'Add expense' }).click();
   await page.getByLabel('Title').fill('Dinner');
 
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: png });
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 3 price')).toBeVisible({ timeout: 90_000 });
 
@@ -85,13 +86,14 @@ test('several receipts at once, then one more: all items listed, totals added up
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
   await page.getByLabel('Member name').fill('Ana');
   await page.getByRole('button', { name: 'Add member' }).click();
   await expect(page.getByLabel('Name of Ana')).toBeVisible();
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
 
-  await page.getByLabel('Receipt photos').setInputFiles([
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles([
     { name: 'taxi.png', mimeType: 'image/png', buffer: taxi },
     { name: 'cafe.png', mimeType: 'image/png', buffer: cafe },
   ]);
@@ -104,14 +106,14 @@ test('several receipts at once, then one more: all items listed, totals added up
   await expect(page.getByLabel('Item 2 price')).toHaveValue('95.00');
   await expect(page.getByLabel('Amount')).toHaveValue('305.00');
 
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 4 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('325.00');
 
   // A typed amount is the user's: further scans add items but leave it alone.
   await page.getByLabel('Amount').fill('400');
-  await page.getByLabel('Receipt photos').setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 5 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('400');
@@ -136,6 +138,7 @@ TOTAL           160.00</pre>`);
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
   await page.getByLabel('Member name').fill('Ana');
   await page.getByRole('button', { name: 'Add member' }).click();
   await expect(page.getByLabel('Name of Ana')).toBeVisible();
@@ -143,7 +146,7 @@ TOTAL           160.00</pre>`);
   await page.getByRole('button', { name: 'Add expense' }).click();
 
   const photo = { name: 'r.png', mimeType: 'image/png', buffer: png };
-  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
   await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toBeVisible();
 
   // Rotating four times comes back to the same photo; then drag the top-left corner down past the junk line.
@@ -174,10 +177,56 @@ TOTAL           160.00</pre>`);
   await expect(page.getByLabel('Amount')).toHaveValue('160.00');
 
   // Cancel leaves everything as it was; "Use whole photo" reads the lot.
-  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
   await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toHaveCount(0);
-  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
   await page.getByRole('button', { name: 'Use whole photo' }).click();
   await expect(page.getByLabel('Item 3 price')).toHaveValue('999.00', { timeout: 90_000 });
+});
+
+test('the scanned photo is kept with the expense, and travels in a backup file to another phone', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  const shot = await browser.newPage({ viewport: { width: 520, height: 200 } });
+  await shot.setContent(`<pre style="font:28px/1.5 'Courier New',monospace;padding:30px;margin:0">Taxi            150.00\nTOTAL           150.00</pre>`);
+  const png = await shot.screenshot();
+  await shot.close();
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByLabel('Trip name').fill('Cebu');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await expect(page.getByLabel('Name of Ana')).toBeVisible();
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await page.getByLabel('Title').fill('Taxi');
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
+  await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
+  await expect(page.getByRole('button', { name: 'View receipt photo 1' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+
+  // Kept with the expense: open it again and see the photo, full size on tap.
+  await page.getByRole('button', { name: /Taxi/ }).click();
+  await page.getByRole('button', { name: 'View receipt photo 1' }).click();
+  await expect(page.getByRole('img', { name: 'Receipt' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  // A backup file carries it: wipe this phone, restore the file, the photo is back.
+  await page.getByRole('button', { name: 'Others', exact: true }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Back up trip' }).click()]);
+  const file = (await download.path())!;
+  await page.evaluate(() => indexedDB.deleteDatabase('fairshare'));
+  await page.reload();
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByLabel('Trip file').setInputFiles(file);
+  await expect(page.getByText('Includes 1 receipt photo.')).toBeVisible();
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await page.getByRole('button', { name: /Taxi/ }).click();
+  await expect(page.getByRole('button', { name: 'View receipt photo 1' })).toBeVisible();
 });

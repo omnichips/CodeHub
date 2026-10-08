@@ -3,7 +3,7 @@ import { deflate } from 'pako';
 import { expect, it } from 'vitest';
 import type { Expense } from '../schemas';
 import type { Snapshot } from './merge';
-import { createCollector, decodePayload, encodePayload, FRAME_CHARS, MAX_SIZE, toFrames } from './payload';
+import { createCollector, decodePayload, encodePayload, FRAME_CHARS, MAX_FILE_SIZE, MAX_SIZE, toFrames } from './payload';
 
 const TRIP = '00000000-0000-4000-8000-000000000001';
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -135,7 +135,7 @@ it('rejects a payload that is well formed JSON but inconsistent', async () => {
 });
 
 it('rejects oversized input before parsing it', async () => {
-  await expect(decodePayload('x'.repeat(MAX_SIZE + 1))).rejects.toThrow('too large');
+  await expect(decodePayload('x'.repeat(MAX_FILE_SIZE + 1))).rejects.toThrow('too large');
 });
 
 it('rejects a decompression bomb without inflating it', async () => {
@@ -153,4 +153,27 @@ it('rejects a decompression bomb without inflating it', async () => {
 it('ignores frames that claim an absurd frame count', () => {
   const c = scan(['FS1.deadbeef.0.1000000.AAAA', 'FS1.deadbeef.5.3.AAAA', 'FS1.deadbeef.-1.3.AAAA', 'FS1.deadbeef.0.3.@@@@']);
   expect(c.have).toBe(0);
+});
+
+// ---- receipt photos travel in files, not in QR codes ----
+
+const withPhotos = (): Snapshot => ({ ...bigTrip(3), photos: [{ id: uuid(301), tripId: TRIP, data: 'A'.repeat(100_000) }] });
+
+it('a file carries receipt photos and gets them back intact; QR frames leave them out', async () => {
+  const snap = withPhotos();
+  expect(await decodePayload((await encodePayload(snap, true)).text)).toEqual(snap);
+  const qr = await encodePayload(snap); // the default: no photos
+  expect((await decodePayload(qr.text)).photos).toBeUndefined();
+  expect(qr.text.length).toBeLessThan(10_000);
+  const plain = bigTrip(3);
+  expect((await encodePayload(plain, true)).text).toBe((await encodePayload(plain)).text); // no photos: same either way
+});
+
+it('a damaged photo is caught by the checksum, and a photo from another trip is refused', async () => {
+  const { text } = await encodePayload(withPhotos(), true);
+  await expect(decodePayload(text.replace('AAAAAAAA', 'AAAAAAAB'))).rejects.toThrow('damaged');
+  const stranger = { ...withPhotos(), photos: [{ id: uuid(301), tripId: uuid(999), data: 'AAAA' }] };
+  await expect(encodePayload(stranger, true)).rejects.toThrow();
+  const notBase64 = { ...withPhotos(), photos: [{ id: uuid(301), tripId: TRIP, data: '<script>' }] };
+  await expect(encodePayload(notBase64, true)).rejects.toThrow();
 });

@@ -1,10 +1,12 @@
 import { deflate, Inflate } from 'pako';
 import { z } from 'zod';
-import { ExpenseSchema, MemberSchema, PaymentSchema, TripSchema } from '../schemas';
+import { ExpenseSchema, MemberSchema, PaymentSchema, ReceiptPhotoSchema, TripSchema } from '../schemas';
 import type { Snapshot } from './merge';
 
 /** Upper bound for a payload, as text or inflated. A 60-expense trip is about 40 KB, so this is generous. */
 export const MAX_SIZE = 2_000_000;
+/** Upper bound for a .fairshare file, which can also carry receipt photos (each about 100 KB). QR codes never carry photos. */
+export const MAX_FILE_SIZE = 40_000_000;
 /** Characters of compressed data per QR frame. Smaller scans more reliably; larger needs fewer frames. */
 export const FRAME_CHARS = 600;
 const MAX_FRAMES = 500;
@@ -15,7 +17,7 @@ const TOO_LARGE = 'This trip is too large to import';
 
 const consistent = (b: Snapshot) => {
   const people = new Set(b.members.map((m) => m.id));
-  const tables = [b.members, b.expenses, b.payments];
+  const tables = [b.members, b.expenses, b.payments, b.photos ?? []];
   return (
     tables.every((rs) => new Set(rs.map((r) => r.id)).size === rs.length && rs.every((r) => r.tripId === b.trip.id)) &&
     b.expenses.every((e) => [e.payerId, ...e.owed.map((o) => o.memberId), ...e.splitInputs.map((s) => s.memberId), ...(e.items ?? []).flatMap((i) => i.memberIds)].every((id) => people.has(id))) &&
@@ -24,12 +26,18 @@ const consistent = (b: Snapshot) => {
 };
 
 const BodySchema = z
-  .object({ trip: TripSchema, members: z.array(MemberSchema), expenses: z.array(ExpenseSchema), payments: z.array(PaymentSchema) })
+  .object({
+    trip: TripSchema,
+    members: z.array(MemberSchema),
+    expenses: z.array(ExpenseSchema),
+    payments: z.array(PaymentSchema),
+    photos: z.array(ReceiptPhotoSchema).max(300).optional(),
+  })
   .refine(consistent, { message: 'Records do not belong together' });
 
 /** Fixed key order, so the checksum is the same on every phone. */
 const bodyOf = (s: Record<string, unknown>) =>
-  JSON.stringify({ trip: s.trip, members: s.members, expenses: s.expenses, payments: s.payments });
+  JSON.stringify({ trip: s.trip, members: s.members, expenses: s.expenses, payments: s.payments, ...(Array.isArray(s.photos) && s.photos.length > 0 && { photos: s.photos }) });
 
 async function checksum(body: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
@@ -37,15 +45,15 @@ async function checksum(body: string): Promise<string> {
 }
 
 /** One trip as text: the .fairshare file, and the input to the QR frames. `sum` identifies this exact content. */
-export async function encodePayload(snapshot: Snapshot): Promise<{ text: string; sum: string }> {
-  const body = BodySchema.parse(snapshot);
+export async function encodePayload(snapshot: Snapshot, withPhotos = false): Promise<{ text: string; sum: string }> {
+  const body = BodySchema.parse({ ...snapshot, photos: withPhotos ? snapshot.photos : undefined });
   const sum = await checksum(bodyOf(body));
   return { sum, text: JSON.stringify({ format: 'fairshare', version: 2, sum, ...body }) };
 }
 
 /** Validates everything before returning, so a bad payload never reaches the database. */
 export async function decodePayload(text: string): Promise<Snapshot> {
-  if (text.length > MAX_SIZE) throw new Error(TOO_LARGE);
+  if (text.length > MAX_FILE_SIZE) throw new Error(TOO_LARGE);
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(text);

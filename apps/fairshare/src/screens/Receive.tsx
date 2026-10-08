@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { applyImport, previewImport } from '../backup';
 import type { Snapshot, Summary } from '../sync/merge';
-import { createCollector, decodePayload, MAX_SIZE } from '../sync/payload';
+import { createCollector, decodePayload, MAX_FILE_SIZE } from '../sync/payload';
 
 const SCAN_EVERY_MS = 120;
 
 async function readTripFile(file: File): Promise<string> {
-  if (file.size > MAX_SIZE) throw new Error('This trip is too large to import');
+  if (file.size > MAX_FILE_SIZE) throw new Error('This trip is too large to import');
   return file.text();
 }
 
@@ -78,13 +78,14 @@ function Preview({ remote, onClose, onDone }: { remote: Snapshot; onClose: () =>
   const changes = (
     [[summary.added, 'new'], [summary.updated, 'updated'], [summary.deleted, 'deleted']] as const
   ).filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`);
-  const upToDate = !summary.newTrip && changes.length === 0;
+  const upToDate = !summary.newTrip && changes.length === 0 && !summary.photos;
 
   return (
     <div className="card">
       <h2>{remote.trip.name}</h2>
       {summary.newTrip && <p>This trip is not on this phone yet.</p>}
-      <p><strong>{upToDate ? 'Already up to date' : changes.join(', ') || 'No expenses yet'}</strong></p>
+      <p><strong>{upToDate ? 'Already up to date' : changes.join(', ') || (summary.photos ? 'Receipt photos only' : 'No expenses yet')}</strong></p>
+      {!!summary.photos && <p>Includes {summary.photos} receipt photo{summary.photos > 1 ? 's' : ''}.</p>}
       {error && <p role="alert" className="error">{error}</p>}
       {upToDate ? (
         <button className="primary" onClick={onClose}>Done</button>

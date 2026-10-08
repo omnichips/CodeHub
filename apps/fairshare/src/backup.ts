@@ -4,20 +4,21 @@ import { encodePayload } from './sync/payload';
 
 /** Everything the device holds for one trip, deleted records included so a merge keeps deletions. */
 export async function loadSnapshot(tripId: string): Promise<Snapshot | undefined> {
-  const [trip, members, expenses, payments] = await Promise.all([
+  const [trip, members, expenses, payments, photos] = await Promise.all([
     db.trips.get(tripId),
     db.members.where('tripId').equals(tripId).toArray(),
     db.expenses.where('tripId').equals(tripId).toArray(),
     db.payments.where('tripId').equals(tripId).toArray(),
+    db.receipts.where('tripId').equals(tripId).toArray(),
   ]);
-  return trip && { trip, members, expenses, payments };
+  return trip && { trip, members, expenses, payments, ...(photos.length > 0 && { photos }) };
 }
 
-/** The .fairshare file and the QR frames both come from this text. */
-export async function exportTrip(tripId: string) {
+/** The .fairshare file and the QR frames both come from this text. Only the file carries receipt photos: too big for QR codes. */
+export async function exportTrip(tripId: string, withPhotos = false) {
   const snapshot = await loadSnapshot(tripId);
   if (!snapshot) throw new Error('Trip not found');
-  return encodePayload(snapshot);
+  return encodePayload(snapshot, withPhotos);
 }
 
 /** Read-only: what applying this (already validated) payload would change. */
@@ -27,12 +28,13 @@ export async function previewImport(remote: Snapshot): Promise<Summary> {
 
 /** Merges into the device in one transaction; a trip not on the device is simply added. */
 export async function applyImport(remote: Snapshot): Promise<string> {
-  await db.transaction('rw', db.trips, db.members, db.expenses, db.payments, async () => {
+  await db.transaction('rw', db.trips, db.members, db.expenses, db.payments, db.receipts, async () => {
     const { merged } = mergeSnapshots(await loadSnapshot(remote.trip.id), remote);
     await db.trips.put(merged.trip);
     await db.members.bulkPut(merged.members);
     await db.expenses.bulkPut(merged.expenses);
     await db.payments.bulkPut(merged.payments);
+    await db.receipts.bulkPut(merged.photos ?? []);
   });
   return remote.trip.id;
 }
