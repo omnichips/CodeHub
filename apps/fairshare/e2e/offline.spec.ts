@@ -1,0 +1,116 @@
+import { createServer } from 'node:http';
+import { readdirSync, readFileSync } from 'node:fs';
+import { extname, join } from 'node:path';
+import type { AddressInfo } from 'node:net';
+import { expect, test } from '@playwright/test';
+
+const MIME: Record<string, string> = {
+  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
+  '.png': 'image/png', '.webmanifest': 'application/manifest+json',
+};
+
+test('installable manifest and icons', async ({ page, request }) => {
+  await page.goto('/');
+  expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBeTruthy();
+  expect(await page.locator('link[rel="apple-touch-icon"]').getAttribute('href')).toBe('/apple-touch-icon.png');
+
+  const manifest = await (await request.get('/manifest.webmanifest')).json();
+  expect(manifest).toMatchObject({ name: 'FairShare', display: 'standalone', start_url: '/' });
+  const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes);
+  expect(sizes).toEqual(expect.arrayContaining(['192x192', '512x512']));
+  for (const icon of [...manifest.icons.map((i: { src: string }) => `/${i.src}`), '/apple-touch-icon.png']) {
+    const res = await request.get(icon);
+    expect(res.status(), icon).toBe(200);
+    expect(res.headers()['content-type']).toContain('image/png');
+  }
+});
+
+// Serves dist/ from our own server so the test can really shut it down, instead of relying on a
+// browser "offline" switch that WebKit handles badly with service workers.
+test('works offline after one visit: precached, server gone, reload, add data, zero failed requests', async ({ page }) => {
+  const server = createServer((req, res) => {
+    const path = req.url!.split('?')[0];
+    try {
+      const file = path === '/' ? 'index.html' : path.slice(1);
+      res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' }).end(readFileSync(join('dist', file)));
+    } catch {
+      res.writeHead(404).end();
+    }
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const origin = `http://localhost:${(server.address() as AddressInfo).port}`;
+
+  const failed: string[] = [];
+  page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
+  page.on('response', (r) => r.status() >= 400 && failed.push(`${r.url()} ${r.status()}`));
+
+  await page.goto(origin);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); // now controlled by the service worker
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+
+  // Every built file is in the precache.
+  const built = readdirSync('dist/assets').map((f) => `/assets/${f}`).concat(['/index.html', '/manifest.webmanifest', '/icon.svg', '/pwa-512.png']);
+  const missing = await page.evaluate(
+    async (urls) => (await Promise.all(urls.map(async (u) => ((await caches.match(u, { ignoreSearch: true })) ? null : u)))).filter(Boolean),
+    built,
+  );
+  expect(missing).toEqual([]);
+
+  server.closeAllConnections();
+  await new Promise((ok) => server.close(ok));
+  await page.reload();
+  await expect(page.getByText('No trips yet')).toBeVisible();
+
+  await page.getByLabel('Trip name').fill('Offline trip');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await page.getByLabel('Title').fill('Ferry');
+  await page.getByLabel('Amount').fill('120');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Ferry/ })).toContainText('PHP 120.00');
+
+  // Data survives an offline reload.
+  await page.reload();
+  await page.getByRole('button', { name: /Offline trip/ }).click();
+  await expect(page.getByRole('button', { name: /Ferry/ })).toBeVisible();
+
+  // The PDF report works offline too: its code and font are precached, nothing is fetched.
+  await page.getByRole('button', { name: 'Settle up', exact: true }).click();
+  await page.getByRole('button', { name: 'Create PDF' }).click();
+  await expect(page.getByRole('status')).toContainText('Offline_trip.pdf');
+  const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download PDF' }).click()]);
+  expect(readFileSync((await pdf.path())!).subarray(0, 5).toString()).toBe('%PDF-');
+
+  expect(failed).toEqual([]);
+});
+
+test('backup file restores a trip after the data is gone', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Trip name').fill('Cebu');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Back up trip' }).click()]);
+  expect(download.suggestedFilename()).toBe('Cebu.fairshare');
+  const file = await download.path();
+
+  await page.evaluate(() => indexedDB.deleteDatabase('fairshare'));
+  await page.reload();
+  await expect(page.getByText('No trips yet')).toBeVisible();
+  await page.getByLabel('Trip file').setInputFiles(file);
+  await page.getByRole('button', { name: 'Apply' }).click(); // preview first, then the trip opens
+  await expect(page.getByRole('heading', { name: 'Cebu' })).toBeVisible();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await expect(page.getByLabel('Name of Ana')).toBeVisible();
+
+  // Importing the same file again is a harmless merge, not an error.
+  await page.getByRole('button', { name: 'Back to trips' }).click();
+  await page.getByLabel('Trip file').setInputFiles(file);
+  await expect(page.getByText('Already up to date')).toBeVisible();
+});

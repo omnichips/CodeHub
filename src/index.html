@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#121428" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="{{TITLE}}" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>{{TITLE}}</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="phone">
+      <div class="status" aria-hidden="true">
+        <time id="clock"></time>
+        <span class="island"></span>
+        <span class="signal">●●●●</span>
+      </div>
+      <main class="home" id="home" aria-label="Apps"></main>
+      <nav class="dock" id="dock" aria-label="Favourite apps"></nav>
+    </div>
+    <script id="apps" type="application/json">{{APPS}}</script>
+    <script src="/launcher.js"></script>
+  </body>
+</html>

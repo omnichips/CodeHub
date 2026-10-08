@@ -1,0 +1,11 @@
+{
+  "title": "Fixture apps",
+  "apps": [
+    { "id": "alpha", "name": "Alpha", "color": "#2563eb", "icon": "icon.svg", "dock": true, "source": { "type": "static", "dir": "apps/alpha" } },
+    { "id": "beta", "name": "Beta", "color": "#db2777", "dock": true, "source": { "type": "static", "dir": "apps/beta", "entry": "beta.html" } },
+    { "id": "gamma", "name": "Gamma Quest", "color": "#16a34a", "folder": "Games", "source": { "type": "static", "dir": "apps/gamma" } },
+    { "id": "delta", "name": "Delta", "color": "#ea580c", "folder": "Games", "source": { "type": "static", "dir": "apps/delta" } },
+    { "id": "epsilon", "name": "Epsilon", "color": "#7c3aed", "folder": "Games", "source": { "type": "static", "dir": "apps/epsilon" } },
+    { "id": "zeta", "name": "Zeta", "source": { "type": "static", "dir": "apps/zeta" } }
+  ]
+}

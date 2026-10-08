@@ -1,0 +1,12 @@
+{
+  "title": "My apps",
+  "apps": [
+    {
+      "id": "fairshare",
+      "name": "FairShare",
+      "color": "#3f7d46",
+      "icon": "public/icon.svg",
+      "source": { "type": "vite", "dir": "apps/fairshare" }
+    }
+  ]
+}
