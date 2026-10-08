@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/jpn": "1.0.0",
+    "@tesseract.js-data/tgl": "1.0.0",
     "barcode-detector": "3.2.2",
     "dexie": "4.4.6",
     "dexie-react-hooks": "4.4.0",

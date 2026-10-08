@@ -40,4 +40,35 @@ describe('parseReceipt', () => {
     });
     expect(parseReceipt('Order 123456789\n12/10\n----\n   \nx 0.00', 'USD')).toEqual({ items: [], total: null });
   });
+
+  it('reads a Japanese receipt, including spaced-out OCR text, full-width digits and yen signs', () => {
+    const text = String.raw`
+      ラーメン横丁 新宿店
+      2026年10月08日 12:31
+      醤 油 ラ ー メ ン        ¥980
+      餃子 2点              \1,000
+      生ビール               ６５０円
+      水                     ¥0
+      小計                  ¥2,630
+      (内消費税等             ¥239)
+      合 計                 ¥2,630
+      お預り                ¥3,000
+      お釣り                  ¥370`;
+    expect(parseReceipt(text, 'JPY')).toEqual({
+      items: [
+        { name: '醤油ラーメン', price: '980' },
+        { name: '餃子 2点', price: '1000' },
+        { name: '生ビール', price: '650' },
+      ],
+      total: '2630',
+    });
+  });
+
+  it('reads Tagalog words for total, tax and change', () => {
+    const text = 'Lechon kawali   250.00\nSinigang na baboy  320.00\nBuwis   68.40\nKabuuan   638.40\nBayad  1,000.00\nSukli   361.60';
+    expect(parseReceipt(text, 'PHP')).toEqual({
+      items: [{ name: 'Lechon kawali', price: '250.00' }, { name: 'Sinigang na baboy', price: '320.00' }],
+      total: '638.40',
+    });
+  });
 });

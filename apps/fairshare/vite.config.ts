@@ -7,15 +7,25 @@ import { defineConfig } from 'vitest/config';
 
 const unused = fileURLToPath(new URL('./src/report/unused.ts', import.meta.url));
 
-// The receipt reader (tesseract.js) loads its language file by a fixed name from a folder, so it cannot be a hashed
-// asset. Served in dev and emitted in the build at ocr/eng.traineddata.gz; Workbox precaches it like everything else.
-const ENG = fileURLToPath(new URL('./node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz', import.meta.url));
+// The receipt reader (tesseract.js) loads language files by fixed name from a folder, so they cannot be hashed
+// assets. Served in dev and emitted in the build at ocr/<code>.traineddata.gz. English is precached; the others are
+// language packs the user downloads (src/receipt/packs.ts). Tagalog only exists in the larger 4.0.0 format.
+const OCR_LANGS: Record<string, string> = {
+  eng: '@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+  jpn: '@tesseract.js-data/jpn/4.0.0_best_int/jpn.traineddata.gz',
+  tgl: '@tesseract.js-data/tgl/4.0.0/tgl.traineddata.gz',
+};
+const ocrFile = (code: string) => readFileSync(fileURLToPath(new URL(`./node_modules/${OCR_LANGS[code]}`, import.meta.url)));
 const ocrData: Plugin = {
   name: 'ocr-data',
   configureServer: (server) =>
-    void server.middlewares.use('/ocr/eng.traineddata.gz', (_req, res) => res.setHeader('Content-Type', 'application/octet-stream').end(readFileSync(ENG))),
+    void server.middlewares.use('/ocr/', (req, res, next) => {
+      const code = /^\/(\w+)\.traineddata\.gz$/.exec(req.url ?? '')?.[1];
+      if (!code || !OCR_LANGS[code]) return next();
+      res.setHeader('Content-Type', 'application/octet-stream').end(ocrFile(code));
+    }),
   generateBundle() {
-    this.emitFile({ type: 'asset', fileName: 'ocr/eng.traineddata.gz', source: readFileSync(ENG) });
+    for (const code of Object.keys(OCR_LANGS)) this.emitFile({ type: 'asset', fileName: `ocr/${code}.traineddata.gz`, source: ocrFile(code) });
   },
 };
 
@@ -42,9 +52,15 @@ export default defineConfig({
         ],
       },
       // Precache the whole app; there are no runtime network calls to cache.
-      // wasm is the QR scanner engine (about 1 MB); gz is the receipt reader's English data (about 3 MB), and its
-      // engine is a 4 MB .js file, hence the higher size limit (Workbox skips files over 2 MiB by default).
-      workbox: { globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,wasm,gz}'], maximumFileSizeToCacheInBytes: 6 * 1024 * 1024 },
+      // wasm is the QR scanner engine (about 1 MB); the receipt reader's English data is 3 MB and its engine a 4 MB .js
+      // file, hence the higher size limit (Workbox skips files over 2 MiB by default).
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,wasm}', 'ocr/eng.traineddata.gz'],
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // Downloaded language packs: the app puts them in this cache (src/receipt/packs.ts), the service worker serves
+        // them from it, so a pack works offline once downloaded.
+        runtimeCaching: [{ urlPattern: /\/ocr\/\w+\.traineddata\.gz$/, handler: 'CacheFirst', options: { cacheName: 'ocr-packs' } }],
+      },
     }),
   ],
   // Libraries loaded lazily (QR scanner, PDF) are pre-bundled up front; otherwise the dev server finds them mid-session and reloads the page.

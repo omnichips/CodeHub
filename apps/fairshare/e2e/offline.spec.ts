@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Browser } from '@playwright/test';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -27,8 +27,7 @@ test('installable manifest and icons', async ({ page, request }) => {
 
 // Serves dist/ from our own server so the test can really shut it down, instead of relying on a
 // browser "offline" switch that WebKit handles badly with service workers.
-test('works offline after one visit: precached, server gone, reload, add data, zero failed requests', async ({ page, browser }) => {
-  test.setTimeout(120_000);
+async function serveDist() {
   const server = createServer((req, res) => {
     const path = req.url!.split('?')[0];
     try {
@@ -40,6 +39,25 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const origin = `http://localhost:${(server.address() as AddressInfo).port}`;
+  const stop = async () => {
+    server.closeAllConnections();
+    await new Promise((ok) => server.close(ok));
+  };
+  return { origin, stop };
+}
+
+/** A receipt as a phone photo would arrive through the photo picker. */
+async function receiptPhoto(browser: Browser, lines: string, font = "'Courier New',monospace") {
+  const shot = await browser.newPage({ viewport: { width: 520, height: 60 + 42 * lines.split('\n').length } });
+  await shot.setContent(`<pre style="font:28px/1.5 ${font};padding:30px;margin:0">${lines}</pre>`);
+  const png = await shot.screenshot();
+  await shot.close();
+  return png;
+}
+
+test('works offline after one visit: precached, server gone, reload, add data, zero failed requests', async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { origin, stop } = await serveDist();
 
   const failed: string[] = [];
   page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
@@ -58,8 +76,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   );
   expect(missing).toEqual([]);
 
-  server.closeAllConnections();
-  await new Promise((ok) => server.close(ok));
+  await stop();
   await page.reload();
   await expect(page.getByText('No trips yet')).toBeVisible();
 
@@ -88,11 +105,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   expect(readFileSync((await pdf.path())!).subarray(0, 5).toString()).toBe('%PDF-');
 
   // So does reading a receipt: the OCR engine, its worker and the English data all come from the precache.
-  const shot = await browser.newPage({ viewport: { width: 520, height: 200 } });
-  await shot.setContent(`<pre style="font:28px/1.5 'Courier New',monospace;padding:30px;margin:0">Taxi            150.00
-TOTAL           150.00</pre>`);
-  const png = await shot.screenshot();
-  await shot.close();
+  const png = await receiptPhoto(browser, 'Taxi            150.00\nTOTAL           150.00');
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
   await page.getByLabel('Receipt photo').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
@@ -100,6 +113,43 @@ TOTAL           150.00</pre>`);
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
 
   expect(failed).toEqual([]);
+});
+
+test('a downloaded language pack (Japanese) reads receipts offline', async ({ page, browser }) => {
+  test.setTimeout(150_000);
+  const { origin, stop } = await serveDist();
+  await page.goto(origin);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload();
+
+  await page.getByLabel('Trip name').fill('Tokyo');
+  await page.getByLabel('Base currency').selectOption('JPY');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+
+  // Tagalog is not downloaded, so it offers the download; Japanese is downloaded here, while online.
+  await page.getByLabel('Receipt language').selectOption('tgl');
+  await expect(page.getByRole('button', { name: 'Download pack (3.3 MB)' })).toBeVisible();
+  await page.getByLabel('Receipt language').selectOption('jpn');
+  await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
+  await expect(page.getByRole('button', { name: 'Scan receipt' })).toBeVisible({ timeout: 30_000 });
+
+  await stop();
+  await page.reload();
+  await page.getByRole('button', { name: /Tokyo/ }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await expect(page.getByLabel('Receipt language')).toHaveValue('jpn'); // remembered on this device
+  const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
+  await page.getByLabel('Receipt photo').setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
+  await expect(page.getByLabel('Item 2 price')).toHaveValue('500', { timeout: 120_000 });
+  await expect(page.getByLabel('Item 1 price')).toHaveValue('980');
+  await expect(page.getByLabel('Item 1 name')).toHaveValue(/メン/); // OCR may misread a character (フーメン); the user fixes it
+  await expect(page.getByLabel('Item 2 name')).toHaveValue('餃子');
+  await expect(page.getByLabel('Amount')).toHaveValue('1480');
 });
 
 test('backup file restores a trip after the data is gone', async ({ page }) => {

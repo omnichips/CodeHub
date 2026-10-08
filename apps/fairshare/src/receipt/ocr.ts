@@ -1,11 +1,12 @@
 import { createWorker, OEM } from 'tesseract.js';
+import type { Lang } from './packs';
 import workerUrl from 'tesseract.js/dist/worker.min.js?url';
 // SIMD build only: every iPhone on iOS 16.4 or later has WebAssembly SIMD. The .wasm.js file has the WASM inside it.
 import coreUrl from 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url';
 
 // By default tesseract.js downloads all three files from a CDN. Ours are bundled and precached instead, so reading a
-// receipt works offline. The language file is loaded by its fixed name from a folder, so vite.config.ts serves it
-// unhashed at ocr/eng.traineddata.gz. (Passing its bytes instead hits a tesseract.js 7.0.0 bug.)
+// receipt works offline. Language files are loaded by fixed name from a folder, so vite.config.ts serves them
+// unhashed at ocr/<code>.traineddata.gz. (Passing their bytes instead hits a tesseract.js 7.0.0 bug.)
 const abs = (url: string) => new URL(url, location.href).href;
 
 /** Longest side, in pixels, that the photo is scaled down to. Bigger is slower and rarely more accurate. */
@@ -23,9 +24,10 @@ async function shrink(photo: Blob): Promise<Blob> {
 }
 
 /** Reads the text of a receipt photo on this phone. onProgress gets 0..1. */
-export async function readReceipt(photo: Blob, onProgress: (p: number) => void): Promise<string> {
+export async function readReceipt(photo: Blob, lang: Lang, onProgress: (p: number) => void): Promise<string> {
   const image = await shrink(photo);
-  const worker = await createWorker('eng', OEM.LSTM_ONLY, {
+  // English as well, since receipts in any language mix in English words, codes and prices.
+  const worker = await createWorker(lang === 'eng' ? 'eng' : `${lang}+eng`, OEM.LSTM_ONLY, {
     workerPath: abs(workerUrl),
     corePath: abs(coreUrl),
     langPath: abs(`${import.meta.env.BASE_URL}ocr`),
