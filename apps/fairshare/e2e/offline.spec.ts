@@ -92,7 +92,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.getByLabel('Title').fill('Ferry');
   await page.getByLabel('Amount').fill('120');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Ferry/ })).toContainText('PHP 120.00');
+  await expect(page.getByRole('button', { name: /Ferry/ })).toContainText('₱120.00');
 
   // Data survives an offline reload.
   await page.reload();

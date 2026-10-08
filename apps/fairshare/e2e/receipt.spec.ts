@@ -58,13 +58,13 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await page.getByLabel('Item 1 name').fill('Pork sisig');
   await page.locator('details.shared-by').first().locator('summary').click();
   await page.getByRole('group', { name: 'Who shared item 1' }).getByRole('checkbox', { name: 'Ben', exact: true }).uncheck(); // Ana only
-  await expect(page.getByText('tax, tip and service PHP 52.00')).toBeVisible();
+  await expect(page.getByText('tax, tip and service ₱52.00')).toBeVisible();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
 
   // Ana had 320 + 60 + 40 = 420 of 520; the 52 service is shared the same way: 42 / 10.
   await page.getByRole('button', { name: 'Settle up', exact: true }).click();
-  await expect(page.getByText('+PHP 110.00', { exact: true })).toBeVisible(); // Ana paid 572, owes 462
-  await expect(page.getByText('Ben pays Ana PHP 110.00')).toBeVisible();
+  await expect(page.getByText('+₱110.00', { exact: true })).toBeVisible(); // Ana paid 572, owes 462
+  await expect(page.getByText('Ben pays Ana ₱110.00')).toBeVisible();
   expect(outside).toEqual([]);
 });
 

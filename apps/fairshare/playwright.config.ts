@@ -5,6 +5,9 @@ const iphone = { ...devices['iPhone 14'], reducedMotion: 'reduce' as const };
 
 export default defineConfig({
   testDir: 'e2e',
+  // The receipt tests run a full OCR engine; with every core busy, unrelated tests time out. Fewer workers, more time.
+  workers: 3,
+  timeout: 60_000,
   projects: [
     { name: 'app', testMatch: ['workflow.spec.ts', 'report.spec.ts', 'a11y.spec.ts', 'receipt.spec.ts', 'motion.spec.ts'], use: { ...iphone, baseURL: 'http://localhost:5173' } },
     { name: 'sync', testMatch: 'sync.spec.ts', use: { ...iphone, baseURL: 'http://localhost:5173' } },

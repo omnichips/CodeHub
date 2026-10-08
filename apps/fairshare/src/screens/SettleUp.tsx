@@ -12,24 +12,26 @@ export function SettleUp({ data, names }: { data: TripData; names: Record<string
 
   return (
     <>
-      <h2>Balances</h2>
-      {members.length === 0 && <p className="empty">No members yet</p>}
-      <ul className="list">
-        {members.map((m) => (
-          <li key={m.id} className="row">
-            <span>{m.name}</span>
-            <strong>{signed(bal[m.id], cur)}</strong>
-          </li>
-        ))}
-      </ul>
-
       <h2>Settle up</h2>
       {transfers.length === 0 && <p className="empty settled">All settled</p>}
       <ul className="list">
         {transfers.map((t) => (
           <li key={t.fromId + t.toId} className="row">
             <span>{names[t.fromId]} pays {names[t.toId]} {money(t.amountMinor, cur)}</span>
-            <button onClick={() => addPayment(trip.id, t.fromId, t.toId, t.amountMinor)}>Mark as paid</button>
+            <button className="check-paid" aria-label="Mark as paid" title="Mark as paid" onClick={() => addPayment(trip.id, t.fromId, t.toId, t.amountMinor)}>
+              <span aria-hidden="true">✓</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <h2>Balances</h2>
+      {members.length === 0 && <p className="empty">No members yet</p>}
+      <ul className="list">
+        {members.map((m) => (
+          <li key={m.id} className="row">
+            <span>{m.name}</span>
+            <strong className={bal[m.id] > 0 ? 'pos' : bal[m.id] < 0 ? 'neg' : undefined}>{signed(bal[m.id], cur)}</strong>
           </li>
         ))}
       </ul>

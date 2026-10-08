@@ -37,18 +37,18 @@ test('Workflow A: trip, members, expense, balances, settle up', async ({ page })
   await newTrip(page, ['Ana', 'Ben', 'Cy']);
   await openExpense(page, 'Dinner', '300');
   await save(page);
-  await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('PHP 300.00');
+  await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('₱300.00');
 
   await tab(page, 'Settle up').click();
-  await expect(page.getByText('+PHP 200.00', { exact: true })).toBeVisible();
-  await expect(page.getByText('−PHP 100.00', { exact: true })).toHaveCount(2);
-  await expect(page.getByText('Ben pays Ana PHP 100.00')).toBeVisible();
-  await expect(page.getByText('Cy pays Ana PHP 100.00')).toBeVisible();
+  await expect(page.getByText('+₱200.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('−₱100.00', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('Ben pays Ana ₱100.00')).toBeVisible();
+  await expect(page.getByText('Cy pays Ana ₱100.00')).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark as paid' }).first().click();
   await page.getByRole('button', { name: 'Mark as paid' }).first().click();
   await expect(page.getByText('All settled')).toBeVisible();
-  await expect(page.getByText('PHP 0.00', { exact: true })).toHaveCount(3);
+  await expect(page.getByText('₱0.00', { exact: true })).toHaveCount(3);
 });
 
 test('shares, percent and exact splits', async ({ page }) => {
@@ -73,15 +73,15 @@ test('shares, percent and exact splits', async ({ page }) => {
   await page.getByRole('button', { name: 'Exact' }).click();
   await page.getByLabel('Ana exact').fill('20');
   await page.getByLabel('Ben exact').fill('50');
-  await expect(page.getByText('Remaining: PHP 30.00')).toBeVisible();
+  await expect(page.getByText('Remaining: ₱30.00')).toBeVisible();
   await page.getByLabel('Ben exact').fill('80'); // 20 / 80
   await save(page);
 
   // Ana paid all three: owed 25+30+20 = 75 of 300 -> +225; Ben owes 75+70+80.
   await tab(page, 'Settle up').click();
-  await expect(page.getByText('+PHP 225.00', { exact: true })).toBeVisible();
-  await expect(page.getByText('−PHP 225.00', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ben pays Ana PHP 225.00')).toBeVisible();
+  await expect(page.getByText('+₱225.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('−₱225.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('Ben pays Ana ₱225.00')).toBeVisible();
 });
 
 test('foreign-currency expense uses the typed rate', async ({ page }) => {
@@ -91,8 +91,8 @@ test('foreign-currency expense uses the typed rate', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled(); // rate missing
   await page.getByLabel('Rate').fill('65.20');
   await save(page);
-  await expect(page.getByRole('button', { name: /Museum/ })).toContainText('PHP 652.00');
-  await expect(page.getByRole('button', { name: /Museum/ })).toContainText('EUR 10.00');
+  await expect(page.getByRole('button', { name: /Museum/ })).toContainText('₱652.00');
+  await expect(page.getByRole('button', { name: /Museum/ })).toContainText('€10.00');
 
   // A second EUR expense pre-fills the last rate.
   await page.getByRole('button', { name: 'Add expense' }).click();
@@ -101,7 +101,7 @@ test('foreign-currency expense uses the typed rate', async ({ page }) => {
   await page.getByRole('button', { name: 'Cancel' }).click();
 
   await tab(page, 'Settle up').click();
-  await expect(page.getByText('+PHP 326.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('+₱326.00', { exact: true })).toBeVisible();
 });
 
 test('members with expenses become inactive; tap targets are 48px', async ({ page }) => {
@@ -140,16 +140,16 @@ test('split by item, with service charge spread by what each person had', async 
   await item(2, 'Pizza', '600', ['Ana']);
   await item(3, 'Wine', '300', []);
 
-  await page.getByRole('button', { name: 'Use items total: PHP 1200.00' }).click();
+  await page.getByRole('button', { name: 'Use items total: ₱1200.00' }).click();
   await expect(page.getByLabel('Amount')).toHaveValue('1200.00');
   await page.getByLabel('Amount').fill('1320');
-  await expect(page.getByText('tax, tip and service PHP 120.00')).toBeVisible();
+  await expect(page.getByText('tax, tip and service ₱120.00')).toBeVisible();
   await save(page);
-  await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('PHP 1320.00');
+  await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('₱1320.00');
 
   await tab(page, 'Settle up').click();
-  await expect(page.getByText('+PHP 880.00', { exact: true })).toBeVisible(); // Ana paid 1320, owes 440
-  await expect(page.getByText('−PHP 440.00', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('+₱880.00', { exact: true })).toBeVisible(); // Ana paid 1320, owes 440
+  await expect(page.getByText('−₱440.00', { exact: true })).toHaveCount(2);
 
   // Editing keeps the items.
   await tab(page, 'Expenses').click();
@@ -229,7 +229,7 @@ test('items with a big group (12 people): one compact "Shared by" row per item, 
   await save(page);
 
   await tab(page, 'Settle up').click();
-  await expect(page.getByText('−PHP 300.00', { exact: true })).toHaveCount(3); // Ben, Cy, Dee each owe Ana 300
+  await expect(page.getByText('−₱300.00', { exact: true })).toHaveCount(3); // Ben, Cy, Dee each owe Ana 300
 });
 
 test('trip title is centred and the member + is at the right', async ({ page }) => {
@@ -245,4 +245,42 @@ test('trip title is centred and the member + is at the right', async ({ page }) 
   await tab(page, 'Members').click();
   const fab = (await page.getByRole('button', { name: 'New member' }).boundingBox())!;
   expect(fab.x + fab.width).toBeGreaterThan(view.width - 40);
+});
+
+test('settle up: transfers above balances, green +, red −, ₱ and ¥ signs, ✓ to mark as paid', async ({ page }) => {
+  await newTrip(page, ['Ana', 'Ben']);
+  await openExpense(page, 'Dinner', '300');
+  await save(page);
+  await tab(page, 'Settle up').click();
+
+  const settle = (await page.getByRole('heading', { name: 'Settle up' }).boundingBox())!;
+  const balances = (await page.getByRole('heading', { name: 'Balances' }).boundingBox())!;
+  expect(settle.y).toBeLessThan(balances.y);
+
+  const green = await page.getByText('+₱150.00', { exact: true }).evaluate((e) => getComputedStyle(e).color);
+  const red = await page.getByText('−₱150.00', { exact: true }).evaluate((e) => getComputedStyle(e).color);
+  expect(green).toBe('rgb(63, 125, 70)');
+  expect(red).toBe('rgb(155, 28, 28)');
+  await expect(page.getByText('Ben pays Ana ₱150.00')).toBeVisible();
+
+  const check = page.getByRole('button', { name: 'Mark as paid' });
+  await expect(check).toHaveText('✓'); // a check mark, not the words
+  await check.click();
+  await expect(page.getByText('All settled')).toBeVisible();
+
+  // Yen has its own sign.
+  await page.getByRole('button', { name: 'Back to trips' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByLabel('Trip name').fill('Tokyo');
+  await page.getByLabel('Base currency').selectOption('JPY');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await tab(page, 'Members').click();
+  await page.getByRole('button', { name: 'New member' }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await expect(page.getByLabel('Name of Ana')).toBeVisible();
+  await tab(page, 'Expenses').click();
+  await openExpense(page, 'Ramen', '980');
+  await save(page);
+  await expect(page.getByRole('button', { name: /Ramen/ })).toContainText('¥980');
 });

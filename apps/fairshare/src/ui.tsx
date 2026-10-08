@@ -1,7 +1,24 @@
 import { useId } from 'react';
 import { formatAmount } from './engine/money';
 
-export const money = (minor: number, currency: string) => `${currency} ${formatAmount(minor, currency)}`;
+const symbols = new Map<string, string>();
+/** ₱ for PHP, ¥ for JPY, € for EUR, A$ for AUD...; the code itself (KWD) when the currency has no symbol. */
+function symbolOf(currency: string): string {
+  let s = symbols.get(currency);
+  if (s === undefined) {
+    try {
+      s = new Intl.NumberFormat('en', { style: 'currency', currency, currencyDisplay: 'symbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value ?? currency;
+    } catch {
+      s = currency;
+    }
+    symbols.set(currency, s);
+  }
+  return s;
+}
+export const money = (minor: number, currency: string) => {
+  const s = symbolOf(currency);
+  return /^[A-Z]{3}$/.test(s) ? `${s} ${formatAmount(minor, currency)}` : `${s}${formatAmount(minor, currency)}`;
+};
 export const signed = (minor: number, currency: string) =>
   minor === 0 ? money(0, currency) : `${minor > 0 ? '+' : '−'}${money(Math.abs(minor), currency)}`;
 

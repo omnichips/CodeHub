@@ -15,6 +15,11 @@
 - **Plain error messages** (`src/messages.ts`): engine messages such as "Split weights are all zero" now read "Give at least one person a share above zero."; anything technical becomes "Something went wrong. Please try again." A failed Save now shows a message instead of failing silently.
 - **Launch screens:** the hare on the app background for 11 iPhone screen sizes (`scripts/make-splash.mjs`, `public/splash/`, linked in `index.html`; iOS saves them when the app is added to the Home Screen, so they are not in the offline precache). A new iPhone size needs a new row in that script. Only seen by iOS after the app is re-added to the Home Screen.
 
+## Settle up screen and currency signs
+- **Settle up** (who pays whom) is now above **Balances**. Balances are **green** when positive and **red** when negative; the + / − sign stays, so colour is not the only cue (plan rule). "Mark as paid" is a round **✓** button (its accessible name is still "Mark as paid").
+- **Currency signs instead of codes** everywhere amounts are shown, the PDF included: ₱ for PHP, ¥ for JPY, € for EUR, £, $, A$ and so on, taken from the phone's own `Intl` data; a currency with no sign (KWD) keeps its code. This replaces the plan's "code plus amount" wording for the PDF as well, as asked; the fonts (DejaVu and M PLUS) both have ₱ ¥ €. Where two currencies share a sign (USD and SGD both $) the typed rate on an expense (1 USD = ...) still shows which is which.
+- e2e now runs with 3 workers and a 60 s timeout: the receipt tests run a full OCR engine, and with every core busy unrelated tests timed out about one run in four. One rare "failed requests" failure in the offline test was seen twice and never reproduced with its details.
+
 ## Items: "Shared by" dropdown
 - Each item now has one compact "Shared by" row ("Everyone", "Ana, Ben", "Ana, Ben +3", or "Choose who shared" in red) that opens a checklist of the trip's people with "Everyone" / "No one" shortcuts; it replaces the row of name buttons, which wrapped badly past about 5 people. Tested with 12 people.
 - Built on the native `<details>` element: no positioning code, works with VoiceOver and the keyboard, and the open list scrolls if it is taller than 60% of the screen. Removing an item is now a ✕ beside its price.
