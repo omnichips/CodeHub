@@ -108,7 +108,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   const png = await receiptPhoto(browser, 'Taxi            150.00\nTOTAL           150.00');
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
-  await page.getByLabel('Receipt photo').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
 
@@ -136,7 +136,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await expect(page.getByRole('button', { name: 'Download pack (3.3 MB)' })).toBeVisible();
   await page.getByLabel('Receipt language').selectOption('jpn');
   await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
-  await expect(page.getByRole('button', { name: 'Scan receipt' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Scan receipts' })).toBeVisible({ timeout: 30_000 });
 
   await stop();
   await page.reload();
@@ -144,7 +144,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await page.getByRole('button', { name: 'Add expense' }).click();
   await expect(page.getByLabel('Receipt language')).toHaveValue('jpn'); // remembered on this device
   const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
-  await page.getByLabel('Receipt photo').setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos').setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
   await expect(page.getByLabel('Item 2 price')).toHaveValue('500', { timeout: 120_000 });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('980');
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/メン/); // OCR may misread a character (フーメン); the user fixes it

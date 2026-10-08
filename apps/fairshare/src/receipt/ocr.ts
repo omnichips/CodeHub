@@ -23,9 +23,9 @@ async function shrink(photo: Blob): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read the photo'))), 'image/jpeg', 0.9));
 }
 
-/** Reads the text of a receipt photo on this phone. onProgress gets 0..1. */
-export async function readReceipt(photo: Blob, lang: Lang, onProgress: (p: number) => void): Promise<string> {
-  const image = await shrink(photo);
+/** Reads the text of receipt photos on this phone, one after another with one engine. onProgress gets the photo index and 0..1. */
+export async function readReceipts(photos: Blob[], lang: Lang, onProgress: (index: number, p: number) => void): Promise<string[]> {
+  let current = 0;
   // English as well, since receipts in any language mix in English words, codes and prices.
   const worker = await createWorker(lang === 'eng' ? 'eng' : `${lang}+eng`, OEM.LSTM_ONLY, {
     workerPath: abs(workerUrl),
@@ -34,11 +34,13 @@ export async function readReceipt(photo: Blob, lang: Lang, onProgress: (p: numbe
     workerBlobURL: false,
     cacheMethod: 'none', // the language file is already precached; do not keep a second copy in IndexedDB
     logger: (m) => {
-      if (m.status === 'recognizing text') onProgress(m.progress);
+      if (m.status === 'recognizing text') onProgress(current, m.progress);
     },
   });
   try {
-    return (await worker.recognize(image)).data.text;
+    const texts: string[] = [];
+    for (; current < photos.length; current++) texts.push((await worker.recognize(await shrink(photos[current]))).data.text);
+    return texts;
   } finally {
     await worker.terminate();
   }

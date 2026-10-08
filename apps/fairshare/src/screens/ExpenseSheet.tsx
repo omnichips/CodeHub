@@ -47,15 +47,28 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   );
   const setItem = (key: string, patch: Partial<ItemRow>) => setItems(items.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
-  /** Fills the item list from a scanned receipt; returns an error message when nothing usable was found. */
-  function applyReceipt(text: string): string | null {
-    const found = parseReceipt(text, currency);
-    if (found.items.length === 0) return 'No prices found on that receipt. Try a sharper, flatter photo, or add the items by hand.';
+  // Sum of the totals read from receipts so far; Amount follows it until the user types their own.
+  const [scannedTotal, setScannedTotal] = useState(0);
+
+  /** Adds the items of scanned receipts (one text per photo); returns a message when a photo gave nothing. */
+  function applyReceipts(texts: string[]): string | null {
+    const found = texts.map((t) => parseReceipt(t, currency));
+    const rows = found.flatMap((f) => f.items.map((i) => itemRow(ids, i.name, i.price)));
+    const empty = found.flatMap((f, i) => (f.items.length ? [] : [i + 1]));
+    if (rows.length === 0) return 'No prices found on that receipt. Try a sharper, flatter photo, or add the items by hand.';
     // Keep items already typed; replace the empty starter row.
-    setItems((prev) => [...prev.filter((i) => i.name.trim() || i.price.trim()), ...found.items.map((i) => itemRow(ids, i.name, i.price))]);
+    setItems((prev) => [...prev.filter((i) => i.name.trim() || i.price.trim()), ...rows]);
     setMode('items');
-    if (!amount.trim() && found.total) setAmount(found.total);
-    return null;
+    const totals = found.reduce((sum, f) => sum + (f.total ? parseAmount(f.total, currency) : 0), 0);
+    let typed: number | null = null;
+    try {
+      typed = amount.trim() ? parseAmount(amount, currency) : null;
+    } catch {
+      /* not a number: the user's own text, leave it */
+    }
+    if (totals && (!amount.trim() || typed === scannedTotal)) setAmount(formatAmount(scannedTotal + totals, currency));
+    setScannedTotal(scannedTotal + totals);
+    return empty.length ? `No prices found on photo ${empty.join(', ')} of ${texts.length}. Its items were not added.` : null;
   }
 
   const foreign = currency !== base;
@@ -192,7 +205,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
           </label>
         </div>
 
-        <ReceiptScanner onRead={applyReceipt} />
+        <ReceiptScanner onRead={applyReceipts} />
         {mode === 'items' && items.length > 1 && <p className="hint">Check each line against the receipt, then tap who shared it.</p>}
 
         <h2>Split</h2>

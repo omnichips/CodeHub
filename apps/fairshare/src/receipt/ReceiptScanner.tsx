@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
-/** Language picker, pack download and "Scan receipt". onRead gets the text and returns an error message or null. */
-export function ReceiptScanner({ onRead }: { onRead: (text: string) => string | null }) {
+/** Language picker, pack download and "Scan receipts". onRead gets one text per photo and returns an error message or null. */
+export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string | null }) {
   const [lang, setLang] = useState<Lang>(savedLang);
   const [ready, setReady] = useState(lang === 'eng');
   const [busy, setBusy] = useState<string | null>(null);
@@ -18,11 +18,11 @@ export function ReceiptScanner({ onRead }: { onRead: (text: string) => string | 
     };
   }, [lang]);
 
-  async function run(label: string, task: (progress: (p: number) => void) => Promise<void>, failure: string) {
+  async function run(label: string, task: (progress: (p: number, step?: string) => void) => Promise<void>, failure: string) {
     setError('');
     setBusy(`${label}…`);
     try {
-      await task((p) => setBusy(`${label}… ${Math.round(p * 100)}%`));
+      await task((p, step = label) => setBusy(`${step}… ${Math.round(p * 100)}%`));
     } catch {
       setError(failure);
     } finally {
@@ -30,10 +30,13 @@ export function ReceiptScanner({ onRead }: { onRead: (text: string) => string | 
     }
   }
 
-  const scan = (photo: File) =>
+  const scan = (photos: File[]) =>
     run('Reading receipt', async (progress) => {
-      const { readReceipt } = await import('./ocr'); // about 7 MB, so only loaded when used
-      const problem = onRead(await readReceipt(photo, lang, progress));
+      const { readReceipts } = await import('./ocr'); // about 7 MB, so only loaded when used
+      const texts = await readReceipts(photos, lang, (i, p) =>
+        progress(p, photos.length > 1 ? `Reading receipt ${i + 1} of ${photos.length}` : 'Reading receipt'),
+      );
+      const problem = onRead(texts);
       if (problem) setError(problem);
     }, 'Could not read that photo. Try again, or add the items by hand.');
 
@@ -67,16 +70,17 @@ export function ReceiptScanner({ onRead }: { onRead: (text: string) => string | 
           ref={input}
           type="file"
           accept="image/*"
+          multiple
           hidden
-          aria-label="Receipt photo"
+          aria-label="Receipt photos"
           onChange={(e) => {
-            const file = e.target.files?.[0];
+            const files = [...(e.target.files ?? [])];
             e.target.value = '';
-            if (file) void scan(file);
+            if (files.length) void scan(files);
           }}
         />
         {ready ? (
-          <button disabled={busy !== null} onClick={() => input.current?.click()}>{busy ?? 'Scan receipt'}</button>
+          <button disabled={busy !== null} onClick={() => input.current?.click()}>{busy ?? 'Scan receipts'}</button>
         ) : (
           <button disabled={busy !== null} onClick={download}>{busy ?? `Download pack (${pack.size})`}</button>
         )}
