@@ -55,7 +55,11 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     const found = texts.map((t) => parseReceipt(t, currency));
     const rows = found.flatMap((f) => f.items.map((i) => itemRow(ids, i.name, i.price)));
     const empty = found.flatMap((f, i) => (f.items.length ? [] : [i + 1]));
-    if (rows.length === 0) return 'No prices found on that receipt. Try a sharper, flatter photo, or add the items by hand.';
+    if (rows.length === 0) {
+      // Show what the reader saw, so a bad photo (nothing read) can be told from a receipt layout the parser misses.
+      const seen = texts.join(' ').replace(/\s+/g, ' ').trim();
+      return `No prices found on that receipt. Try a sharper, flatter photo with the receipt filling the frame, or add the items by hand. Read: "${seen.slice(0, 160) || 'nothing'}"`;
+    }
     // Keep items already typed; replace the empty starter row.
     setItems((prev) => [...prev.filter((i) => i.name.trim() || i.price.trim()), ...rows]);
     setMode('items');
