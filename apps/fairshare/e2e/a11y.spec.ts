@@ -3,6 +3,10 @@ import { expect, test, type Page } from '@playwright/test';
 
 // Gate: no critical or serious automated accessibility findings on each main screen.
 async function check(page: Page, where: string) {
+  // Let entrance animations finish first, or half-faded text reads as low contrast. The hare's bob never ends, so skip it.
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))),
+  );
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   const bad = violations.filter((v) => v.impact === 'critical' || v.impact === 'serious');
   expect(bad.map((v) => `${where}: ${v.id} ${v.nodes.map((n) => n.target).join(' | ')}`)).toEqual([]);
@@ -11,6 +15,7 @@ async function check(page: Page, where: string) {
 test('no critical accessibility findings', async ({ page }) => {
   await page.goto('/');
   await check(page, 'trip list');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await check(page, 'expenses (empty)');

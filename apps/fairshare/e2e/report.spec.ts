@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function tripWithExpense(page: Page) {
   await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();

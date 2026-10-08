@@ -80,6 +80,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.reload();
   await expect(page.getByText('No trips yet')).toBeVisible();
 
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Offline trip');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
@@ -123,6 +124,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await page.evaluate(() => navigator.serviceWorker.ready);
   await page.reload();
 
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Tokyo');
   await page.getByLabel('Base currency').selectOption('JPY');
   await page.getByRole('button', { name: 'Create trip' }).click();
@@ -156,6 +158,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
 
 test('backup file restores a trip after the data is gone', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
@@ -168,6 +171,7 @@ test('backup file restores a trip after the data is gone', async ({ page }) => {
   await page.evaluate(() => indexedDB.deleteDatabase('fairshare'));
   await page.reload();
   await expect(page.getByText('No trips yet')).toBeVisible();
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip file').setInputFiles(file);
   await page.getByRole('button', { name: 'Apply' }).click(); // preview first, then the trip opens
   await expect(page.getByRole('heading', { name: 'Cebu' })).toBeVisible();
@@ -176,6 +180,7 @@ test('backup file restores a trip after the data is gone', async ({ page }) => {
 
   // Importing the same file again is a harmless merge, not an error.
   await page.getByRole('button', { name: 'Back to trips' }).click();
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip file').setInputFiles(file);
   await expect(page.getByText('Already up to date')).toBeVisible();
 });

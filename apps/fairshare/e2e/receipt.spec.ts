@@ -28,6 +28,7 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   });
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
@@ -79,6 +80,7 @@ test('several receipts at once, then one more: all items listed, totals added up
   const store = await photo('Water            20.00\nTOTAL            20.00');
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
@@ -129,6 +131,7 @@ TOTAL           160.00</pre>`);
   await shot.close();
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Cebu');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await page.getByRole('button', { name: 'Members', exact: true }).click();
@@ -143,10 +146,15 @@ TOTAL           160.00</pre>`);
   await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toBeVisible();
 
   // Rotating four times comes back to the same photo; then drag the top-left corner down past the junk line.
-  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Rotate' }).click();
   const box = page.getByTestId('crop-box');
-  // Four quarter-turns end where they began (a landscape photo); wait until the last turn has been drawn.
-  await expect.poll(async () => { const r = await box.boundingBox(); return r ? r.width / r.height : 0; }).toBeGreaterThan(1);
+  const aspect = async () => { const r = await box.boundingBox(); return r ? r.width / r.height : 0; };
+  // Four quarter-turns end where they began. Wait for each turn to be drawn (portrait, landscape, ...), or a late
+  // turn would reset the crop box after the drag below.
+  for (let i = 1; i <= 4; i++) {
+    await page.getByRole('button', { name: 'Rotate' }).click();
+    if (i % 2) await expect.poll(aspect).toBeLessThan(1);
+    else await expect.poll(aspect).toBeGreaterThan(1);
+  }
   const before = (await box.boundingBox())!;
   const grip = (await page.locator('[data-grip="nw"]').boundingBox())!;
   const x = grip.x + grip.width / 2, y = grip.y + grip.height / 2;

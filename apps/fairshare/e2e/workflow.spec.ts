@@ -5,6 +5,7 @@ const tab = (page: Page, name: string) => page.getByRole('button', { name, exact
 async function newTrip(page: Page, members: string[], name = 'Cebu') {
   await page.goto('/');
   await expect(page.getByText('No trips yet')).toBeVisible();
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill(name);
   await page.getByRole('button', { name: 'Create trip' }).click();
   await expect(page.getByText('No expenses yet')).toBeVisible();
@@ -147,4 +148,53 @@ test('split by item, with service charge spread by what each person had', async 
   await page.getByRole('button', { name: /Dinner/ }).click();
   await expect(page.getByLabel('Item 2 name')).toHaveValue('Pizza');
   await expect(page.getByRole('group', { name: 'Who shared item 2' }).getByRole('button', { name: 'Ana', exact: true })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('dashboard: two-column trip grid, photo or bunny cover, + button bottom right', async ({ page, browser }) => {
+  // A "photo": a colourful picture as a phone would give it.
+  const shot = await browser.newPage({ viewport: { width: 400, height: 300 } });
+  await shot.setContent('<body style="margin:0;height:300px;background:linear-gradient(135deg,#f6a54a,#d94f70 50%,#3b6fd8)"></body>');
+  const photo = { name: 'beach.png', mimeType: 'image/png', buffer: await shot.screenshot() };
+  await shot.close();
+
+  await page.goto('/');
+  const fab = page.getByRole('button', { name: 'New trip' });
+  const box = (await fab.boundingBox())!;
+  const view = page.viewportSize()!;
+  expect(box.x + box.width).toBeGreaterThan(view.width - 40); // bottom right
+  expect(box.y + box.height).toBeGreaterThan(view.height - 60);
+
+  // Trip with a photo.
+  await fab.click();
+  await page.getByLabel('Trip photo').setInputFiles(photo);
+  await expect(page.getByRole('button', { name: 'Change photo' })).toBeVisible();
+  await page.getByLabel('Trip name').fill('Boracay');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await expect(page.getByRole('heading', { name: 'Boracay' })).toBeVisible();
+  await expect(page.locator('header img.avatar')).toBeVisible(); // its photo in the trip's header
+  await page.getByRole('button', { name: 'Back to trips' }).click();
+
+  // Trips without a photo show the bunny.
+  for (const name of ['Cebu', 'Tokyo']) {
+    await page.getByRole('button', { name: 'New trip' }).click();
+    await page.getByLabel('Trip name').fill(name);
+    await page.getByRole('button', { name: 'Create trip' }).click();
+    await page.getByRole('button', { name: 'Back to trips' }).click();
+  }
+  const cards = page.locator('.trip-card');
+  await expect(cards).toHaveCount(3);
+  await expect(page.locator('.trip-card img.cover')).toHaveCount(1);
+  await expect(page.locator('.trip-card .cover.placeholder .hare')).toHaveCount(2);
+  await page.waitForTimeout(800); // let the cards finish rising in
+  const [c1, c2, c3] = await Promise.all([0, 1, 2].map(async (i) => (await cards.nth(i).boundingBox())!));
+  expect(Math.abs(c1.y - c2.y)).toBeLessThan(2); // two side by side
+  expect(c3.y).toBeGreaterThan(c1.y + c1.height - 1); // the third starts a new row
+
+  // A photo can be added later from the trip's Members tab, and removed again.
+  await page.getByRole('button', { name: /Cebu/ }).click();
+  await tab(page, 'Members').click();
+  await page.getByLabel('Trip photo').setInputFiles(photo);
+  await expect(page.getByRole('img', { name: 'Trip photo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove photo' }).click();
+  await expect(page.getByRole('button', { name: 'Add trip photo' })).toBeVisible();
 });

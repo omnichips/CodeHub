@@ -24,7 +24,7 @@ export function SettleUp({ data, names }: { data: TripData; names: Record<string
       </ul>
 
       <h2>Settle up</h2>
-      {transfers.length === 0 && <p className="empty">All settled</p>}
+      {transfers.length === 0 && <p className="empty settled">All settled</p>}
       <ul className="list">
         {transfers.map((t) => (
           <li key={t.fromId + t.toId} className="row">

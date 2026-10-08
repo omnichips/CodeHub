@@ -34,6 +34,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   const [a, b] = [await phone(browser, testInfo.project.use), await phone(browser, testInfo.project.use)];
 
   // Phone A creates the trip.
+  await a.getByRole('button', { name: 'New trip' }).click();
   await a.getByLabel('Trip name').fill('Cebu');
   await a.getByRole('button', { name: 'Create trip' }).click();
   await tab(a, 'Members');
@@ -46,11 +47,13 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
   await addExpense(a, 'Dinner', '300');
 
   // Phone B receives it: preview first, nothing written until Apply.
+  await b.getByRole('button', { name: 'New trip' }).click();
   await b.getByLabel('Trip file').setInputFiles(await backupFile(a));
   await expect(b.getByText('This trip is not on this phone yet.')).toBeVisible();
   await expect(b.getByText('3 new', { exact: true })).toBeVisible(); // 2 members + 1 expense
   await b.getByRole('button', { name: 'Cancel' }).click();
   await expect(b.getByText('No trips yet')).toBeVisible();
+  await b.getByRole('button', { name: 'New trip' }).click();
   await b.getByLabel('Trip file').setInputFiles(await backupFile(a));
   await b.getByRole('button', { name: 'Apply' }).click();
   await heading(b, 'Cebu');
@@ -90,6 +93,7 @@ test('two phones sync by file, both ways, with concurrent edits and a deletion',
 test('a trip file that is damaged or from another app is refused, and nothing is added', async ({ browser }, testInfo) => {
   const page = await phone(browser, testInfo.project.use);
   const file = (text: string) => ({ name: 'x.fairshare', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip file').setInputFiles(file('{"hello":"world"}'));
   await expect(page.getByRole('alert')).toContainText('not a FairShare trip');
   await page.getByRole('button', { name: 'Cancel' }).click();
@@ -123,6 +127,7 @@ test('60 expenses travel from one phone to another as QR codes', async ({ browse
   b.on('request', (r) => new URL(r.url()).hostname !== 'localhost' && !r.url().startsWith('data:') && !r.url().startsWith('blob:') && external.push(r.url()));
 
   const { text } = await encodePayload(sixtyExpenseTrip());
+  await a.getByRole('button', { name: 'New trip' }).click();
   await a.getByLabel('Trip file').setInputFiles({ name: 'sixty.fairshare', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
   await a.getByRole('button', { name: 'Apply' }).click();
   await heading(a, 'Sixty');
@@ -147,6 +152,7 @@ test('60 expenses travel from one phone to another as QR codes', async ({ browse
   // Phone B reads them in a scrambled order, with some repeated.
   const order = [...frames.keys()].sort((x, y) => ((x * 7919) % 13) - ((y * 7919) % 13) || x - y);
   const files = [...order, order[0], order[1]].map((i, n) => ({ name: `code-${n}.png`, mimeType: 'image/png', buffer: frames[i] }));
+  await b.getByRole('button', { name: 'New trip' }).click();
   await b.getByRole('button', { name: 'Scan trip' }).click();
   await b.getByLabel('Photos or trip file').setInputFiles(files);
   await expect(b.getByText('62 new', { exact: true })).toBeVisible({ timeout: 60_000 }); // 2 members + 60 expenses
@@ -159,6 +165,7 @@ test('60 expenses travel from one phone to another as QR codes', async ({ browse
 test('with some codes missing the receiver waits for the rest', async ({ browser }, testInfo) => {
   const [a, b] = [await phone(browser, testInfo.project.use), await phone(browser, testInfo.project.use)];
   const { text } = await encodePayload(sixtyExpenseTrip());
+  await a.getByRole('button', { name: 'New trip' }).click();
   await a.getByLabel('Trip file').setInputFiles({ name: 'sixty.fairshare', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
   await a.getByRole('button', { name: 'Apply' }).click();
   await tab(a, 'Sync');
@@ -171,6 +178,7 @@ test('with some codes missing the receiver waits for the rest', async ({ browser
     await a.clock.runFor(300);
   }
 
+  await b.getByRole('button', { name: 'New trip' }).click();
   await b.getByRole('button', { name: 'Scan trip' }).click();
   await b.getByLabel('Photos or trip file').setInputFiles(shots.map((buffer, n) => ({ name: `c${n}.png`, mimeType: 'image/png', buffer })));
   await expect(b.getByRole('alert')).toContainText(/Read 3 of \d+ codes/, { timeout: 30_000 });
@@ -180,6 +188,7 @@ test('with some codes missing the receiver waits for the rest', async ({ browser
 
 test('when the camera cannot start, the photo and file route is offered', async ({ browser }, testInfo) => {
   const page = await phone(browser, testInfo.project.use);
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByRole('button', { name: 'Scan trip' }).click();
   await page.getByRole('button', { name: 'Start camera' }).click();
   await expect(page.getByRole('alert')).toContainText(/camera/i, { timeout: 15_000 });

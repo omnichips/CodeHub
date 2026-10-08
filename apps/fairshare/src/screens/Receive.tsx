@@ -25,7 +25,7 @@ export function ImportFileButton({ onFile }: { onFile: (file: File) => void }) {
           if (file) onFile(file);
         }}
       />
-      <button onClick={() => input.current?.click()}>Import trip file</button>
+      <button type="button" onClick={() => input.current?.click()}>Import trip file</button>
     </>
   );
 }

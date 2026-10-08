@@ -1,11 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const iphone = devices['iPhone 14']; // WebKit, iPhone viewport
+// WebKit, iPhone viewport. Reduce Motion keeps the tests fast and deterministic; motion.spec.ts turns it back on.
+const iphone = { ...devices['iPhone 14'], reducedMotion: 'reduce' as const };
 
 export default defineConfig({
   testDir: 'e2e',
   projects: [
-    { name: 'app', testMatch: ['workflow.spec.ts', 'report.spec.ts', 'a11y.spec.ts', 'receipt.spec.ts'], use: { ...iphone, baseURL: 'http://localhost:5173' } },
+    { name: 'app', testMatch: ['workflow.spec.ts', 'report.spec.ts', 'a11y.spec.ts', 'receipt.spec.ts', 'motion.spec.ts'], use: { ...iphone, baseURL: 'http://localhost:5173' } },
     { name: 'sync', testMatch: 'sync.spec.ts', use: { ...iphone, baseURL: 'http://localhost:5173' } },
     { name: 'offline', testMatch: 'offline.spec.ts', use: { ...iphone, baseURL: 'http://localhost:4173' } },
   ],

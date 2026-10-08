@@ -1,4 +1,7 @@
 :root {
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --accent-soft: #e3eedf;
   --bg: #f7f6f1;
   --card: #fff;
   --ink: #1b1b18;
@@ -23,9 +26,10 @@ h2 { margin: 8px 0 0; font-size: 0.875rem; text-transform: uppercase; letter-spa
 
 button, input, select { font: inherit; min-height: var(--tap); border-radius: 10px; }
 button { padding: 0 16px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
-button:active { filter: brightness(0.92); transform: scale(0.98); }
+button { -webkit-tap-highlight-color: transparent; transition: transform 0.18s var(--spring), filter 0.15s, background-color 0.2s, color 0.2s, box-shadow 0.25s var(--ease); }
+button:active { filter: brightness(0.92); transform: scale(0.96); transition-duration: 0.06s; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } button:active { transform: none; } }
+
 button:disabled { opacity: 0.45; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 input, select { width: 100%; padding: 0 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 1rem; }
@@ -82,3 +86,70 @@ label input, label select { color: var(--ink); }
 .qr { width: 100%; max-width: 480px; height: auto; align-self: center; background: #fff; border-radius: 8px; }
 .count { margin: 0; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 progress { width: 100%; accent-color: var(--accent); }
+
+/* ---- Dashboard: two-column trip grid and the + button ---- */
+.dashboard { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+.trip-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.trip-grid > li { animation: rise 0.45s var(--ease) both; animation-delay: calc(min(var(--i), 10) * 45ms); }
+.trip-card { display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 0 0 12px; overflow: hidden; border-radius: 18px; text-align: left; box-shadow: 0 1px 2px rgba(27, 27, 24, 0.06), 0 4px 14px rgba(27, 27, 24, 0.06); }
+.trip-card:active { transform: scale(0.95); box-shadow: 0 1px 2px rgba(27, 27, 24, 0.08); }
+.trip-card .cover { margin-bottom: 8px; }
+.trip-name { padding: 0 12px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-card small { padding: 0 12px; color: var(--muted); font-size: 0.8125rem; }
+.cover { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--accent-soft); }
+.cover.placeholder .hare { animation: bob 3.2s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -0.7s); }
+.avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); }
+.avatar .hare { width: 24px; height: 24px; }
+.fab-add { position: fixed; z-index: 5; right: calc(20px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: var(--accent); color: #fff; font-size: 2.25rem; font-weight: 300; line-height: 1; box-shadow: 0 6px 18px rgba(63, 125, 70, 0.38), 0 2px 4px rgba(27, 27, 24, 0.18); animation: pop 0.5s var(--spring) 0.15s both; }
+.fab-add span { display: block; transition: transform 0.35s var(--spring); }
+.fab-add:active { transform: scale(0.9); }
+.fab-add:active span { transform: rotate(90deg); }
+.center { text-align: center; }
+
+/* ---- New trip sheet ---- */
+.photo-pick { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; padding: 16px; border: 2px dashed var(--line); border-radius: 18px; background: var(--accent-soft); color: var(--muted); overflow: hidden; }
+.photo-pick img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; animation: pop 0.4s var(--spring) both; }
+.photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.thumb { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; }
+
+/* ---- Motion everywhere else ---- */
+.sheet { animation: sheet-up 0.38s var(--ease) both; }
+.screen > * { animation: rise 0.38s var(--ease) both; }
+.screen > *:nth-child(2) { animation-delay: 30ms; }
+.screen > *:nth-child(3) { animation-delay: 60ms; }
+.screen > *:nth-child(4) { animation-delay: 90ms; }
+.screen > *:nth-child(n + 5) { animation-delay: 120ms; }
+.list > li { animation: rise 0.35s var(--ease) both; }
+.banner { animation: slide-down 0.4s var(--ease) both; }
+.tabbar button { transition: color 0.25s, box-shadow 0.3s var(--ease), transform 0.18s var(--spring); }
+.empty .hare { animation: bob 3.2s ease-in-out infinite; }
+.settled { animation: pop 0.55s var(--spring) both; }
+.settled::before { content: '🐇' / ''; display: block; font-size: 2rem; animation: hop 0.9s var(--ease) 0.2s 2 both; }
+[role='alert'] { animation: shake 0.4s var(--ease); }
+.crop-box { transition: box-shadow 0.2s; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-100%); } }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+@keyframes hop { 30% { transform: translateY(-14px) scaleY(1.05); } 55% { transform: translateY(0) scaleY(0.92); } 70% { transform: translateY(-4px); } }
+@keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+
+/* Opening and closing a trip (view transitions, Safari 18+): slide like an iOS push; covers glide on their own. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.42s; animation-timing-function: var(--ease); }
+:root[data-nav='forward']::view-transition-old(root) { animation-name: vt-out-left; }
+:root[data-nav='forward']::view-transition-new(root) { animation-name: vt-in-right; }
+:root[data-nav='back']::view-transition-old(root) { animation-name: vt-out-right; }
+:root[data-nav='back']::view-transition-new(root) { animation-name: vt-in-left; }
+::view-transition-group(*) { animation-duration: 0.42s; animation-timing-function: var(--ease); }
+@keyframes vt-out-left { to { opacity: 0; transform: translateX(-25%); } }
+@keyframes vt-in-right { from { transform: translateX(100%); } }
+@keyframes vt-out-right { to { transform: translateX(100%); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translateX(-25%); } }
+
+/* Reduce Motion: no movement at all, only instant changes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; transition: none !important; }
+  button:active { transform: none; }
+}

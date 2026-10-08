@@ -56,6 +56,7 @@ test('works offline under /fairshare/ and does not take over the rest of the sit
   await server.close();
   await page.reload();
   await expect(page.getByText('No trips yet')).toBeVisible();
+  await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip name').fill('Offline trip');
   await page.getByRole('button', { name: 'Create trip' }).click();
   await expect(page.getByRole('heading', { name: 'Offline trip' })).toBeVisible();

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTripData } from '../hooks';
+import { useTripPhotos } from '../photos';
+import { Cover } from './TripList';
 import { Expenses } from './Expenses';
 import { Members } from './Members';
 import { SettleUp } from './SettleUp';
@@ -14,6 +16,7 @@ const TABS = [
 
 export function TripView({ tripId, onBack }: { tripId: string; onBack: () => void }) {
   const data = useTripData(tripId);
+  const photos = useTripPhotos();
   const [tab, setTab] = useState<(typeof TABS)[number][0]>('expenses');
   const gone = data === null;
   useEffect(() => {
@@ -26,12 +29,13 @@ export function TripView({ tripId, onBack }: { tripId: string; onBack: () => voi
     <div className="app">
       <header className="bar">
         <button onClick={onBack} aria-label="Back to trips">‹ Trips</button>
+        <Cover url={photos[tripId]} tripId={tripId} className="avatar" />
         <h1>{data.trip.name}</h1>
       </header>
-      <main className="screen">
+      <main className="screen" key={tab}>
         {tab === 'expenses' && <Expenses data={data} names={names} goMembers={() => setTab('members')} />}
         {tab === 'settle' && <SettleUp data={data} names={names} />}
-        {tab === 'members' && <Members data={data} onArchived={onBack} />}
+        {tab === 'members' && <Members data={data} photo={photos[tripId]} onArchived={onBack} />}
         {tab === 'sync' && <Sync data={data} />}
       </main>
       <nav className="tabbar">
