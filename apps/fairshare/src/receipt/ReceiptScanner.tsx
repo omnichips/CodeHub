@@ -23,8 +23,10 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
     setBusy(`${label}…`);
     try {
       await task((p, step = label) => setBusy(`${step}… ${Math.round(p * 100)}%`));
-    } catch {
-      setError(failure);
+    } catch (e) {
+      // The reason is shown too (e.g. "out of memory", "Failed to fetch"), so a failure on a phone can be diagnosed.
+      const why = e instanceof Error ? e.message : typeof e === 'string' ? e : '';
+      setError(why ? `${failure} (${why.slice(0, 120)})` : failure);
     } finally {
       setBusy(null);
     }
