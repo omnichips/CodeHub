@@ -5,7 +5,7 @@ const iphone = devices['iPhone 14']; // WebKit, iPhone viewport
 export default defineConfig({
   testDir: 'e2e',
   projects: [
-    { name: 'app', testMatch: ['workflow.spec.ts', 'report.spec.ts'], use: { ...iphone, baseURL: 'http://localhost:5173' } },
+    { name: 'app', testMatch: ['workflow.spec.ts', 'report.spec.ts', 'a11y.spec.ts'], use: { ...iphone, baseURL: 'http://localhost:5173' } },
     { name: 'sync', testMatch: 'sync.spec.ts', use: { ...iphone, baseURL: 'http://localhost:5173' } },
     { name: 'offline', testMatch: 'offline.spec.ts', use: { ...iphone, baseURL: 'http://localhost:4173' } },
   ],

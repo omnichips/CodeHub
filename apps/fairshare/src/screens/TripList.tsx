@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTrips } from '../hooks';
 import { InstallHint } from '../pwa';
 import { createTrip, updateTrip } from '../store';
-import { CurrencySelect } from '../ui';
+import { CurrencySelect, EmptyState, Hare } from '../ui';
 import { ImportFileButton, Receive } from './Receive';
 
 export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
@@ -17,7 +17,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <div className="app">
       <header className="bar">
-        <h1>fair<b>share</b></h1>
+        <Hare size={32} />
+        <h1>fairs<span className="hare-word">hare</span></h1>
       </header>
       <main className="screen">
         <form
@@ -48,7 +49,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
           <ImportFileButton onFile={(file) => setReceive({ file })} />
         </div>
 
-        {active.length === 0 && <p className="empty">No trips yet</p>}
+        {active.length === 0 && <EmptyState>No trips yet</EmptyState>}
         <ul className="list">
           {active.map((t) => (
             <li key={t.id}>

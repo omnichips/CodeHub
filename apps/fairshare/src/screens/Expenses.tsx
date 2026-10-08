@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { useTripData } from '../hooks';
 import type { Expense } from '../schemas';
-import { money } from '../ui';
+import { EmptyState, money } from '../ui';
 import { ExpenseSheet } from './ExpenseSheet';
 
 export type TripData = NonNullable<ReturnType<typeof useTripData>>;
@@ -13,7 +13,7 @@ export function Expenses({ data, names, goMembers }: { data: TripData; names: Re
 
   return (
     <>
-      {expenses.length === 0 && <p className="empty">No expenses yet</p>}
+      {expenses.length === 0 && <EmptyState>No expenses yet</EmptyState>}
       <ul className="list">
         {expenses.map((e) => (
           <li key={e.id}>

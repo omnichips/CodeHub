@@ -22,3 +22,24 @@ export function CurrencySelect(props: { id?: string; label: string; value: strin
     </select>
   );
 }
+
+/** The hare mark (same shapes as public/icon.svg, without the background). Colour comes from CSS. */
+export function Hare({ size = 56 }: { size?: number }) {
+  return (
+    <svg className="hare" viewBox="0 0 512 512" width={size} height={size} aria-hidden="true" focusable="false">
+      <rect x="158" y="56" width="76" height="210" rx="38" />
+      <rect x="278" y="56" width="76" height="210" rx="38" />
+      <ellipse cx="256" cy="340" rx="140" ry="118" />
+      <circle className="eye" cx="306" cy="322" r="16" />
+    </svg>
+  );
+}
+
+export function EmptyState({ children }: { children: string }) {
+  return (
+    <div className="empty">
+      <Hare />
+      <p>{children}</p>
+    </div>
+  );
+}

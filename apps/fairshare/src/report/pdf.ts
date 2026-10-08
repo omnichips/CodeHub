@@ -31,6 +31,15 @@ export function renderReport(r: ReportData): Uint8Array<ArrayBuffer> {
   ink(11, ACCENT);
   doc.text('hare', MARGIN + doc.getTextWidth('fairs'), y);
 
+  // Hare mark, top right: same shapes as public/icon.svg on a 512 grid.
+  const k = 14 / 512;
+  const hx = 210 - MARGIN - 14;
+  doc.setFillColor(...ACCENT);
+  for (const ex of [158, 278]) doc.roundedRect(hx + ex * k, 6 + 56 * k, 76 * k, 210 * k, 38 * k, 38 * k, 'F');
+  doc.ellipse(hx + 256 * k, 6 + 340 * k, 140 * k, 118 * k, 'F');
+  doc.setFillColor(...PAPER);
+  doc.circle(hx + 306 * k, 6 + 322 * k, 16 * k, 'F');
+
   y += 9;
   ink(20, INK);
   const title = doc.splitTextToSize(r.tripName, 210 - 2 * MARGIN) as string[];
