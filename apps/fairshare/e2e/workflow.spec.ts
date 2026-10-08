@@ -111,3 +111,40 @@ test('members with expenses become inactive; tap targets are 48px', async ({ pag
   await page.getByRole('button', { name: 'Remove Ben' }).click();
   await expect(page.getByRole('button', { name: 'Reactivate Ben' })).toBeVisible();
 });
+
+test('split by item, with service charge spread by what each person had', async ({ page }) => {
+  await newTrip(page, ['Ana', 'Ben', 'Cy']);
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await page.getByLabel('Title').fill('Dinner');
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+
+  // Pasta 300 (Ana), Pizza 600 (Ben, Cy), Wine 300 (everyone); bill 1320 with 10% service.
+  const item = async (n: number, name: string, price: string, without: string[]) => {
+    if (n > 1) await page.getByRole('button', { name: 'Add item' }).click();
+    await page.getByLabel(`Item ${n} name`).fill(name);
+    await page.getByLabel(`Item ${n} price`).fill(price);
+    const who = page.getByRole('group', { name: `Who shared item ${n}` });
+    for (const m of without) await who.getByRole('button', { name: m, exact: true }).click();
+  };
+  await item(1, 'Pasta', '300', ['Ben', 'Cy']);
+  await item(2, 'Pizza', '600', ['Ana']);
+  await item(3, 'Wine', '300', []);
+
+  await page.getByRole('button', { name: 'Use items total: PHP 1200.00' }).click();
+  await expect(page.getByLabel('Amount')).toHaveValue('1200.00');
+  await page.getByLabel('Amount').fill('1320');
+  await expect(page.getByText('tax, tip and service PHP 120.00')).toBeVisible();
+  await page.screenshot({ path: 'test-results/items-sheet.png', fullPage: true });
+  await save(page);
+  await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('PHP 1320.00');
+
+  await tab(page, 'Settle up').click();
+  await expect(page.getByText('+PHP 880.00', { exact: true })).toBeVisible(); // Ana paid 1320, owes 440
+  await expect(page.getByText('−PHP 440.00', { exact: true })).toHaveCount(2);
+
+  // Editing keeps the items.
+  await tab(page, 'Expenses').click();
+  await page.getByRole('button', { name: /Dinner/ }).click();
+  await expect(page.getByLabel('Item 2 name')).toHaveValue('Pizza');
+  await expect(page.getByRole('group', { name: 'Who shared item 2' }).getByRole('button', { name: 'Ana', exact: true })).toHaveAttribute('aria-pressed', 'false');
+});

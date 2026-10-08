@@ -41,8 +41,13 @@ label input, label select { color: var(--ink); }
 .row small, .row span small { display: block; color: var(--muted); font-size: 0.8125rem; }
 .check { flex-direction: row; align-items: center; gap: 12px; color: var(--ink); font-size: 1rem; min-height: var(--tap); }
 .check input { width: 24px; min-height: 24px; }
-.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.seg button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.seg button { padding: 0 4px; }
+.seg button[aria-pressed='true'], .chips button[aria-pressed='true'] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.item-line { display: grid; grid-template-columns: 1fr 7.5rem; gap: 8px; }
+.price { text-align: right; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips .remove { margin-left: auto; color: var(--muted); }
 
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--muted); text-align: center; padding: 24px 0; margin: 0; }
 .empty p { margin: 0; }

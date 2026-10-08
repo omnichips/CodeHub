@@ -6,6 +6,12 @@
 - On Windows, passing `--base=/fairshare/` from **Git Bash** gets rewritten into a `C:/Program Files/Git/...` path. The hub's build script starts the build from Node, which avoids this. If you ever run that command by hand, use PowerShell or set `MSYS_NO_PATHCONV=1`.
 - You said a cloud database is fine for some future apps. FairShare is unchanged: it stays offline-first with no server, as the plan says.
 
+## After phase 6: split by item
+- **You asked for it (version 2 feature).** A fifth split mode, "Items": each receipt line is split equally among the people tapped for it; whatever is left of the total (tax, tip, service) is shared in proportion to what each person had, and a total below the item sum is a discount shared the same way. "Use items total" fills the amount.
+- **Stored as exact amounts plus the item list.** `splitInputs` holds each person's amount in the expense currency (as in Exact), so balances, settle-up, sync and the PDF are unchanged; the new optional `items` field keeps the lines so editing shows them again. `itemSplit` in `src/engine/split.ts` is pure and property-tested (always sums to the total, never negative).
+- **Sync between versions:** a phone still on an older version rejects a trip containing an "Items" expense as damaged. Update both phones (tap Reload on the update banner) before syncing.
+- The PDF lists the expense as before, not its items.
+
 ## Phase 6
 - **Hare mark:** two identical upright ears, one head, one dot eye (`public/icon.svg`; the same shapes are the `Hare` component in `src/ui.tsx` and are drawn by hand in the PDF header). Icons are regenerated with `node scripts/make-icons.mjs`. Shown on the icon, the trip-list header, the "No trips yet" / "No expenses yet" empty states and the PDF header.
 - **Wordmark** is now `fairs` + accent-coloured `hare` (it was bolding "share").

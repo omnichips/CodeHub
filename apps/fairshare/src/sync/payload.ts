@@ -18,7 +18,7 @@ const consistent = (b: Snapshot) => {
   const tables = [b.members, b.expenses, b.payments];
   return (
     tables.every((rs) => new Set(rs.map((r) => r.id)).size === rs.length && rs.every((r) => r.tripId === b.trip.id)) &&
-    b.expenses.every((e) => [e.payerId, ...e.owed.map((o) => o.memberId), ...e.splitInputs.map((s) => s.memberId)].every((id) => people.has(id))) &&
+    b.expenses.every((e) => [e.payerId, ...e.owed.map((o) => o.memberId), ...e.splitInputs.map((s) => s.memberId), ...(e.items ?? []).flatMap((i) => i.memberIds)].every((id) => people.has(id))) &&
     b.payments.every((p) => people.has(p.fromId) && people.has(p.toId))
   );
 };

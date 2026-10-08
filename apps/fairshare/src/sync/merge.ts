@@ -29,7 +29,7 @@ export function mergeSnapshots(local: Snapshot | undefined, remote: Snapshot): {
   // A member deleted on one phone may be used by an expense or payment made on the other. Keep them, inactive,
   // so no record points at a person who is gone. Derived from the merged set, so both phones get the same result.
   const used = new Set<string>();
-  for (const e of expenses) if (!e.deleted) [e.payerId, ...e.owed.map((o) => o.memberId), ...e.splitInputs.map((s) => s.memberId)].forEach((id) => used.add(id));
+  for (const e of expenses) if (!e.deleted) [e.payerId, ...e.owed.map((o) => o.memberId), ...e.splitInputs.map((s) => s.memberId), ...(e.items ?? []).flatMap((i) => i.memberIds)].forEach((id) => used.add(id));
   for (const p of payments) if (!p.deleted) used.add(p.fromId).add(p.toId);
   const members = union(l.members, remote.members).map((m) => (m.deleted && used.has(m.id) ? { ...m, deleted: false, active: false } : m));
 

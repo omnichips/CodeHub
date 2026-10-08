@@ -24,9 +24,11 @@ export const TripSchema = z.object({
 
 export const MemberSchema = z.object({ id, tripId: id, name: z.string().trim().min(1), active: z.boolean(), ...sync });
 
-export const SplitModeSchema = z.enum(['equal', 'exact', 'shares', 'percent']);
+export const SplitModeSchema = z.enum(['equal', 'exact', 'shares', 'percent', 'items']);
 export const SplitInputSchema = z.object({ memberId: id, value: minor });
 export const OwedSchema = z.object({ memberId: id, amountMinor: minor });
+/** A receipt line, in the expense currency, shared equally by memberIds. Only on 'items' expenses. */
+export const ItemSchema = z.object({ name: z.string().trim().min(1), amountMinor: minor.positive(), memberIds: z.array(id).min(1) });
 
 export const ExpenseSchema = z
   .object({
@@ -42,8 +44,10 @@ export const ExpenseSchema = z
     splitMode: SplitModeSchema,
     splitInputs: z.array(SplitInputSchema).min(1),
     owed: z.array(OwedSchema).min(1),
+    items: z.array(ItemSchema).min(1).optional(),
     ...sync,
   })
+  .refine((e) => (e.splitMode === 'items') === (e.items !== undefined), { message: 'items go with the items split mode' })
   .refine((e) => e.owed.reduce((a, o) => a + o.amountMinor, 0) === e.baseAmountMinor, { message: 'owed must sum to baseAmountMinor' });
 
 export const PaymentSchema = z
@@ -69,3 +73,4 @@ export type Device = z.infer<typeof DeviceSchema>;
 export type SplitMode = z.infer<typeof SplitModeSchema>;
 export type SplitInput = z.infer<typeof SplitInputSchema>;
 export type Owed = z.infer<typeof OwedSchema>;
+export type Item = z.infer<typeof ItemSchema>;

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Expense, Payment } from '../schemas';
 import { balances, canDeleteMember, settleUp } from './balances';
 import { convertMinor, decimals, formatAmount, parseAmount } from './money';
-import { allocate, computeExpense, type SplitMode } from './split';
+import { allocate, computeExpense, itemSplit, type SplitMode } from './split';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -182,6 +182,46 @@ describe('property: random trips', () => {
         const rev = allocate(total, [...ids].reverse().map((memberId) => ({ memberId, value: 1 })));
         expect(rev).toEqual(fwd);
       }),
+    );
+  });
+});
+
+describe('itemSplit (receipt items)', () => {
+  const [a, b, c] = ['00000000-0000-4000-8000-00000000000a', '00000000-0000-4000-8000-00000000000b', '00000000-0000-4000-8000-00000000000c'];
+
+  it('splits each item among its people, then spreads tax and tip by subtotal', () => {
+    // Pasta 300 (a), Pizza 600 (b, c), Wine 300 (all); total 1320 = 1200 + 10% service.
+    const items = [
+      { name: 'Pasta', amountMinor: 300, memberIds: [a] },
+      { name: 'Pizza', amountMinor: 600, memberIds: [b, c] },
+      { name: 'Wine', amountMinor: 300, memberIds: [a, b, c] },
+    ];
+    expect(itemSplit(items, 1320)).toEqual([
+      { memberId: a, value: 440 }, // 400 + 40
+      { memberId: b, value: 440 },
+      { memberId: c, value: 440 },
+    ]);
+    expect(itemSplit(items, 1200).map((w) => w.value)).toEqual([400, 400, 400]);
+    expect(itemSplit(items, 1080).map((w) => w.value)).toEqual([360, 360, 360]); // discount
+    expect(() => itemSplit([], 100)).toThrow();
+  });
+
+  it('always sums to the total, never negative, and prices through computeExpense', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ amount: fc.integer({ min: 1, max: 100_000 }), who: fc.subarray([a, b, c], { minLength: 1 }) }), { minLength: 1, maxLength: 20 }),
+        fc.integer({ min: -100_000, max: 100_000 }),
+        (rows, extra) => {
+          const items = rows.map((r) => ({ name: 'x', amountMinor: r.amount, memberIds: r.who }));
+          const total = Math.max(1, rows.reduce((s, r) => s + r.amount, 0) + extra); // extra < 0 is a discount
+          const split = itemSplit(items, total);
+          expect(split.reduce((s, w) => s + w.value, 0)).toBe(total);
+          expect(split.every((w) => w.value > 0)).toBe(true);
+          const priced = computeExpense({ amountMinor: total, currency: 'PHP', baseCurrency: 'PHP', rate: null, splitMode: 'items', splitInputs: split, items });
+          expect(priced.owed.reduce((s, o) => s + o.amountMinor, 0)).toBe(total);
+        },
+      ),
+      { numRuns: 1000 },
     );
   });
 });

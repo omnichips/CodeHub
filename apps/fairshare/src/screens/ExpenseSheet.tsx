@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { formatAmount, parseAmount, parseUnits, RATE_RE } from '../engine/money';
-import { computeExpense } from '../engine/split';
-import type { Expense, Member, SplitInput, SplitMode, Trip } from '../schemas';
+import { computeExpense, itemSplit } from '../engine/split';
+import type { Expense, Item, Member, SplitInput, SplitMode, Trip } from '../schemas';
 import { deleteExpense, saveExpense, today, type ExpenseDraft } from '../store';
 import { CurrencySelect, money } from '../ui';
 
-const MODES: [SplitMode, string][] = [['equal', 'Equal'], ['shares', 'Shares'], ['percent', 'Percent'], ['exact', 'Exact']];
+const MODES: [SplitMode, string][] = [['equal', 'Equal'], ['shares', 'Shares'], ['percent', 'Percent'], ['exact', 'Exact'], ['items', 'Items']];
+
+/** An item as typed: price is text until it parses. */
+export type ItemRow = { key: string; name: string; price: string; memberIds: string[] };
+const itemRow = (memberIds: string[], name = '', price = ''): ItemRow => ({ key: crypto.randomUUID(), name, price, memberIds });
 
 const rateNumber = (rate: string | null) => (rate ? RATE_RE.exec(rate)![2] : '');
 
@@ -23,7 +27,7 @@ type Props = { trip: Trip; members: Member[]; expenses: Expense[]; expense?: Exp
 
 export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Props) {
   // Active members, plus anyone already on this expense (so editing never drops them).
-  const used = new Set(expense ? [expense.payerId, ...expense.splitInputs.map((i) => i.memberId)] : []);
+  const used = new Set(expense ? [expense.payerId, ...expense.splitInputs.map((i) => i.memberId), ...(expense.items ?? []).flatMap((i) => i.memberIds)] : []);
   const people = members.filter((m) => m.active || used.has(m.id));
   const ids = people.map((p) => p.id);
   const base = trip.baseCurrency;
@@ -36,6 +40,10 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   const [payerId, setPayerId] = useState(expense?.payerId ?? ids[0]);
   const [mode, setMode] = useState<SplitMode>(expense?.splitMode ?? 'equal');
   const [values, setValues] = useState(expense ? initialValues(expense, ids) : defaults('equal', ids));
+  const [items, setItems] = useState<ItemRow[]>(() =>
+    expense?.items ? expense.items.map((i) => itemRow(i.memberIds, i.name, formatAmount(i.amountMinor, expense.currency))) : [itemRow(ids)],
+  );
+  const setItem = (key: string, patch: Partial<ItemRow>) => setItems(items.map((i) => (i.key === key ? { ...i, ...patch } : i)));
 
   const foreign = currency !== base;
   const pickCurrency = (c: string) => {
@@ -57,10 +65,36 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   } catch {
     /* incomplete input */
   }
-  const inputs: SplitInput[] = [];
+  let inputs: SplitInput[] = [];
   let splitError = '';
   let total = 0;
-  for (const m of people) {
+  // Items mode: parse the rows that have anything typed in them.
+  const parsedItems: Item[] = [];
+  let itemsTotal = 0;
+  if (mode === 'items') {
+    items.forEach((row, i) => {
+      if (!row.name.trim() && !row.price.trim()) return;
+      const name = row.name.trim() || `Item ${i + 1}`;
+      try {
+        const amountMinor = parseAmount(row.price, currency);
+        if (amountMinor === 0) throw new Error();
+        if (row.memberIds.length === 0) splitError ||= `Choose who shared ${name}`;
+        parsedItems.push({ name, amountMinor, memberIds: row.memberIds });
+        itemsTotal += amountMinor;
+      } catch {
+        splitError ||= `Check the price of ${name}`;
+      }
+    });
+    if (!splitError && parsedItems.length === 0) splitError = 'Add at least one item';
+    if (!splitError && amountMinor) {
+      try {
+        inputs = itemSplit(parsedItems, amountMinor);
+      } catch (e) {
+        splitError = (e as Error).message;
+      }
+    }
+  }
+  for (const m of mode === 'items' ? [] : people) {
     const v = (values[m.id] ?? '').trim();
     if (!v) continue;
     try {
@@ -73,7 +107,10 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   }
   let draft: ExpenseDraft | undefined;
   if (!splitError && amountMinor && title.trim() && payerId && (!foreign || rate.trim())) {
-    const input = { amountMinor, currency, rate: foreign ? `1 ${currency} = ${rate.trim()} ${base}` : null, splitMode: mode, splitInputs: inputs };
+    const input = {
+      amountMinor, currency, rate: foreign ? `1 ${currency} = ${rate.trim()} ${base}` : null, splitMode: mode, splitInputs: inputs,
+      ...(mode === 'items' && { items: parsedItems }),
+    };
     try {
       computeExpense({ ...input, baseCurrency: base });
       draft = { ...input, title: title.trim(), date, payerId };
@@ -81,6 +118,8 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
       splitError = (e as Error).message;
     }
   }
+  const extra = mode === 'items' && amountMinor !== null ? amountMinor - itemsTotal : 0;
+  const shareOf = Object.fromEntries(inputs.map((w) => [w.memberId, w.value]));
   const remaining =
     mode === 'percent' ? `${formatAmount(10000 - total, 'USD')}%` : mode === 'exact' && amountMinor !== null ? money(amountMinor - total, currency) : null;
 
@@ -116,6 +155,9 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
             <CurrencySelect label="Currency" value={currency} onChange={pickCurrency} />
           </label>
         </div>
+        {mode === 'items' && !amount.trim() && itemsTotal > 0 && (
+          <button onClick={() => setAmount(formatAmount(itemsTotal, currency))}>Use items total: {money(itemsTotal, currency)}</button>
+        )}
         {foreign && (
           <label>
             Rate: 1 {currency} = ? {base}
@@ -143,6 +185,49 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
             <button key={id} aria-pressed={mode === id} onClick={() => pickMode(id)}>{label}</button>
           ))}
         </div>
+        {mode === 'items' ? (
+          <>
+            <ul className="list">
+              {items.map((row, i) => (
+                <li key={row.key} className="card">
+                  <div className="item-line">
+                    <input aria-label={`Item ${i + 1} name`} placeholder={`Item ${i + 1}`} value={row.name} onChange={(e) => setItem(row.key, { name: e.target.value })} />
+                    <input className="price" inputMode="decimal" aria-label={`Item ${i + 1} price`} placeholder="0.00" value={row.price} onChange={(e) => setItem(row.key, { price: e.target.value })} />
+                  </div>
+                  <div className="chips" role="group" aria-label={`Who shared item ${i + 1}`}>
+                    {people.map((m) => {
+                      const on = row.memberIds.includes(m.id);
+                      return (
+                        <button key={m.id} aria-pressed={on} onClick={() => setItem(row.key, { memberIds: on ? row.memberIds.filter((x) => x !== m.id) : [...row.memberIds, m.id] })}>
+                          {m.name}
+                        </button>
+                      );
+                    })}
+                    <button className="remove" aria-label={`Remove item ${i + 1}`} onClick={() => setItems(items.filter((x) => x.key !== row.key))}>Remove</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => setItems([...items, itemRow(ids)])}>Add item</button>
+            {amountMinor !== null && itemsTotal > 0 && (
+              <p role="status">
+                Items {money(itemsTotal, currency)}
+                {extra > 0 && ` · tax, tip and service ${money(extra, currency)}, shared by what each person had`}
+                {extra < 0 && ` · discount ${money(-extra, currency)}, shared by what each person had`}
+              </p>
+            )}
+            {inputs.length > 0 && (
+              <ul className="list">
+                {people.filter((m) => shareOf[m.id]).map((m) => (
+                  <li key={m.id} className="row">
+                    <span>{m.name}</span>
+                    <strong>{money(shareOf[m.id], currency)}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
         <ul className="list">
           {people.map((m) => (
             <li key={m.id} className="row">
@@ -169,6 +254,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
             </li>
           ))}
         </ul>
+        )}
         {remaining && <p role="status">Remaining: {remaining}</p>}
         {splitError && amountMinor !== null && <p role="alert" className="error">{splitError}</p>}
 
