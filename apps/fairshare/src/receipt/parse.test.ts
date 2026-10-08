@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import samples from './ocr-samples.json';
 import { parseReceipt } from './parse';
 
 describe('parseReceipt', () => {
@@ -70,5 +71,17 @@ describe('parseReceipt', () => {
       items: [{ name: 'Lechon kawali', price: '250.00' }, { name: 'Sinigang na baboy', price: '320.00' }],
       total: '638.40',
     });
+  });
+});
+
+// Real OCR output (tesseract.js, as the app runs it) from photos of real receipts, personal details removed.
+// The expected prices include the engine's own misreads (82.00 read as 62.00, 321.00 as 21.00): this locks in what
+// the parser makes of real text, so a parser change that loses items shows up here.
+
+describe('parseReceipt on real OCR output', () => {
+  it.each(samples)('$label', ({ text, currency, prices, total }) => {
+    const parsed = parseReceipt(text, currency);
+    expect(parsed.items.map((i) => i.price)).toEqual(prices);
+    expect(parsed.total).toBe(total);
   });
 });

@@ -6,9 +6,15 @@
 - On Windows, passing `--base=/fairshare/` from **Git Bash** gets rewritten into a `C:/Program Files/Git/...` path. The hub's build script starts the build from Node, which avoids this. If you ever run that command by hand, use PowerShell or set `MSYS_NO_PATHCONV=1`.
 - You said a cloud database is fine for some future apps. FairShare is unchanged: it stays offline-first with no server, as the plan says.
 
+## Receipt accuracy, measured on your 7 receipt photos
+- **Method:** the app's own reader and parser, run in WebKit on each photo, scored against the receipts read by eye. The harness is not kept in the repo; the real OCR text of four receipts is (`src/receipt/ocr-samples.json`, names and card numbers removed) and `parse.test.ts` checks the parser against it.
+- **Result:** items found went from 8 of 32 to 20 of 32, wrong items from 20 to 10. On the five full-size photos it is 20 of 23; the misses are digits the engine misread (82.00 as 62.00, 321.00 as 21.00).
+- **What fixed it (parser only):** a space is no longer a thousands separator ("@33.50 100.50" had become 50,100.50); the name can come from the line above (supermarket "name / qty barcode price amount" layout, Japanese "@680 x 2 ¥1,360"); dates, times, card/ATM, VAT sales, points, "No." and phone lines are skipped; yen prices under 10 are ignored; 外/内 after a yen price is allowed.
+- **Image clean-up was measured and not added:** grayscale + contrast and 2x upscaling gained at most 1 item and added wrong ones. The two small Japanese images (338x450 and 216x464 pixels) are too small for any OCR; a real iPhone photo is about 10x the pixels. Japanese accuracy needs testing with real phone photos.
+
 ## After phase 6: several receipts per expense
 - "Scan receipts" takes several photos at once (several receipts, or a long receipt in parts). They are read one after another with one engine, items from all of them go into the same list, and their totals are added up into Amount. Scanning again later adds more. Once the user types their own Amount, scans add items but leave the amount alone. A photo with no prices is reported ("No prices found on photo 2 of 3") and the others are still added.
-- **OpenScanner was looked at and not used.** It is a native iPhone app (Swift), not a library, so a web app cannot include it. A clean scan made in such an app can still be used: save it to Photos as an image, then pick it in Scan receipts. Built-in clean-up (crop, straighten, contrast) would need OpenCV in the browser (about 8 MB more) and is not added until real receipt photos show it is needed; tesseract.js already turns photos into black and white before reading.
+- **OpenScanner was looked at and not used.** It is a native iPhone app (Swift), not a library, so a web app cannot include it. A clean scan made in such an app can still be used: save it to Photos as an image, then pick it in Scan receipts. Built-in clean-up (crop, straighten, contrast) would need OpenCV in the browser (about 8 MB more); the measurement below found simple clean-up does not help, so it is not added.
 
 ## After phase 6: receipt language packs
 - **Receipt language** picker on the expense sheet: English (built in), Japanese and Tagalog. The choice is remembered on the device (`localStorage`, a UI preference, not trip data).
