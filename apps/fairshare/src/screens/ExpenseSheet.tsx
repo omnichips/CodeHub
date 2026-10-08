@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { formatAmount, parseAmount, parseUnits, RATE_RE } from '../engine/money';
 import { computeExpense, itemSplit } from '../engine/split';
+import { parseReceipt } from '../receipt/parse';
 import type { Expense, Item, Member, SplitInput, SplitMode, Trip } from '../schemas';
 import { deleteExpense, saveExpense, today, type ExpenseDraft } from '../store';
 import { CurrencySelect, money } from '../ui';
@@ -44,6 +45,28 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     expense?.items ? expense.items.map((i) => itemRow(i.memberIds, i.name, formatAmount(i.amountMinor, expense.currency))) : [itemRow(ids)],
   );
   const setItem = (key: string, patch: Partial<ItemRow>) => setItems(items.map((i) => (i.key === key ? { ...i, ...patch } : i)));
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [scan, setScan] = useState<{ progress: number } | { error: string } | null>(null);
+
+  async function scanReceipt(photo: File) {
+    setScan({ progress: 0 });
+    try {
+      const { readReceipt } = await import('../receipt/ocr'); // about 7 MB, so only loaded when used
+      const found = parseReceipt(await readReceipt(photo, (progress) => setScan({ progress })), currency);
+      if (found.items.length === 0) {
+        setScan({ error: 'No prices found on that receipt. Try a sharper, flatter photo, or add the items by hand.' });
+        return;
+      }
+      const rows = found.items.map((i) => itemRow(ids, i.name, i.price));
+      // Keep items already typed; replace the empty starter row.
+      setItems([...items.filter((i) => i.name.trim() || i.price.trim()), ...rows]);
+      if (mode !== 'items') setMode('items');
+      if (!amount.trim() && found.total) setAmount(found.total);
+      setScan(null);
+    } catch {
+      setScan({ error: 'Could not read that photo. Try again, or add the items by hand.' });
+    }
+  }
 
   const foreign = currency !== base;
   const pickCurrency = (c: string) => {
@@ -178,6 +201,24 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
             </select>
           </label>
         </div>
+
+        <input
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          hidden
+          aria-label="Receipt photo"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void scanReceipt(file);
+          }}
+        />
+        <button disabled={scan !== null && 'progress' in scan} onClick={() => photoInput.current?.click()}>
+          {scan && 'progress' in scan ? `Reading receipt… ${Math.round(scan.progress * 100)}%` : 'Scan receipt'}
+        </button>
+        {scan && 'error' in scan && <p role="alert" className="error">{scan.error}</p>}
+        {mode === 'items' && items.length > 1 && <p className="hint">Check each line against the receipt, then tap who shared it.</p>}
 
         <h2>Split</h2>
         <div className="seg">

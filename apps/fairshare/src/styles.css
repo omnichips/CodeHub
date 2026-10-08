@@ -56,6 +56,7 @@ label input, label select { color: var(--ink); }
 .hare-word { color: var(--accent); font-weight: 700; }
 .bar .hare { margin: 2px 0; }
 .error { color: var(--error); margin: 0; }
+.hint { color: var(--muted); margin: 0; font-size: 0.875rem; }
 .fab { position: sticky; bottom: 0; width: 100%; }
 .saved { margin: 0; padding: 2px 0; text-align: center; font-size: 0.75rem; color: var(--muted); }
 

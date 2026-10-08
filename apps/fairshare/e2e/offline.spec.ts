@@ -27,7 +27,8 @@ test('installable manifest and icons', async ({ page, request }) => {
 
 // Serves dist/ from our own server so the test can really shut it down, instead of relying on a
 // browser "offline" switch that WebKit handles badly with service workers.
-test('works offline after one visit: precached, server gone, reload, add data, zero failed requests', async ({ page }) => {
+test('works offline after one visit: precached, server gone, reload, add data, zero failed requests', async ({ page, browser }) => {
+  test.setTimeout(120_000);
   const server = createServer((req, res) => {
     const path = req.url!.split('?')[0];
     try {
@@ -50,7 +51,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 
   // Every built file is in the precache.
-  const built = readdirSync('dist/assets').map((f) => `/assets/${f}`).concat(['/index.html', '/manifest.webmanifest', '/icon.svg', '/pwa-512.png']);
+  const built = readdirSync('dist/assets').map((f) => `/assets/${f}`).concat(['/index.html', '/manifest.webmanifest', '/icon.svg', '/pwa-512.png', '/ocr/eng.traineddata.gz']);
   const missing = await page.evaluate(
     async (urls) => (await Promise.all(urls.map(async (u) => ((await caches.match(u, { ignoreSearch: true })) ? null : u)))).filter(Boolean),
     built,
@@ -85,6 +86,18 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await expect(page.getByRole('status')).toContainText('Offline_trip.pdf');
   const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download PDF' }).click()]);
   expect(readFileSync((await pdf.path())!).subarray(0, 5).toString()).toBe('%PDF-');
+
+  // So does reading a receipt: the OCR engine, its worker and the English data all come from the precache.
+  const shot = await browser.newPage({ viewport: { width: 520, height: 200 } });
+  await shot.setContent(`<pre style="font:28px/1.5 'Courier New',monospace;padding:30px;margin:0">Taxi            150.00
+TOTAL           150.00</pre>`);
+  const png = await shot.screenshot();
+  await shot.close();
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await page.getByLabel('Receipt photo').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
+  await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
 
   expect(failed).toEqual([]);
 });
