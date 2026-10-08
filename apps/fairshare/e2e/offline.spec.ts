@@ -109,6 +109,7 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
   await page.getByLabel('Receipt photos').setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
 
@@ -145,6 +146,7 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await expect(page.getByLabel('Receipt language')).toHaveValue('jpn'); // remembered on this device
   const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
   await page.getByLabel('Receipt photos').setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 2 price')).toHaveValue('500', { timeout: 120_000 });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('980');
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/メン/); // OCR may misread a character (フーメン); the user fixes it

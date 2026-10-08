@@ -57,6 +57,12 @@ label input, label select { color: var(--ink); }
 .bar .hare { margin: 2px 0; }
 .error { color: var(--error); margin: 0; }
 .scan { align-items: end; }
+.crop-stage { overflow: hidden; touch-action: none; border-radius: 12px; background: #000; align-self: center; width: 100%; max-width: 560px; padding: 24px; } /* padding keeps the corner grips fully on screen */
+.crop-image { position: relative; }
+.crop-stage canvas { display: block; width: 100%; height: auto; }
+.crop-box { position: absolute; border: 2px solid var(--accent); box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55); cursor: move; }
+.crop-grip { position: absolute; width: 48px; height: 48px; transform: translate(-50%, -50%); }
+.crop-grip::after { content: ''; position: absolute; inset: 14px; background: #fff; border: 3px solid var(--accent); border-radius: 50%; }
 .hint { color: var(--muted); margin: 0; font-size: 0.875rem; }
 .fab { position: sticky; bottom: 0; width: 100%; }
 .saved { margin: 0; padding: 2px 0; text-align: center; font-size: 0.75rem; color: var(--muted); }

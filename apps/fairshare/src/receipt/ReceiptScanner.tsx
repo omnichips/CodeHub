@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { CropSheet } from './CropSheet';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
 /** Language picker, pack download and "Scan receipts". onRead gets one text per photo and returns an error message or null. */
@@ -8,6 +9,9 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  // Photos waiting to be cropped, and the ones already cropped. Each photo gets its own crop screen.
+  const [queue, setQueue] = useState<File[]>([]);
+  const [cropped, setCropped] = useState<Blob[]>([]);
   const pack = PACKS.find((p) => p.code === lang)!;
 
   useEffect(() => {
@@ -32,7 +36,7 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
     }
   }
 
-  const scan = (photos: File[]) =>
+  const scan = (photos: Blob[]) =>
     run('Reading receipt', async (progress) => {
       const { readReceipts } = await import('./ocr'); // about 7 MB, so only loaded when used
       const texts = await readReceipts(photos, lang, (i, p) =>
@@ -78,7 +82,11 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
           onChange={(e) => {
             const files = [...(e.target.files ?? [])];
             e.target.value = '';
-            if (files.length) void scan(files);
+            if (files.length) {
+              setQueue(files);
+              setCropped([]);
+              setError('');
+            }
           }}
         />
         {ready ? (
@@ -87,6 +95,21 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[]) => string
           <button disabled={busy !== null} onClick={download}>{busy ?? `Download pack (${pack.size})`}</button>
         )}
       </div>
+      {queue.length > 0 && (
+        <CropSheet
+          key={cropped.length}
+          photo={queue[cropped.length]}
+          position={queue.length > 1 ? `${cropped.length + 1} of ${queue.length}` : ''}
+          onCancel={() => setQueue([])}
+          onDone={(photo) => {
+            const all = [...cropped, photo];
+            if (all.length < queue.length) return setCropped(all);
+            setQueue([]);
+            setCropped([]);
+            void scan(all);
+          }}
+        />
+      )}
       {!ready && !busy && <p className="hint">{pack.name} needs a one-time download. After that it works offline.</p>}
       {error && <p role="alert" className="error">{error}</p>}
     </>

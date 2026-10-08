@@ -41,6 +41,7 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await page.getByLabel('Title').fill('Dinner');
 
   await page.getByLabel('Receipt photos').setInputFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 3 price')).toBeVisible({ timeout: 90_000 });
 
   // OCR is best effort, so assert what a clean print must give, then edit as a person would.
@@ -91,18 +92,83 @@ test('several receipts at once, then one more: all items listed, totals added up
     { name: 'taxi.png', mimeType: 'image/png', buffer: taxi },
     { name: 'cafe.png', mimeType: 'image/png', buffer: cafe },
   ]);
+  await expect(page.getByRole('heading', { name: 'Crop receipt · 1 of 2' })).toBeVisible();
+  await page.getByRole('button', { name: 'Read receipt' }).click();
+  await expect(page.getByRole('heading', { name: 'Crop receipt · 2 of 2' })).toBeVisible();
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 3 price')).toHaveValue('60.00', { timeout: 120_000 });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00');
   await expect(page.getByLabel('Item 2 price')).toHaveValue('95.00');
   await expect(page.getByLabel('Amount')).toHaveValue('305.00');
 
   await page.getByLabel('Receipt photos').setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 4 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('325.00');
 
   // A typed amount is the user's: further scans add items but leave it alone.
   await page.getByLabel('Amount').fill('400');
   await page.getByLabel('Receipt photos').setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+  await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 5 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('400');
+});
+
+test('crop: drag a corner to leave out what is not the receipt; rotate; use whole photo', async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  // A "table" line with a price at the top, a gap, then the receipt.
+  const shot = await browser.newPage({ viewport: { width: 520, height: 420 } });
+  await shot.setContent(`<pre style="font:28px/1.5 'Courier New',monospace;padding:30px;margin:0">Window seat     999.00
+
+
+
+Noodles         120.00
+Tea              40.00
+TOTAL           160.00</pre>`);
+  const png = await shot.screenshot();
+  await shot.close();
+
+  await page.goto('/');
+  await page.getByLabel('Trip name').fill('Cebu');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByLabel('Member name').fill('Ana');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await expect(page.getByLabel('Name of Ana')).toBeVisible();
+  await page.getByRole('button', { name: 'Expenses', exact: true }).click();
+  await page.getByRole('button', { name: 'Add expense' }).click();
+
+  const photo = { name: 'r.png', mimeType: 'image/png', buffer: png };
+  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toBeVisible();
+
+  // Rotating four times comes back to the same photo; then drag the top-left corner down past the junk line.
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Rotate' }).click();
+  const box = page.getByTestId('crop-box');
+  // Four quarter-turns end where they began (a landscape photo); wait until the last turn has been drawn.
+  await expect.poll(async () => { const r = await box.boundingBox(); return r ? r.width / r.height : 0; }).toBeGreaterThan(1);
+  const before = (await box.boundingBox())!;
+  const grip = (await page.locator('[data-grip="nw"]').boundingBox())!;
+  const x = grip.x + grip.width / 2, y = grip.y + grip.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 4, y + before.height * 0.22, { steps: 5 });
+  await page.mouse.up();
+  const after = (await box.boundingBox())!;
+  expect(after.height).toBeLessThan(before.height * 0.85);
+  expect(after.y).toBeGreaterThan(before.y + before.height * 0.15);
+
+  await page.getByRole('button', { name: 'Read receipt' }).click();
+  await expect(page.getByLabel('Item 1 price')).toHaveValue('120.00', { timeout: 90_000 });
+  await expect(page.getByLabel('Item 2 price')).toHaveValue('40.00');
+  await expect(page.getByLabel('Item 3 price')).toHaveCount(0); // the 999.00 line was cropped out
+  await expect(page.getByLabel('Amount')).toHaveValue('160.00');
+
+  // Cancel leaves everything as it was; "Use whole photo" reads the lot.
+  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toHaveCount(0);
+  await page.getByLabel('Receipt photos').setInputFiles(photo);
+  await page.getByRole('button', { name: 'Use whole photo' }).click();
+  await expect(page.getByLabel('Item 3 price')).toHaveValue('999.00', { timeout: 90_000 });
 });

@@ -6,6 +6,11 @@
 - On Windows, passing `--base=/fairshare/` from **Git Bash** gets rewritten into a `C:/Program Files/Git/...` path. The hub's build script starts the build from Node, which avoids this. If you ever run that command by hand, use PowerShell or set `MSYS_NO_PATHCONV=1`.
 - You said a cloud database is fine for some future apps. FairShare is unchanged: it stays offline-first with no server, as the plan says.
 
+## Crop before reading
+- After picking photos, each one opens a crop screen (`src/receipt/CropSheet.tsx`): drag the corners (or the box) so only the receipt is inside, Rotate if sideways, then "Read receipt"; "Use whole photo" skips the crop. With several photos it asks for each in turn ("1 of 3"). Added because a receipt that is small in a photo full of table reads badly or not at all.
+- Done with plain pointer events on a canvas, no library. The photo is kept at up to 3000 px on its long side and the browser applies the camera's rotation (EXIF). Dragging needs a finger or mouse; "Use whole photo" is the way to skip it for anyone who cannot drag.
+- Tested in WebKit with a mouse (drag, rotate, cancel). **Not tested with a real finger**; check on the iPhone that the corner grips are easy to grab and the page does not scroll while dragging.
+
 ## Receipt accuracy, measured on your 7 receipt photos
 - **Method:** the app's own reader and parser, run in WebKit on each photo, scored against the receipts read by eye. The harness is not kept in the repo; the real OCR text of four receipts is (`src/receipt/ocr-samples.json`, names and card numbers removed) and `parse.test.ts` checks the parser against it.
 - **Result:** items found went from 8 of 32 to 20 of 32, wrong items from 20 to 10. On the five full-size photos it is 20 of 23; the misses are digits the engine misread (82.00 as 62.00, 321.00 as 21.00).

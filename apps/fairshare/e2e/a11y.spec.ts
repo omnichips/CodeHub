@@ -26,6 +26,17 @@ test('no critical accessibility findings', async ({ page }) => {
   await page.getByLabel('Title').fill('Dinner');
   await page.getByLabel('Amount').fill('300');
   await check(page, 'expense sheet');
+  const photo = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 200;
+    c.height = 300;
+    c.getContext('2d')!.fillRect(20, 20, 160, 260);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await page.getByLabel('Receipt photos').setInputFiles({ name: 'r.png', mimeType: 'image/png', buffer: Buffer.from(photo, 'base64') });
+  await expect(page.getByTestId('crop-box')).toBeVisible();
+  await check(page, 'crop screen');
+  await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await check(page, 'expenses');
   await page.getByRole('button', { name: 'Settle up', exact: true }).click();
