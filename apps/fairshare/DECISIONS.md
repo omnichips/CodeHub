@@ -6,6 +6,10 @@
 - On Windows, passing `--base=/fairshare/` from **Git Bash** gets rewritten into a `C:/Program Files/Git/...` path. The hub's build script starts the build from Node, which avoids this. If you ever run that command by hand, use PowerShell or set `MSYS_NO_PATHCONV=1`.
 - You said a cloud database is fine for some future apps. FairShare is unchanged: it stays offline-first with no server, as the plan says.
 
+## Items: "Shared by" dropdown
+- Each item now has one compact "Shared by" row ("Everyone", "Ana, Ben", "Ana, Ben +3", or "Choose who shared" in red) that opens a checklist of the trip's people with "Everyone" / "No one" shortcuts; it replaces the row of name buttons, which wrapped badly past about 5 people. Tested with 12 people.
+- Built on the native `<details>` element: no positioning code, works with VoiceOver and the keyboard, and the open list scrolls if it is taller than 60% of the screen. Removing an item is now a ✕ beside its price.
+
 ## Loading screen
 - Opening a trip used to look frozen: the slide animation held a still picture of the old screen until the trip's data had loaded (up to 0.4 s), and only then played. Now the trip screen draws at once with a loading screen, so the slide starts on the tap, and the data fills in when ready.
 - The loader is the hare popping out of its burrow, looking around (ears twitch) and ducking back in, on a loop (`BunnyLoader` in `src/ui.tsx`, plain SVG and CSS). It fades in only after 0.15 s, so a fast load shows no flash. Also used while the trip list loads. With Reduce Motion it is a still hare peeking out.

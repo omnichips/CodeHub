@@ -226,18 +226,9 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
                   <div className="item-line">
                     <input aria-label={`Item ${i + 1} name`} placeholder={`Item ${i + 1}`} value={row.name} onChange={(e) => setItem(row.key, { name: e.target.value })} />
                     <input className="price" inputMode="decimal" aria-label={`Item ${i + 1} price`} placeholder="0.00" value={row.price} onChange={(e) => setItem(row.key, { price: e.target.value })} />
+                    <button className="remove" aria-label={`Remove item ${i + 1}`} onClick={() => setItems(items.filter((x) => x.key !== row.key))}>✕</button>
                   </div>
-                  <div className="chips" role="group" aria-label={`Who shared item ${i + 1}`}>
-                    {people.map((m) => {
-                      const on = row.memberIds.includes(m.id);
-                      return (
-                        <button key={m.id} aria-pressed={on} onClick={() => setItem(row.key, { memberIds: on ? row.memberIds.filter((x) => x !== m.id) : [...row.memberIds, m.id] })}>
-                          {m.name}
-                        </button>
-                      );
-                    })}
-                    <button className="remove" aria-label={`Remove item ${i + 1}`} onClick={() => setItems(items.filter((x) => x.key !== row.key))}>Remove</button>
-                  </div>
+                  <SharedBy label={`Who shared item ${i + 1}`} people={people} chosen={row.memberIds} onChange={(memberIds) => setItem(row.key, { memberIds })} />
                 </li>
               ))}
             </ul>
@@ -303,5 +294,39 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Who shared an item: one compact row ("Everyone", "Ana, Ben +3") that opens a checklist. A native <details>, so it
+ * needs no positioning code, works with VoiceOver, and stays one line per item however many people are on the trip.
+ */
+function SharedBy({ label, people, chosen, onChange }: { label: string; people: Member[]; chosen: string[]; onChange: (ids: string[]) => void }) {
+  const names = people.filter((m) => chosen.includes(m.id)).map((m) => m.name);
+  const summary =
+    names.length === 0 ? 'Choose who shared' : names.length === people.length ? 'Everyone' : names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+  return (
+    <details className="shared-by">
+      <summary>
+        <span className="muted">Shared by </span>
+        <strong className={names.length === 0 ? 'error' : undefined}>{summary}</strong>
+      </summary>
+      <div role="group" aria-label={label}>
+        <div className="two">
+          <button onClick={() => onChange(people.map((m) => m.id))}>Everyone</button>
+          <button onClick={() => onChange([])}>No one</button>
+        </div>
+        {people.map((m) => (
+          <label key={m.id} className="check">
+            <input
+              type="checkbox"
+              checked={chosen.includes(m.id)}
+              onChange={(e) => onChange(e.target.checked ? [...chosen, m.id] : chosen.filter((x) => x !== m.id))}
+            />
+            {m.name}
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }

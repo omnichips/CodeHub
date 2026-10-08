@@ -55,7 +55,8 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/sisig/i);
 
   await page.getByLabel('Item 1 name').fill('Pork sisig');
-  await page.getByRole('group', { name: 'Who shared item 1' }).getByRole('button', { name: 'Ben', exact: true }).click(); // Ana only
+  await page.locator('details.shared-by').first().locator('summary').click();
+  await page.getByRole('group', { name: 'Who shared item 1' }).getByRole('checkbox', { name: 'Ben', exact: true }).uncheck(); // Ana only
   await expect(page.getByText('tax, tip and service PHP 52.00')).toBeVisible();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
 

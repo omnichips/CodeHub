@@ -24,6 +24,12 @@ async function openExpense(page: Page, title: string, amount: string) {
   await page.getByLabel('Amount').fill(amount);
 }
 
+/** Opens item n's "Shared by" dropdown and returns its checklist. */
+async function sharedBy(page: Page, n: number) {
+  await page.locator('details.shared-by').nth(n - 1).locator('summary').click();
+  return page.getByRole('group', { name: `Who shared item ${n}` });
+}
+
 const save = (page: Page) => page.getByRole('button', { name: 'Save', exact: true }).click();
 
 test('Workflow A: trip, members, expense, balances, settle up', async ({ page }) => {
@@ -124,8 +130,10 @@ test('split by item, with service charge spread by what each person had', async 
     if (n > 1) await page.getByRole('button', { name: 'Add item' }).click();
     await page.getByLabel(`Item ${n} name`).fill(name);
     await page.getByLabel(`Item ${n} price`).fill(price);
-    const who = page.getByRole('group', { name: `Who shared item ${n}` });
-    for (const m of without) await who.getByRole('button', { name: m, exact: true }).click();
+    if (!without.length) return;
+    const who = await sharedBy(page, n);
+    for (const m of without) await who.getByRole('checkbox', { name: m, exact: true }).uncheck();
+    await expect(page.locator('details.shared-by').nth(n - 1).locator('summary')).not.toContainText('Everyone');
   };
   await item(1, 'Pasta', '300', ['Ben', 'Cy']);
   await item(2, 'Pizza', '600', ['Ana']);
@@ -135,7 +143,6 @@ test('split by item, with service charge spread by what each person had', async 
   await expect(page.getByLabel('Amount')).toHaveValue('1200.00');
   await page.getByLabel('Amount').fill('1320');
   await expect(page.getByText('tax, tip and service PHP 120.00')).toBeVisible();
-  await page.screenshot({ path: 'test-results/items-sheet.png', fullPage: true });
   await save(page);
   await expect(page.getByRole('button', { name: /Dinner/ })).toContainText('PHP 1320.00');
 
@@ -147,7 +154,8 @@ test('split by item, with service charge spread by what each person had', async 
   await tab(page, 'Expenses').click();
   await page.getByRole('button', { name: /Dinner/ }).click();
   await expect(page.getByLabel('Item 2 name')).toHaveValue('Pizza');
-  await expect(page.getByRole('group', { name: 'Who shared item 2' }).getByRole('button', { name: 'Ana', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('details.shared-by').nth(1).locator('summary')).toContainText('Ben, Cy');
+  await expect((await sharedBy(page, 2)).getByRole('checkbox', { name: 'Ana', exact: true })).not.toBeChecked();
 });
 
 test('dashboard: two-column trip grid, photo or bunny cover, + button bottom right', async ({ page, browser }) => {
@@ -197,4 +205,28 @@ test('dashboard: two-column trip grid, photo or bunny cover, + button bottom rig
   await expect(page.getByRole('img', { name: 'Trip photo' })).toBeVisible();
   await page.getByRole('button', { name: 'Remove photo' }).click();
   await expect(page.getByRole('button', { name: 'Add trip photo' })).toBeVisible();
+});
+
+test('items with a big group (12 people): one compact "Shared by" row per item, a checklist when opened', async ({ page }) => {
+  const people = ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jo', 'Kai', 'Lu'];
+  await newTrip(page, people);
+  await openExpense(page, 'Dinner', '1200');
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await page.getByLabel('Item 1 name').fill('Lechon');
+  await page.getByLabel('Item 1 price').fill('1200');
+  const summary = page.locator('details.shared-by summary');
+  await expect(summary).toHaveText(/Shared by\s*Everyone/);
+  expect((await summary.boundingBox())!.height).toBeLessThan(60); // one line, however many people
+
+  const who = await sharedBy(page, 1);
+  await expect(who.getByRole('checkbox')).toHaveCount(12);
+  await who.getByRole('button', { name: 'No one' }).click();
+  await expect(summary).toContainText('Choose who shared');
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  for (const m of ['Ana', 'Ben', 'Cy', 'Dee']) await who.getByRole('checkbox', { name: m, exact: true }).check();
+  await expect(summary).toContainText('Ana, Ben +2');
+  await save(page);
+
+  await tab(page, 'Settle up').click();
+  await expect(page.getByText('−PHP 300.00', { exact: true })).toHaveCount(3); // Ben, Cy, Dee each owe Ana 300
 });
