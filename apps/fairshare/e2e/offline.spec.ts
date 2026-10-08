@@ -113,6 +113,8 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
@@ -140,25 +142,35 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
 
-  // Tagalog is not downloaded, so it offers the download; Japanese is downloaded here, while online.
-  await page.getByLabel('Receipt language').selectOption('tgl');
-  await expect(page.getByRole('button', { name: 'Download pack (3.3 MB)' })).toBeVisible();
-  await page.getByLabel('Receipt language').selectOption('jpn');
-  await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
+  // The camera button: pick a photo, say yes to scanning, then choose the language. Japanese is downloaded here,
+  // while online, after asking; Tagalog shows that it would need a download.
+  const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
+  const photo = { name: 'ramen.png', mimeType: 'image/png', buffer: png };
+  await page.getByRole('button', { name: 'Add receipt photo' }).click();
+  await expect(page.getByRole('dialog', { name: 'Add a receipt photo' }).getByRole('button')).toHaveText(['Take a photo', 'Photo library', 'Choose files', 'Cancel']);
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  await expect(page.getByText('may not be accurate')).toBeVisible();
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await expect(page.getByRole('radio', { name: /Tagalog · download 3.3 MB/ })).toBeVisible();
+  await page.getByRole('radio', { name: /Japanese/ }).check();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await expect(page.getByText(/uses? some of your plan/)).toBeVisible(); // asks first; nothing is downloaded yet
   expect(await page.evaluate(async () => (await caches.keys()).includes('ocr-packs') && !!(await (await caches.open('ocr-packs')).keys()).length)).toBe(false);
   await page.getByRole('button', { name: 'Not now' }).click();
-  await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Download', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Scan receipts' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toBeVisible({ timeout: 30_000 }); // downloaded, then on to cropping
+  await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
 
   await stop();
   await page.reload();
   await page.getByRole('button', { name: /Tokyo/ }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
-  await expect(page.getByLabel('Receipt language')).toHaveValue('jpn'); // remembered on this device
-  const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
-  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'ramen.png', mimeType: 'image/png', buffer: png });
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await expect(page.getByRole('radio', { name: /Japanese/ })).toBeChecked(); // remembered on this device
+  await expect(page.getByRole('radio', { name: /Japanese/ })).not.toHaveAccessibleName(/download/); // already downloaded
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 2 price')).toHaveValue('500', { timeout: 120_000 });
   await expect(page.getByLabel('Item 1 price')).toHaveValue('980');

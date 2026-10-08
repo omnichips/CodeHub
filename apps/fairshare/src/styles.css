@@ -33,6 +33,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 button:disabled { opacity: 0.45; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 input, select { width: 100%; padding: 0 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 1rem; }
+/* iOS draws its own date and select controls at their own heights, and a date field refuses to shrink, so it spilled into
+   the next column. Plain boxes everywhere: same height, same border, text on the left, our own chevron on selects. */
+input:not([type='checkbox']):not([type='radio']), select { -webkit-appearance: none; appearance: none; height: var(--tap); min-width: 0; line-height: normal; }
+input[type='date'] { display: block; text-align: left; }
+input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; }
+select { padding-right: 36px; background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235d5d55' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center / 12px 8px; }
+.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.two > * { min-width: 0; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 0.875rem; color: var(--muted); }
 label input, label select { color: var(--ink); }
 
@@ -121,6 +129,19 @@ progress { width: 100%; accent-color: var(--accent); }
 .back { width: var(--tap); padding: 0; font-size: 1.75rem; line-height: 1; }
 .fab-add:active span { transform: rotate(90deg); }
 .center { text-align: center; }
+/* Receipt camera button and its action sheets */
+.fab-camera { z-index: 15; display: flex; align-items: center; justify-content: center; }
+.sheet .screen { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+.scan-status { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; background: rgba(27, 27, 24, 0.4); animation: fade-in 0.2s ease both; }
+.action-sheet { width: 100%; max-height: 90dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); background: var(--bg); border-radius: 20px 20px 0 0; animation: sheet-up 0.32s var(--ease) both; }
+.action-sheet p { margin: 0; }
+.action-sheet .cancel { margin-top: 6px; color: var(--muted); }
+.sheet-title { margin: 0; font-size: 1.125rem; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.choices { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 4px; }
+.choices legend { padding: 0; margin-bottom: 6px; }
+.choices .check { padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+input[type='radio'] { width: 22px; min-height: 22px; accent-color: var(--accent); }
 /* Balances: green when owed money, red when owing; the +/− sign is still shown, so colour is never the only cue. */
 .pos { color: var(--accent); }
 .neg { color: var(--error); }

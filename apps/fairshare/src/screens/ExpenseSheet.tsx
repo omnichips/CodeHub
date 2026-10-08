@@ -56,6 +56,11 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   const [saveError, setSaveError] = useState('');
   const saved = useReceiptPhotos(kept);
   const shown = [...kept.map((id) => saved[id] ?? { id, tripId: trip.id, data: '' }), ...fresh];
+  /** "No, just attach the photo": kept with the expense, not read. */
+  async function attachPhotos(photos: Blob[]) {
+    const stored = await Promise.all(photos.map((p) => receiptFromBlob(trip.id, p)));
+    setFresh((prev) => [...prev, ...stored].slice(0, Math.max(0, 12 - kept.length)));
+  }
   // Sum of the totals read from receipts so far; Amount follows it until the user types their own.
   const [scannedTotal, setScannedTotal] = useState(0);
 
@@ -187,6 +192,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         </button>
       </header>
       <div className="screen">
+        <ReceiptScanner onRead={applyReceipts} onAttach={attachPhotos} />
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -226,7 +232,6 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
           </label>
         </div>
 
-        <ReceiptScanner onRead={applyReceipts} />
         {shown.length > 0 && (
           <div className="receipt-strip" role="group" aria-label="Saved receipt photos">
             {shown.map((p, i) => (

@@ -46,6 +46,10 @@ test('scan a receipt photo: items listed offline, editable, split by item', asyn
   await page.getByLabel('Title').fill('Dinner');
 
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: png });
+
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 3 price')).toBeVisible({ timeout: 90_000 });
 
@@ -100,6 +104,10 @@ test('several receipts at once, then one more: all items listed, totals added up
     { name: 'taxi.png', mimeType: 'image/png', buffer: taxi },
     { name: 'cafe.png', mimeType: 'image/png', buffer: cafe },
   ]);
+
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Crop receipt · 1 of 2' })).toBeVisible();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByRole('heading', { name: 'Crop receipt · 2 of 2' })).toBeVisible();
@@ -110,6 +118,10 @@ test('several receipts at once, then one more: all items listed, totals added up
   await expect(page.getByLabel('Amount')).toHaveValue('305.00');
 
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 4 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('325.00');
@@ -117,6 +129,8 @@ test('several receipts at once, then one more: all items listed, totals added up
   // A typed amount is the user's: further scans add items but leave it alone.
   await page.getByLabel('Amount').fill('400');
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'store.png', mimeType: 'image/png', buffer: store });
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 5 price')).toHaveValue('20.00', { timeout: 120_000 });
   await expect(page.getByLabel('Amount')).toHaveValue('400');
@@ -150,6 +164,8 @@ TOTAL           160.00</pre>`);
 
   const photo = { name: 'r.png', mimeType: 'image/png', buffer: png };
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toBeVisible();
 
   // Rotating four times comes back to the same photo; then drag the top-left corner down past the junk line.
@@ -181,9 +197,13 @@ TOTAL           160.00</pre>`);
 
   // Cancel leaves everything as it was; "Use whole photo" reads the lot.
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('dialog', { name: 'Crop receipt' })).toHaveCount(0);
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Use whole photo' }).click();
   await expect(page.getByLabel('Item 3 price')).toHaveValue('999.00', { timeout: 90_000 });
 });
@@ -208,6 +228,8 @@ test('the scanned photo is kept with the expense, and travels in a backup file t
   await page.getByRole('button', { name: 'Add expense' }).click();
   await page.getByLabel('Title').fill('Taxi');
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByRole('button', { name: 'View receipt photo 1' })).toBeVisible();

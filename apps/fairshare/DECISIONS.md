@@ -15,6 +15,16 @@
 - **Plain error messages** (`src/messages.ts`): engine messages such as "Split weights are all zero" now read "Give at least one person a share above zero."; anything technical becomes "Something went wrong. Please try again." A failed Save now shows a message instead of failing silently.
 - **Launch screens:** the hare on the app background for 11 iPhone screen sizes (`scripts/make-splash.mjs`, `public/splash/`, linked in `index.html`; iOS saves them when the app is added to the Home Screen, so they are not in the offline precache). A new iPhone size needs a new row in that script. Only seen by iOS after the app is re-added to the Home Screen.
 
+## New expense form and the camera button
+- **Form fixed:** on iPhone, Safari drew the date and dropdown boxes in its own style at other heights, and the date box would not shrink, so it spilled into "Paid by". All inputs and dropdowns are now plain boxes of the same 48 px height and border, text on the left, with our own chevron on dropdowns; the two-column rows can no longer overflow. Tested: all five boxes are the same height and the date stays in its column.
+- **Receipts now start from a camera button** at the bottom right of the expense screen (the language row and "Scan receipts" button are gone):
+  1. Tap the camera: **Take a photo** (opens the camera), **Photo library**, or **Choose files** (Files app, iCloud Drive). Several photos can be picked from the library or files.
+  2. **"Scan as receipt?"**, with the warning that reading is automatic and may not be accurate, so every line should be checked. **"No, just attach the photo"** keeps the photo with the expense without reading it.
+  3. **Receipt language**: English, Japanese, Tagalog; the ones not yet on the phone say "download 2 MB" etc. The choice is remembered.
+  4. **Scan**: if the language still needs downloading it asks first (Download / Not now), then crop, read, and the item list appears.
+- On iPhone, "Photo library" and "Choose files" may both show iOS's own menu (Photo Library / Take Photo / Choose File); that menu is iOS's and cannot be changed from a web app. "Take a photo" goes straight to the camera.
+- Progress ("Reading receipt… 40%") and errors show at the top of the expense screen.
+
 ## Tests: receipt-reading checks are opt-in
 - The e2e tests that run the real text-reading engine (all of `e2e/receipt.spec.ts`, the Japanese-pack test and the receipt step of the main offline test in `e2e/offline.spec.ts`) are **skipped in a normal run** (`npm run test:e2e` shows them as skipped) because they are slow and heavy. The fast receipt tests still always run: the parser on real OCR text (`src/receipt/parse.test.ts`) and the crop screen's accessibility check.
 - **Run them with `npm run test:e2e:ocr`** (extra arguments go to Playwright) whenever any of these change: `src/receipt/` (reader, parser, crop, packs), the receipt parts of `src/screens/ExpenseSheet.tsx` (scanning, photos), the OCR or language-pack settings in `vite.config.ts`, `scripts/e2e-ocr.mjs`, or the `tesseract.js` / `@tesseract.js-data/*` versions. Before a release it is worth running once regardless.

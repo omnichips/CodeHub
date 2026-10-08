@@ -284,3 +284,54 @@ test('settle up: transfers above balances, green +, red −, ₱ and ¥ signs, �
   await save(page);
   await expect(page.getByRole('button', { name: /Ramen/ })).toContainText('¥980');
 });
+
+test('new expense form: boxes line up (same height, nothing spills into the next column)', async ({ page }) => {
+  await newTrip(page, ['Ana', 'Ben']);
+  await page.getByRole('button', { name: 'Add expense' }).click();
+  await page.waitForTimeout(500); // let the sheet finish sliding in
+  const boxes = await Promise.all(['Title', 'Amount', 'Currency', 'Date', 'Paid by'].map(async (l) => (await page.getByLabel(l, { exact: true }).boundingBox())!));
+  const heights = boxes.map((b) => Math.round(b.height));
+  expect(new Set(heights).size).toBe(1); // all the same height
+  const [, amount, currency, date, paidBy] = boxes;
+  expect(date.x + date.width).toBeLessThanOrEqual(paidBy.x); // the date stays in its column
+  expect(amount.width).toBeCloseTo(currency.width, 0);
+  expect(date.width).toBeCloseTo(paidBy.width, 0);
+});
+
+test('camera button: choose where the photo comes from; "No, just attach" keeps the photo without reading it', async ({ page, browser }) => {
+  const shot = await browser.newPage({ viewport: { width: 300, height: 200 } });
+  await shot.setContent('<pre style="font:24px monospace;padding:20px">Taxi  150.00</pre>');
+  const png = await shot.screenshot();
+  await shot.close();
+
+  await newTrip(page, ['Ana']);
+  await openExpense(page, 'Taxi', '150');
+  const camera = page.getByRole('button', { name: 'Add receipt photo' });
+  const box = (await camera.boundingBox())!;
+  const view = page.viewportSize()!;
+  expect(box.x + box.width).toBeGreaterThan(view.width - 40); // bottom right
+  expect(box.y + box.height).toBeGreaterThan(view.height - 120);
+
+  await camera.click();
+  const source = page.getByRole('dialog', { name: 'Add a receipt photo' });
+  await expect(source.getByRole('button')).toHaveText(['Take a photo', 'Photo library', 'Choose files', 'Cancel']);
+  await expect(page.getByLabel('Take a photo')).toHaveAttribute('capture', 'environment'); // opens the camera directly
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+
+  const ask = page.getByRole('dialog', { name: 'Scan as receipt?' });
+  await expect(ask).toContainText('may not be accurate');
+  await ask.getByRole('button', { name: 'No, just attach the photo' }).click();
+  await expect(page.getByRole('button', { name: 'View receipt photo 1' })).toBeVisible();
+  await expect(page.getByLabel('Item 1 name')).toHaveCount(0); // nothing was read
+  await save(page);
+  await page.getByRole('button', { name: /Taxi/ }).click();
+  await expect(page.getByRole('button', { name: 'View receipt photo 1' })).toBeVisible();
+
+  // "Yes" leads to the language choice, with English built in.
+  await camera.click();
+  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await expect(page.getByRole('dialog', { name: 'Receipt language' }).getByRole('radio')).toHaveCount(3);
+  await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
+  await page.getByRole('dialog', { name: 'Receipt language' }).getByRole('button', { name: 'Cancel' }).click();
+});

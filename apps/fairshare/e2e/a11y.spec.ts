@@ -40,6 +40,8 @@ test('no critical accessibility findings', async ({ page }) => {
     return c.toDataURL('image/png').split(',')[1];
   });
   await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'r.png', mimeType: 'image/png', buffer: Buffer.from(photo, 'base64') });
+  await page.getByRole('button', { name: 'Yes, scan it' }).click();
+  await page.getByRole('button', { name: 'Scan', exact: true }).click();
   await expect(page.getByTestId('crop-box')).toBeVisible();
   await check(page, 'crop screen');
   await page.getByRole('dialog', { name: 'Crop receipt' }).getByRole('button', { name: 'Cancel' }).click();
