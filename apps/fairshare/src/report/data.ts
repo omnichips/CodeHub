@@ -10,19 +10,28 @@ export type ReportData = {
   settle: string[]; // "Ana pays Ben PHP 150.00"; empty when all settled
   payments: string[]; // settlements already made
   currency: string;
-  /** True if some characters could not be printed (the embedded font covers Latin, Greek and Cyrillic). */
+  /** True if some characters could not be printed (the built-in font covers Latin, Greek and Cyrillic). */
   replaced: boolean;
+  /** True if Japanese or Chinese characters were among them: the downloadable font would print them. */
+  needsJapanese: boolean;
+  /** True when built for the Japanese font, which prints those characters and everything else too. */
+  japanese: boolean;
 };
 
 // The embedded font has no CJK, emoji, Thai, Arabic or Indic glyphs; printing them would give blank boxes.
 const UNPRINTABLE = /\p{Extended_Pictographic}|[⺀-〿＀-￯]|[^\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{Script=Common}\p{Script=Inherited}]/gu;
+// With the downloaded Japanese font (kana, kanji, Latin, ₱ and the full-width forms), only the other scripts and emoji are lost.
+const UNPRINTABLE_JP = /\p{Extended_Pictographic}|[^\p{Script=Latin}\p{Script=Greek}\p{Script=Cyrillic}\p{Script=Common}\p{Script=Inherited}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu;
+const JAPANESE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
 /** Everything is computed from the same engine functions the Settle up screen uses, then only formatted here. */
-export function buildReport(snapshot: Snapshot, generated: string): ReportData {
+export function buildReport(snapshot: Snapshot, generated: string, japanese = false): ReportData {
   let replaced = false;
+  let needsJapanese = false;
   const text = (s: string) =>
-    s.replace(UNPRINTABLE, () => {
+    s.replace(japanese ? UNPRINTABLE_JP : UNPRINTABLE, (c) => {
       replaced = true;
+      needsJapanese ||= JAPANESE.test(c);
       return '?';
     });
 
@@ -61,5 +70,7 @@ export function buildReport(snapshot: Snapshot, generated: string): ReportData {
     settle: settleUp(bal).map((t) => `${nameOf(t.fromId)} pays ${nameOf(t.toId)} ${money(t.amountMinor, cur)}`),
     payments: payments.map((p) => `${nameOf(p.fromId)} paid ${nameOf(p.toId)} ${money(p.amountMinor, cur)} · ${p.date}`),
     replaced,
+    needsJapanese,
+    japanese,
   };
 }

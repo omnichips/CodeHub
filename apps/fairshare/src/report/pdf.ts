@@ -15,11 +15,18 @@ const MARGIN = 14;
 const PAGE_H = 297;
 
 /** Draws the report. Only one font weight is embedded (it is large), so emphasis comes from size and colour. */
-export function renderReport(r: ReportData): Uint8Array<ArrayBuffer> {
+export function renderReport(r: ReportData, japaneseFont?: string): Uint8Array<ArrayBuffer> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  // The whole report is set in one font: DejaVu, or M PLUS 1p (base64, downloaded by the user) when the report was
+  // built for Japanese. M PLUS has Latin, kana, kanji and ₱ too, so mixed names print correctly.
+  const family = r.japanese && japaneseFont ? 'MPLUS1p' : 'DejaVuSans';
   doc.addFileToVFS('DejaVuSans.ttf', fontData.slice(fontData.indexOf(',') + 1));
   doc.addFont('DejaVuSans.ttf', 'DejaVuSans', 'normal');
-  doc.setFont('DejaVuSans', 'normal');
+  if (family === 'MPLUS1p') {
+    doc.addFileToVFS('MPLUS1p.ttf', japaneseFont!);
+    doc.addFont('MPLUS1p.ttf', 'MPLUS1p', 'normal');
+  }
+  doc.setFont(family, 'normal');
   doc.setProperties({ title: 'FairShare report', creator: 'FairShare' });
 
   let y = 18;
@@ -55,7 +62,7 @@ export function renderReport(r: ReportData): Uint8Array<ArrayBuffer> {
   const tableLook = {
     theme: 'grid',
     margin: { left: MARGIN, right: MARGIN, bottom: 16 },
-    styles: { font: 'DejaVuSans', fontStyle: 'normal', fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE, lineWidth: 0.1 },
+    styles: { font: family, fontStyle: 'normal', fontSize: 9, cellPadding: 2, textColor: INK, lineColor: LINE, lineWidth: 0.1 },
     headStyles: { fillColor: PAPER, textColor: MUTED, fontStyle: 'normal' },
   } as const;
   const lastY = () => (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;

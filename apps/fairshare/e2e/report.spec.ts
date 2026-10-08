@@ -57,3 +57,43 @@ test('a prepared PDF is discarded when the trip changes', async ({ page }) => {
   await page.getByRole('button', { name: 'Mark as paid' }).first().click();
   await expect(page.getByRole('button', { name: 'Create PDF' })).toBeVisible();
 });
+
+test('Japanese names: the PDF offers the font, asks first, then prints them', async ({ page }) => {
+  test.setTimeout(90_000);
+  const requested: string[] = [];
+  page.on('request', (r) => r.url().includes('/fonts/') && requested.push(r.url()));
+  await tripWithExpense(page);
+  await page.getByRole('button', { name: 'Members', exact: true }).click();
+  await page.getByRole('button', { name: 'New member' }).click();
+  await page.getByLabel('Member name').fill('田中 さくら');
+  await page.getByRole('button', { name: 'Add member' }).click();
+  await expect(page.getByLabel('Name of 田中 さくら')).toBeVisible();
+  await page.getByRole('button', { name: 'Settle up', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Create PDF' }).click();
+  await expect(page.getByText('Japanese or Chinese characters appear as ?')).toBeVisible();
+  expect(requested).toEqual([]); // nothing downloaded on its own
+
+  await page.getByRole('button', { name: /Get the Japanese PDF font/ }).click();
+  await expect(page.getByText(/uses? some of your plan/)).toBeVisible();
+  await page.getByRole('button', { name: 'Not now' }).click();
+  expect(requested).toEqual([]);
+
+  await page.getByRole('button', { name: /Get the Japanese PDF font/ }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  await expect(page.getByText('Japanese or Chinese characters appear as ?')).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
+  expect(requested).toHaveLength(1);
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download PDF' }).click()]);
+  const bytes = readFileSync((await download.path())!);
+  expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(bytes.length).toBeGreaterThan(20_000); // the Japanese glyphs are embedded
+
+  // The font is kept: the next PDF is made at once, with no prompt and no second download.
+  await page.getByRole('button', { name: 'Mark as paid' }).first().click();
+  await page.getByRole('button', { name: 'Create PDF' }).click();
+  await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
+  await expect(page.getByText('Japanese or Chinese characters appear as ?')).toHaveCount(0);
+  expect(requested).toHaveLength(1);
+});

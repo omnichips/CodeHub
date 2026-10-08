@@ -60,7 +60,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Downloaded language packs: the app puts them in this cache (src/receipt/packs.ts), the service worker serves
         // them from it, so a pack works offline once downloaded.
-        runtimeCaching: [{ urlPattern: /\/ocr\/\w+\.traineddata\.gz$/, handler: 'CacheFirst', options: { cacheName: 'ocr-packs' } }],
+        runtimeCaching: [{ urlPattern: /\/(ocr\/\w+\.traineddata\.gz|fonts\/[\w.-]+\.ttf)$/, handler: 'CacheFirst', options: { cacheName: 'ocr-packs' } }],
       },
     }),
   ],

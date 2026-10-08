@@ -166,9 +166,9 @@ TOTAL           160.00</pre>`);
   await page.mouse.down();
   await page.mouse.move(x + 4, y + before.height * 0.22, { steps: 5 });
   await page.mouse.up();
-  const after = (await box.boundingBox())!;
-  expect(after.height).toBeLessThan(before.height * 0.85);
-  expect(after.y).toBeGreaterThan(before.y + before.height * 0.15);
+  // The last drag steps may not be drawn yet on a busy machine: wait for the box to settle.
+  await expect.poll(async () => (await box.boundingBox())!.height).toBeLessThan(before.height * 0.85);
+  expect((await box.boundingBox())!.y).toBeGreaterThan(before.y + before.height * 0.15);
 
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('120.00', { timeout: 90_000 });

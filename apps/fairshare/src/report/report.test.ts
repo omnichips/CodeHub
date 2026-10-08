@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { describe, expect, it } from 'vitest';
 import { balances, settleUp } from '../engine/balances';
@@ -132,5 +133,40 @@ describe('PDF report', () => {
     const yen: Snapshot = { ...empty, members: members.slice(0, 2) };
     yen.expenses = [{ ...expense(1, 'Ramen', ANA, 1_001), ...computeExpense({ amountMinor: 1_001, currency: 'JPY', baseCurrency: 'JPY', rate: null, splitMode: 'equal', splitInputs: yen.members.map((m) => ({ memberId: m.id, value: 1 })) }), currency: 'JPY', splitInputs: yen.members.map((m) => ({ memberId: m.id, value: 1 })) }];
     expect(await textOf(yen)).toContain(`Total ${money(1_001, 'JPY')}`);
+  });
+
+  // ---- the downloadable Japanese font (public/fonts), as the app loads it from the cache after the user downloads it ----
+  const JP_FONT = readFileSync('public/fonts/MPLUS1p-Regular.ttf').toString('base64');
+  const japaneseScenario = () => {
+    const s = scenario();
+    s.trip.name = '東京の旅 Tokyo';
+    s.members = s.members.map((m, i) => (i === 0 ? { ...m, name: '田中 さくら' } : m));
+    s.expenses[0].title = '寿司 ラーメン ₱ Café';
+    s.expenses[1].title = '餃子とビール';
+    return s;
+  };
+
+  it('without the Japanese font: those characters become ? and the report says the font would fix it', () => {
+    const report = buildReport(japaneseScenario(), '2026-10-21');
+    expect(report.replaced).toBe(true);
+    expect(report.needsJapanese).toBe(true);
+    expect(report.japanese).toBe(false);
+    expect(buildReport(scenario(), '2026-10-21').needsJapanese).toBe(false);
+    const emoji = scenario();
+    emoji.expenses[1].title = 'Taxi 🍜';
+    expect(buildReport(emoji, '2026-10-21').needsJapanese).toBe(false); // the font would not help with emoji
+  });
+
+  it('with the Japanese font: kana, kanji, accents and ₱ all print, and the totals still match the engine', async () => {
+    const s = japaneseScenario();
+    const report = buildReport(s, '2026-10-21', true);
+    expect(report.replaced).toBe(false);
+    const bytes = renderReport(report, JP_FONT);
+    expect(bytes.length).toBeLessThan(500_000); // only the glyphs used are embedded, not the 1.7 MB font
+    const text = (await pdfPages(bytes)).join(' ');
+    for (const word of ['東京の旅 Tokyo', '田中 さくら', '寿司 ラーメン', 'Café', '餃子とビール']) expect(text).toContain(word);
+    const bal = balances(members.map((m) => m.id), s.expenses, s.payments);
+    expect(text).toContain(`Total ${money(s.expenses.filter((e) => !e.deleted).reduce((a, e) => a + e.baseAmountMinor, 0), 'PHP')}`);
+    for (const t of settleUp(bal)) expect(text).toContain(money(t.amountMinor, 'PHP'));
   });
 });
