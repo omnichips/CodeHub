@@ -141,6 +141,11 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   await expect(page.getByRole('button', { name: 'Download pack (3.3 MB)' })).toBeVisible();
   await page.getByLabel('Receipt language').selectOption('jpn');
   await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
+  await expect(page.getByText(/uses? some of your plan/)).toBeVisible(); // asks first; nothing is downloaded yet
+  expect(await page.evaluate(async () => (await caches.keys()).includes('ocr-packs') && !!(await (await caches.open('ocr-packs')).keys()).length)).toBe(false);
+  await page.getByRole('button', { name: 'Not now' }).click();
+  await page.getByRole('button', { name: 'Download pack (2 MB)' }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Scan receipts' })).toBeVisible({ timeout: 30_000 });
 
   await stop();

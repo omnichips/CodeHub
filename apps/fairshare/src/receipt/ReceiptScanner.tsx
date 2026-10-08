@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CropSheet } from './CropSheet';
+import { DownloadAsk } from '../ui';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
 /** Language picker, pack download and "Scan receipts". onRead gets one text and one (cropped) photo per photo and returns an error message or null. */
@@ -8,6 +9,7 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: B
   const [ready, setReady] = useState(lang === 'eng');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [asking, setAsking] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   // Photos waiting to be cropped, and the ones already cropped. Each photo gets its own crop screen.
   const [queue, setQueue] = useState<File[]>([]);
@@ -46,11 +48,13 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: B
       if (problem) setError(problem);
     }, 'Could not read that photo. Try again, or add the items by hand.');
 
-  const download = () =>
-    run(`Downloading ${pack.name}`, async (progress) => {
+  const download = () => {
+    setAsking(false);
+    return run(`Downloading ${pack.name}`, async (progress) => {
       await downloadPack(lang, progress);
       setReady(true);
-    }, `Could not download the ${pack.name} pack. Connect to the internet and try again.`);
+    }, `Could not download the ${pack.name} pack. Check your internet connection and try again.`);
+  };
 
   return (
     <>
@@ -65,6 +69,7 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: B
               setLang(code);
               saveLang(code);
               setError('');
+              setAsking(false);
             }}
           >
             {PACKS.map((p) => (
@@ -92,7 +97,7 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: B
         {ready ? (
           <button disabled={busy !== null} onClick={() => input.current?.click()}>{busy ?? 'Scan receipts'}</button>
         ) : (
-          <button disabled={busy !== null} onClick={download}>{busy ?? `Download pack (${pack.size})`}</button>
+          <button disabled={busy !== null} onClick={() => setAsking(true)}>{busy ?? `Download pack (${pack.size})`}</button>
         )}
       </div>
       {queue.length > 0 && (
@@ -110,7 +115,8 @@ export function ReceiptScanner({ onRead }: { onRead: (texts: string[], photos: B
           }}
         />
       )}
-      {!ready && !busy && <p className="hint">{pack.name} needs a one-time download. After that it works offline.</p>}
+      {!ready && !busy && !asking && <p className="hint">{pack.name} needs a one-time download. After that it works offline.</p>}
+      {asking && <DownloadAsk what={`the ${pack.name} receipt pack`} size={pack.size} onYes={download} onNo={() => setAsking(false)} />}
       {error && <p role="alert" className="error">{error}</p>}
     </>
   );

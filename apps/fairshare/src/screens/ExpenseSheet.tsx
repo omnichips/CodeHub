@@ -3,6 +3,7 @@ import { formatAmount, parseAmount, parseUnits, RATE_RE } from '../engine/money'
 import { computeExpense, itemSplit } from '../engine/split';
 import { parseReceipt } from '../receipt/parse';
 import { ReceiptScanner } from '../receipt/ReceiptScanner';
+import { friendly } from '../messages';
 import { photoSrc, receiptFromBlob, useReceiptPhotos } from '../receipts';
 import type { Expense, Item, Member, ReceiptPhoto, SplitInput, SplitMode, Trip } from '../schemas';
 import { deleteExpense, saveExpense, today, type ExpenseDraft } from '../store';
@@ -52,6 +53,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   const [kept, setKept] = useState<string[]>(expense?.receipts ?? []);
   const [fresh, setFresh] = useState<ReceiptPhoto[]>([]);
   const [viewing, setViewing] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState('');
   const saved = useReceiptPhotos(kept);
   const shown = [...kept.map((id) => saved[id] ?? { id, tripId: trip.id, data: '' }), ...fresh];
   // Sum of the totals read from receipts so far; Amount follows it until the user types their own.
@@ -130,7 +132,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
       try {
         inputs = itemSplit(parsedItems, amountMinor);
       } catch (e) {
-        splitError = (e as Error).message;
+        splitError = friendly((e as Error).message);
       }
     }
   }
@@ -173,8 +175,12 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
           className="primary"
           disabled={!draft}
           onClick={async () => {
-            await saveExpense(trip.id, draft!, expense?.id, fresh);
-            onClose();
+            try {
+              await saveExpense(trip.id, draft!, expense?.id, fresh);
+              onClose();
+            } catch (e) {
+              setSaveError(friendly((e as Error).message, 'Could not save this expense. Please try again.'));
+            }
           }}
         >
           Save
@@ -322,6 +328,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         </ul>
         )}
         {remaining && <p role="status">Remaining: {remaining}</p>}
+        {saveError && <p role="alert" className="error">{saveError}</p>}
         {splitError && amountMinor !== null && <p role="alert" className="error">{splitError}</p>}
 
         {expense && (

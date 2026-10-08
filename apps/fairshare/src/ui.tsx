@@ -74,3 +74,18 @@ export function BunnyLoader({ label }: { label: string }) {
     </div>
   );
 }
+
+/** Asks before using mobile data. Nothing downloads until "Download" is tapped; the app never downloads on its own. */
+export function DownloadAsk(props: { what: string; size: string; onYes: () => void; onNo: () => void }) {
+  return (
+    <div className="card ask" role="group" aria-label={`Download ${props.what}?`}>
+      <p>
+        Download <strong>{props.what}</strong>? It is about {props.size} and needs an internet connection. If you are on mobile data it will use some of your plan. After this it works offline.
+      </p>
+      <div className="two">
+        <button className="primary" onClick={props.onYes}>Download</button>
+        <button onClick={props.onNo}>Not now</button>
+      </div>
+    </div>
+  );
+}

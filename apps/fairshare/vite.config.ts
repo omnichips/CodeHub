@@ -56,6 +56,7 @@ export default defineConfig({
       // file, hence the higher size limit (Workbox skips files over 2 MiB by default).
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,wasm}', 'ocr/eng.traineddata.gz'],
+        globIgnores: ['splash/**'], // launch screens: iOS saves them itself when the app is added to the Home Screen
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Downloaded language packs: the app puts them in this cache (src/receipt/packs.ts), the service worker serves
         // them from it, so a pack works offline once downloaded.
