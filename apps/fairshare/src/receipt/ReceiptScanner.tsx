@@ -11,11 +11,12 @@ type Props = {
 };
 
 /**
- * The camera button and its steps: where the photo comes from, "Scan as receipt?" (with the accuracy warning),
+ * The camera button and its steps: the phone's own photo picker (iOS offers Photo Library, Take Photo, Choose File),
+ * then "Scan as receipt?" (with the accuracy warning),
  * the receipt language (downloading its pack if needed, after asking), then crop and read.
  */
 export function ReceiptScanner({ onRead, onAttach }: Props) {
-  const [step, setStep] = useState<'source' | 'ask' | 'lang' | null>(null);
+  const [step, setStep] = useState<'ask' | 'lang' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [lang, setLang] = useState<Lang>(savedLang);
   const [installed, setInstalled] = useState<Partial<Record<Lang, boolean>>>({ eng: true });
@@ -25,9 +26,7 @@ export function ReceiptScanner({ onRead, onAttach }: Props) {
   // Photos waiting to be cropped, and the ones already cropped. Each photo gets its own crop screen.
   const [queue, setQueue] = useState<File[]>([]);
   const [cropped, setCropped] = useState<Blob[]>([]);
-  const camera = useRef<HTMLInputElement>(null);
   const library = useRef<HTMLInputElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
   const pack = PACKS.find((p) => p.code === lang)!;
 
   useEffect(() => {
@@ -84,42 +83,30 @@ export function ReceiptScanner({ onRead, onAttach }: Props) {
     }, `Could not download the ${pack.name} pack. Check your internet connection and try again.`);
   };
 
-  const input = (ref: React.RefObject<HTMLInputElement | null>, label: string, extra: React.InputHTMLAttributes<HTMLInputElement>) => (
-    <input
-      ref={ref}
-      type="file"
-      hidden
-      aria-label={label}
-      onChange={(e) => {
-        picked(e.target.files);
-        e.target.value = '';
-      }}
-      {...extra}
-    />
-  );
 
   return (
     <>
-      {input(camera, 'Take a photo', { accept: 'image/*', capture: 'environment' })}
-      {input(library, 'Receipt photos', { accept: 'image/*', multiple: true })}
-      {input(picker, 'Receipt files', { accept: 'image/*,.heic,.heif', multiple: true })}
+      <input
+        ref={library}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        aria-label="Receipt photos"
+        onChange={(e) => {
+          picked(e.target.files);
+          e.target.value = '';
+        }}
+      />
       {busy && <p role="status" className="scan-status">{busy}</p>}
       {error && <p role="alert" className="error">{error}</p>}
 
-      <button className="fab-add fab-camera" aria-label="Add receipt photo" disabled={busy !== null} onClick={() => setStep('source')}>
+      <button className="fab-add fab-camera" aria-label="Add receipt photo" disabled={busy !== null} onClick={() => library.current?.click()}>
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false">
           <path d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
           <circle cx="12" cy="12.5" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
         </svg>
       </button>
-
-      {step === 'source' && (
-        <ActionSheet label="Add a receipt photo" onClose={() => setStep(null)}>
-          <button onClick={() => camera.current?.click()}>Take a photo</button>
-          <button onClick={() => library.current?.click()}>Photo library</button>
-          <button onClick={() => picker.current?.click()}>Choose files</button>
-        </ActionSheet>
-      )}
 
       {step === 'ask' && (
         <ActionSheet label="Scan as receipt?" onClose={() => setStep(null)}>

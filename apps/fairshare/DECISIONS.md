@@ -18,11 +18,11 @@
 ## New expense form and the camera button
 - **Form fixed:** on iPhone, Safari drew the date and dropdown boxes in its own style at other heights, and the date box would not shrink, so it spilled into "Paid by". All inputs and dropdowns are now plain boxes of the same 48 px height and border, text on the left, with our own chevron on dropdowns; the two-column rows can no longer overflow. Tested: all five boxes are the same height and the date stays in its column.
 - **Receipts now start from a camera button** at the bottom right of the expense screen (the language row and "Scan receipts" button are gone):
-  1. Tap the camera: **Take a photo** (opens the camera), **Photo library**, or **Choose files** (Files app, iCloud Drive). Several photos can be picked from the library or files.
+  1. Tap the camera: the phone's own picker opens straight away (on iPhone: Photo Library, Take Photo, Choose File). Several photos can be picked. (An in-app menu with the same three choices was tried and removed: iOS already asks.)
   2. **"Scan as receipt?"**, with the warning that reading is automatic and may not be accurate, so every line should be checked. **"No, just attach the photo"** keeps the photo with the expense without reading it.
   3. **Receipt language**: English, Japanese, Tagalog; the ones not yet on the phone say "download 2 MB" etc. The choice is remembered.
   4. **Scan**: if the language still needs downloading it asks first (Download / Not now), then crop, read, and the item list appears.
-- On iPhone, "Photo library" and "Choose files" may both show iOS's own menu (Photo Library / Take Photo / Choose File); that menu is iOS's and cannot be changed from a web app. "Take a photo" goes straight to the camera.
+- The date field is centred vertically on iPhone (it sat at the top of its box); checked on a real phone by you, not here, since Windows WebKit draws dates differently.
 - Progress ("Reading receipt… 40%") and errors show at the top of the expense screen.
 
 ## Tests: receipt-reading checks are opt-in

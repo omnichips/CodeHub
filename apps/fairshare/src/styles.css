@@ -36,8 +36,9 @@ input, select { width: 100%; padding: 0 12px; border: 1px solid var(--line); bac
 /* iOS draws its own date and select controls at their own heights, and a date field refuses to shrink, so it spilled into
    the next column. Plain boxes everywhere: same height, same border, text on the left, our own chevron on selects. */
 input:not([type='checkbox']):not([type='radio']), select { -webkit-appearance: none; appearance: none; height: var(--tap); min-width: 0; line-height: normal; }
-input[type='date'] { display: block; text-align: left; }
-input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; }
+/* iOS put the date at the top of its box: centre it vertically like the other fields. */
+input[type='date'] { display: flex; align-items: center; text-align: left; line-height: calc(var(--tap) - 2px); }
+input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; line-height: calc(var(--tap) - 2px); }
 select { padding-right: 36px; background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235d5d55' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center / 12px 8px; }
 .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .two > * { min-width: 0; }

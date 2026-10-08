@@ -146,9 +146,8 @@ test('a downloaded language pack (Japanese) reads receipts offline', async ({ pa
   // while online, after asking; Tagalog shows that it would need a download.
   const png = await receiptPhoto(browser, 'ラーメン        ¥980\n餃子            ¥500\n合計          ¥1,480', "'Yu Gothic','MS Gothic',sans-serif");
   const photo = { name: 'ramen.png', mimeType: 'image/png', buffer: png };
-  await page.getByRole('button', { name: 'Add receipt photo' }).click();
-  await expect(page.getByRole('dialog', { name: 'Add a receipt photo' }).getByRole('button')).toHaveText(['Take a photo', 'Photo library', 'Choose files', 'Cancel']);
-  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles(photo);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Add receipt photo' }).click()]);
+  await chooser.setFiles(photo);
   await expect(page.getByText('may not be accurate')).toBeVisible();
   await page.getByRole('button', { name: 'Yes, scan it' }).click();
   await expect(page.getByRole('radio', { name: /Tagalog · download 3.3 MB/ })).toBeVisible();

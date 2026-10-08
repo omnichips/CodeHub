@@ -298,7 +298,7 @@ test('new expense form: boxes line up (same height, nothing spills into the next
   expect(date.width).toBeCloseTo(paidBy.width, 0);
 });
 
-test('camera button: choose where the photo comes from; "No, just attach" keeps the photo without reading it', async ({ page, browser }) => {
+test('camera button: opens the photo picker; "No, just attach" keeps the photo without reading it', async ({ page, browser }) => {
   const shot = await browser.newPage({ viewport: { width: 300, height: 200 } });
   await shot.setContent('<pre style="font:24px monospace;padding:20px">Taxi  150.00</pre>');
   const png = await shot.screenshot();
@@ -312,11 +312,11 @@ test('camera button: choose where the photo comes from; "No, just attach" keeps 
   expect(box.x + box.width).toBeGreaterThan(view.width - 40); // bottom right
   expect(box.y + box.height).toBeGreaterThan(view.height - 120);
 
-  await camera.click();
-  const source = page.getByRole('dialog', { name: 'Add a receipt photo' });
-  await expect(source.getByRole('button')).toHaveText(['Take a photo', 'Photo library', 'Choose files', 'Cancel']);
-  await expect(page.getByLabel('Take a photo')).toHaveAttribute('capture', 'environment'); // opens the camera directly
-  await page.getByLabel('Receipt photos', { exact: true }).setInputFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
+  // The camera button opens the phone's own picker straight away (on iPhone: Photo Library, Take Photo, Choose File).
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), camera.click()]);
+  expect(chooser.isMultiple()).toBe(true);
+  await expect(page.getByRole('dialog', { name: 'Add a receipt photo' })).toHaveCount(0); // no in-app menu in between
+  await chooser.setFiles({ name: 'taxi.png', mimeType: 'image/png', buffer: png });
 
   const ask = page.getByRole('dialog', { name: 'Scan as receipt?' });
   await expect(ask).toContainText('may not be accurate');
