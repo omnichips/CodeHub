@@ -231,3 +231,18 @@ test('items with a big group (12 people): one compact "Shared by" row per item, 
   await tab(page, 'Settle up').click();
   await expect(page.getByText('−PHP 300.00', { exact: true })).toHaveCount(3); // Ben, Cy, Dee each owe Ana 300
 });
+
+test('trip title is centred and the member + is at the right', async ({ page }) => {
+  await newTrip(page, ['Ana'], 'Davao trip');
+  const view = page.viewportSize()!;
+  const middle = await page.getByRole('heading', { name: 'Davao trip' }).evaluate((h) => {
+    const r = document.createRange();
+    r.selectNodeContents(h);
+    const b = r.getBoundingClientRect();
+    return b.x + b.width / 2;
+  });
+  expect(Math.abs(middle - view.width / 2)).toBeLessThan(8);
+  await tab(page, 'Members').click();
+  const fab = (await page.getByRole('button', { name: 'New member' }).boundingBox())!;
+  expect(fab.x + fab.width).toBeGreaterThan(view.width - 40);
+});

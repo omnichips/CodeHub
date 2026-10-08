@@ -36,7 +36,7 @@ export function TripView({ tripId, onBack }: { tripId: string; onBack: () => voi
 
   return (
     <div className="app">
-      <header className="bar">
+      <header className="bar trip-bar">
         <button className="back" onClick={onBack} aria-label="Back to trips">‹</button>
         <h1>{data.trip.name}</h1>
         <Cover url={photos[tripId]} tripId={tripId} className="avatar" />

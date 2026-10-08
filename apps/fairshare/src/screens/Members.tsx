@@ -26,7 +26,7 @@ export function Members({ data }: { data: TripData }) {
         ))}
       </ul>
       <div className="fab-space" />
-      <button className="fab-add fab-left" aria-label="New member" onClick={() => setAdding(true)}>
+      <button className="fab-add fab-member" aria-label="New member" onClick={() => setAdding(true)}>
         <span aria-hidden="true">+</span>
       </button>
       {adding && <NewMemberSheet tripId={trip.id} onClose={() => setAdding(false)} />}
