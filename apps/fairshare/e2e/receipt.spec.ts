@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 
+// These run the image-text-reading engine, which is slow and heavy. Skipped unless asked: npm run test:e2e:ocr
+test.skip(!process.env.OCR, 'receipt reading checks: run with npm run test:e2e:ocr');
+
 // A plain printed receipt, rendered to a PNG the way a phone photo would arrive through the photo picker.
 const RECEIPT = `<body style="margin:0;background:#fff"><pre style="font:28px/1.5 'Courier New',monospace;padding:40px;color:#111">
    CEBU GRILL HOUSE

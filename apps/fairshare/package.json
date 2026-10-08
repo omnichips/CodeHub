@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:ocr": "node scripts/e2e-ocr.mjs"
   },
   "dependencies": {
     "@tesseract.js-data/eng": "1.0.0",

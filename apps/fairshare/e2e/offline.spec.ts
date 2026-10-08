@@ -107,6 +107,8 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   expect(readFileSync((await pdf.path())!).subarray(0, 5).toString()).toBe('%PDF-');
 
   // So does reading a receipt: the OCR engine, its worker and the English data all come from the precache.
+  // (Only with npm run test:e2e:ocr; the text-reading engine is slow.)
+  if (process.env.OCR) {
   const png = await receiptPhoto(browser, 'Taxi            150.00\nTOTAL           150.00');
   await page.getByRole('button', { name: 'Expenses', exact: true }).click();
   await page.getByRole('button', { name: 'Add expense' }).click();
@@ -114,11 +116,13 @@ test('works offline after one visit: precached, server gone, reload, add data, z
   await page.getByRole('button', { name: 'Read receipt' }).click();
   await expect(page.getByLabel('Item 1 price')).toHaveValue('150.00', { timeout: 90_000 });
   await expect(page.getByLabel('Item 1 name')).toHaveValue(/taxi/i);
+  }
 
   expect(failed).toEqual([]);
 });
 
 test('a downloaded language pack (Japanese) reads receipts offline', async ({ page, browser }) => {
+  test.skip(!process.env.OCR, 'receipt reading check: run with npm run test:e2e:ocr');
   test.setTimeout(150_000);
   const { origin, stop } = await serveDist();
   await page.goto(origin);
