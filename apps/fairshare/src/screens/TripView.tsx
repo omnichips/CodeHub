@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTripData } from '../hooks';
 import { useTripPhotos } from '../photos';
+import { BunnyLoader } from '../ui';
 import { Cover } from './TripList';
 import { Expenses } from './Expenses';
 import { Members } from './Members';
@@ -22,7 +23,15 @@ export function TripView({ tripId, onBack }: { tripId: string; onBack: () => voi
   useEffect(() => {
     if (gone) onBack();
   }, [gone, onBack]);
-  if (!data) return null;
+  if (!data)
+    return (
+      <div className="app">
+        <header className="bar">
+          <button onClick={onBack} aria-label="Back to trips">‹ Trips</button>
+        </header>
+        <BunnyLoader label="Opening trip…" />
+      </div>
+    );
   const names = Object.fromEntries(data.members.map((m) => [m.id, m.name]));
 
   return (

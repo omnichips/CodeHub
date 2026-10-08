@@ -3,7 +3,7 @@ import { useTrips } from '../hooks';
 import { setTripPhoto, useTripPhotos } from '../photos';
 import { InstallHint } from '../pwa';
 import { createTrip, updateTrip } from '../store';
-import { CurrencySelect, EmptyState, Hare } from '../ui';
+import { BunnyLoader, CurrencySelect, EmptyState, Hare } from '../ui';
 import { ImportFileButton, Receive } from './Receive';
 
 /** The cover: the trip's photo, or the hare on a soft green tile. `name` lets the photo glide into the trip's header. */
@@ -23,7 +23,12 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const photos = useTripPhotos();
   const [adding, setAdding] = useState(false);
   const [receive, setReceive] = useState<{ file?: File }>();
-  if (!trips) return null;
+  if (!trips)
+    return (
+      <div className="app">
+        <BunnyLoader label="Loading trips…" />
+      </div>
+    );
   const active = trips.filter((t) => !t.archived);
   const archived = trips.filter((t) => t.archived);
 

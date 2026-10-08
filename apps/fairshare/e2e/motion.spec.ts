@@ -28,3 +28,35 @@ test('Reduce Motion: no animations at all', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.fab-add')).toHaveCSS('animation-name', 'none');
 });
+
+test('a slow trip load shows the bunny loader at once, then the trip (no frozen screen)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await page.getByLabel('Trip name').fill('Cebu');
+  await page.getByRole('button', { name: 'Create trip' }).click();
+  await page.getByRole('button', { name: 'Back to trips' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-nav', /./);
+
+  // Keep the database busy for 1.5 s, as a slow phone would be: reads of the trip wait behind this write.
+  await page.evaluate(
+    () =>
+      new Promise<void>((started) => {
+        const open = indexedDB.open('fairshare');
+        open.onsuccess = () => {
+          const tx = open.result.transaction([...open.result.objectStoreNames], 'readwrite');
+          const store = tx.objectStore('trips');
+          const until = Date.now() + 1500;
+          const spin = () => {
+            if (Date.now() < until) store.count().onsuccess = spin;
+          };
+          spin();
+          started();
+        };
+      }),
+  );
+  await page.getByRole('button', { name: /Cebu/ }).click();
+  const loader = page.getByRole('status').filter({ hasText: 'Opening trip…' });
+  await expect(loader).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cebu' })).toBeVisible({ timeout: 5000 });
+  await expect(loader).toHaveCount(0);
+});

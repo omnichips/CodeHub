@@ -148,6 +148,25 @@ progress { width: 100%; accent-color: var(--accent); }
 @keyframes vt-out-right { to { transform: translateX(100%); } }
 @keyframes vt-in-left { from { opacity: 0; transform: translateX(-25%); } }
 
+/* ---- Loading: the hare pops out of its burrow and back in ---- */
+.loader { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); animation: fade-in 0.3s ease 0.15s both; }
+.loader p { margin: 0; }
+.burrow-ground { fill: var(--line); }
+.burrow-hole { fill: var(--ink); opacity: 0.85; }
+.burrow-hare { animation: burrow 1.9s var(--ease) infinite; }
+.loader .hare { fill: var(--accent); }
+.loader .ear { transform-box: fill-box; transform-origin: 50% 100%; animation: ear-twitch 1.9s ease-in-out infinite; }
+.loader .ear-right { animation-delay: 0.08s; }
+@keyframes fade-in { from { opacity: 0; } }
+/* Hidden below the rim, pops up with a little overshoot, looks around, ducks back down. */
+@keyframes burrow {
+  0%, 12% { transform: translateY(64px); }
+  32% { transform: translateY(-5px); }
+  40%, 62% { transform: translateY(0); }
+  84%, 100% { transform: translateY(64px); }
+}
+@keyframes ear-twitch { 0%, 44%, 56%, 100% { transform: rotate(0); } 48% { transform: rotate(-12deg); } 52% { transform: rotate(8deg); } }
+
 /* Reduce Motion: no movement at all, only instant changes. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; transition: none !important; }

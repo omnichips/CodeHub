@@ -6,7 +6,7 @@ import { TripView } from './screens/TripView';
 
 type Doc = Document & { startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void> } };
 
-/** Resolves once the next screen has drawn (screens render nothing until their data has loaded), or after 400 ms. */
+/** Resolves once the next screen has drawn: at once, since screens show a loading screen until their data is in. */
 const drawn = () =>
   new Promise<void>((done) => {
     const until = performance.now() + 400;
