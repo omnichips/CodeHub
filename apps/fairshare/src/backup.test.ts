@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
-import { applyImport, exportTrip, loadSnapshot, previewImport } from './backup';
+import { applyImport, exportAll, exportTrip, loadSnapshot, previewImport, restoreAll } from './backup';
 import { db } from './db';
 import { addMember, createTrip, deleteExpense, saveExpense } from './store';
 import { decodePayload } from './sync/payload';
@@ -104,4 +104,15 @@ it('rolls back completely if a write fails halfway', async () => {
   // A function cannot be stored, so the members write fails after the trip row was already written.
   await expect(applyImport(other as any)).rejects.toThrow();
   expect(await counts()).toEqual([0, 0, 0, 0]);
+});
+
+it('backs up every trip in one file and restores them all', async () => {
+  await seed();
+  await createTrip('Bohol', 'PHP');
+  const file = await exportAll();
+  const before = await counts();
+  await wipe();
+  expect(await restoreAll(file)).toBe(2);
+  expect(await counts()).toEqual(before);
+  await expect(restoreAll('{"format":"nope"}')).rejects.toThrow('not a FairsHare backup');
 });

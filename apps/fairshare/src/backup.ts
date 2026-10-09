@@ -1,6 +1,6 @@
 import { db } from './db';
 import { mergeSnapshots, type Snapshot, type Summary } from './sync/merge';
-import { encodePayload } from './sync/payload';
+import { decodePayload, encodePayload } from './sync/payload';
 
 /** Everything the device holds for one trip, deleted records included so a merge keeps deletions. */
 export async function loadSnapshot(tripId: string): Promise<Snapshot | undefined> {
@@ -37,6 +37,26 @@ export async function applyImport(remote: Snapshot): Promise<string> {
     await db.receipts.bulkPut(merged.photos ?? []);
   });
   return remote.trip.id;
+}
+
+/** Every trip on this phone (deleted ones too) in one file: a list of the same texts a single-trip file holds. */
+export async function exportAll(): Promise<string> {
+  const ids = (await db.trips.toArray()).map((t) => t.id);
+  return JSON.stringify({ format: 'fairshare-backup', trips: await Promise.all(ids.map(async (id) => (await exportTrip(id, true)).text)) });
+}
+
+/** Merges every trip of a backup file into this phone (nothing is overwritten that is newer here). Returns how many. */
+export async function restoreAll(text: string): Promise<number> {
+  let raw: { format?: unknown; trips?: unknown };
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error('This is not a FairsHare backup');
+  }
+  if (raw?.format !== 'fairshare-backup' || !Array.isArray(raw.trips)) throw new Error('This is not a FairsHare backup');
+  const snapshots = await Promise.all(raw.trips.map((t) => decodePayload(String(t)))); // all valid before any is applied
+  for (const s of snapshots) await applyImport(s);
+  return snapshots.length;
 }
 
 /** Saves data as a file. Must be called from a tap handler on iOS. */

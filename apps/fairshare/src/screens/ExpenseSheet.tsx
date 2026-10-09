@@ -4,6 +4,7 @@ import { computeExpense, itemSplit } from '../engine/split';
 import { checkSum, parseReceipt, rateReading } from '../receipt/parse';
 import { ReceiptScanner } from '../receipt/ReceiptScanner';
 import { friendly } from '../messages';
+import { myName } from '../prefs';
 import { photoSrc, receiptFromBlob, useReceiptPhotos } from '../receipts';
 import type { Expense, Item, Member, ReceiptPhoto, SplitInput, SplitMode, Trip } from '../schemas';
 import { deleteExpense, saveExpense, today, type ExpenseDraft } from '../store';
@@ -43,7 +44,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   const [currency, setCurrency] = useState(expense?.currency ?? base);
   const [rate, setRate] = useState(rateNumber(expense?.rate ?? null));
   const [date, setDate] = useState(expense?.date ?? today());
-  const [payerId, setPayerId] = useState(expense?.payerId ?? ids[0]);
+  const [payerId, setPayerId] = useState(expense?.payerId ?? people.find((m) => m.name.trim().toLowerCase() === myName().trim().toLowerCase())?.id ?? ids[0]);
   const [mode, setMode] = useState<SplitMode>(expense?.splitMode ?? 'equal');
   const [values, setValues] = useState(expense ? initialValues(expense, ids) : defaults('equal', ids));
   const [items, setItems] = useState<ItemRow[]>(() =>

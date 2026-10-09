@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTrips } from '../hooks';
 import { setTripPhoto, useTripPhotos } from '../photos';
 import { InstallHint } from '../pwa';
+import { defaultCurrency } from '../prefs';
 import { createTrip, updateTrip } from '../store';
 import { BunnyLoader, CurrencySelect, EmptyState, Hare } from '../ui';
 import { TripGrid } from './TripGrid';
@@ -96,7 +97,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
 
 function NewTripSheet(props: { onClose: () => void; onCreated: (id: string) => void; onReceive: (file?: File) => void }) {
   const [name, setName] = useState('');
-  const [currency, setCurrency] = useState('PHP');
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [photo, setPhoto] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [busy, setBusy] = useState(false);

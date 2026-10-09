@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActionSheet, DownloadAsk } from '../ui';
 import { CropSheet } from './CropSheet';
+import { scanEnabled } from '../prefs';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
 type Props = {
@@ -57,6 +58,7 @@ export function ReceiptScanner({ onRead, onAttach, rate }: Props) {
   const picked = (list: FileList | null) => {
     const chosen = [...(list ?? [])];
     if (!chosen.length) return;
+    if (!scanEnabled()) return void run('Attaching photo', () => onAttach(chosen), 'Could not use that photo. Try another one.');
     setFiles(chosen);
     setError('');
     setStep('ask');

@@ -1,10 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { downloadFile, exportAll, restoreAll } from '../backup';
 import { db } from '../db';
-import { deleteFontPack, deletePack, FONT_PACK, hasFontPack, hasPack, PACKS } from '../receipt/packs';
+import pkg from '../../package.json';
+import { defaultCurrency, myName, scanEnabled, setPref } from '../prefs';
+import { deleteFontPack, deletePack, FONT_PACK, hasFontPack, hasPack, PACKS, saveLang, savedLang, type Lang } from '../receipt/packs';
 import { eraseTrip, KEEP_DELETED_MS, updateTrip } from '../store';
 import { isDark, setDark } from '../theme';
-import { HoldButton } from '../ui';
+import { CurrencySelect, HoldButton } from '../ui';
+
+const REPO = 'https://github.com/omnichips/CodeHub';
+const mb = (bytes: number) => `${(bytes / 1e6).toFixed(1)} MB`;
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -21,6 +27,16 @@ export function Settings({ onClose }: { onClose: () => void }) {
   useEffect(check, []);
   const deleted = useLiveQuery(async () => (await db.trips.toArray()).filter((t) => t.deleted).sort((a, b) => b.updatedAt - a.updatedAt));
   const [erasing, setErasing] = useState('');
+  const [currency, setCurrency] = useState(defaultCurrency);
+  const [name, setName] = useState(myName);
+  const [scan, setScan] = useState(scanEnabled);
+  const [lang, setLang] = useState<Lang>(savedLang);
+  const [note, setNote] = useState('');
+  const [used, setUsed] = useState<number>();
+  const measure = () => void navigator.storage?.estimate?.().then((e) => setUsed(e.usage), () => undefined);
+  useEffect(measure, []);
+  const covers = useLiveQuery(() => db.photos.count());
+  const restore = useRef<HTMLInputElement>(null);
 
   return (
     <div className="sheet" role="dialog" aria-modal="true" aria-label="Settings">
@@ -45,6 +61,71 @@ export function Settings({ onClose }: { onClose: () => void }) {
           />
         </label>
 
+        <h2>New trips and expenses</h2>
+        <div className="card">
+          <label>
+            Default currency
+            <CurrencySelect label="Default currency" value={currency} onChange={(c) => (setPref('default-currency', c), setCurrency(c))} />
+          </label>
+          <label>
+            Your name
+            <input value={name} placeholder="As it appears in your trips" onChange={(e) => (setPref('my-name', e.target.value), setName(e.target.value))} />
+          </label>
+          <p className="hint">“Paid by” starts on the member with this name.</p>
+        </div>
+
+        <h2>Receipts</h2>
+        <div className="card">
+          <label className="check row">
+            <span>Offer to read receipts</span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="switch"
+              checked={scan}
+              onChange={(e) => (setPref('receipt-scan', e.target.checked ? 'on' : 'off'), setScan(e.target.checked))}
+            />
+          </label>
+          <label>
+            Receipt language
+            <select aria-label="Receipt language" value={lang} onChange={(e) => (saveLang(e.target.value as Lang), setLang(e.target.value as Lang))}>
+              {PACKS.map((p) => (
+                <option key={p.code} value={p.code}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">Off: a receipt photo is just attached to the expense.</p>
+        </div>
+
+        <h2>Backup</h2>
+        <div className="card">
+          <div className="two">
+            <button onClick={async () => downloadFile(`fairshare-backup-${new Date().toLocaleDateString('en-CA')}.json`, await exportAll(), 'application/json')}>
+              Back up all trips
+            </button>
+            <button onClick={() => restore.current?.click()}>Restore from backup</button>
+          </div>
+          <input
+            ref={restore}
+            type="file"
+            hidden
+            aria-label="Backup file"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (!file) return;
+              try {
+                const n = await restoreAll(await file.text());
+                setNote(`Restored ${n} ${n === 1 ? 'trip' : 'trips'}.`);
+              } catch (err) {
+                setNote((err as Error).message);
+              }
+            }}
+          />
+          {note && <p role="status" className="hint">{note}</p>}
+          <p className="hint">One file with every trip and its receipt photos. Restoring merges: newer changes already here are kept.</p>
+        </div>
+
         <h2>Downloaded packs</h2>
         <ul className="list">
           {DOWNLOADS.map((d, i) => (
@@ -60,6 +141,18 @@ export function Settings({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
         <p className="hint">A deleted pack can be downloaded again the next time it is needed.</p>
+
+        <h2>Storage</h2>
+        <div className="card">
+          <p>{used === undefined ? 'Used by FairsHare on this phone' : `${mb(used)} used by FairsHare on this phone`}</p>
+          <button
+            disabled={!covers}
+            onClick={() => void db.photos.clear().then(measure)}
+          >
+            Remove trip cover photos{covers ? ` (${covers})` : ''}
+          </button>
+          <p className="hint">Cover photos only live on this phone. Receipt photos stay with their expenses.</p>
+        </div>
 
         <h2>Recently deleted</h2>
         {deleted?.length === 0 && <p className="hint">Deleted trips stay here for 7 days.</p>}
@@ -87,6 +180,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
             );
           })}
         </ul>
+
+        <h2>About</h2>
+        <p className="hint">
+          FairsHare {pkg.version} · <a href={REPO} target="_blank" rel="noreferrer">Source</a> · <a href={`${REPO}/issues/new`} target="_blank" rel="noreferrer">Report a problem</a>
+        </p>
       </div>
     </div>
   );
