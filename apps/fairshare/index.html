@@ -25,6 +25,19 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // A crash before the app draws anything would leave a blank white page. Show the reason instead, so it can be reported.
+      (function () {
+        function show(why) {
+          var root = document.getElementById('root');
+          if (!root || root.childNodes.length) return;
+          root.style.cssText = 'padding:24px;font:16px system-ui,sans-serif;color:#222';
+          root.textContent = 'FairsHare could not start on this phone. Please send this message: ' + why + ' | ' + navigator.userAgent;
+        }
+        addEventListener('error', function (e) { show(e.message || 'script failed to load'); });
+        addEventListener('unhandledrejection', function (e) { show(String(e.reason)); });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
