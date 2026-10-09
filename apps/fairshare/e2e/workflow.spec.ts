@@ -434,3 +434,19 @@ test('expenses: hold and drag one into a folder, and out again', async ({ page }
   await page.getByRole('button', { name: /Taxi/ }).click(); // a plain tap still opens it
   await expect(page.getByRole('heading', { name: 'Edit expense' })).toBeVisible();
 });
+
+test('a long expense form does not squash the receipt photos', async ({ page, browser }) => {
+  const shot = await browser.newPage({ viewport: { width: 300, height: 400 } });
+  await shot.setContent('<body style="margin:0;background:#eee"></body>');
+  const png = await shot.screenshot();
+  await shot.close();
+  await newTrip(page, ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jo']); // a form taller than the screen
+  await openExpense(page, 'Groceries', '500');
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Add receipt photo' }).click()]);
+  await chooser.setFiles({ name: 'receipt.png', mimeType: 'image/png', buffer: png });
+  await page.getByRole('button', { name: 'No, just attach the photo' }).click();
+  const thumb = page.getByRole('button', { name: 'View receipt photo 1' });
+  await expect(thumb).toBeVisible();
+  // The row holding the photos keeps its height (it was squashed to 8 px, cutting the photos off).
+  expect((await page.getByRole('group', { name: 'Saved receipt photos' }).boundingBox())!.height).toBeGreaterThanOrEqual(96);
+});

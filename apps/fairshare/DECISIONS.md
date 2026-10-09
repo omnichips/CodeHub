@@ -173,3 +173,6 @@
 - **Expenses:** press and hold an expense, then drop it on a folder to put it in that category, or on "Drop here to take it out of …" (appears at the bottom while dragging an expense from a folder) to take the category off. It is saved like an edit, so it syncs. Only offered once at least one folder exists. The edit screen's Category box still works too.
 - No library: pointer events (`src/drag.ts`, shared by both). While something is held, the page does not scroll; near the top or bottom edge it scrolls along. A quick swipe stays a scroll.
 - Checked with a mouse in WebKit (Safari's engine). A real finger drag cannot be simulated here, so **check on the iPhone** that holding then dragging moves the card rather than scrolling.
+
+## Fix: receipt photos squashed on a long expense form
+- With several receipt items the expense form is taller than the screen, and the row of receipt photos (which scrolls sideways on its own) was squeezed to 8 px, so the photos could not be seen or tapped. Screens now scroll instead of squeezing what is on them (`.screen > * { flex-shrink: 0 }` in styles.css), which also protects every other screen. Test: a form with 10 people keeps the photo row at full height; it fails without the fix.
