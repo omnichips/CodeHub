@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatAmount, parseAmount, parseUnits, RATE_RE } from '../engine/money';
 import { computeExpense, itemSplit } from '../engine/split';
-import { parseReceipt } from '../receipt/parse';
+import { checkSum, parseReceipt, rateReading } from '../receipt/parse';
 import { ReceiptScanner } from '../receipt/ReceiptScanner';
 import { friendly } from '../messages';
 import { photoSrc, receiptFromBlob, useReceiptPhotos } from '../receipts';
@@ -90,7 +90,15 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     }
     if (totals && (!amount.trim() || typed === scannedTotal)) setAmount(formatAmount(scannedTotal + totals, currency));
     setScannedTotal(scannedTotal + totals);
-    return empty.length ? `No prices found on photo ${empty.join(', ')} of ${texts.length}. The photo is kept, but none of its items were added.` : null;
+    // Items that do not add up to the receipt's subtotal (or are more than its total) mean a misread price somewhere.
+    const off = found.flatMap((f, i) => {
+      const c = f.items.length ? checkSum(f, currency) : null;
+      if (!c || c.ok) return [];
+      const which = texts.length > 1 ? `On photo ${i + 1}, the` : 'The';
+      return [`${which} items add up to ${money(c.sum, currency)}, but the receipt's ${c.against} is ${money(c.expected, currency)}. A price may be misread: check them against the photo.`];
+    });
+    if (empty.length) off.unshift(`No prices found on photo ${empty.join(', ')} of ${texts.length}. The photo is kept, but none of its items were added.`);
+    return off.length ? off.join(' ') : null;
   }
 
   const foreign = currency !== base;
@@ -193,7 +201,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         </button>
       </header>
       <div className="screen">
-        <ReceiptScanner onRead={applyReceipts} onAttach={attachPhotos} />
+        <ReceiptScanner onRead={applyReceipts} onAttach={attachPhotos} rate={(text) => rateReading(text, currency)} />
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} />

@@ -8,6 +8,8 @@ type Props = {
   onRead: (texts: string[], photos: Blob[]) => string | null | Promise<string | null>;
   /** "No, just attach": keep the photos with the expense without reading them. */
   onAttach: (photos: Blob[]) => Promise<void>;
+  /** How good a reading is (see rateReading); a photo whose reading is not good is read a second way. */
+  rate: (text: string) => { good: boolean; score: number };
 };
 
 /**
@@ -15,7 +17,7 @@ type Props = {
  * then "Scan as receipt?" (with the accuracy warning),
  * the receipt language (downloading its pack if needed, after asking), then crop and read.
  */
-export function ReceiptScanner({ onRead, onAttach }: Props) {
+export function ReceiptScanner({ onRead, onAttach, rate }: Props) {
   const [step, setStep] = useState<'ask' | 'lang' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [lang, setLang] = useState<Lang>(savedLang);
@@ -63,7 +65,10 @@ export function ReceiptScanner({ onRead, onAttach }: Props) {
   const read = (photos: Blob[]) =>
     run('Reading receipt', async (progress) => {
       const { readReceipts } = await import('./ocr'); // about 7 MB, so only loaded when used
-      const texts = await readReceipts(photos, lang, (i, p) => progress(p, photos.length > 1 ? `Reading receipt ${i + 1} of ${photos.length}` : 'Reading receipt'));
+      const label = (i: number, again: boolean) =>
+        photos.length === 1 ? (again ? 'Prices did not add up, reading again' : 'Reading receipt')
+        : again ? `Prices did not add up, reading receipt ${i + 1} again` : `Reading receipt ${i + 1} of ${photos.length}`;
+      const texts = await readReceipts(photos, lang, (i, p, again) => progress(p, label(i, again)), rate);
       const problem = await onRead(texts, photos);
       if (problem) setError(problem);
     }, 'Could not read that photo. Try again, or add the items by hand.');

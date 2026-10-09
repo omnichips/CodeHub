@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import samples from './ocr-samples.json';
-import { parseReceipt } from './parse';
+import { checkSum, parseReceipt } from './parse';
 
 describe('parseReceipt', () => {
   it('reads items and the grand total from a typical restaurant receipt', () => {
@@ -27,6 +27,7 @@ describe('parseReceipt', () => {
         { name: 'Iced Tea', price: '85.00' },
       ],
       total: '2033.35',
+      subtotal: '1848.50',
     });
   });
 
@@ -62,6 +63,7 @@ describe('parseReceipt', () => {
         { name: '生ビール', price: '650' },
       ],
       total: '2630',
+      subtotal: '2630',
     });
   });
 
@@ -83,5 +85,17 @@ describe('parseReceipt on real OCR output', () => {
     const parsed = parseReceipt(text, currency);
     expect(parsed.items.map((i) => i.price)).toEqual(prices);
     expect(parsed.total).toBe(total);
+  });
+
+  it('checks that the items add up: to the subtotal, or to no more than the total', () => {
+    const r = parseReceipt('Pork Sisig 320.00\nRice 120.00\nSUBTOTAL 440.00\nService 44.00\nTOTAL 484.00', 'PHP');
+    expect(r.subtotal).toBe('440.00');
+    expect(checkSum(r, 'PHP')).toMatchObject({ ok: true, against: 'subtotal' });
+    // "320.00" misread as "820.00": the subtotal gives it away.
+    expect(checkSum(parseReceipt('Pork Sisig 820.00\nRice 120.00\nSub-total 440.00\nTOTAL 484.00', 'PHP'), 'PHP')).toMatchObject({ ok: false, sum: 94000, expected: 44000 });
+    // No subtotal: items under the total are fine (the rest is tax or service), over it is not.
+    expect(checkSum(parseReceipt('Ramen 1,200\nTotal 1,320', 'JPY'), 'JPY')).toMatchObject({ ok: true, against: 'total' });
+    expect(checkSum(parseReceipt('Ramen 7,200\nTotal 1,320', 'JPY'), 'JPY')).toMatchObject({ ok: false });
+    expect(checkSum(parseReceipt('Ramen 1,200', 'JPY'), 'JPY')).toBeNull();
   });
 });

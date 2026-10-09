@@ -2,3 +2,6 @@ node_modules
 dist
 test-results
 playwright-report
+
+# Real receipt photos for checking the reader by hand. Never committed: they show names and card numbers.
+receipt-photos/

@@ -1,9 +1,11 @@
-import { decimals } from '../engine/money';
+import { decimals, parseAmount } from '../engine/money';
 
 export interface ParsedReceipt {
   items: { name: string; price: string }[];
   /** The receipt's grand total, if a "Total" / "Amount due" / 合計 / Kabuuan line was found. */
   total: string | null;
+  /** The receipt's subtotal (before tax, service, discounts), if it prints one. */
+  subtotal?: string;
 }
 
 // A price at the end of a line: "1,234.50", "1.234,50", "300", "₱ 300.00", "PHP 300.00", "300.00 V", "¥1,200", "1,200円",
@@ -59,6 +61,7 @@ export function parseReceipt(text: string, currency: string): ParsedReceipt {
   const d = decimals(currency);
   const items: ParsedReceipt['items'] = [];
   let total: string | null = null;
+  let subtotal: string | undefined;
   // The line before: its text when it had no price (a name waiting for one), or the item it became.
   let prev: { text?: string; item?: ParsedReceipt['items'][number] } = {};
   // NFKC turns full-width digits and signs (１,２００, ￥) into plain ones.
@@ -81,8 +84,37 @@ export function parseReceipt(text: string, currency: string): ParsedReceipt {
     }
     prev = {};
     if (!NAMEISH.test(name)) continue;
-    if (TOTAL.test(name) && !SUBTOTAL.test(name)) total = price; // the last one wins: grand total comes after subtotal
+    if (SUBTOTAL.test(name)) subtotal = price;
+    else if (TOTAL.test(name)) total = price; // the last one wins: grand total comes after subtotal
     else if (!NOT_ITEM.test(name)) items.push((prev.item = { name, price }));
   }
-  return { items, total };
+  return { items, total, ...(subtotal && { subtotal }) };
+}
+
+/**
+ * Do the items add up? To the subtotal if the receipt prints one; otherwise they must not be more than the total (the
+ * rest is tax, service or a tip). Amounts in minor units. null when the receipt has neither, so there is nothing to check.
+ */
+export function checkSum(r: ParsedReceipt, currency: string) {
+  const sum = r.items.reduce((a, i) => a + parseAmount(i.price, currency), 0);
+  if (r.subtotal) {
+    const expected = parseAmount(r.subtotal, currency);
+    return { ok: sum === expected, sum, expected, against: 'subtotal' as const };
+  }
+  if (r.total) {
+    const expected = parseAmount(r.total, currency);
+    return { ok: sum <= expected, sum, expected, against: 'total' as const };
+  }
+  return null;
+}
+
+/**
+ * How good a reading is. `good`: it found items, and they add up when the receipt says what they should add up to.
+ * `score` ranks two readings of one photo: items matching the subtotal beat everything (the strongest check), then
+ * more items; "not more than the total" only breaks ties, since a reading that missed items passes it too.
+ */
+export function rateReading(text: string, currency: string) {
+  const r = parseReceipt(text, currency);
+  const c = checkSum(r, currency);
+  return { good: r.items.length > 0 && (c?.ok ?? true), score: (c?.ok && c.against === 'subtotal' ? 1000 : 0) + r.items.length * 2 + (c?.ok ? 1 : 0) };
 }
