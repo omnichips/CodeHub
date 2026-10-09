@@ -96,6 +96,16 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .hare-word { color: var(--accent); font-weight: 700; }
 .bar .hare { margin: 2px 0; }
 .error { color: var(--error); margin: 0; }
+.meter { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); }
+.meter .seg { min-width: 0; }
+.seg0 { background: var(--accent); }
+.seg1 { background: #d9a441; }
+.seg2 { background: #5b8fd1; }
+.seg3 { background: var(--muted); }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.legend li { display: flex; align-items: center; gap: 8px; }
+.legend small { margin-left: auto; color: var(--muted); }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
 .dismissible { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
 .dismissible .x { flex: none; background: none; border: 0; color: inherit; font-size: 1.4rem; line-height: 1; padding: 0 6px; min-width: 32px; min-height: 32px; cursor: pointer; }
 .scan { align-items: end; }

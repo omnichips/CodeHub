@@ -6,6 +6,7 @@ import pkg from '../../package.json';
 import { defaultCurrency, myName, scanEnabled, setPref } from '../prefs';
 import { deleteFontPack, deletePack, FONT_PACK, hasFontPack, hasPack, PACKS, saveLang, savedLang, type Lang } from '../receipt/packs';
 import { eraseTrip, KEEP_DELETED_MS, updateTrip } from '../store';
+import { storageUse } from '../storage';
 import { isDark, setDark } from '../theme';
 import { CurrencySelect, HoldButton } from '../ui';
 
@@ -32,8 +33,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const [scan, setScan] = useState(scanEnabled);
   const [lang, setLang] = useState<Lang>(savedLang);
   const [note, setNote] = useState('');
-  const [used, setUsed] = useState<number>();
-  const measure = () => void navigator.storage?.estimate?.().then((e) => setUsed(e.usage), () => undefined);
+  const [use, setUse] = useState<Awaited<ReturnType<typeof storageUse>>>();
+  const measure = () => void storageUse().then(setUse, () => undefined);
   useEffect(measure, []);
   const covers = useLiveQuery(() => db.photos.count());
   const restore = useRef<HTMLInputElement>(null);
@@ -144,7 +145,25 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
         <h2>Storage</h2>
         <div className="card">
-          <p>{used === undefined ? 'Used by FairsHare on this phone' : `${mb(used)} used by FairsHare on this phone`}</p>
+          <p>{use ? `${mb(use.total)} used by FairsHare on this phone` : 'Measuring…'}</p>
+          {use && use.total > 0 && (
+            <>
+              <div className="meter" role="img" aria-label={use.slices.map((s) => `${s.label} ${mb(s.bytes)}`).join(', ')}>
+                {use.slices.map((s, i) => (
+                  <span key={s.label} className={`seg seg${i}`} style={{ flexGrow: s.bytes }} />
+                ))}
+              </div>
+              <ul className="legend">
+                {use.slices.map((s, i) => (
+                  <li key={s.label}>
+                    <span className={`swatch seg${i}`} aria-hidden="true" />
+                    {s.label}
+                    <small>{mb(s.bytes)}</small>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <button
             disabled={!covers}
             onClick={() => void db.photos.clear().then(measure)}
