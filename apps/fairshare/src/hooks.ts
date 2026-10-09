@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db';
+import { orderTrips } from './store';
 
 const live = <T extends { deleted: boolean }>(xs: T[]) => xs.filter((x) => !x.deleted);
 
@@ -23,5 +24,8 @@ export function useTripData(tripId: string) {
 }
 
 export function useTrips() {
-  return useLiveQuery(async () => (await db.trips.toArray()).filter((t) => !t.deleted).sort((a, b) => b.updatedAt - a.updatedAt));
+  return useLiveQuery(async () => {
+    const [trips, device] = await Promise.all([db.trips.toArray(), db.device.toCollection().first()]);
+    return orderTrips(trips.filter((t) => !t.deleted), device?.settings.tripOrder);
+  });
 }

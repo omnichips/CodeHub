@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTripData } from '../hooks';
 import { useTripPhotos } from '../photos';
 import { BunnyLoader } from '../ui';
-import { Cover } from './TripList';
+import { Cover } from './TripGrid';
 import { Expenses } from './Expenses';
 import { Members } from './Members';
 import { Others } from './Others';

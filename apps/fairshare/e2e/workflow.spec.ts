@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const tab = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 
@@ -367,4 +367,70 @@ test('category folders, hold to delete a trip, restore it from Settings, dark mo
   await expect(page.getByRole('button', { name: /Cebu/ })).toBeVisible();
   await page.reload();
   expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark'); // remembered
+});
+
+/** Press and hold on `from`, then drag to wherever `to` is once the hold has picked it up, and let go. */
+async function holdAndDrag(page: Page, from: Locator, to: () => Locator) {
+  const a = (await from.boundingBox())!;
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  const b = (await to().boundingBox())!;
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+  await page.mouse.up();
+}
+
+test('trips: hold and drag to arrange them; arrow keys too; the order is kept', async ({ page }) => {
+  await page.goto('/');
+  for (const name of ['Bohol', 'Cebu', 'Davao']) {
+    await page.getByRole('button', { name: 'New trip' }).click();
+    await page.getByLabel('Trip name').fill(name);
+    await page.getByRole('button', { name: 'Create trip' }).click();
+    await page.getByRole('button', { name: 'Back to trips' }).click();
+  }
+  const names = page.locator('.trip-name');
+  await expect(names).toHaveText(['Davao', 'Cebu', 'Bohol']); // newest first
+  await page.waitForTimeout(800); // let the cards finish rising in
+
+  await holdAndDrag(page, page.locator('.trip-card').first(), () => page.locator('.trip-card').nth(2));
+  await expect(page.getByRole('button', { name: 'Done' })).toBeVisible(); // arranging
+  await expect(names).toHaveText(['Cebu', 'Bohol', 'Davao']);
+  await page.getByRole('button', { name: /Davao/ }).click(); // while arranging, a tap does not open the trip
+  await expect(page.getByRole('button', { name: 'Back to trips' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: /Davao/ }).press('ArrowLeft');
+  await expect(names).toHaveText(['Cebu', 'Davao', 'Bohol']);
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.reload();
+  await expect(names).toHaveText(['Cebu', 'Davao', 'Bohol']); // saved on this phone
+
+  await page.getByRole('button', { name: /Bohol/ }).click({ button: 'right' }); // the Menu key or right-click arranges too
+  await expect(page.getByRole('button', { name: 'Done' })).toBeVisible();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: /Bohol/ }).click(); // a plain tap still opens the trip
+  await expect(page.getByRole('heading', { name: 'Bohol' })).toBeVisible();
+});
+
+test('expenses: hold and drag one into a folder, and out again', async ({ page }) => {
+  await newTrip(page, ['Ana']);
+  await openExpense(page, 'Lunch', '120');
+  await page.getByLabel('Category (optional)').fill('Day 1');
+  await save(page);
+  await openExpense(page, 'Taxi', '80');
+  await save(page);
+  const folder = page.locator('details.folder');
+  await expect(folder.locator('summary')).toContainText('1 expense');
+  await page.waitForTimeout(600);
+
+  await holdAndDrag(page, page.getByRole('button', { name: /Taxi/ }), () => folder.locator('summary'));
+  await expect(folder.locator('summary')).toContainText('2 expenses');
+  await expect(page.getByRole('dialog', { name: 'Expense' })).toHaveCount(0); // the drag did not open it
+
+  await folder.locator('summary').click();
+  await holdAndDrag(page, page.getByRole('button', { name: /Taxi/ }), () => page.getByText('Drop here to take it out of “Day 1”'));
+  await expect(folder.locator('summary')).toContainText('1 expense');
+  await expect(page.getByRole('button', { name: /Taxi/ })).toBeVisible();
+
+  await page.getByRole('button', { name: /Taxi/ }).click(); // a plain tap still opens it
+  await expect(page.getByRole('heading', { name: 'Edit expense' })).toBeVisible();
 });

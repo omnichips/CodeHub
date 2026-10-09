@@ -3,7 +3,7 @@
 // It only works inside a tap, which is why it hangs off the click event. Untestable on Windows: check on the iPhone.
 let toggle: HTMLLabelElement | null = null;
 
-function tick() {
+export function tick() {
   try {
     if (navigator.vibrate?.(8)) return;
     if (!toggle) {

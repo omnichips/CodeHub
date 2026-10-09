@@ -1,23 +1,12 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTrips } from '../hooks';
 import { setTripPhoto, useTripPhotos } from '../photos';
 import { InstallHint } from '../pwa';
 import { createTrip, updateTrip } from '../store';
 import { BunnyLoader, CurrencySelect, EmptyState, Hare } from '../ui';
+import { TripGrid } from './TripGrid';
 import { ImportFileButton, Receive } from './Receive';
 import { Settings } from './Settings';
-
-/** The cover: the trip's photo, or the hare on a soft green tile. `name` lets the photo glide into the trip's header. */
-export function Cover({ url, tripId, className = 'cover' }: { url?: string; tripId: string; className?: string }) {
-  const style = { viewTransitionName: `cover-${tripId}` } as CSSProperties;
-  return url ? (
-    <img className={className} src={url} alt="" style={style} />
-  ) : (
-    <span className={`${className} placeholder`} style={style}>
-      <Hare size={56} />
-    </span>
-  );
-}
 
 export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const trips = useTrips();
@@ -25,6 +14,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const [adding, setAdding] = useState(false);
   const [receive, setReceive] = useState<{ file?: File }>();
   const [settings, setSettings] = useState(false);
+  const [arranging, setArranging] = useState(false);
   if (!trips)
     return (
       <div className="app">
@@ -39,28 +29,27 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
       <header className="bar">
         <Hare size={32} />
         <h1>Fairs<span className="hare-word">Hare</span></h1>
+        {arranging ? (
+          <button className="primary" onClick={() => setArranging(false)}>Done</button>
+        ) : (
         <button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}>
           <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
             <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
             <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         </button>
+        )}
       </header>
       <main className="screen dashboard">
         <InstallHint />
         {active.length === 0 && <EmptyState>No trips yet</EmptyState>}
         {active.length === 0 && <p className="hint center">Tap + to start one.</p>}
-        <ul className="trip-grid">
-          {active.map((t, i) => (
-            <li key={t.id} style={{ '--i': i } as CSSProperties}>
-              <button className="trip-card" onClick={() => onOpen(t.id)}>
-                <Cover url={photos[t.id]} tripId={t.id} />
-                <span className="trip-name">{t.name}</span>
-                <small>{t.baseCurrency}</small>
-              </button>
-            </li>
-          ))}
-        </ul>
+        {active.length > 1 && (
+          <p role="status" className="hint center">
+            {arranging ? 'Drag the trips into the order you want (or use the arrow keys), then tap Done.' : 'Press and hold a trip to move it.'}
+          </p>
+        )}
+        <TripGrid trips={active} photos={photos} onOpen={onOpen} arranging={arranging} onArrange={() => setArranging(true)} />
 
         {archived.length > 0 && (
           <>

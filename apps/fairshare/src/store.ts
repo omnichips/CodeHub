@@ -87,6 +87,14 @@ export function saveExpense(tripId: string, draft: ExpenseDraft, id?: string, ph
   });
 }
 
+/** Moves an expense into a category (a folder on the Expenses tab), or out of any with `undefined`. */
+export async function setExpenseCategory(id: string, category: string | undefined) {
+  const e = await db.expenses.get(id);
+  if (!e || e.category === category) return;
+  const { category: _old, ...rest } = e;
+  await inTrip(e.tripId, (s) => db.expenses.put(ExpenseSchema.parse({ ...rest, ...(category && { category }), ...s })));
+}
+
 export async function deleteExpense(id: string) {
   const e = await db.expenses.get(id);
   if (e) await inTrip(e.tripId, (s) => db.expenses.update(id, { deleted: true, ...s }));
@@ -103,6 +111,21 @@ export function addPayment(tripId: string, fromId: string, toId: string, amountM
 export async function deletePayment(id: string) {
   const p = await db.payments.get(id);
   if (p) await inTrip(p.tripId, (s) => db.payments.update(id, { deleted: true, ...s }));
+}
+
+/** This phone's own order of the trip cards, as the user dragged them. Not synced: each person arranges their own. */
+export async function setTripOrder(ids: string[]) {
+  const id = await deviceId();
+  await db.transaction('rw', db.device, async () => {
+    const row = await db.device.get(id);
+    await db.device.update(id, { settings: { ...row?.settings, tripOrder: ids } });
+  });
+}
+
+/** Trips in the user's order. Trips not arranged yet (new or just received) come first, newest first. */
+export function orderTrips(trips: Trip[], order: unknown): Trip[] {
+  const rank = new Map(Array.isArray(order) ? order.map((id, i) => [id, i]) : []);
+  return [...trips].sort((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1) || b.updatedAt - a.updatedAt);
 }
 
 export const KEEP_DELETED_MS = 7 * 24 * 60 * 60 * 1000;

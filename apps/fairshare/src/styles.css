@@ -289,3 +289,21 @@ button.danger { color: var(--error); border-color: var(--error); }
 .check input.switch::before { content: ''; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.25s var(--spring); }
 .check input.switch:checked { background: var(--accent); }
 .check input.switch:checked::before { transform: translateX(20px); }
+
+/* ---- Arranging trips: hold a card, the cards wiggle, drag one to its new place ---- */
+.trip-card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.trip-grid.arranging > li { animation: none; }
+.trip-grid.arranging .trip-card { animation: wiggle 0.26s ease-in-out infinite alternate; }
+.trip-grid.arranging > li:nth-child(even) .trip-card { animation-delay: -0.13s; }
+.trip-grid > li.lifted { position: relative; z-index: 3; }
+.trip-grid > li.lifted .trip-card { animation: none; transform: scale(1.07); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28); }
+@keyframes wiggle { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+
+/* ---- Dragging an expense into or out of a folder ---- */
+.drag-list > li { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.list > li.lifted { position: relative; z-index: 5; animation: none; }
+.list > li.lifted .row, .trip-grid > li.lifted .trip-card { filter: none; }
+.list > li.lifted .row { transform: scale(1.03); box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25); }
+.folder.drop-target { border-color: var(--accent); background: var(--accent-soft); }
+.drop-out { position: fixed; z-index: 4; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom)); display: flex; align-items: center; justify-content: center; min-height: 64px; padding: 8px 16px; border: 2px dashed var(--muted); border-radius: 14px; background: var(--card); color: var(--muted); text-align: center; animation: rise 0.25s var(--ease) both; }
+.drop-out.drop-target { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
