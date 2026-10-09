@@ -37,6 +37,8 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
   const base = trip.baseCurrency;
 
   const [title, setTitle] = useState(expense?.title ?? '');
+  const [category, setCategory] = useState(expense?.category ?? '');
+  const categories = [...new Set(expenses.flatMap((e) => (e.category ? [e.category] : [])))];
   const [amount, setAmount] = useState(expense ? formatAmount(expense.amountMinor, expense.currency) : '');
   const [currency, setCurrency] = useState(expense?.currency ?? base);
   const [rate, setRate] = useState(rateNumber(expense?.rate ?? null));
@@ -66,6 +68,8 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
 
   /** Adds the items of scanned receipts (one text per photo); returns a message when a photo gave nothing. */
   async function applyReceipts(texts: string[], photos: Blob[]): Promise<string | null> {
+    // Every scanned photo is kept with the expense (limit 12), whether or not prices were found on it.
+    await attachPhotos(photos);
     const found = texts.map((t) => parseReceipt(t, currency));
     const rows = found.flatMap((f) => f.items.map((i) => itemRow(ids, i.name, i.price)));
     const empty = found.flatMap((f, i) => (f.items.length ? [] : [i + 1]));
@@ -74,9 +78,6 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
       const seen = texts.join(' ').replace(/\s+/g, ' ').trim();
       return `No prices found on that receipt. Try a sharper, flatter photo with the receipt filling the frame, or add the items by hand. Read: "${seen.slice(0, 160) || 'nothing'}"`;
     }
-    // The photos that gave items are kept with the expense (limit 12).
-    const withItems = await Promise.all(photos.filter((_, i) => found[i].items.length > 0).map((p) => receiptFromBlob(trip.id, p)));
-    setFresh((prev) => [...prev, ...withItems].slice(0, Math.max(0, 12 - kept.length)));
     // Keep items already typed; replace the empty starter row.
     setItems((prev) => [...prev.filter((i) => i.name.trim() || i.price.trim()), ...rows]);
     setMode('items');
@@ -89,7 +90,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     }
     if (totals && (!amount.trim() || typed === scannedTotal)) setAmount(formatAmount(scannedTotal + totals, currency));
     setScannedTotal(scannedTotal + totals);
-    return empty.length ? `No prices found on photo ${empty.join(', ')} of ${texts.length}. Its items were not added.` : null;
+    return empty.length ? `No prices found on photo ${empty.join(', ')} of ${texts.length}. The photo is kept, but none of its items were added.` : null;
   }
 
   const foreign = currency !== base;
@@ -161,7 +162,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
     try {
       computeExpense({ ...input, baseCurrency: base });
       const receipts = [...kept, ...fresh.map((p) => p.id)];
-      draft = { ...input, title: title.trim(), date, payerId, ...(receipts.length > 0 && { receipts }) };
+      draft = { ...input, title: title.trim(), date, payerId, ...(receipts.length > 0 && { receipts }), ...(category.trim() && { category: category.trim() }) };
     } catch (e) {
       splitError = (e as Error).message;
     }
@@ -173,7 +174,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
 
   return (
     <div className="sheet" role="dialog" aria-modal="true" aria-label="Expense">
-      <header className="bar">
+      <header className="bar centered">
         <button onClick={onClose}>Cancel</button>
         <h1>{expense ? 'Edit expense' : 'New expense'}</h1>
         <button
@@ -196,6 +197,16 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <label>
+          Category (optional)
+          {/* Type a new name or pick one already used; expenses with the same category group into one folder. */}
+          <input list="categories" placeholder="e.g. Day 1, Food" maxLength={60} value={category} onChange={(e) => setCategory(e.target.value)} />
+          <datalist id="categories">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </label>
         <div className="two">
           <label>
@@ -321,6 +332,7 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
                 <>
                   <span>{m.name}</span>
                   <input
+                    className="split-value"
                     inputMode={mode === 'shares' ? 'numeric' : 'decimal'}
                     aria-label={`${m.name} ${mode}`}
                     value={values[m.id] ?? ''}

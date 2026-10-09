@@ -149,3 +149,13 @@
 - `trips` also has `archived`; `device` is keyed by `deviceId`; `deleted` is not indexed (booleans are not valid IndexedDB keys).
 - Payments are in the trip base currency.
 - Dev dependency `fake-indexeddb` added to test Dexie under Node. Not in the plan's stack table.
+
+## Renamed FairsHare; categories, settings, trip deletion
+- **Name:** shown as **FairsHare** (page title, Home Screen name, manifest, hub, header, PDF, messages). The database, the `.fairshare` file format and the `/fairshare/` path keep the old spelling so existing data and links keep working.
+- **Scanned photos are always kept** with the expense (up to 12), also when no prices were found on them, and can be viewed like attached ones.
+- **Categories:** an optional "Category" on each expense (type a new name or pick one already used). Expenses with the same category are grouped into a folder on the Expenses tab that opens and closes (closed by default, newest folder first, with count and total); uncategorised expenses are listed below. The category travels with the expense when syncing; an older copy of the app ignores it.
+- **Mark as paid** is an empty grey circle with a soft pulse inside; tapped, it turns green with the ✓, then the payment is recorded.
+- Split boxes (Shares, Percent, Exact) now have a visible border and background. "New expense" / "Edit expense" is centred.
+- **Report:** a short page-writing animation (about 1.2 s) plays before "PDF ready", and **Generate again** rebuilds the PDF.
+- **Danger zone** (bottom of Others): Delete trip asks for confirmation that needs **holding** the button for 1.5 s (a red fill shows progress; a tap does nothing). Deleted trips go to **Settings › Recently deleted** for 7 days (Restore, or Delete forever, which also needs a hold), then are erased with everything in them when the app next opens. Only trips are in Recently deleted: deleted expenses must stay as markers so a sync cannot bring them back.
+- **Settings** (gear on the trips screen): **Dark mode** (black, greys and green; remembered on this phone), **Downloaded packs** (delete the Japanese/Tagalog receipt packs or the Japanese PDF font to free space; they download again when needed), **Recently deleted**.

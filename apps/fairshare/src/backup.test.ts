@@ -89,7 +89,7 @@ it('rejects bad payloads without touching the database', async () => {
   const foreign = JSON.parse(good);
   foreign.members[0].tripId = crypto.randomUUID();
   for (const text of ['not json', '{}', JSON.stringify(edited), JSON.stringify(foreign), good.slice(0, -20), good.replace('"sum":"', '"sum":"0')]) {
-    await expect(decodePayload(text), text.slice(0, 30)).rejects.toThrow(/FairShare|damaged/);
+    await expect(decodePayload(text), text.slice(0, 30)).rejects.toThrow(/FairsHare|damaged/);
   }
   expect(await counts()).toEqual(before);
   expect(await loadSnapshot(tripId)).toEqual(snapshot);

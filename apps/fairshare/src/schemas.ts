@@ -49,6 +49,7 @@ export const ExpenseSchema = z
     owed: z.array(OwedSchema).min(1),
     items: z.array(ItemSchema).min(1).optional(),
     receipts: z.array(id).max(12).optional(), // ids of this expense's receipt photos (see ReceiptPhotoSchema)
+    category: z.string().trim().min(1).max(60).optional(), // a user-named folder ("Day 1", "Food"); expenses with the same name group together
     ...sync,
   })
   .refine((e) => (e.splitMode === 'items') === (e.items !== undefined), { message: 'items go with the items split mode' })

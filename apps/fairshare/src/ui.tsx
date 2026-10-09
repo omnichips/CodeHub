@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { formatAmount } from './engine/money';
 
 const symbols = new Map<string, string>();
@@ -104,5 +104,48 @@ export function DownloadAsk(props: { what: string; size: string; onYes: () => vo
         <button onClick={props.onNo}>Not now</button>
       </div>
     </div>
+  );
+}
+
+/** A panel that slides up from the bottom over a dimmed screen, iOS action-sheet style, with Cancel at the bottom. */
+export function ActionSheet({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div className="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="action-sheet" role="dialog" aria-modal="true" aria-label={label}>
+        {children}
+        <button className="cancel" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * For what cannot be undone: it only acts after being held down for `ms` (a red fill shows the progress). Letting go
+ * early does nothing. Works with touch, mouse, and held Space or Enter.
+ */
+export function HoldButton({ children, onDone, ms = 1500 }: { children: ReactNode; onDone: () => void; ms?: number }) {
+  const timer = useRef(0);
+  const [holding, setHolding] = useState(false);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const start = () => {
+    setHolding(true);
+    timer.current = window.setTimeout(() => (setHolding(false), onDone()), ms);
+  };
+  const stop = () => (clearTimeout(timer.current), setHolding(false));
+  return (
+    <button
+      type="button"
+      className={`hold danger${holding ? ' holding' : ''}`}
+      style={{ '--hold': `${ms}ms` } as CSSProperties}
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && !e.repeat && start()}
+      onKeyUp={stop}
+    >
+      <span>{children}</span>
+    </button>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DownloadAsk } from '../ui';
+import { ActionSheet, DownloadAsk } from '../ui';
 import { CropSheet } from './CropSheet';
 import { downloadPack, hasPack, PACKS, saveLang, savedLang, type Lang } from './packs';
 
@@ -112,7 +112,7 @@ export function ReceiptScanner({ onRead, onAttach }: Props) {
         <ActionSheet label="Scan as receipt?" onClose={() => setStep(null)}>
           <h2 className="sheet-title">Scan as receipt?</h2>
           <p>
-            FairShare can read the items and prices from {files.length > 1 ? `these ${files.length} photos` : 'this photo'} on your phone.{' '}
+            FairsHare can read the items and prices from {files.length > 1 ? `these ${files.length} photos` : 'this photo'} on your phone.{' '}
             <strong>Reading is automatic and may not be accurate:</strong> check every line and price before saving.
           </p>
           <button className="primary" onClick={() => setStep('lang')}>Yes, scan it</button>
@@ -177,17 +177,5 @@ export function ReceiptScanner({ onRead, onAttach }: Props) {
         />
       )}
     </>
-  );
-}
-
-/** A panel that slides up from the bottom over a dimmed screen, iOS action-sheet style, with Cancel at the bottom. */
-function ActionSheet({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="action-sheet" role="dialog" aria-modal="true" aria-label={label}>
-        {children}
-        <button className="cancel" onClick={onClose}>Cancel</button>
-      </div>
-    </div>
   );
 }

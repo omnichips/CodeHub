@@ -46,6 +46,7 @@ test('Workflow A: trip, members, expense, balances, settle up', async ({ page })
   await expect(page.getByText('Cy pays Ana ₱100.00')).toBeVisible();
 
   await page.getByRole('button', { name: 'Mark as paid' }).first().click();
+  await expect(page.getByRole('button', { name: 'Mark as paid' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Mark as paid' }).first().click();
   await expect(page.getByText('All settled')).toBeVisible();
   await expect(page.getByText('₱0.00', { exact: true })).toHaveCount(3);
@@ -334,4 +335,36 @@ test('camera button: opens the photo picker; "No, just attach" keeps the photo w
   await expect(page.getByRole('dialog', { name: 'Receipt language' }).getByRole('radio')).toHaveCount(3);
   await expect(page.getByRole('radio', { name: 'English' })).toBeChecked();
   await page.getByRole('dialog', { name: 'Receipt language' }).getByRole('button', { name: 'Cancel' }).click();
+});
+
+test('category folders, hold to delete a trip, restore it from Settings, dark mode', async ({ page }) => {
+  await newTrip(page, ['Ana']);
+  await openExpense(page, 'Lunch', '120');
+  await page.getByLabel('Category (optional)').fill('Day 1');
+  await save(page);
+  const folder = page.locator('details.folder');
+  await expect(folder.locator('summary')).toContainText('Day 1');
+  await expect(page.getByRole('button', { name: /Lunch/ })).toBeHidden(); // inside the closed folder
+  await folder.locator('summary').click();
+  await expect(page.getByRole('button', { name: /Lunch/ })).toBeVisible();
+
+  await tab(page, 'Others').click();
+  await page.getByRole('button', { name: 'Delete trip' }).click();
+  const hold = page.getByRole('button', { name: 'Hold to delete' });
+  await hold.click(); // a tap does nothing
+  await expect(hold).toBeVisible();
+  await hold.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(1700);
+  await page.mouse.up();
+  await expect(page.getByText('No trips yet')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Restore Cebu' }).click();
+  await page.getByRole('switch', { name: 'Dark mode' }).check();
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(11, 12, 11)');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: /Cebu/ })).toBeVisible();
+  await page.reload();
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark'); // remembered
 });

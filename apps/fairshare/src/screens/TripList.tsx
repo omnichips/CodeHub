@@ -5,6 +5,7 @@ import { InstallHint } from '../pwa';
 import { createTrip, updateTrip } from '../store';
 import { BunnyLoader, CurrencySelect, EmptyState, Hare } from '../ui';
 import { ImportFileButton, Receive } from './Receive';
+import { Settings } from './Settings';
 
 /** The cover: the trip's photo, or the hare on a soft green tile. `name` lets the photo glide into the trip's header. */
 export function Cover({ url, tripId, className = 'cover' }: { url?: string; tripId: string; className?: string }) {
@@ -23,6 +24,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
   const photos = useTripPhotos();
   const [adding, setAdding] = useState(false);
   const [receive, setReceive] = useState<{ file?: File }>();
+  const [settings, setSettings] = useState(false);
   if (!trips)
     return (
       <div className="app">
@@ -36,7 +38,13 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
     <div className="app">
       <header className="bar">
         <Hare size={32} />
-        <h1>fairs<span className="hare-word">hare</span></h1>
+        <h1>Fairs<span className="hare-word">Hare</span></h1>
+        <button className="icon-button" aria-label="Settings" onClick={() => setSettings(true)}>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
       </header>
       <main className="screen dashboard">
         <InstallHint />
@@ -84,6 +92,7 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
           }}
         />
       )}
+      {settings && <Settings onClose={() => setSettings(false)} />}
       {receive && (
         <Receive
           file={receive.file}
@@ -125,7 +134,7 @@ function NewTripSheet(props: { onClose: () => void; onCreated: (id: string) => v
           if (!name.trim() || busy) return;
           setBusy(true);
           const id = await createTrip(name, currency);
-          if (photo) await setTripPhoto(id, photo).catch(() => undefined); // a photo that cannot be read is skipped // a photo that cannot be read is skipped
+          if (photo) await setTripPhoto(id, photo).catch(() => undefined); // a photo that cannot be read is skipped
           props.onCreated(id);
         }}
       >

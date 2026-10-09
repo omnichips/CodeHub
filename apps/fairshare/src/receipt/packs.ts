@@ -49,6 +49,10 @@ export async function fontPackBase64(): Promise<string | null> {
   }
 }
 
+/** Frees the space: the pack can be downloaded again later. */
+export const deletePack = async (code: Lang) => void (await caches.open(CACHE)).delete(packUrl(code));
+export const deleteFontPack = async () => void (await caches.open(CACHE)).delete(urlOf(FONT_PACK.path));
+
 /** Downloads a file into the cache. onProgress gets 0..1 when the size is known. */
 async function downloadToCache(url: string, onProgress: (p: number) => void): Promise<void> {
   const res = await fetch(url);

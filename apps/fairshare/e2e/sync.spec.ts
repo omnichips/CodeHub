@@ -96,7 +96,7 @@ test('a trip file that is damaged or from another app is refused, and nothing is
   const file = (text: string) => ({ name: 'x.fairshare', mimeType: 'application/octet-stream', buffer: Buffer.from(text) });
   await page.getByRole('button', { name: 'New trip' }).click();
   await page.getByLabel('Trip file').setInputFiles(file('{"hello":"world"}'));
-  await expect(page.getByRole('alert')).toContainText('not a FairShare trip');
+  await expect(page.getByRole('alert')).toContainText('not a FairsHare trip');
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByText('No trips yet')).toBeVisible();
 });

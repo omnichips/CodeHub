@@ -4,7 +4,7 @@ import { computeExpense, type ExpenseInput } from './engine/split';
 import { ExpenseSchema, MemberSchema, PaymentSchema, TripSchema, type ReceiptPhoto, type Trip } from './schemas';
 
 type Stamp = { ver: number; deviceId: string; updatedAt: number };
-export type ExpenseDraft = Omit<ExpenseInput, 'baseCurrency'> & { title: string; date: string; payerId: string; receipts?: string[] };
+export type ExpenseDraft = Omit<ExpenseInput, 'baseCurrency'> & { title: string; date: string; payerId: string; receipts?: string[]; category?: string };
 
 const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local time
 
@@ -38,7 +38,8 @@ export function createTrip(name: string, baseCurrency: string): Promise<string> 
   });
 }
 
-export function updateTrip(tripId: string, patch: Partial<Pick<Trip, 'name' | 'archived'>>) {
+/** `deleted: true` moves the trip to Recently deleted; it is erased for good after KEEP_DELETED_MS (purgeDeletedTrips). */
+export function updateTrip(tripId: string, patch: Partial<Pick<Trip, 'name' | 'archived' | 'deleted'>>) {
   const name = patch.name === undefined ? undefined : TripSchema.shape.name.parse(patch.name);
   return inTrip(tripId, (s) => db.trips.update(tripId, { ...patch, ...(name && { name }), ...s }));
 }
@@ -102,6 +103,22 @@ export function addPayment(tripId: string, fromId: string, toId: string, amountM
 export async function deletePayment(id: string) {
   const p = await db.payments.get(id);
   if (p) await inTrip(p.tripId, (s) => db.payments.update(id, { deleted: true, ...s }));
+}
+
+export const KEEP_DELETED_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Erases a trip and everything in it from this phone. Not undoable. */
+export function eraseTrip(tripId: string) {
+  return db.transaction('rw', [db.trips, db.members, db.expenses, db.payments, db.receipts, db.photos], async () => {
+    await Promise.all([db.members, db.expenses, db.payments, db.receipts].map((t) => t.where('tripId').equals(tripId).delete()));
+    await Promise.all([db.trips.delete(tripId), db.photos.delete(tripId)]);
+  });
+}
+
+/** Erases trips deleted more than 7 days ago (a trip's updatedAt is when it was deleted: nothing writes to it after). */
+export async function purgeDeletedTrips(now = Date.now()) {
+  const old = (await db.trips.toArray()).filter((t) => t.deleted && now - t.updatedAt > KEEP_DELETED_MS);
+  for (const t of old) await eraseTrip(t.id);
 }
 
 export { today };

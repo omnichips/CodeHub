@@ -27,7 +27,7 @@ export function renderReport(r: ReportData, japaneseFont?: string): Uint8Array<A
     doc.addFont('MPLUS1p.ttf', 'MPLUS1p', 'normal');
   }
   doc.setFont(family, 'normal');
-  doc.setProperties({ title: 'FairShare report', creator: 'FairShare' });
+  doc.setProperties({ title: 'FairsHare report', creator: 'FairsHare' });
 
   let y = 18;
   const ink = (size: number, color: Rgb) => doc.setFontSize(size).setTextColor(...color);

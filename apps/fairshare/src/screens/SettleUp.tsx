@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { balances, settleUp } from '../engine/balances';
 import { addPayment, deletePayment } from '../store';
 import { money, signed } from '../ui';
@@ -9,6 +10,8 @@ export function SettleUp({ data, names }: { data: TripData; names: Record<string
   const cur = trip.baseCurrency;
   const bal = balances(members.map((m) => m.id), expenses, payments);
   const transfers = settleUp(bal);
+  // The tapped circle turns green with its ✓ first; the payment is recorded once that has played.
+  const [paying, setPaying] = useState('');
 
   return (
     <>
@@ -18,7 +21,16 @@ export function SettleUp({ data, names }: { data: TripData; names: Record<string
         {transfers.map((t) => (
           <li key={t.fromId + t.toId} className="row">
             <span>{names[t.fromId]} pays {names[t.toId]} {money(t.amountMinor, cur)}</span>
-            <button className="check-paid" aria-label="Mark as paid" title="Mark as paid" onClick={() => addPayment(trip.id, t.fromId, t.toId, t.amountMinor)}>
+            <button
+              className={`check-paid${paying === t.fromId + t.toId ? ' done' : ''}`}
+              aria-label="Mark as paid"
+              title="Mark as paid"
+              disabled={paying !== ''}
+              onClick={() => {
+                setPaying(t.fromId + t.toId);
+                setTimeout(() => addPayment(trip.id, t.fromId, t.toId, t.amountMinor).finally(() => setPaying('')), 450);
+              }}
+            >
               <span aria-hidden="true">✓</span>
             </button>
           </li>

@@ -2,13 +2,15 @@ import { useRef, useState } from 'react';
 import { downloadFile, exportTrip } from '../backup';
 import { removeTripPhoto, setTripPhoto } from '../photos';
 import { updateTrip } from '../store';
+import { ActionSheet, HoldButton } from '../ui';
 import type { TripData } from './Expenses';
 import { Sync } from './Sync';
 
-/** Sending and receiving trips, then the trip's own settings (name, photo, backup, archive) at the bottom. */
+/** Sending and receiving trips, then the trip's own settings (name, photo, backup, archive), then the danger zone. */
 export function Others({ data, photo, onArchived }: { data: TripData; photo?: string; onArchived: () => void }) {
   const { trip } = data;
   const [photoError, setPhotoError] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
 
   return (
@@ -52,6 +54,19 @@ export function Others({ data, photo, onArchived }: { data: TripData; photo?: st
           Archive trip
         </button>
       </div>
+
+      <h2 className="danger-title">Danger zone</h2>
+      <div className="card danger-zone">
+        <p className="hint">Deleting removes the trip from this phone. It stays in Settings › Recently deleted for 7 days, then it is gone for good.</p>
+        <button className="danger" onClick={() => setDeleting(true)}>Delete trip</button>
+      </div>
+      {deleting && (
+        <ActionSheet label="Delete trip?" onClose={() => setDeleting(false)}>
+          <h2 className="sheet-title">Delete “{trip.name}”?</h2>
+          <p>Its expenses, members and payments go with it. You can restore it from Settings › Recently deleted within 7 days.</p>
+          <HoldButton onDone={() => void updateTrip(trip.id, { deleted: true })}>Hold to delete</HoldButton>
+        </ActionSheet>
+      )}
     </>
   );
 }

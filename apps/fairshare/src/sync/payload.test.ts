@@ -101,7 +101,7 @@ it('rejects damaged data: edited file, flipped frame, truncated file', async () 
   const { text, sum } = await encodePayload(snap);
 
   await expect(decodePayload(text.replace('Expense 3', 'Expense 9'))).rejects.toThrow('damaged'); // checksum
-  await expect(decodePayload(text.slice(0, -30))).rejects.toThrow('not a FairShare');
+  await expect(decodePayload(text.slice(0, -30))).rejects.toThrow('not a FairsHare');
 
   const frames = toFrames(text, sum);
   const flipped = [...frames];
@@ -127,10 +127,10 @@ it('rejects a payload that is well formed JSON but inconsistent', async () => {
     const s = structuredClone(good);
     corrupt(s);
     // v1 has no checksum, so this isolates the schema checks from the checksum check
-    await expect(decodePayload(JSON.stringify({ format: 'fairshare', version: 1, ...s })), name).rejects.toThrow('FairShare');
+    await expect(decodePayload(JSON.stringify({ format: 'fairshare', version: 1, ...s })), name).rejects.toThrow('FairsHare');
   }
   for (const text of ['', 'not json', '[]', '{}', '{"format":"other","version":2}', '{"format":"fairshare","version":99}', 'null']) {
-    await expect(decodePayload(text), text).rejects.toThrow('FairShare');
+    await expect(decodePayload(text), text).rejects.toThrow('FairsHare');
   }
 });
 

@@ -38,8 +38,8 @@ export default defineConfig({
       registerType: 'prompt', // the app shows its own "update ready" banner
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'FairShare',
-        short_name: 'FairShare',
+        name: 'FairsHare',
+        short_name: 'FairsHare',
         description: 'Split trip expenses. Works fully offline.',
         display: 'standalone',
         // start_url and scope are left out on purpose: the plugin sets both to the build's base path, so the same

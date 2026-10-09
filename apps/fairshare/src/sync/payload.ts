@@ -11,7 +11,7 @@ export const MAX_FILE_SIZE = 40_000_000;
 export const FRAME_CHARS = 600;
 const MAX_FRAMES = 500;
 
-const NOT_FAIRSHARE = 'This is not a FairShare trip';
+const NOT_FAIRSHARE = 'This is not a FairsHare trip';
 const DAMAGED = 'The data is damaged. Please try again';
 const TOO_LARGE = 'This trip is too large to import';
 
@@ -64,7 +64,7 @@ export async function decodePayload(text: string): Promise<Snapshot> {
   // Version 1 files (phase 3 backups) have no checksum.
   if (raw.version === 2 && raw.sum !== (await checksum(bodyOf(raw)))) throw new Error(DAMAGED);
   const parsed = BodySchema.safeParse(raw);
-  if (!parsed.success) throw new Error('This FairShare trip has invalid data');
+  if (!parsed.success) throw new Error('This FairsHare trip has invalid data');
   return parsed.data;
 }
 
