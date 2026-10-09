@@ -6,6 +6,7 @@ import pkg from '../../package.json';
 import { defaultCurrency, myName, scanEnabled, setPref } from '../prefs';
 import { deleteFontPack, deletePack, FONT_PACK, hasFontPack, hasPack, PACKS, saveLang, savedLang, type Lang } from '../receipt/packs';
 import { eraseTrip, KEEP_DELETED_MS, updateTrip } from '../store';
+import { canInstall, InstallSteps } from '../pwa';
 import { storageUse } from '../storage';
 import { isDark, setDark } from '../theme';
 import { CurrencySelect, HoldButton } from '../ui';
@@ -47,6 +48,13 @@ export function Settings({ onClose }: { onClose: () => void }) {
         <span />
       </header>
       <div className="screen">
+        {canInstall() && (
+          <>
+            <h2>Install on your phone</h2>
+            <div className="card install"><InstallSteps /></div>
+          </>
+        )}
+
         <h2>Appearance</h2>
         <label className="check row">
           <span>Dark mode</span>

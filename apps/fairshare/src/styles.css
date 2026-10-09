@@ -124,6 +124,9 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .tabbar button[aria-current='page'] { color: var(--accent); font-weight: 700; box-shadow: inset 0 3px 0 var(--accent); }
 .app > .saved { padding-bottom: env(safe-area-inset-bottom); background: var(--card); }
 
+.banner.install { flex-direction: column; align-items: stretch; }
+.install ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.install p { margin: 0; }
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line); font-size: 0.875rem; }
 .screen > .banner { border: 1px solid var(--line); border-radius: 12px; }
 
