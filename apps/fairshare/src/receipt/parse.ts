@@ -12,7 +12,7 @@ export interface ParsedReceipt {
 // "¥1,360外". OCR often reads "," for ".". A space is never a thousands separator: "@33.50 100.50" is two numbers.
 // A currency code (or "P", OCR for ₱) only counts when it stands apart, so "TOTAL" keeps its "TAL".
 // "\" is how many Japanese receipt fonts print ¥; 外 and 内 mark tax added or included.
-const PRICE_AT_END = /^(.*?)[\s.:]*(?:(?<=\s)(?:[A-Z]{3}|P)\s*|[₱$€£¥₩₹\\]\s*)?(-?\d{1,3}(?:[,.]\d{3})*(?:[.,]\d{1,3})?|-?\d+(?:[.,]\d{1,3})?)\s*(?:円|[A-Z*※外内])?$/;
+const PRICE_AT_END = /^(.*?)[\s.:]*(?:\s(?:[A-Z]{3}|P)\s*|[₱$€£¥₩₹\\]\s*)?(-?\d{1,3}(?:[,.]\d{3})*(?:[.,]\d{1,3})?|-?\d+(?:[.,]\d{1,3})?)\s*(?:円|[A-Z*※外内])?$/;
 // English, Tagalog and Japanese words. Japanese has no word boundaries, so its words match anywhere in the name.
 const TOTAL = /\b(grand\s*total|total\s*(amount|due)?|amount\s*due|balance\s*due|kabuuan)\b|合計|お会計/i;
 const SUBTOTAL = /sub\s*-?\s*total|小計/i;
@@ -31,7 +31,7 @@ const NOT_ITEM = new RegExp(
 const DATE_OR_TIME = /\d{1,4}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}\s*年|\d:\d{2}/;
 const CJK = String.raw`\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー々`;
 // Japanese OCR output often has a space between every character: "ラ ー メ ン" -> "ラーメン".
-const CJK_GAP = new RegExp(String.raw`(?<=[${CJK}])\s+(?=[${CJK}])`, 'gu');
+const CJK_GAP = new RegExp(String.raw`([${CJK}])\s+(?=[${CJK}])`, 'gu');
 // A name needs two letters, or one Japanese character (水 is a whole item).
 const NAMEISH = new RegExp(String.raw`\p{L}{2}|[${CJK}]`, 'u');
 // A real word: two letters in a token with no digits ("Sprite", not a barcode such as "7489BSBOIAS").
@@ -66,7 +66,7 @@ export function parseReceipt(text: string, currency: string): ParsedReceipt {
   let prev: { text?: string; item?: ParsedReceipt['items'][number] } = {};
   // NFKC turns full-width digits and signs (１,２００, ￥) into plain ones.
   for (const line of text.normalize('NFKC').split(/\r?\n/)) {
-    const clean = line.trim().replace(CJK_GAP, '');
+    const clean = line.trim().replace(CJK_GAP, '$1');
     const m = PRICE_AT_END.exec(clean);
     const price = m && !DATE_OR_TIME.test(clean) ? cleanPrice(m[2], d) : null;
     if (!m || !price || m[2].startsWith('-')) {
