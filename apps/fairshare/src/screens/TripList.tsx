@@ -44,10 +44,8 @@ export function TripList({ onOpen }: { onOpen: (id: string) => void }) {
         <InstallHint />
         {active.length === 0 && <EmptyState>No trips yet</EmptyState>}
         {active.length === 0 && <p className="hint center">Tap + to start one.</p>}
-        {active.length > 1 && (
-          <p role="status" className="hint center">
-            {arranging ? 'Drag the trips into the order you want (or use the arrow keys), then tap Done.' : 'Press and hold a trip to move it.'}
-          </p>
+        {active.length > 1 && arranging && (
+          <p role="status" className="hint center">Drag the trips into the order you want (or use the arrow keys), then tap Done.</p>
         )}
         <TripGrid trips={active} photos={photos} onOpen={onOpen} arranging={arranging} onArrange={() => setArranging(true)} />
 

@@ -353,7 +353,12 @@ export function ExpenseSheet({ trip, members, expenses, expense, onClose }: Prop
         </ul>
         )}
         {remaining && <p role="status">Remaining: {remaining}</p>}
-        {saveError && <p role="alert" className="error">{saveError}</p>}
+        {saveError && (
+          <p role="alert" className="error dismissible">
+            {saveError}
+            <button type="button" className="x" aria-label="Dismiss" onClick={() => setSaveError('')}>×</button>
+          </p>
+        )}
         {splitError && amountMinor !== null && <p role="alert" className="error">{splitError}</p>}
 
         {expense && (

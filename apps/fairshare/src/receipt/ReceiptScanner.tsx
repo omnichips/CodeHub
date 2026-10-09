@@ -104,7 +104,12 @@ export function ReceiptScanner({ onRead, onAttach, rate }: Props) {
         }}
       />
       {busy && <p role="status" className="scan-status">{busy}</p>}
-      {error && <p role="alert" className="error">{error}</p>}
+      {error && (
+        <p role="alert" className="error dismissible">
+          {error}
+          <button type="button" className="x" aria-label="Dismiss" onClick={() => setError('')}>×</button>
+        </p>
+      )}
 
       <button className="fab-add fab-camera" aria-label="Add receipt photo" disabled={busy !== null} onClick={() => library.current?.click()}>
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false">

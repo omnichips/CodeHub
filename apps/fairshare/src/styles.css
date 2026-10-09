@@ -96,6 +96,8 @@ input[type='checkbox'] { accent-color: var(--accent); }
 .hare-word { color: var(--accent); font-weight: 700; }
 .bar .hare { margin: 2px 0; }
 .error { color: var(--error); margin: 0; }
+.dismissible { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+.dismissible .x { flex: none; background: none; border: 0; color: inherit; font-size: 1.4rem; line-height: 1; padding: 0 6px; min-width: 32px; min-height: 32px; cursor: pointer; }
 .scan { align-items: end; }
 .crop-stage { overflow: hidden; touch-action: none; border-radius: 12px; background: #000; align-self: center; width: 100%; max-width: 560px; padding: 24px; } /* padding keeps the corner grips fully on screen */
 .crop-image { position: relative; }
