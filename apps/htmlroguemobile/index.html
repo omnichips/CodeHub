@@ -431,6 +431,17 @@
                 font-size: 14px;
                 text-shadow: 0 0 8px currentColor;
             }
+            /* Icon in front of the number: what the enemy will do. */
+            #e-intent-text[data-kind="attack"]::before, #e2-intent-text[data-kind="attack"]::before { content: "\2694\FE0F"; }
+            #e-intent-text[data-kind="block"]::before, #e2-intent-text[data-kind="block"]::before { content: "\1F6E1\FE0F"; }
+            #e-intent-text::before, #e2-intent-text::before {
+                font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+                font-size: 0.85em;
+                margin-right: 3px;
+                text-shadow: none;
+            }
+            .intent-bubble { width: auto; min-width: 45px; }
+            .intent-screen { padding: 0 4px; box-sizing: border-box; white-space: nowrap; }
             /* Intent readability: periodic flicker + pre-action shake cue. */
             #e-intent-text.intent-flicker, #e2-intent-text.intent-flicker {
                 animation: intent-flicker 0.18s steps(2, end) 2;
@@ -2181,6 +2192,21 @@
                 background: rgba(2, 6, 23, 0.88);
             }
             #card-inspect.open { display: flex; }
+            /* Dragging a hand card (touch): the copy under the finger, the faded original, and the enemies it can land on. */
+            .card-drag-ghost {
+                position: fixed;
+                left: 0;
+                top: 0;
+                z-index: 25500;
+                pointer-events: none;
+                margin: 0 !important;
+                box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+                transition: none !important;
+            }
+            .card.card-dragging { opacity: 0.25 !important; }
+            .enemy-slot.drop-ready .enemy-target-corners { opacity: 0.6; }
+            .enemy-slot.drop-hover { filter: drop-shadow(0 0 12px #ef4444) brightness(1.2); }
+            .enemy-slot.drop-hover .enemy-target-corners { opacity: 1; transform: scale(1.08); }
             #card-inspect .card {
                 zoom: var(--inspect-zoom, 1.6);
                 transform: none !important;
@@ -2301,10 +2327,12 @@
                 .stat-text-internal { line-height: 13px; font-size: 7px; }
                 .status-bar { min-height: 16px; margin-bottom: 2px; }
                 .status-icon, .status-glyph { font-size: 12px; }
-                .enemy-name-wrap { top: -44px; }
-                .enemy-intent-wrap { top: -30px; }
-                .intent-bubble { width: 34px; height: 26px; }
-                #e-intent-text, #e2-intent-text { font-size: 10px; }
+                /* Name, then intent, centred above the enemy */
+                .enemy-name-wrap { top: -46px; }
+                .enemy-intent-wrap { top: -32px; left: 50%; transform: translateX(-50%); }
+                .intent-bubble { min-width: 44px; height: 24px; }
+                .intent-screen::before { opacity: 0.45; }
+                #e-intent-text, #e2-intent-text { font-size: 12px; }
                 #e-box, #e-box-2 { top: 0; }
                 #battle-mod-hud .battle-mod-chip { width: 20px; height: 20px; font-size: 11px; }
                 #battle-mod-hud .status-tooltip { top: 120%; bottom: auto; left: auto; right: 0; transform: none; white-space: normal; width: 180px; }
@@ -2852,48 +2880,120 @@ if (matchMedia('(hover: none)').matches) {
     }, true);
 }
 
-// Cards: a tap still plays/picks them; holding one shows it full size with all its text.
+// Cards on touch screens: hold any card to see it full size with all its text.
+// Battle hand cards are played by dragging: attacks onto an enemy, everything else anywhere above the hand.
+// Tapping a hand card shows it instead of playing it (see renderHand).
+const IS_TOUCH = matchMedia('(hover: none)').matches;
 const CardInspect = {
     holdMs: 450,
-    timer: null,
-    start: null,
-    opened: false,
     open(card) {
         const view = DOM.get('card-inspect');
         const copy = card.cloneNode(true);
-        copy.classList.remove('card-targeting', 'card-reflow', 'card-vibrate', 'anim-card-play', 'anim-card-discard');
+        copy.classList.remove('card-targeting', 'card-reflow', 'card-vibrate', 'anim-card-play', 'anim-card-discard', 'card-dragging');
         // Exhaust/Destroy notes go beside the card instead of in a hover tooltip.
         view.replaceChildren(copy, ...copy.querySelectorAll('.status-tooltip'));
         view.classList.add('open');
-        this.opened = true;
         if (navigator.vibrate) navigator.vibrate(10);
     },
     close() {
         DOM.get('card-inspect').classList.remove('open');
     },
-    cancel() {
+};
+
+const CardTouch = {
+    card: null,      // card under the finger
+    start: null,     // where the touch began
+    timer: null,     // hold-to-inspect timer
+    swallow: false,  // this touch opened the inspect view or was a drag: no click afterwards
+    ghost: null,     // copy of the card that follows the finger while dragging
+    dropSlot: null,  // enemy slot under the finger
+
+    canDrag(card) {
+        return card.parentElement === DOM.get('hand') && DOM.get('screen-battle').classList.contains('active');
+    },
+    beginDrag(touch) {
         clearTimeout(this.timer);
-        this.timer = null;
+        const card = this.card, r = card.getBoundingClientRect();
+        const ghost = card.cloneNode(true);
+        ghost.classList.add('card-drag-ghost');
+        ghost.style.cssText = `width:${r.width}px;height:${r.height}px;`;
+        this.offset = { x: touch.clientX - r.left, y: touch.clientY - r.top };
+        document.body.appendChild(ghost);
+        this.ghost = ghost;
+        card.classList.add('card-dragging');
+        EnemyPartyManager.getAliveIndices().forEach((i) => DOM.get(i === 0 ? 'e-box' : 'e-box-2').classList.add('drop-ready'));
+    },
+    moveDrag(touch) {
+        this.ghost.style.transform = `translate(${touch.clientX - this.offset.x}px, ${touch.clientY - this.offset.y}px) rotate(-4deg) scale(1.08)`;
+        const slot = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.enemy-slot') || null;
+        if (slot !== this.dropSlot) {
+            this.dropSlot?.classList.remove('drop-hover');
+            slot?.classList.add('drop-hover');
+            this.dropSlot = slot;
+        }
+    },
+    endDrag(touch) {
+        const card = this.card, slot = this.dropSlot;
+        this.ghost.remove();
+        this.ghost = null;
+        card.classList.remove('card-dragging');
+        DOM.queryAll('.drop-ready, .drop-hover').forEach((el) => el.classList.remove('drop-ready', 'drop-hover'));
+        this.dropSlot = null;
+        if (!card.isConnected) return;
+        const data = state.hand[Array.from(DOM.get('hand').children).indexOf(card)];
+        const slotIndex = slot ? (slot.id === 'e-box-2' ? 1 : 0) : -1;
+        const aboveHand = touch.clientY < DOM.get('hand-ui').getBoundingClientRect().top;
+        if (slotIndex >= 0 && EnemyPartyManager.getAliveIndices().includes(slotIndex)) {
+            if (CardRules.needsEnemyTarget(data) && EnemyPartyManager.getAliveIndices().length > 1) {
+                // Same path as tapping a card, then an enemy.
+                pendingTargetCardElement = card;
+                EnemyPartyManager.selectTargetFromSlot(slotIndex);
+            } else {
+                playCard(card);
+            }
+        } else if (aboveHand && data && !CardRules.needsEnemyTarget(data)) {
+            playCard(card);
+        } else if (aboveHand) {
+            showPop('p-pop-anchor', 'DRAG ONTO AN ENEMY', '#f97316');
+        }
     },
 };
 document.addEventListener('touchstart', (e) => {
+    clearTimeout(CardTouch.timer);
+    CardTouch.swallow = false;
     const card = e.target.closest('.card');
-    CardInspect.cancel();
-    CardInspect.opened = false;
-    if (!card || e.touches.length > 1 || card.closest('#card-inspect')) return;
-    CardInspect.start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    CardInspect.timer = setTimeout(() => { CardInspect.timer = null; CardInspect.open(card); }, CardInspect.holdMs);
+    CardTouch.card = (card && e.touches.length === 1 && !card.closest('#card-inspect')) ? card : null;
+    if (!CardTouch.card) return;
+    CardTouch.start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    CardTouch.timer = setTimeout(() => { CardTouch.swallow = true; CardInspect.open(card); }, CardInspect.holdMs);
 }, { passive: true });
 document.addEventListener('touchmove', (e) => {
-    const s = CardInspect.start;
-    if (CardInspect.timer && s && Math.hypot(e.touches[0].clientX - s.x, e.touches[0].clientY - s.y) > 10) CardInspect.cancel();
-}, { passive: true });
-document.addEventListener('touchend', (e) => {
-    CardInspect.cancel();
-    // The hold opened the inspect view: swallow this touch's click so the card is not played.
-    if (CardInspect.opened) { e.preventDefault(); CardInspect.opened = false; }
+    const t = CardTouch;
+    if (!t.card) return;
+    const touch = e.touches[0];
+    if (t.ghost) {
+        e.preventDefault(); // keep the page still while a card is dragged
+        t.moveDrag(touch);
+    } else if (Math.hypot(touch.clientX - t.start.x, touch.clientY - t.start.y) > 10) {
+        clearTimeout(t.timer);
+        if (!t.swallow && t.canDrag(t.card)) { t.swallow = true; t.beginDrag(touch); t.moveDrag(touch); }
+        else if (!t.swallow) t.card = null; // a scroll (manifest, shop), not a drag
+    }
 }, { passive: false });
-document.addEventListener('touchcancel', () => CardInspect.cancel());
+document.addEventListener('touchend', (e) => {
+    const t = CardTouch;
+    clearTimeout(t.timer);
+    if (t.ghost) t.endDrag(e.changedTouches[0]);
+    // A hold or a drag already did its job: swallow this touch's click.
+    if (t.swallow) { e.preventDefault(); t.swallow = false; }
+    t.card = null;
+}, { passive: false });
+document.addEventListener('touchcancel', () => {
+    const t = CardTouch;
+    clearTimeout(t.timer);
+    if (t.ghost) { t.dropSlot = null; t.endDrag({ clientY: Infinity }); }
+    t.card = null;
+});
 // Stops the long-press context menu (Android) from opening over the inspect view.
 document.addEventListener('contextmenu', (e) => { if (e.target.closest('.card')) e.preventDefault(); });
 
@@ -4653,6 +4753,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
                 'hand'
             );
             await TutorialManager.showInstruction(
+                (IS_TOUCH ? 'Drag a card onto the enemy to play it.\nTap a card to read it.\n\n' : '') +
                 'Now play cards.\n\nUse all 5 tutorial card types once:\nAttack, Block, Vent, Draw, Discard.\nEach type is explained only on first use.\n\nAfter all are explained, defeat the enemy to complete the tutorial.'
             );
             return;
@@ -8069,7 +8170,9 @@ function renderHand(newCardsCount = 0) {
         // Stop bubbling so clicking a front card cannot trigger a card behind it.
         d.onclick = (e) => {
             e.stopPropagation();
-            playCard(d);
+            // Touch screens play hand cards by dragging (CardTouch); a tap shows the card.
+            if (IS_TOUCH) CardInspect.open(d);
+            else playCard(d);
         };
         cont.appendChild(d);
     });
@@ -8569,9 +8672,10 @@ function updateUI() {
         }
         if (intentEl) {
             intentEl.innerText = enemy.intent;
+            intentEl.dataset.kind = enemy.intentType === 'special' ? 'special' : (enemy.isAttacking ? 'attack' : 'block');
             intentEl.style.color = enemy.intentType === 'special'
                 ? '#f97316'
-                : (enemy.isAttacking ? 'var(--hp)' : 'var(--block)');
+                : (enemy.isAttacking ? '#f87171' : '#7dd3fc');
             const intentTip = DOM.get(`e${suffix}-intent-tooltip`) || DOM.get('e-intent-tooltip');
             if (intentTip) intentTip.innerText = getEnemyIntentTooltip(enemy);
         }
