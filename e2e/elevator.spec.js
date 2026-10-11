@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { serve } from '../scripts/serve.mjs';
 
@@ -73,4 +75,20 @@ test('works offline under /elevator/ after the first visit, font included', asyn
   await expect(page.locator('#floor-options .option-card').first()).toBeVisible();
   expect(await page.evaluate(() => document.fonts.check('12px "Press Start 2P"'))).toBe(true);
   expect(await page.evaluate(() => [...document.fonts].some((f) => f.family.includes('Press Start 2P') && f.status === 'loaded'))).toBe(true);
+});
+
+test('a new deploy shows "NEW VERSION READY" on a page running the old one', async ({ page }) => {
+  const site = mkdtempSync(join(tmpdir(), 'elevator-'));
+  cpSync('dist', site, { recursive: true });
+  const server = await serve(site);
+  await page.goto(`http://localhost:${server.port}/elevator/`);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); // running under the first version
+  await expect(page.locator('#update-banner')).toBeHidden();
+
+  const sw = join(site, 'elevator', 'sw.js');
+  writeFileSync(sw, readFileSync(sw, 'utf8').replace(/const VERSION = '(\w+)'/, "const VERSION = '$1next'")); // the next deploy
+  await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+  await expect(page.locator('#update-banner')).toBeVisible({ timeout: 10_000 });
+  await server.close();
 });

@@ -2034,6 +2034,29 @@
             .swatch { width: 10px; height: 10px; flex: none; }
             .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 12px; padding: 4px 10px; cursor: pointer; border-radius: 3px; }
             .btn-menu-small { font-size: 9px; padding: 8px 14px; }
+            /* A newer deploy took over: reload to get it. */
+            #update-banner {
+                position: fixed;
+                left: 50%;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+                z-index: 26500;
+                display: none;
+                align-items: center;
+                gap: 10px;
+                padding: 6px 6px 6px 12px;
+                transform: translateX(-50%);
+                background: var(--panel);
+                border: 2px solid var(--active-node);
+                box-shadow: 0 0 18px rgba(251, 191, 36, 0.35);
+                color: var(--active-node);
+                font-size: 9px;
+                white-space: nowrap;
+            }
+            #update-banner.open { display: flex; animation: update-banner-in 260ms cubic-bezier(0.23, 1, 0.32, 1); }
+            @keyframes update-banner-in { from { opacity: 0; transform: translate(-50%, 12px); } }
+            #update-banner button { min-height: 32px; padding: 6px 12px; font-size: 8px; background: var(--active-node); color: #000; border: none; cursor: pointer; }
+            #update-banner .update-dismiss { background: transparent; color: var(--active-node); font-size: 12px; padding: 6px 8px; }
+            @media (prefers-reduced-motion: reduce) { #update-banner.open { animation: none; } }
             /* LIGHT retro effects: no page-wide colour filter and no full-screen flicker (the costly parts on phones). */
             .fx-light body { filter: none; transition: none; }
             .fx-light #global-crt-overlay { animation: none; }
@@ -2774,6 +2797,12 @@
 
 <div id="card-inspect" onclick="CardInspect.close()"></div>
 
+<div id="update-banner" role="status">
+    <span>NEW VERSION READY</span>
+    <button onclick="location.reload()">RELOAD</button>
+    <button class="update-dismiss" aria-label="Later" onclick="this.parentElement.classList.remove('open')">✕</button>
+</div>
+
 <div id="tutorial-overlay">
     <div id="tutorial-box">
         <div id="tutorial-title">TUTORIAL</div>
@@ -2833,7 +2862,17 @@
 
 <div id="global-crt-overlay"></div>
 <script src="gameData.js"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script>
+// Offline worker. When a newer deploy takes over a page that was already running an older one,
+// offer a reload (the run continues from the last elevator).
+if ('serviceWorker' in navigator) {
+    const hadVersion = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js');
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hadVersion) document.getElementById('update-banner').classList.add('open');
+    });
+}
+</script>
 
 <script>
 
