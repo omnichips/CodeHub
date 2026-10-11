@@ -6876,7 +6876,22 @@ function debugSpawnSecondEnemyChoice() {
     updateUI();
 }
 
+// One card resolves at a time. A play waits on animations and removes its card by the hand index it
+// read at the start, so a second card started part-way (easy with drag-to-play) removed the wrong card
+// or put an empty slot in the discard pile, which then crashed END TURN when the pile was reshuffled.
+let cardPlayInProgress = false;
 async function playCard(cardElement, forcedTargetIndex = null) {
+    if (cardPlayInProgress) return;
+    cardPlayInProgress = true;
+    try {
+        return await resolveCardPlay(cardElement, forcedTargetIndex);
+    } finally {
+        cardPlayInProgress = false;
+    }
+}
+
+// The play itself. Only playCard (and a card that replays another while resolving) calls this.
+async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
     if (isAnimating) return;
 
     const handContainer = DOM.get('hand');
@@ -7429,7 +7444,7 @@ async function playCard(cardElement, forcedTargetIndex = null) {
                 const id = ensureRuntimeCardId(src);
                 const el = DOM.get('hand')?.querySelector(`.card[data-runtime-card-id="${id}"]`);
                 if (el) {
-                    await playCard(el, forcedTargetIndex);
+                    await resolveCardPlay(el, forcedTargetIndex); // inside this play, so past the one-at-a-time guard
                 }
                 break;
             }
@@ -7816,7 +7831,7 @@ async function playCard(cardElement, forcedTargetIndex = null) {
             handleEnemyDeath();
         }
     } else if (forceEndTurnFromOverheat || /end turn/i.test(String(card.desc || ''))) {
-        endTurn();
+        setTimeout(endTurn, 0); // once this card has finished (endTurn waits for cardPlayInProgress)
     } else {
         // Centralized hand redraw so cards always shift smoothly via renderHand() FLIP.
         // This also keeps overlap spacing correct after every play.
@@ -8116,7 +8131,7 @@ async function showEndTurnTransition() {
 }
 
 async function endTurn() {
-    if (isAnimating) return;
+    if (isAnimating || cardPlayInProgress) return;
     isAnimating = true;
     // Safety reshuffle to avoid dead-end turns when draw is empty.
     reshuffleDiscardIntoDraw();
