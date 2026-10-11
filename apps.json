@@ -7,6 +7,13 @@
       "color": "#3f7d46",
       "icon": "public/icon.svg",
       "source": { "type": "vite", "dir": "apps/fairshare" }
+    },
+    {
+      "id": "elevator",
+      "name": "Elevator Anomaly",
+      "color": "#0f172a",
+      "icon": "assets/player.png",
+      "source": { "type": "static", "dir": "apps/htmlroguemobile" }
     }
   ]
 }
