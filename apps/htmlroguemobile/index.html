@@ -1983,7 +1983,7 @@
             /* ============================================================
                SETTINGS - screen, sound, storage (opened from the gear and the title screen)
                ============================================================ */
-            #settings-overlay {
+            .game-overlay {
                 display: none;
                 position: fixed;
                 inset: 0;
@@ -1992,8 +1992,8 @@
                 justify-content: center;
                 background: rgba(2, 6, 23, 0.85);
             }
-            #settings-overlay.open { display: flex; }
-            #settings-panel {
+            .game-overlay.open { display: flex; }
+            .game-panel {
                 position: relative;
                 width: min(520px, calc(100vw - 32px));
                 max-height: calc(100% - 24px);
@@ -2005,9 +2005,9 @@
                 box-shadow: 0 0 24px rgba(56, 189, 248, 0.3);
                 font-size: 9px;
             }
-            #settings-panel h2 { margin: 0 0 12px; font-size: 13px; color: var(--accent); letter-spacing: 3px; }
-            #settings-panel h3 { margin: 14px 0 6px; font-size: 9px; color: var(--active-node); }
-            #settings-panel button {
+            .game-panel h2 { margin: 0 0 12px; font-size: 13px; color: var(--accent); letter-spacing: 3px; }
+            .game-panel h3 { margin: 14px 0 6px; font-size: 9px; color: var(--active-node); }
+            .game-panel button {
                 font-size: 8px;
                 padding: 8px 12px;
                 min-height: 32px;
@@ -2016,8 +2016,8 @@
                 border: 1px solid var(--accent);
                 cursor: pointer;
             }
-            #settings-panel .panel-close { position: absolute; top: 10px; right: 10px; background: var(--hp); color: #fff; border: none; }
-            #settings-panel .btn-danger { margin-top: 10px; background: #450a0a; color: #fecaca; border-color: var(--hp); }
+            .game-panel .panel-close { position: absolute; top: 10px; right: 10px; background: var(--hp); color: #fff; border: none; }
+            .game-panel .btn-danger { margin-top: 10px; background: #450a0a; color: #fecaca; border-color: var(--hp); }
             #settings-panel #btn-hub { display: block; margin-top: 16px; }
             .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0; color: #e2e8f0; }
             .settings-row input[type="range"] { width: 160px; accent-color: var(--accent); }
@@ -2034,6 +2034,19 @@
             .swatch { width: 10px; height: 10px; flex: none; }
             .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 16px; line-height: 1; padding: 4px 10px; cursor: pointer; border-radius: 3px; font-family: system-ui, sans-serif !important; } /* the pixel font has no gear */
             .btn-menu-small { font-size: 9px; padding: 8px 14px; }
+            .title-note { margin-top: 8px; font-size: 8px; color: #94a3b8; min-height: 10px; }
+            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+            .stats-grid div { padding: 6px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 7px; }
+            .stats-grid b { display: block; margin-top: 4px; color: #f8fafc; font-size: 11px; font-weight: normal; }
+            .stats-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 8px; color: #e2e8f0; }
+            .stats-list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; padding: 4px 0; border-bottom: 1px solid #1e293b; }
+            .stats-list small { color: #94a3b8; font-size: 7px; }
+            .stats-list .ok { color: #22c55e; }
+            .stats-list .locked { color: #64748b; }
+            .tag-daily { color: var(--active-node); }
+            /* Bestiary: enemies not met yet are silhouettes. */
+            .bestiary-entry.unseen .bestiary-sprite, .bestiary-entry.unseen .bestiary-shape { filter: brightness(0) drop-shadow(0 0 1px #475569); }
+            .bestiary-entry.unseen .bestiary-entry-name { color: #475569; }
             /* A newer deploy took over: reload to get it. */
             #update-banner {
                 position: fixed;
@@ -2574,8 +2587,8 @@
 <!-- ============================================================
      BESTIARY OVERLAY - Enemy encyclopedia opened from top nav
      ============================================================ -->
-<div id="settings-overlay" onclick="if (event.target === this) closeSettings()">
-    <div id="settings-panel">
+<div id="settings-overlay" class="game-overlay" onclick="if (event.target === this) closeSettings()">
+    <div id="settings-panel" class="game-panel">
         <button id="settings-close-btn" class="panel-close" onclick="closeSettings()">[ CLOSE ]</button>
         <h2>SETTINGS</h2>
         <h3>SCREEN</h3>
@@ -2603,6 +2616,14 @@
     </div>
 </div>
 
+<div id="stats-overlay" class="game-overlay" onclick="if (event.target === this) closeStats()">
+    <div id="stats-panel" class="game-panel">
+        <button class="panel-close" onclick="closeStats()">[ CLOSE ]</button>
+        <h2>STATS</h2>
+        <div id="stats-content"></div>
+    </div>
+</div>
+
 <div id="bestiary-overlay">
     <button id="bestiary-close-btn" onclick="closeBestiary()">[ CLOSE ]</button>
     <h2>— BESTIARY —</h2>
@@ -2617,11 +2638,16 @@
                     <button class="btn-menu-init" id="continue-btn" onclick="initRun(false, this, { resume: RunSave.read() })">Continue</button>
                 </div>
                 <button class="btn-menu-init" id="init-btn" onclick="initRun(false, this)">Play Normally</button>
+                <button class="btn-menu-init" id="init-daily-btn" style="margin-left:10px;" onclick="initRun(false, this, { daily: Daily.today() })">Daily Run</button>
                 <button class="btn-menu-init" id="init-tutorial-btn" style="margin-left:10px;" onclick="startTutorialRun(this)">Tutorial</button>
-                <!-- Debug boot toggle: starts run with all debug controls enabled. -->
-                <button class="btn-menu-init" id="init-debug-btn" style="margin-left:10px;" onclick="initRun(true, this)">Run with Cheats</button>
-                <button class="btn-menu-init" id="exit-hub-btn" style="margin-left:10px;" onclick="location.href = '../'">Exit</button>
-                <div><button class="btn-menu-init btn-menu-small" id="title-settings-btn" onclick="openSettings()">⚙ Settings</button></div>
+                <div id="daily-note" class="title-note"></div>
+                <div>
+                    <button class="btn-menu-init btn-menu-small" id="title-stats-btn" onclick="openStats()">Stats</button>
+                    <button class="btn-menu-init btn-menu-small" id="title-settings-btn" style="margin-left:8px;" onclick="openSettings()">⚙ Settings</button>
+                    <!-- Debug boot toggle: starts run with all debug controls enabled. -->
+                    <button class="btn-menu-init btn-menu-small" id="init-debug-btn" style="margin-left:8px;" onclick="initRun(true, this)">Run with Cheats</button>
+                    <button class="btn-menu-init btn-menu-small" id="exit-hub-btn" style="margin-left:8px;" onclick="location.href = '../'">Exit</button>
+                </div>
             </div>
         </div>
 
@@ -3270,6 +3296,7 @@ function closeAllOverlays() {
     }
     closeBestiary();
     closeSettings();
+    closeStats();
 }
 
 // Keep the top nav behavior + allow the battle mod HUD to avoid overlap.
@@ -3609,6 +3636,11 @@ function closeBestiary() {
 function renderBestiary() {
     const content = DOM.get('bestiary-content');
     content.innerHTML = '';
+    const seen = Profile.seen();
+    const total = Object.keys(ENEMY_ROSTER).length;
+    const met = Object.keys(ENEMY_ROSTER).filter((k) => seen.has(k)).length;
+    const heading = document.querySelector('#bestiary-overlay h2');
+    if (heading) heading.textContent = `— BESTIARY ${met}/${total} —`;
 
     // Tier display order and labels
     const tiers = [
@@ -3635,6 +3667,17 @@ function renderBestiary() {
         enemies.forEach(([key, enemy]) => {
             const entry = document.createElement('div');
             entry.className = 'bestiary-entry';
+            if (!seen.has(key)) {
+                // Not met yet: a silhouette with no details.
+                entry.classList.add('unseen');
+                entry.innerHTML = `
+                    <img class="bestiary-sprite" src="${getEnemySpritePath({ rosterKey: key })}" alt="" onerror="this.remove()">
+                    <div class="bestiary-shape" style="background-color: #000; clip-path: ${ENEMY_SHAPES.shapes[enemy.shapeIndex ?? 0]};"></div>
+                    <div class="bestiary-entry-name">???</div>
+                    <div class="bestiary-tooltip"><span class="bestiary-tooltip-name">???</span><span class="bestiary-tooltip-desc">Not met yet.</span></div>`;
+                row.appendChild(entry);
+                return;
+            }
 
             // Coloured shape preview matching the real enemy visual
             const shapeColor = ENEMY_SHAPES.colors[enemy.colorIndex ?? 0];
@@ -4152,7 +4195,8 @@ async function openStartingModDraft() {
         const closeBtn = DOM.get('deck-close-btn');
         if (!overlay || !grid || !title) { resolve(); return; }
 
-        const pool = getStandardModPool().filter(m => !state.mods.includes(m.name)).sort(() => Math.random() - 0.5).slice(0, 3);
+        Daily.reseed('mods');
+        const pool = getStandardModPool().filter(m => !state.mods.includes(m.name)).sort(() => Math.random() - 0.5).slice(0, isUnlocked('modpick') ? 4 : 3);
         if (!pool.length) { resolve(); return; }
 
         overlay.style.display = 'flex';
@@ -4183,6 +4227,7 @@ async function openStartingModDraft() {
 
 // Elite/Boss post-card reward: choose 1 relic from 2 options.
 async function openRelicRewardChoice(optionCount = 2) {
+    Daily.reseed(`relic-choice-${state.room}`);
     return new Promise((resolve) => {
         const overlay = DOM.get('deck-overlay');
         const grid = DOM.get('deck-grid');
@@ -4341,7 +4386,7 @@ const RunSave = {
     key: 'elevator:run',
     version: 1,
     fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus',
-        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors'],
+        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors', 'daily'],
     write() {
         if (state.tutorial.active) return;
         const run = { v: this.version, shopCount, shop: { removeCost: ShopManager.removeCost, restockCost: ShopManager.restockCost, ancientScrapCost: ShopManager.ancientScrapCost } };
@@ -5027,6 +5072,11 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     
     await new Promise(r => setTimeout(r, 500));
     menuScreen.style.opacity = '0';
+    // A fresh run that replaces an unfinished one counts as abandoned in the history.
+    const unfinished = !options.resume && !tutorialMode ? RunSave.read() : null;
+    if (unfinished) Profile.runEnded('abandoned', unfinished);
+    state.daily = options.resume ? (options.resume.daily || null) : (options.daily || null);
+    Daily.reseed('start');
     
     // --- STARTING DECK LOGIC ---
     // 1. Start with the fixed cards
@@ -5057,6 +5107,12 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     state.bossIntroSeenByRoom = {};
     state.oneTimeEffectApplied = {};
     state.debugEnabled = !!enableDebug;
+    if (!tutorialMode && !options.resume) {
+        // Unlocks earned in earlier runs (off in the daily run, which is the same for everyone).
+        if (isUnlocked('rare')) state.deck.push(...ProgramLibrary.randomFromPool('ELITE_REWARD', 1));
+        if (isUnlocked('credits')) state.gold += 25;
+        Profile.runStarted();
+    }
     shopCount = 0;
     TutorialManager.resetState();
     if (tutorialMode) {
@@ -6169,6 +6225,7 @@ const EnemyPartyManager = {
         if (!enemyParty.length) {
             enemyParty.push(EnemyAI.createEnemyState('SPARK_DRONE'));
         }
+        Profile.markSeen(enemyParty.map((e) => e.rosterKey));
         // Generate initial intent for each enemy slot.
         enemyParty.forEach((enemy, idx) => {
             activeEnemyIndex = idx;
@@ -6271,6 +6328,7 @@ function generateEnemyIntent() {
 }
 
 async function startRoom(type) {
+    Daily.reseed(`room-${state.room}-${type}`);
     isAnimating = false;
     state.room++;
 
@@ -6418,6 +6476,7 @@ const ShopManager = {
     },
 
     initShop() {
+        Daily.reseed(`shop-${state.room}`);
         this.shopProgramsFree = !!state.freeProgramsNextShop;
         state.freeProgramsNextShop = false;
         // Generate programs and mods only ONCE when entering the shop
@@ -6865,6 +6924,7 @@ async function playCard(cardElement, forcedTargetIndex = null) {
     }
 
         // --- 1. DAMAGE & BLOCK LOGIC ---
+    Profile.cardPlayed(card);
     // Damage branch supports normal attack cards and damage-special utility cards.
     const hasDamageSpecial = ['damage_from_credits_pct', 'random_damage_range'].includes(card.special);
     if (effectivePowerValue > 0 || hasDamageSpecial) {
@@ -7728,6 +7788,7 @@ async function playCard(cardElement, forcedTargetIndex = null) {
 }
 
 function showCardPicker(count, limit) {
+    Daily.reseed(`reward-${state.room}`);
     const handCont = DOM.get('hand');
     handCont.innerHTML = '';
     handCont.style.justifyContent = 'center'; 
@@ -7849,6 +7910,7 @@ async function handleEnemyDeath() {
         await TutorialManager.finishAndReturnToMenu();
         return;
     }
+    Profile.fightWon();
     isAnimating = true;
     // Lock defeated slot for death animation so updateUI does not hide it early.
     const defeatedEnemyIndex = activeEnemyIndex;
@@ -8122,6 +8184,7 @@ function triggerGameOver() {
         return;
     }
     RunSave.clear();
+    Profile.runEnded('death');
     const deathScreen = DOM.get('death-screen');
     const deathText = DOM.get('death-text');
     const deathOverlay = DOM.get('death-crt-overlay');
@@ -8157,6 +8220,7 @@ function triggerGameOver() {
 // ============================================================================
 function triggerWin() {
     RunSave.clear();
+    Profile.runEnded('win');
     const winScreen = DOM.get('win-screen');
     const winText = DOM.get('win-text');
     const winBtn = DOM.get('win-continue-btn');
@@ -9245,6 +9309,8 @@ function setPlayerAnim(targetId, animName) {
 }
 
 function generateElevators() {
+    Daily.reseed(`doors-${state.room}`);
+    Profile.reachedRoom(state.room);
     RunSave.write();
     const header = DOM.get('options-header');
     if (header) header.innerText = 'SELECT NEXT FLOOR';
@@ -9467,6 +9533,7 @@ function openAncientRoomOptions() {
 
 // Every 5th room: choose 1 of 2 relics or take 75 credits instead
 function openRelicRewardFloor() {
+    Daily.reseed(`relic-floor-${state.room}`);
     const elevBg = DOM.get('elev-bg');
     if (elevBg) elevBg.style.backgroundImage = "url('assets/maps/general/restsite/restarea.png')";
     const header = DOM.get('options-header');
@@ -9577,6 +9644,7 @@ function advanceNonCombatFloor(roomType = 'event') {
 }
 
 function chooseDoor(type) {
+    Daily.reseed(`door-${state.room}-${type}`);
     const player = DOM.get('elev-player');
     const viewport = document.querySelector('.viewport');
     const shopLockedByAncient = ModManager.getEffectValue('ancient_kill_maxhp_no_shop') > 0;
@@ -10040,6 +10108,10 @@ function openInternet() {
 
 // Update your button listeners to use the new function
 document.addEventListener('DOMContentLoaded', () => {
+    const todayRuns = Profile.stats().history.filter((h) => h.daily === Daily.today());
+    DOM.get('daily-note').textContent = todayRuns.length
+        ? `TODAY'S DAILY: BEST FLOOR ${Math.max(...todayRuns.map((h) => h.room))}`
+        : 'DAILY RUN: SAME FLOORS FOR EVERYONE TODAY';
     const saved = RunSave.read();
     if (saved) {
         DOM.get('continue-btn').innerText = `Continue (Room ${saved.room})`;
@@ -10065,6 +10137,127 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     setCrtBrightness(storedBrightness || CRT_BRIGHTNESS_CONFIG.defaultValue);
 });
+
+// ============================================================================
+// PROFILE - stats, run history and bestiary sightings kept on this device across runs (apart from
+// the run save, so finishing or clearing a run never loses them). Tutorial and cheat runs don't count.
+// ============================================================================
+const Profile = {
+    keys: { stats: 'elevator:stats', seen: 'elevator:bestiary_seen' },
+    load(key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; }
+    },
+    save(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+    },
+    stats() {
+        return { runs: 0, wins: 0, bestRoom: 0, fightsWon: 0, cardPlays: {}, history: [], ...this.load(this.keys.stats, {}) };
+    },
+    counts() {
+        return !state.tutorial?.active && !state.debugEnabled;
+    },
+    update(fn) {
+        if (!this.counts()) return;
+        const s = this.stats();
+        fn(s);
+        this.save(this.keys.stats, s);
+    },
+    runStarted() { this.update((s) => { s.runs++; }); },
+    reachedRoom(room) { this.update((s) => { s.bestRoom = Math.max(s.bestRoom, room); }); },
+    fightWon() { this.update((s) => { s.fightsWon++; }); },
+    cardPlayed(card) { this.update((s) => { s.cardPlays[card.name] = (s.cardPlays[card.name] || 0) + 1; }); },
+    // result: 'win' | 'death' | 'abandoned'. run: the run's state (the live one, or an old save).
+    runEnded(result, run = state) {
+        if (run.debugEnabled) return;
+        this.update((s) => {
+            if (result === 'win') s.wins++;
+            s.bestRoom = Math.max(s.bestRoom, run.room || 0);
+            s.history.unshift({
+                date: new Date().toISOString().slice(0, 10),
+                result,
+                room: run.room || 0,
+                daily: run.daily || null,
+                deck: result === 'win' ? (run.deck || []).map((c) => c.name) : undefined,
+            });
+            s.history = s.history.slice(0, 20);
+        });
+    },
+    seen() {
+        return new Set(this.load(this.keys.seen, []));
+    },
+    markSeen(keys) {
+        if (!this.counts()) return;
+        const seen = this.seen(), before = seen.size;
+        keys.filter(Boolean).forEach((k) => seen.add(k));
+        if (seen.size !== before) this.save(this.keys.seen, [...seen]);
+    },
+};
+
+// Earned in earlier runs, applied at the start of a normal run (never the daily run).
+const UNLOCKS = [
+    { id: 'credits', goal: 'REACH FLOOR 10', reward: '+25 starting credits', earned: (s) => s.bestRoom >= 10 },
+    { id: 'modpick', goal: 'REACH FLOOR 20', reward: 'Pick your starting mod from 4', earned: (s) => s.bestRoom >= 20 },
+    { id: 'rare', goal: 'WIN A RUN', reward: 'Start with a random elite program', earned: (s) => s.wins >= 1 },
+];
+function isUnlocked(id) {
+    return !state.daily && UNLOCKS.find((u) => u.id === id).earned(Profile.stats());
+}
+
+// DAILY RUN - the same floors, enemies, rewards and shops for everyone on a given (UTC) day.
+// Math.random is reseeded from the date and a tag right before each of those rolls, so whatever
+// happened in between (animations, flicker, how a fight went) cannot change them.
+const nativeRandom = Math.random;
+const Daily = {
+    today() {
+        return new Date().toISOString().slice(0, 10);
+    },
+    reseed(tag) {
+        if (!state.daily) { Math.random = nativeRandom; return; }
+        let h = 2166136261; // FNV-1a of "date|tag" seeds mulberry32
+        for (const ch of `${state.daily}|${tag}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+        let a = h >>> 0;
+        Math.random = () => {
+            a = (a + 0x6D2B79F5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    },
+};
+
+function openStats() {
+    renderStats();
+    DOM.get('stats-overlay').classList.add('open');
+}
+function closeStats() {
+    DOM.get('stats-overlay')?.classList.remove('open');
+}
+function renderStats() {
+    const s = Profile.stats();
+    const fav = Object.entries(s.cardPlays).sort((a, b) => b[1] - a[1])[0];
+    const today = s.history.filter((h) => h.daily === Daily.today());
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const result = (h) => (h.result === 'win' ? 'WON' : h.result === 'death' ? `DIED ON FLOOR ${h.room}` : `LEFT AT FLOOR ${h.room}`);
+    DOM.get('stats-content').innerHTML = `
+        <div class="stats-grid">
+            <div>RUNS<b>${s.runs}</b></div>
+            <div>WINS<b>${s.wins}</b></div>
+            <div>BEST FLOOR<b>${s.bestRoom}</b></div>
+            <div>FIGHTS WON<b>${s.fightsWon}</b></div>
+            <div>FAVOURITE PROGRAM<b>${fav ? `${esc(fav[0])} ×${fav[1]}` : '—'}</b></div>
+            <div>TODAY'S DAILY<b>${today.length ? `FLOOR ${Math.max(...today.map((h) => h.room))}` : 'NOT PLAYED'}</b></div>
+        </div>
+        <h3>UNLOCKS</h3>
+        <ul class="stats-list">${UNLOCKS.map((u) => {
+            const ok = u.earned(s);
+            return `<li class="${ok ? 'ok' : 'locked'}">${ok ? '✓' : '🔒'} ${u.goal}<small>${u.reward}</small></li>`;
+        }).join('')}</ul>
+        <p class="settings-hint">Unlocks apply to normal runs, not the daily run.</p>
+        <h3>RECENT RUNS</h3>
+        <ul class="stats-list">${s.history.length ? s.history.map((h) => `
+            <li>${esc(h.date)} ${result(h)}${h.daily ? ' <span class="tag-daily">DAILY</span>' : ''}
+                ${h.deck ? `<small>DECK: ${h.deck.map(esc).join(', ')}</small>` : ''}</li>`).join('') : '<li><small>NO FINISHED RUNS YET</small></li>'}</ul>`;
+}
 
 // ============================================================================
 // SETTINGS PANEL
