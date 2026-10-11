@@ -2430,7 +2430,7 @@
         <input id="sfx-volume-slider" type="range" min="0" max="1" step="0.01" value="0.3">
     </label>
     <button id="btn-mute" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 8px;border-radius:3px;font-family:var(--font-main);font-size:10px;">🔊</button>
-    <button id="btn-hub" onclick="if (confirm('Leave the game? This run will be lost.')) location.href = '../'; event.stopPropagation();" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 8px;border-radius:3px;font-family:var(--font-main);font-size:10px;">⌂</button>
+    <button id="btn-hub" onclick="if (confirm('Leave the game? You can continue from the last elevator.')) location.href = '../'; event.stopPropagation();" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 8px;border-radius:3px;font-family:var(--font-main);font-size:10px;">⌂</button>
     <div style="display:flex; gap:8px;">
         <button id="btn-manifest" onclick="toggleDeck(); event.stopPropagation();">MANIFEST</button>
         <button id="btn-internet" onclick="openInternet(); event.stopPropagation();" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-family:var(--font-main); font-size:9px; padding:6px 12px; cursor:pointer; border-radius:3px;">INTERNET</button>
@@ -2451,6 +2451,9 @@
         <div id="screen-menu" class="screen active">
             <div class="menu-box" style="position: relative; z-index: 2;">
                 <h1>Elevator Anomaly</h1>
+                <div id="continue-row" style="display:none;">
+                    <button class="btn-menu-init" id="continue-btn" onclick="initRun(false, this, { resume: RunSave.read() })">Continue</button>
+                </div>
                 <button class="btn-menu-init" id="init-btn" onclick="initRun(false, this)">Play Normally</button>
                 <button class="btn-menu-init" id="init-tutorial-btn" style="margin-left:10px;" onclick="startTutorialRun(this)">Tutorial</button>
                 <!-- Debug boot toggle: starts run with all debug controls enabled. -->
@@ -4026,6 +4029,42 @@ let state = {
     }
 };
 
+// ============================================================================
+// SAVE / RESUME
+// The run is saved in localStorage each time the elevator doors are shown (every room ends there),
+// so closing the tab costs at most the room in progress. Only run-wide state is kept; combat state
+// (hand, piles, heat, statuses) starts fresh at the elevator anyway.
+// ============================================================================
+const RunSave = {
+    key: 'elevator:run',
+    version: 1,
+    fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus',
+        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom'],
+    write() {
+        if (state.tutorial.active) return;
+        const run = { v: this.version, shopCount, shop: { removeCost: ShopManager.removeCost, restockCost: ShopManager.restockCost, ancientScrapCost: ShopManager.ancientScrapCost } };
+        this.fields.forEach((k) => { run[k] = state[k]; });
+        try { localStorage.setItem(this.key, JSON.stringify(run)); } catch (_) {}
+    },
+    read() {
+        try {
+            const run = JSON.parse(localStorage.getItem(this.key));
+            return run && run.v === this.version && Array.isArray(run.deck) ? run : null;
+        } catch (_) { return null; }
+    },
+    restore(run) {
+        this.fields.forEach((k) => { if (k in run) state[k] = run[k]; });
+        shopCount = run.shopCount || 0;
+        Object.assign(ShopManager, run.shop);
+        // Rebuild mod effects without re-granting one-time bonuses.
+        ModManager.rebuildRuntimeFromOwnedMods();
+        state.hp = Math.min(run.hp, state.maxHp);
+    },
+    clear() {
+        try { localStorage.removeItem(this.key); } catch (_) {}
+    },
+};
+
 let currentEnemy = { hp: 0, intent: 0, isAttacking: true, block: 0, maxHp: 0 };
 let enemyParty = [];
 let activeEnemyIndex = 0;
@@ -4658,6 +4697,8 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
         state.tutorial.tutorialDeckInfo = tutorialDeck.map((c) => ({ name: c.name, desc: c.desc }));
     }
     ModManager.applyModsToRun();
+    if (options.resume) RunSave.restore(options.resume);
+    else RunSave.clear();
     if (debugContainer) debugContainer.style.display = state.debugEnabled ? 'flex' : 'none';
     if (DOM.get('debug-menu')) DOM.get('debug-menu').style.display = 'none';
     // Pick random background layers at run start.
@@ -4770,7 +4811,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
         }
 
         // Run opener: choose one starter mod, then move to elevator (no immediate combat).
-        await openStartingModDraft();
+        if (!options.resume) await openStartingModDraft();
         proceedToElevatorScreen();
         const navScreen = DOM.get('screen-nav');
         navScreen.style.opacity = '0';
@@ -7736,6 +7777,7 @@ function triggerGameOver() {
         updateUI();
         return;
     }
+    RunSave.clear();
     const deathScreen = DOM.get('death-screen');
     const deathText = DOM.get('death-text');
     const deathOverlay = DOM.get('death-crt-overlay');
@@ -7770,6 +7812,7 @@ function triggerGameOver() {
 // WIN SCREEN - Triggered after defeating the final floor (10) enemy
 // ============================================================================
 function triggerWin() {
+    RunSave.clear();
     const winScreen = DOM.get('win-screen');
     const winText = DOM.get('win-text');
     const winBtn = DOM.get('win-continue-btn');
@@ -8852,6 +8895,7 @@ function setPlayerAnim(targetId, animName) {
 }
 
 function generateElevators() {
+    RunSave.write();
     const header = DOM.get('options-header');
     if (header) header.innerText = 'SELECT NEXT FLOOR';
     // Every 10th floor is a boss floor.
@@ -9641,6 +9685,11 @@ function openInternet() {
 
 // Update your button listeners to use the new function
 document.addEventListener('DOMContentLoaded', () => {
+    const saved = RunSave.read();
+    if (saved) {
+        DOM.get('continue-btn').innerText = `Continue (Room ${saved.room})`;
+        DOM.show('continue-row');
+    }
     DOM.get('btn-hand').onclick = () => openPileOverlay('draw');
     DOM.get('btn-discard').onclick = () => openPileOverlay('discard');
     // Enemy slot click supports target selection flow.
