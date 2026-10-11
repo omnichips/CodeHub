@@ -9137,7 +9137,6 @@ function openRelicRewardFloor() {
     if (!optCont) return;
     optCont.innerHTML = '';
     optCont.style.display = 'flex';
-    optCont.style.flexDirection = 'column';
 
     // Get 2 random unowned relics
     const unownedRelics = MODS.filter(m => !state.mods.includes(m.name) && !m.ancient).sort(() => Math.random() - 0.5).slice(0, 2);
