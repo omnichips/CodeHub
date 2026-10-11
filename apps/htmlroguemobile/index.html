@@ -3121,7 +3121,17 @@ const Music = {
         this.apply(0.1);
     },
 };
-document.addEventListener('pointerdown', () => { SoundManager.unlock(); Music.start(); }, { once: true, capture: true });
+// Sound may only start on a real tap: on touch screens that is the end of the touch (touchend/click),
+// not pointerdown, so iPhones refused the old pointerdown start until a start button was pressed.
+// Keep listening until the music is actually playing.
+const SOUND_START_EVENTS = ['touchend', 'click', 'keydown'];
+function startSoundOnTap() {
+    SoundManager.unlock();
+    Music.start();
+    if (Music.el?.paused && !document.hidden) Music.el.play().catch(() => {});
+    if (Music.el && !Music.el.paused) SOUND_START_EVENTS.forEach((t) => document.removeEventListener(t, startSoundOnTap, true));
+}
+SOUND_START_EVENTS.forEach((t) => document.addEventListener(t, startSoundOnTap, true));
 // No music in the background (and no battery spent on it).
 document.addEventListener('visibilitychange', () => {
     if (!Music.el) return;
