@@ -1469,6 +1469,7 @@
                 margin: 0 auto;
             }
 
+            #deck-close-btn { position: sticky; bottom: 12px; z-index: 5; flex-shrink: 0; }
             #deck-overlay button {
                 margin-top: 20px;
                 padding: 15px 40px;
@@ -1526,7 +1527,8 @@
                     pointer-events: none;
                     border-radius: 2px;
                 }
-                .mod-tooltip-wrap:hover .status-tooltip {
+                @media (hover: hover) { .mod-tooltip-wrap:hover .status-tooltip { display: block; } }
+                .mod-tooltip-wrap.tip-open .status-tooltip {
                     display: block;
                 }
                 /* Enemy name/intent tooltip wrappers (same popup style). */
@@ -1566,8 +1568,9 @@
                     pointer-events: none;
                     border-radius: 2px;
                 }
-                .enemy-name-wrap:hover .status-tooltip,
-                .enemy-intent-wrap:hover .status-tooltip {
+                @media (hover: hover) { .enemy-name-wrap:hover .status-tooltip, .enemy-intent-wrap:hover .status-tooltip { display: block; } }
+                .enemy-name-wrap.tip-open .status-tooltip,
+                .enemy-intent-wrap.tip-open .status-tooltip {
                     display: block;
                 }
                 .enemy-intent-wrap .intent-bubble {
@@ -1592,9 +1595,7 @@
                     pointer-events: none;
                     border-radius: 2px;
                 }
-                .card-tooltip-wrap:hover .status-tooltip {
-                    display: block;
-                }
+                @media (hover: hover) { .card-tooltip-wrap:hover .status-tooltip { display: block; } }
                 /* Card tooltip override using the same shared tooltip component as mod icons. */
                 .card.card-tooltip-wrap .status-tooltip {
                     bottom: auto;
@@ -1882,9 +1883,11 @@
                 box-shadow: 0 0 16px rgba(56,189,248,0.2);
             }
 
-            .bestiary-entry:hover .bestiary-tooltip {
+            @media (hover: hover) { .bestiary-entry:hover .bestiary-tooltip { display: block; } }
+            .bestiary-entry.tip-open .bestiary-tooltip {
                 display: block;
             }
+            .bestiary-entry.tip-open { border-color: var(--accent); }
 
             .bestiary-tooltip-name {
                 font-family: var(--font-main);
@@ -1910,7 +1913,8 @@
             }
 
             #bestiary-close-btn {
-                position: absolute;
+                position: fixed;
+                z-index: 1;
                 top: 16px;
                 right: 24px;
                 font-family: var(--font-main);
@@ -2054,7 +2058,8 @@
                 border-radius: 2px;
             }
 
-            .status-icon:hover .status-tooltip {
+            @media (hover: hover) { .status-icon:hover .status-tooltip { display: block; } }
+            .status-icon.tip-open .status-tooltip {
                 display: block;
             }
 
@@ -2164,6 +2169,39 @@
                 image-rendering: pixelated;
             }
 
+            /* Long-press a card (touch): full-size view with all its text. */
+            #card-inspect {
+                position: fixed;
+                inset: 0;
+                z-index: 26000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                background: rgba(2, 6, 23, 0.88);
+            }
+            #card-inspect.open { display: flex; }
+            #card-inspect .card {
+                zoom: var(--inspect-zoom, 1.6);
+                transform: none !important;
+                height: auto;
+                min-height: var(--card-h);
+                opacity: 1 !important;
+                filter: none !important;
+                margin: 0 !important;
+                pointer-events: none;
+            }
+            #card-inspect .card-body { overflow: visible; }
+            #card-inspect > .status-tooltip {
+                max-width: 220px;
+                padding: 8px;
+                background: #0f172a;
+                border: 1px solid var(--accent);
+                color: #f8fafc;
+                font-size: 8px;
+                line-height: 1.6;
+            }
+
             #tutorial-overlay {
                 position: fixed;
                 inset: 0;
@@ -2269,6 +2307,11 @@
                 #e-intent-text, #e2-intent-text { font-size: 10px; }
                 #e-box, #e-box-2 { top: 0; }
                 #battle-mod-hud .battle-mod-chip { width: 20px; height: 20px; font-size: 11px; }
+                #battle-mod-hud .status-tooltip { top: 120%; bottom: auto; left: auto; right: 0; transform: none; white-space: normal; width: 180px; }
+                .enemy-name-wrap .status-tooltip, .enemy-intent-wrap .status-tooltip { top: 120%; bottom: auto; }
+                .enemy-intent-wrap .status-tooltip { left: auto; right: 0; transform: none; }
+                .bestiary-entry.tip-open .bestiary-tooltip { position: fixed; top: auto; bottom: 10px; left: 50%; transform: translateX(-50%); width: min(420px, 90vw); }
+                #card-inspect { --inspect-zoom: 1.9; }
 
                 /* Hand along the bottom */
                 .hand-container { padding: 4px 6px; border-top-width: 2px; }
@@ -2549,6 +2592,8 @@
     <div id="death-text">YOU LOST</div>
 </div>
 
+<div id="card-inspect" onclick="CardInspect.close()"></div>
+
 <div id="tutorial-overlay">
     <div id="tutorial-box">
         <div id="tutorial-title">TUTORIAL</div>
@@ -2791,6 +2836,66 @@ document.addEventListener('keydown', (e) => {
         toggleDeck();
     }
 });
+
+// ============================================================================
+// TOUCH INPUT
+// ============================================================================
+// No hover on touch screens: tapping a status icon, intent, enemy name, mod or bestiary entry
+// toggles its tooltip (.tip-open, styled like :hover). Tapping anywhere else closes it.
+// pointerup, not click: iOS sends no click for taps on plain elements, and a scroll ends in pointercancel instead.
+const TIP_TARGETS = '.status-icon, .enemy-intent-wrap, .enemy-name-wrap, .mod-tooltip-wrap, .bestiary-entry';
+if (matchMedia('(hover: none)').matches) {
+    document.addEventListener('pointerup', (e) => {
+        const target = e.target.closest(TIP_TARGETS);
+        document.querySelectorAll('.tip-open').forEach((el) => { if (el !== target) el.classList.remove('tip-open'); });
+        if (target) target.classList.toggle('tip-open');
+    }, true);
+}
+
+// Cards: a tap still plays/picks them; holding one shows it full size with all its text.
+const CardInspect = {
+    holdMs: 450,
+    timer: null,
+    start: null,
+    opened: false,
+    open(card) {
+        const view = DOM.get('card-inspect');
+        const copy = card.cloneNode(true);
+        copy.classList.remove('card-targeting', 'card-reflow', 'card-vibrate', 'anim-card-play', 'anim-card-discard');
+        // Exhaust/Destroy notes go beside the card instead of in a hover tooltip.
+        view.replaceChildren(copy, ...copy.querySelectorAll('.status-tooltip'));
+        view.classList.add('open');
+        this.opened = true;
+        if (navigator.vibrate) navigator.vibrate(10);
+    },
+    close() {
+        DOM.get('card-inspect').classList.remove('open');
+    },
+    cancel() {
+        clearTimeout(this.timer);
+        this.timer = null;
+    },
+};
+document.addEventListener('touchstart', (e) => {
+    const card = e.target.closest('.card');
+    CardInspect.cancel();
+    CardInspect.opened = false;
+    if (!card || e.touches.length > 1 || card.closest('#card-inspect')) return;
+    CardInspect.start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    CardInspect.timer = setTimeout(() => { CardInspect.timer = null; CardInspect.open(card); }, CardInspect.holdMs);
+}, { passive: true });
+document.addEventListener('touchmove', (e) => {
+    const s = CardInspect.start;
+    if (CardInspect.timer && s && Math.hypot(e.touches[0].clientX - s.x, e.touches[0].clientY - s.y) > 10) CardInspect.cancel();
+}, { passive: true });
+document.addEventListener('touchend', (e) => {
+    CardInspect.cancel();
+    // The hold opened the inspect view: swallow this touch's click so the card is not played.
+    if (CardInspect.opened) { e.preventDefault(); CardInspect.opened = false; }
+}, { passive: false });
+document.addEventListener('touchcancel', () => CardInspect.cancel());
+// Stops the long-press context menu (Android) from opening over the inspect view.
+document.addEventListener('contextmenu', (e) => { if (e.target.closest('.card')) e.preventDefault(); });
 
 // Intent text flickers from time to time for a CRT-style warning effect.
 setInterval(() => {
