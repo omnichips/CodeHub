@@ -2246,6 +2246,32 @@
                 transition: none !important;
             }
             .card.card-dragging { opacity: 0.25 !important; }
+            /* Damage preview while dragging an attack over an enemy. */
+            .hp-preview {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                background: repeating-linear-gradient(45deg, rgba(255,255,255,0.85) 0 3px, rgba(255,255,255,0.35) 3px 6px);
+                animation: hp-preview-pulse 0.8s ease-in-out infinite alternate;
+                pointer-events: none;
+            }
+            @keyframes hp-preview-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+            .dmg-preview {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                margin-bottom: 4px;
+                padding: 3px 6px;
+                background: #b91c1c;
+                border: 1px solid #fecaca;
+                color: #fff;
+                font-size: 10px;
+                white-space: nowrap;
+                z-index: 30;
+                pointer-events: none;
+            }
+            @media (prefers-reduced-motion: reduce) { .hp-preview { animation: none; } }
             .enemy-slot.drop-ready .enemy-target-corners { opacity: 0.6; }
             .enemy-slot.drop-hover { filter: drop-shadow(0 0 12px #ef4444) brightness(1.2); }
             .enemy-slot.drop-hover .enemy-target-corners { opacity: 1; transform: scale(1.08); }
@@ -2946,6 +2972,42 @@ const CardInspect = {
     },
 };
 
+// While an attack is dragged over an enemy: the damage it will deal ("KILL" if it finishes it)
+// and the part of the HP bar it will take, from the same maths playCard uses.
+const DamagePreview = {
+    key: '',
+    show(card, slots) {
+        const isAttack = card && (Number(card.pwr || 0) > 0 || ModManager.getEffectValue('ancient_swap_attack_block') > 0 && Number(card.blk || 0) > 0
+            || ['damage_from_credits_pct', 'random_damage_range'].includes(card.special));
+        const targets = isAttack ? slots : [];
+        const key = targets.join();
+        if (key === this.key) return;
+        this.hide();
+        this.key = key;
+        targets.forEach((i) => {
+            const enemy = enemyParty[i];
+            if (!enemy || enemy.hp <= 0) return;
+            const p = previewAttackOnEnemy(card, enemy);
+            const suffix = i === 1 ? '2' : '';
+            const bar = DOM.get(`e${suffix}-hp-fill`).parentElement;
+            const seg = document.createElement('div');
+            seg.className = 'hp-preview';
+            seg.style.left = `${(p.hpAfter / enemy.maxHp) * 100}%`;
+            seg.style.width = `${((enemy.hp - p.hpAfter) / enemy.maxHp) * 100}%`;
+            bar.appendChild(seg);
+            const tag = document.createElement('div');
+            tag.className = 'dmg-preview';
+            const amount = p.low === p.high ? `-${p.high}` : `-${p.low}~${p.high}`;
+            tag.textContent = (p.hpAfter === 0 && p.low >= enemy.hp ? 'KILL' : amount) + (p.evasive ? ' ?' : '');
+            DOM.get(`e${suffix}-stats-container`).appendChild(tag);
+        });
+    },
+    hide() {
+        this.key = '';
+        DOM.queryAll('.hp-preview, .dmg-preview').forEach((el) => el.remove());
+    },
+};
+
 const CardTouch = {
     card: null,      // card under the finger
     start: null,     // where the touch began
@@ -2970,16 +3032,27 @@ const CardTouch = {
         EnemyPartyManager.getAliveIndices().forEach((i) => DOM.get(i === 0 ? 'e-box' : 'e-box-2').classList.add('drop-ready'));
     },
     moveDrag(touch) {
-        this.ghost.style.transform = `translate(${touch.clientX - this.offset.x}px, ${touch.clientY - this.offset.y}px) rotate(-4deg) scale(1.08)`;
         const slot = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.enemy-slot') || null;
+        // Over a target the card shrinks around the finger and fades, so the damage preview shows.
+        this.ghost.style.transformOrigin = `${this.offset.x}px ${this.offset.y}px`;
+        this.ghost.style.opacity = slot ? '0.6' : '1';
+        this.ghost.style.transform = `translate(${touch.clientX - this.offset.x}px, ${touch.clientY - this.offset.y}px) rotate(-4deg) scale(${slot ? 0.5 : 1.08})`;
         if (slot !== this.dropSlot) {
             this.dropSlot?.classList.remove('drop-hover');
             slot?.classList.add('drop-hover');
             this.dropSlot = slot;
         }
+        // Damage preview: on the enemy under the finger, or on every enemy for area attacks.
+        const data = state.hand[Array.from(DOM.get('hand').children).indexOf(this.card)];
+        const alive = EnemyPartyManager.getAliveIndices();
+        const aoe = data && (CardRules.isAoe(data) || state.combatFlags.targetLockNextCard > 0 || ModManager.getEffectValue('all_attacks_aoe') > 0);
+        const aboveHand = touch.clientY < DOM.get('hand-ui').getBoundingClientRect().top;
+        const slotIndex = slot ? (slot.id === 'e-box-2' ? 1 : 0) : -1;
+        DamagePreview.show(data, aoe ? (aboveHand ? alive : []) : alive.filter((i) => i === slotIndex));
     },
     endDrag(touch) {
         const card = this.card, slot = this.dropSlot;
+        DamagePreview.hide();
         this.ghost.remove();
         this.ghost = null;
         card.classList.remove('card-dragging');
@@ -4355,6 +4428,83 @@ const CardRules = {
 // ============================================================================
 // PROGRAM HELPERS - Shared run/combat helpers for advanced card effects
 // ============================================================================
+// Damage per hit and number of hits for an attack card, before the target's plating and block.
+// No side effects: playCard and the drag preview both call it, so the preview always matches.
+// It reads the one-shot bonuses (first-attack mod, 2X attack, auto-loader) without using them up.
+// rolled: the value for random-damage cards (playCard rolls it; the preview passes min and max).
+function computeAttackDamage(card, mirrorMultiplier = 1, rolled = null) {
+    const hasAncientSwap = ModManager.getEffectValue('ancient_swap_attack_block') > 0;
+    const effectivePowerValue = hasAncientSwap ? Number(card?.blk || 0) : Number(card?.pwr || 0);
+    let baseDmg = hasAncientSwap ? Math.max(0, effectivePowerValue) : getCardRuntimePower(card);
+    if (card.name === "BATCH") baseDmg = state.hand.length * 5;
+    baseDmg += ModManager.getEffectValue('dmg_up');
+    baseDmg += Math.max(0, Math.floor(state.combatFlags.playerStrength || 0));
+    if (state.heat >= 50) baseDmg += ModManager.getEffectValue('dmg_at_half_heat');
+    if (ModManager.getEffectValue('i3_core_scaling') > 0) {
+        baseDmg += Math.floor(Math.max(0, state.heat) / 2);
+    }
+    if (state.hp <= state.maxHp * 0.25) baseDmg += ModManager.getEffectValue('low_hp_power');
+    const curseScale = Number(ModManager.getEffectValue('curse_damage_scale') || 0);
+    if (curseScale > 0) {
+        const ownedCurses = getOwnedCurseCount();
+        if (ownedCurses > 0) {
+            const curseMult = 1 + (ownedCurses * curseScale);
+            baseDmg = Math.max(0, Math.floor(baseDmg * curseMult));
+        }
+    }
+    // First-attack bonus (once per turn), as ModManager.consumeAttackBonus would grant it.
+    if (effectivePowerValue > 0 && !state.combatFlags.firstAttackBonusUsedThisTurn) baseDmg += ModManager.getEffectValue('first_attack_bonus');
+    if (state.combatFlags.autoLoaderReady) baseDmg *= 2;
+    if (card.special === 'damage_from_credits_pct') {
+        baseDmg = Math.max(0, Math.floor(state.gold * (card.creditPct || 0.12)));
+    }
+    if (card.special === 'random_damage_range') baseDmg = rolled ?? Math.max(1, card.minDmg || 1);
+    // Ancient damage amplifiers (stack multiplicatively).
+    let ancientDamageMult = 1;
+    if (ModManager.getEffectValue('ancient_one_hp_no_overheat_double_dmg') > 0) ancientDamageMult *= 2;
+    if (ModManager.getEffectValue('ancient_hidden_stats_berserk') > 0) ancientDamageMult *= 2;
+    if (ancientDamageMult > 1) baseDmg *= ancientDamageMult;
+    // Cards with "X dmg x N" in description resolve as true multi-hit attacks.
+    let hits = Number(card.hits || 1) * mirrorMultiplier;
+    let perHit = baseDmg;
+    const multiHitMatch = (card.desc || '').match(/(\d+)\s*dmg\s*x\s*(\d+)/i);
+    if (multiHitMatch) {
+        perHit = parseInt(multiHitMatch[1], 10) || baseDmg;
+        hits = (parseInt(multiHitMatch[2], 10) || 1) * mirrorMultiplier;
+    }
+    if (state.combatFlags.nextAttackDouble > 0) perHit = Math.max(0, Math.floor(perHit * 2));
+    return { perHit, hits };
+}
+
+function rollRandomCardDamage(card) {
+    const min = Math.max(1, card.minDmg || 1);
+    const max = Math.max(min, card.maxDmg || 25);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// What an attack would do to one enemy: HP damage after plating and block, and the HP left.
+// Ignores chance (evasion) and per-target card bonuses' popups; used only for the drag preview.
+function previewAttackOnEnemy(card, enemy) {
+    const range = card.special === 'random_damage_range'
+        ? [Math.max(1, card.minDmg || 1), Math.max(Math.max(1, card.minDmg || 1), card.maxDmg || 25)]
+        : [null];
+    const results = range.map((rolled) => {
+        const { perHit, hits } = computeAttackDamage(card, state.combatFlags.mirrorNextCard > 0 && card.special !== 'mirror_next_card' ? 2 : 1, rolled);
+        let bonus = 0;
+        if (card.special === 'bonus_if_no_block' && (enemy.block || 0) <= 0) bonus += Number(card.bonusDmg || 0);
+        if (card.special === 'bonus_if_enemy_not_attacking' && !enemy.isAttacking) bonus += Number(card.bonusDmg || 0);
+        let block = enemy.block || 0, total = 0;
+        for (let h = 0; h < hits; h++) {
+            let dmg = Math.max(0, perHit + bonus - (enemy.platingReduction || 0));
+            if (block > 0 && !card.ignoreBlock) { const absorbed = Math.min(dmg, block); block -= absorbed; dmg -= absorbed; }
+            total += dmg;
+        }
+        return total;
+    });
+    const low = Math.min(...results), high = Math.max(...results);
+    return { low, high, hpAfter: Math.max(0, enemy.hp - high), evasive: !!(enemy.activeStatuses || []).some((st) => st.id === 'EVASION') };
+}
+
 function getCardRuntimePower(card) {
     const key = CardRules.getProgramKey(card);
     const bonus = Number(state.runCardPowerBonus[key] || 0);
@@ -6597,30 +6747,13 @@ async function playCard(cardElement, forcedTargetIndex = null) {
     // Damage branch supports normal attack cards and damage-special utility cards.
     const hasDamageSpecial = ['damage_from_credits_pct', 'random_damage_range'].includes(card.special);
     if (effectivePowerValue > 0 || hasDamageSpecial) {
-        let baseDmg = hasAncientSwap
-            ? Math.max(0, effectivePowerValue)
-            : getCardRuntimePower(card);
-        if (card.name === "BATCH") baseDmg = state.hand.length * 5;
-        baseDmg += ModManager.getEffectValue('dmg_up');
-        baseDmg += Math.max(0, Math.floor(state.combatFlags.playerStrength || 0));
-        if (state.heat >= 50) baseDmg += ModManager.getEffectValue('dmg_at_half_heat');
-        if (ModManager.getEffectValue('i3_core_scaling') > 0) {
-            baseDmg += Math.floor(Math.max(0, state.heat) / 2);
-        }
-        if (state.hp <= state.maxHp * 0.25) baseDmg += ModManager.getEffectValue('low_hp_power');
-        const curseScale = Number(ModManager.getEffectValue('curse_damage_scale') || 0);
-        if (curseScale > 0) {
-            const ownedCurses = getOwnedCurseCount();
-            if (ownedCurses > 0) {
-                const curseMult = 1 + (ownedCurses * curseScale);
-                baseDmg = Math.max(0, Math.floor(baseDmg * curseMult));
-            }
-        }
+        // Damage comes from computeAttackDamage (shared with the drag preview); read it before the
+        // one-shot bonuses below are used up, exactly as the old inline maths did.
+        const rolledDamage = card.special === 'random_damage_range' ? rollRandomCardDamage(card) : null;
+        let { perHit: playerDmgPerHit, hits: playerHits } = computeAttackDamage(card, mirrorMultiplier, rolledDamage);
         // Centralized first-attack bonus passive (once per turn).
-        baseDmg += ModManager.consumeAttackBonus({ ...card, pwr: effectivePowerValue });
-        let nextAttackDamageMultiplier = 1;
+        ModManager.consumeAttackBonus({ ...card, pwr: effectivePowerValue });
         if (state.combatFlags.nextAttackDouble > 0) {
-            nextAttackDamageMultiplier = 2;
             state.combatFlags.nextAttackDouble = 0;
             showPop('p-pop-anchor', '2X ATTACK', '#f97316');
         }
@@ -6637,36 +6770,11 @@ async function playCard(cardElement, forcedTargetIndex = null) {
             }
         }
         if (autoLoaderWasReady) {
-            baseDmg *= 2;
             state.combatFlags.autoLoaderReady = false;
             state.combatFlags.autoLoaderCountdown = 4;
             setAutoLoaderReady(false);
             setAutoLoaderCountdown(4);
             showPop('p-pop-anchor', 'AUTO-LOADER 2X', '#f97316');
-        }
-        if (card.special === 'damage_from_credits_pct') {
-            baseDmg = Math.max(0, Math.floor(state.gold * (card.creditPct || 0.12)));
-        }
-        if (card.special === 'random_damage_range') {
-            const min = Math.max(1, card.minDmg || 1);
-            const max = Math.max(min, card.maxDmg || 25);
-            baseDmg = Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-        // Ancient damage amplifiers (stack multiplicatively).
-        let ancientDamageMult = 1;
-        if (ModManager.getEffectValue('ancient_one_hp_no_overheat_double_dmg') > 0) ancientDamageMult *= 2;
-        if (ModManager.getEffectValue('ancient_hidden_stats_berserk') > 0) ancientDamageMult *= 2;
-        if (ancientDamageMult > 1) baseDmg *= ancientDamageMult;
-        // Cards with "X dmg x N" in description resolve as true multi-hit attacks.
-        let playerHits = Number(card.hits || 1) * mirrorMultiplier;
-        let playerDmgPerHit = baseDmg;
-        const multiHitMatch = (card.desc || '').match(/(\d+)\s*dmg\s*x\s*(\d+)/i);
-        if (multiHitMatch) {
-            playerDmgPerHit = parseInt(multiHitMatch[1], 10) || baseDmg;
-            playerHits = (parseInt(multiHitMatch[2], 10) || 1) * mirrorMultiplier;
-        }
-        if (nextAttackDamageMultiplier > 1) {
-            playerDmgPerHit = Math.max(0, Math.floor(playerDmgPerHit * nextAttackDamageMultiplier));
         }
 
         let attackAlreadyHandled = false;
@@ -8281,7 +8389,8 @@ function renderHand(newCardsCount = 0) {
     // more cards => tighter spacing so the hand stays on-screen.
     const cardWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 160;
     const handCount = state.hand.length;
-    const usableWidth = Math.max(320, (cont.clientWidth || 900) - 24);
+    // Measure the column, not the hand: the hand's own width is whatever the last render stretched it to.
+    const usableWidth = Math.max(320, (cont.parentElement?.clientWidth || cont.clientWidth || 900) - 24);
     const minStep = 42;   // most overlap (shows enough edge to identify cards)
     const maxStep = cardWidth + 20;  // little or no overlap
     const step = handCount > 1
