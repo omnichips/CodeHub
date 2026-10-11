@@ -5,9 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#020617">
     <title>Elevator Anomaly</title>
+    <!-- Installable: Add to Home Screen opens full screen; sw.js makes it work offline. -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Elevator">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
 
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');    
+    /* Stored with the game so it also works offline (SIL Open Font License, see fonts/OFL.txt). */
+    @font-face {
+        font-family: 'Press Start 2P';
+        src: url('fonts/PressStart2P-Regular.ttf') format('truetype');
+        font-display: swap;
+    }
         /* --- 1. CORE VARIABLES --- */
             :root {
                 --bg: #020617; 
@@ -2693,6 +2706,7 @@
 
 <div id="global-crt-overlay"></div>
 <script src="gameData.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 
 <script>
 

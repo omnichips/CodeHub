@@ -57,3 +57,21 @@ test('an unfinished build never leaves a deployable index.html behind', () => {
   assert.equal(r.status, 1);
   assert.ok(!existsSync(join(r.out, 'index.html')), 'the launcher is only written after every app built');
 });
+
+test("a static app's sw.js gets its file list and a version that changes with the files", () => {
+  const sw = "const FILES = [/*HUB_FILES*/];\nconst VERSION = '/*HUB_VERSION*/';\n";
+  const built = (text) => {
+    const r = run([good], { files: { 'index.html': text, 'my pic.png': 'x', 'sw.js': sw } });
+    assert.equal(r.status, 0, r.stderr);
+    const code = readFileSync(join(r.out, 'one', 'sw.js'), 'utf8');
+    return { files: JSON.parse(code.match(/const FILES = (\[.*\]);/)[1]), version: code.match(/const VERSION = '(\w+)'/)[1] };
+  };
+  const a = built('<h1>hi</h1>');
+  assert.deepEqual(a.files, ['./', 'index.html', 'my%20pic.png'], 'every file but sw.js, URL-encoded');
+  assert.equal(built('<h1>hi</h1>').version, a.version, 'same files, same version');
+  assert.notEqual(built('<h1>changed</h1>').version, a.version, 'a changed file is a new version');
+
+  const r = run([good], { files: { 'index.html': 'hi', 'sw.js': 'const FILES = [];' } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /sw\.js needs/);
+});

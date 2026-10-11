@@ -1,6 +1,7 @@
 // Assembles the whole site into dist/: the launcher at the root and every app in apps.json under /<id>/.
 // HUB_REGISTRY and HUB_OUT override the registry file and output folder (the tests use this).
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +48,17 @@ for (const app of registry.apps) {
     if (sizeOf(src) > MAX_APP_MB * 1024 * 1024) fail(`${app.id}: ${src} is over ${MAX_APP_MB} MB. Point "source.dir" at a smaller folder.`);
     cpSync(src, dest, { recursive: true, filter: (p) => !['node_modules', '.git', 'dist'].includes(basename(p)) });
     if (entry !== 'index.html') cpSync(join(src, entry), join(dest, 'index.html'));
+    // An offline-capable static app ships a sw.js with [/*HUB_FILES*/] and /*HUB_VERSION*/ in it:
+    // fill in every file it must cache and a hash of their contents, so each change is a new version.
+    const sw = join(dest, 'sw.js');
+    if (existsSync(sw)) {
+      const files = readdirSync(dest, { recursive: true }).map((f) => f.replaceAll('\\', '/')).filter((f) => f !== 'sw.js' && statSync(join(dest, f)).isFile()).sort();
+      const hash = createHash('sha256');
+      for (const f of files) hash.update(f).update(readFileSync(join(dest, f)));
+      const code = readFileSync(sw, 'utf8');
+      if (!code.includes('[/*HUB_FILES*/]') || !code.includes('/*HUB_VERSION*/')) fail(`${app.id}: sw.js needs [/*HUB_FILES*/] and /*HUB_VERSION*/ for the build to fill in`);
+      writeFileSync(sw, code.replace('[/*HUB_FILES*/]', JSON.stringify(['./', ...files.map(encodeURI)])).replace('/*HUB_VERSION*/', hash.digest('hex').slice(0, 12)));
+    }
   }
 
   let icon;
