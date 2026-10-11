@@ -1450,6 +1450,25 @@
                 line-height: 1.3;
             }
 
+            #p-anim-container, #e-anim-container, #e2-anim-container {
+                position: relative;
+            }
+            /* ActionFx ring around a fighter (heal / block / overheat). translate centres it; the animation owns transform. */
+            .fx-ring {
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                translate: -50% -50%;
+                width: 115%;
+                aspect-ratio: 1;
+                border: 3px solid var(--fx-color);
+                border-radius: 50%;
+                box-shadow: 0 0 12px var(--fx-color), inset 0 0 10px var(--fx-color);
+                pointer-events: none;
+                opacity: 0;
+                z-index: 5;
+            }
+            #ui-gold, #ui-heat { display: inline-block; } /* so ActionFx can scale them */
             #p-anim-container, #e-anim-container {
                 display: inline-block;
                 transition: transform 0.2s;
@@ -3261,6 +3280,80 @@ const AnimationManager = {
 };
 
 // ============================================================================
+// ACTION FX - short feedback for what just happened: rings for heal/block, a glow when heat moves,
+// a pop when credits, statuses or an enemy's intent change, a shake on overheat.
+// Uses element.animate() so it never fights the CSS classes the attack/hit/block animations use.
+// updateUI calls watch(), so effects fire whatever caused the change (card, mod, enemy, status).
+// ============================================================================
+const ActionFx = {
+    ease: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    reduced: matchMedia('(prefers-reduced-motion: reduce)'),
+    last: null,
+    inBattle() {
+        return DOM.get('screen-battle').classList.contains('active');
+    },
+    // A ring that grows out of a fighter and fades: green heal, blue block, orange overheat.
+    ring(containerId, color) {
+        const host = DOM.get(containerId);
+        if (!host) return;
+        const ring = document.createElement('div');
+        ring.className = 'fx-ring';
+        ring.style.setProperty('--fx-color', color);
+        host.appendChild(ring);
+        // Grows quickly while still bright, then fades out.
+        const scale = (v) => (this.reduced.matches ? {} : { transform: `scale(${v})` });
+        ring.animate([
+            { opacity: 0.95, ...scale(0.8), easing: this.ease },
+            { opacity: 0.8, ...scale(1.1), offset: 0.45 },
+            { opacity: 0, ...scale(1.2) },
+        ], { duration: 600 })
+            .finished.then(() => ring.remove(), () => ring.remove());
+    },
+    // Coloured glow on a bar or sprite.
+    glow(el, color, duration = 420) {
+        el?.animate([
+            { filter: `drop-shadow(0 0 0 ${color})` },
+            { filter: `drop-shadow(0 0 7px ${color}) brightness(1.35)`, offset: 0.3 },
+            { filter: `drop-shadow(0 0 0 ${color})` },
+        ], { duration, easing: this.ease });
+    },
+    // Quick grow-and-settle for numbers, icons and the intent badge.
+    pop(el, from = 1.3) {
+        if (!el || this.reduced.matches) return;
+        el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: 260, easing: this.ease });
+    },
+    // New things (a status icon) fade in from slightly small, never from nothing.
+    enter(el) {
+        el.animate([{ opacity: 0, transform: this.reduced.matches ? 'none' : 'scale(0.6)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 240, easing: this.ease });
+    },
+    overheat() {
+        this.ring('p-anim-container', '#f97316');
+        this.glow(document.querySelector('.mini-heat-container'), '#ef4444', 600);
+        if (this.reduced.matches) return;
+        document.querySelector('.viewport').animate(
+            [0, -6, 5, -4, 3, -2, 0].map((x, i) => ({ transform: `translate(${x}px, ${i % 2 ? 2 : -2}px)` })),
+            { duration: 380, easing: 'linear' },
+        );
+    },
+    watch() {
+        const now = { hp: state.hp, block: state.block || 0, heat: state.heat, gold: state.gold, eBlock: enemyParty.map((e) => e?.block || 0) };
+        const was = this.last;
+        this.last = now;
+        if (!was) return;
+        if (now.gold > was.gold) this.pop(DOM.get('ui-gold'));
+        if (!this.inBattle()) return;
+        if (now.hp > was.hp) { this.ring('p-anim-container', '#22c55e'); this.glow(DOM.get('p-shape'), '#22c55e', 520); }
+        if (now.block > was.block) this.ring('p-anim-container', '#60a5fa');
+        now.eBlock.forEach((b, i) => { if (b > (was.eBlock[i] || 0)) this.ring(i ? 'e2-anim-container' : 'e-anim-container', '#60a5fa'); });
+        if (now.heat !== was.heat) {
+            const color = now.heat > was.heat ? '#f97316' : '#7dd3fc';
+            this.glow(document.querySelector('.mini-heat-container'), color);
+            this.pop(DOM.get('ui-heat'), 1.2);
+        }
+    },
+};
+
+// ============================================================================
 // DOM UTILITIES - Common element access patterns
 // ============================================================================
 const DOM = {
@@ -5014,6 +5107,9 @@ const StatusManager = {
         const target = entity === 'enemy' ? enemyParty[resolvedEnemyIndex] : state;
         const statuses = target?.activeStatuses || [];
 
+        // Icons that are new (or gained stacks) since the last render fade in.
+        const before = new Set((bar.dataset.shown || '').split(','));
+        bar.dataset.shown = statuses.map((st) => `${st.id}:${st.stacks || 0}`).join(',');
         bar.innerHTML = '';
         statuses.forEach(s => {
             const def = STATUS_DEFS[s.id];
@@ -5049,6 +5145,7 @@ const StatusManager = {
             tip.innerText = `${def.label}: ${tooltipDesc}`;
             iconEl.appendChild(tip);
             bar.appendChild(iconEl);
+            if (!before.has(`${s.id}:${s.stacks || 0}`)) ActionFx.enter(iconEl);
         });
     },
 
@@ -5500,6 +5597,7 @@ const EnemyAI = {
                         state.hp -= netOverheat;
                         state.heat = 0;
                         showPop('p-pop-anchor', `-${netOverheat} OVERHEAT`, 'var(--heat)');
+            ActionFx.overheat();
                         ModManager.onOverheat();
                         AnimationManager.play('player', 'hit');
                     }
@@ -7335,6 +7433,7 @@ async function playCard(cardElement, forcedTargetIndex = null) {
             state.hp -= netOverheat;
             state.heat = 0;
             showPop('p-pop-anchor', `-${netOverheat} OVERHEAT`, 'var(--heat)');
+            ActionFx.overheat();
             ModManager.onOverheat();
             AnimationManager.play('player', 'hit');
             // Overheat now force-ends the player's turn.
@@ -8639,6 +8738,7 @@ function getEnemyIntentTooltip(enemy) {
 function updateUI() {
     syncNonePassLock();
     syncPlayerCardFlagStatuses();
+    ActionFx.watch();
     const debugSpawnBtn = DOM.get('debug-spawn-second-btn');
     if (debugSpawnBtn) {
         const alive = EnemyPartyManager.getAliveIndices();
@@ -8738,6 +8838,10 @@ function updateUI() {
             if (nameTip) nameTip.innerText = getEnemyAbilitiesTooltip(enemy);
         }
         if (intentEl) {
+            if (intentEl.dataset.shown !== `${enemy.intentType}:${enemy.intent}`) {
+                intentEl.dataset.shown = `${enemy.intentType}:${enemy.intent}`;
+                ActionFx.pop(intentEl.closest('.intent-bubble'), 0.8);
+            }
             intentEl.innerText = enemy.intent;
             intentEl.dataset.kind = enemy.intentType === 'special' ? 'special' : (enemy.isAttacking ? 'attack' : 'block');
             intentEl.style.color = enemy.intentType === 'special'
