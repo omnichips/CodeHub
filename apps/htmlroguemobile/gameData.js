@@ -377,7 +377,7 @@ const ENEMY_TOKEN_PROGRAMS = {
         heat: 0,
         cost: 0,
         desc: '(Costs 10 Heat to discard)',
-        img: '',
+        img: 'assets/program/JunkData.png',
         isJunk: true,
         category: 'enemy_token'
     }
@@ -394,7 +394,7 @@ const CURSES = {
         cost: 0,
         cursed: true,
         desc: 'Curse: Dead draw. Unplayable.',
-        img: ''
+        img: 'assets/program/GlitchLoop.png'
     },
     MEMORY_LEAK: {
         name: 'MEMORY LEAK',
@@ -402,7 +402,7 @@ const CURSES = {
         cost: 0,
         cursed: true,
         desc: 'Curse: Dead draw. Unplayable.',
-        img: ''
+        img: 'assets/program/MemoryLeak.png'
     },
     CORRUPT_SECTOR: {
         name: 'CORRUPT SECTOR',
@@ -410,7 +410,7 @@ const CURSES = {
         cost: 0,
         cursed: true,
         desc: 'Curse: Dead draw. Unplayable.',
-        img: ''
+        img: 'assets/program/CorruptSector.png'
     }
 };
 
