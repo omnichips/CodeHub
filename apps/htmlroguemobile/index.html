@@ -786,6 +786,7 @@
                 margin: 0 auto; 
                 position: relative;
                 object-fit: contain;
+                object-position: center bottom; /* sprites stand on their HP bar */
                 image-rendering: pixelated;
                 filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.35));
             }
@@ -1869,6 +1870,14 @@
                 height: 40px;
                 flex-shrink: 0;
             }
+
+            .bestiary-sprite {
+                width: 32px;
+                height: 64px;
+                object-fit: contain;
+                image-rendering: pixelated;
+            }
+            .bestiary-sprite + .bestiary-shape { display: none; }
 
             .bestiary-entry-name {
                 font-family: var(--font-main);
@@ -3340,7 +3349,8 @@ function renderBestiary() {
                 : '';
 
             entry.innerHTML = `
-                <!-- Coloured shape thumbnail -->
+                <!-- Sprite thumbnail; the coloured shape shows only if the sprite fails to load -->
+                <img class="bestiary-sprite" src="${getEnemySpritePath({ rosterKey: key })}" alt="" onerror="this.remove()">
                 <div class="bestiary-shape" style="
                     background-color: ${shapeColor};
                     clip-path: ${shapeClip};
