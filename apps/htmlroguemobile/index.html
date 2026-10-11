@@ -2047,6 +2047,22 @@
             /* Bestiary: enemies not met yet are silhouettes. */
             .bestiary-entry.unseen .bestiary-sprite, .bestiary-entry.unseen .bestiary-shape { filter: brightness(0) drop-shadow(0 0 1px #475569); }
             .bestiary-entry.unseen .bestiary-entry-name { color: #475569; }
+            /* Something threw: say so on screen (tap to hide). */
+            #error-report {
+                position: fixed;
+                left: 50%;
+                top: calc(env(safe-area-inset-top, 0px) + 40px);
+                z-index: 27000;
+                width: min(640px, calc(100vw - 32px));
+                transform: translateX(-50%);
+                padding: 8px 10px;
+                background: #450a0a;
+                border: 2px solid var(--hp);
+                color: #fecaca;
+                font-size: 8px;
+                line-height: 1.6;
+                word-break: break-word;
+            }
             /* A newer deploy took over: reload to get it. */
             #update-banner {
                 position: fixed;
@@ -2889,6 +2905,28 @@
 <div id="global-crt-overlay"></div>
 <script src="gameData.js"></script>
 <script>
+// Errors show on screen (tap to dismiss) instead of failing silently, so a stuck button can be traced
+// on a phone with no console. Also says whether the end-turn lock was left on.
+(() => {
+    const show = (message) => {
+        let box = document.getElementById('error-report');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'error-report';
+            box.setAttribute('role', 'alert');
+            box.onclick = () => box.remove();
+            document.body.appendChild(box);
+        }
+        const locked = typeof isAnimating !== 'undefined' && isAnimating;
+        const turn = typeof state !== 'undefined' ? `room ${state.room}, turn ${state.turnCount}` : '';
+        box.textContent = `SOMETHING WENT WRONG (${turn}${locked ? ', input locked' : ''}): ${message} — tap to hide`;
+    };
+    // Message plus where it happened (WebKit's stack has no message line).
+    const describe = (err, fallback) => (err ? `${err.message || err} | ${String(err.stack || '').split('\n').find((l) => l.trim()) || ''}` : fallback);
+    window.addEventListener('error', (e) => show(describe(e.error, e.message)));
+    window.addEventListener('unhandledrejection', (e) => show(describe(e.reason, String(e.reason))));
+})();
+
 // Offline worker. When a newer deploy takes over a page that was already running an older one,
 // offer a reload (the run continues from the last elevator).
 if ('serviceWorker' in navigator) {
