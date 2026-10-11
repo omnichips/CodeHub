@@ -11,6 +11,8 @@ export default defineConfig({
     // A made-up registry with several apps, to prove more can be added by editing one file.
     { name: 'fixture', testMatch: 'fixture.spec.js', use: { ...iphone, baseURL: 'http://localhost:4181' } },
     { name: 'desktop', testMatch: 'desktop.spec.js', use: { ...devices['Desktop Safari'], baseURL: 'http://localhost:4181' } },
+    // Elevator Anomaly is landscape-only: a phone held sideways.
+    { name: 'elevator', testMatch: 'elevator.spec.js', use: { ...devices['iPhone 11 landscape'], baseURL: 'http://localhost:4180' } },
   ],
   webServer: [
     { command: 'node scripts/build.mjs && node scripts/serve.mjs dist 4180', url: 'http://localhost:4180/', timeout: 240_000, reuseExistingServer: false },
