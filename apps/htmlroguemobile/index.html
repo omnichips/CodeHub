@@ -1723,6 +1723,7 @@
     display: flex; 
     flex-direction: column;
     padding: 20px;
+    box-sizing: border-box; /* padding inside the screen, not past its edge */
     background-color: #000; /* Deep black background */
     animation: shop-fade-in 0.3s ease-in forwards;
 }
@@ -4146,7 +4147,7 @@ const RunSave = {
     key: 'elevator:run',
     version: 1,
     fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus',
-        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom'],
+        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors'],
     write() {
         if (state.tutorial.active) return;
         const run = { v: this.version, shopCount, shop: { removeCost: ShopManager.removeCost, restockCost: ShopManager.restockCost, ancientScrapCost: ShopManager.ancientScrapCost } };
@@ -4772,6 +4773,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     state.maxHp = PLAYER_STATS.maxHp;
     state.gold = PLAYER_STATS.startingGold; 
     state.room = 0;
+    state.savedDoors = null;
     state.mods = [];
     state.runDestroyedProgramKeys = [];
     state.runCardPowerBonus = {};
@@ -4796,7 +4798,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
             { ...PROGRAMS.FLUSH },     // Vent
             { ...PROGRAMS.CACHE },     // Draw
             { ...PROGRAMS.DROP },      // Discard
-            { ...PROGRAMS.LOGIC_BOMB },// Exhaust example
+            { ...PROGRAMS.SPIKE_BOMB },// Exhaust example
             { ...PROGRAMS.GOD_MODE },  // Destroy example
             { ...CURSES.GLITCH_LOOP }  // Curse example
         ];
@@ -4896,7 +4898,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
                 'btn-end-turn'
             );
             await TutorialManager.showInstruction(
-                'EXHAUST cards are removed for the current combat/floor after use.\n\nExample in this tutorial: LOGIC BOMB.',
+                'EXHAUST cards are removed for the current combat/floor after use.\n\nExample in this tutorial: SPIKE BOMB.',
                 'CARD TAG: EXHAUST',
                 'hand'
             );
@@ -9087,7 +9089,12 @@ function generateElevators() {
     const baseActiveCount = roll < 0.40 ? 1 : roll < 0.85 ? 2 : 3;
     const minOptions = ModManager.getEffectValue('min_two_elevator_options') > 0 ? 2 : 1;
     const activeCount = Math.min(pool.length, Math.max(minOptions, baseActiveCount));
-    const activePicks = pool.sort(() => Math.random() - 0.5).slice(0, activeCount);
+    // A run resumed on this elevator shows the same doors again, so reloading cannot re-roll them.
+    const activePicks = state.savedDoors?.room === state.room
+        ? state.savedDoors.picks
+        : pool.sort(() => Math.random() - 0.5).slice(0, activeCount);
+    state.savedDoors = { room: state.room, picks: activePicks };
+    RunSave.write();
 
     const optCont = DOM.get('floor-options');
     optCont.innerHTML = '';
@@ -9095,7 +9102,7 @@ function generateElevators() {
 
     for (let i = 0; i < 3; i++) {
         const card = document.createElement('div');
-        if (i < activeCount) {
+        if (i < activePicks.length) {
             const type = activePicks[i];
             const m = meta[type];
             card.className = 'option-card ' + m.cls;
@@ -9358,6 +9365,7 @@ function chooseDoor(type) {
     
     // Save the reward type for the next room initialization
     state.nextRoomReward = type;
+    state.savedDoors = null; // the next elevator rolls new doors
 
     DOM.queryAll('.option-card').forEach(c => c.style.pointerEvents = 'none');
     
