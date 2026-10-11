@@ -1981,6 +1981,64 @@
             }
 
             /* ============================================================
+               SETTINGS - screen, sound, storage (opened from the gear and the title screen)
+               ============================================================ */
+            #settings-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 12500;
+                align-items: center;
+                justify-content: center;
+                background: rgba(2, 6, 23, 0.85);
+            }
+            #settings-overlay.open { display: flex; }
+            #settings-panel {
+                position: relative;
+                width: min(520px, calc(100vw - 32px));
+                max-height: calc(100% - 24px);
+                overflow-y: auto;
+                box-sizing: border-box;
+                padding: 16px 18px;
+                background: var(--panel);
+                border: 2px solid var(--accent);
+                box-shadow: 0 0 24px rgba(56, 189, 248, 0.3);
+                font-size: 9px;
+            }
+            #settings-panel h2 { margin: 0 0 12px; font-size: 13px; color: var(--accent); letter-spacing: 3px; }
+            #settings-panel h3 { margin: 14px 0 6px; font-size: 9px; color: var(--active-node); }
+            #settings-panel button {
+                font-size: 8px;
+                padding: 8px 12px;
+                min-height: 32px;
+                background: #1e293b;
+                color: var(--accent);
+                border: 1px solid var(--accent);
+                cursor: pointer;
+            }
+            #settings-panel .panel-close { position: absolute; top: 10px; right: 10px; background: var(--hp); color: #fff; border: none; }
+            #settings-panel .btn-danger { margin-top: 10px; background: #450a0a; color: #fecaca; border-color: var(--hp); }
+            #settings-panel #btn-hub { display: block; margin-top: 16px; }
+            .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0; color: #e2e8f0; }
+            .settings-row input[type="range"] { width: 160px; accent-color: var(--accent); }
+            .settings-hint { margin: 4px 0; color: #94a3b8; font-size: 7px; line-height: 1.6; }
+            .meter { display: flex; height: 12px; margin: 8px 0; background: #1e293b; border: 1px solid #334155; overflow: hidden; }
+            .meter span { min-width: 0; }
+            .seg0 { background: var(--accent); }
+            .seg1 { background: var(--active-node); }
+            .seg2 { background: #22c55e; }
+            .seg3 { background: #94a3b8; }
+            .legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 8px; color: #e2e8f0; }
+            .legend li { display: flex; align-items: center; gap: 8px; }
+            .legend small { margin-left: auto; color: #94a3b8; font-size: 8px; }
+            .swatch { width: 10px; height: 10px; flex: none; }
+            .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 12px; padding: 4px 10px; cursor: pointer; border-radius: 3px; }
+            .btn-menu-small { font-size: 9px; padding: 8px 14px; }
+            /* LIGHT retro effects: no page-wide colour filter and no full-screen flicker (the costly parts on phones). */
+            .fx-light body { filter: none; transition: none; }
+            .fx-light #global-crt-overlay { animation: none; }
+
+            /* ============================================================
                WIN SCREEN - Mirrors death screen styling but green
                ============================================================ */
             #win-screen {
@@ -2379,8 +2437,8 @@
                 .top-nav > span { white-space: nowrap; }
                 .top-nav button { font-size: 6px !important; padding: 5px !important; }
                 .top-nav > div { gap: 4px !important; }
-                .crt-setting { font-size: 6px; gap: 2px; }
-                .crt-setting input[type="range"] { width: 34px; }
+                .btn-gear { font-size: 10px !important; padding: 3px 8px !important; }
+                .settings-row input[type="range"] { width: 130px; }
 
                 /* Title */
                 .menu-box { padding: 20px 24px; }
@@ -2482,24 +2540,46 @@
     <span>HULL: <span id="ui-hp-nav" style="color:var(--hp)">50</span></span>
     <span>HEAT: <span id="ui-heat" style="color:var(--heat)">0%</span></span> 
     <span>CREDITS: <span id="ui-gold" style="color:var(--active-node)">50</span></span>
-    <label class="crt-setting">CRT
-        <input id="crt-brightness-slider" type="range" min="0.5" max="4.2" step="0.05" value="1">
-    </label>
-    <label class="crt-setting">SFX
-        <input id="sfx-volume-slider" type="range" min="0" max="1" step="0.01" value="0.3">
-    </label>
-    <button id="btn-mute" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 8px;border-radius:3px;font-family:var(--font-main);font-size:10px;">🔊</button>
-    <button id="btn-hub" onclick="if (confirm('Leave the game? You can continue from the last elevator.')) location.href = '../'; event.stopPropagation();" style="background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 8px;border-radius:3px;font-family:var(--font-main);font-size:10px;">⌂</button>
     <div style="display:flex; gap:8px;">
         <button id="btn-manifest" onclick="toggleDeck(); event.stopPropagation();">MANIFEST</button>
         <button id="btn-internet" onclick="openInternet(); event.stopPropagation();" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-family:var(--font-main); font-size:9px; padding:6px 12px; cursor:pointer; border-radius:3px;">INTERNET</button>
         <button id="btn-bestiary" onclick="openBestiary(); event.stopPropagation();" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-family:var(--font-main); font-size:9px; padding:6px 12px; cursor:pointer; border-radius:3px;">BESTIARY</button>
+        <button id="btn-settings" class="btn-gear" onclick="openSettings(); event.stopPropagation();" aria-label="Settings">⚙</button>
     </div>
 </div>
 
 <!-- ============================================================
      BESTIARY OVERLAY - Enemy encyclopedia opened from top nav
      ============================================================ -->
+<div id="settings-overlay" onclick="if (event.target === this) closeSettings()">
+    <div id="settings-panel">
+        <button id="settings-close-btn" class="panel-close" onclick="closeSettings()">[ CLOSE ]</button>
+        <h2>SETTINGS</h2>
+        <h3>SCREEN</h3>
+        <label class="settings-row">CRT BRIGHTNESS
+            <input id="crt-brightness-slider" type="range" min="0.5" max="4.2" step="0.05" value="1">
+        </label>
+        <div class="settings-row">RETRO EFFECTS
+            <button id="fx-mode-btn" onclick="FxMode.toggle()">FULL</button>
+        </div>
+        <p class="settings-hint">LIGHT turns off the screen flicker and colour filter: smoother and easier on the battery on phones.</p>
+        <h3>SOUND</h3>
+        <label class="settings-row">VOLUME
+            <input id="sfx-volume-slider" type="range" min="0" max="1" step="0.01" value="0.3">
+        </label>
+        <div class="settings-row">MUTE
+            <button id="btn-mute" aria-label="Mute">🔊</button>
+        </div>
+        <h3>STORAGE</h3>
+        <p id="storage-total" class="settings-hint">MEASURING…</p>
+        <div id="storage-meter" class="meter" role="img"></div>
+        <ul id="storage-legend" class="legend"></ul>
+        <button id="storage-clear-btn" class="btn-danger" onclick="clearGameData()">CLEAR ALL GAME DATA</button>
+        <p class="settings-hint">Deletes this game's saved run, stats, unlocks, settings and offline copy on this device. Other apps on this site keep their data.</p>
+        <button id="btn-hub" onclick="if (confirm('Leave the game? You can continue from the last elevator.')) location.href = '../';">⌂ EXIT TO HUB</button>
+    </div>
+</div>
+
 <div id="bestiary-overlay">
     <button id="bestiary-close-btn" onclick="closeBestiary()">[ CLOSE ]</button>
     <h2>— BESTIARY —</h2>
@@ -2518,6 +2598,7 @@
                 <!-- Debug boot toggle: starts run with all debug controls enabled. -->
                 <button class="btn-menu-init" id="init-debug-btn" style="margin-left:10px;" onclick="initRun(true, this)">Run with Cheats</button>
                 <button class="btn-menu-init" id="exit-hub-btn" style="margin-left:10px;" onclick="location.href = '../'">Exit</button>
+                <div><button class="btn-menu-init btn-menu-small" id="title-settings-btn" onclick="openSettings()">⚙ Settings</button></div>
             </div>
         </div>
 
@@ -3149,6 +3230,7 @@ function closeAllOverlays() {
         DOM.get('hand').style.pointerEvents = 'auto';
     }
     closeBestiary();
+    closeSettings();
 }
 
 // Keep the top nav behavior + allow the battle mod HUD to avoid overlap.
@@ -9944,6 +10026,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     setCrtBrightness(storedBrightness || CRT_BRIGHTNESS_CONFIG.defaultValue);
 });
+
+// ============================================================================
+// SETTINGS PANEL
+// ============================================================================
+function openSettings() {
+    DOM.get('settings-overlay').classList.add('open');
+    measureGameStorage();
+}
+function closeSettings() {
+    DOM.get('settings-overlay')?.classList.remove('open');
+}
+
+// This game's share of the device storage. Every app on the Hub shares one origin, so only the
+// "elevator:" keys and the "elevator-" offline cache count (and get cleared) here.
+const GAME_KEY_PREFIX = 'elevator:';
+const GAME_CACHE_PREFIX = 'elevator-';
+function gameStorageKeys() {
+    try { return Object.keys(localStorage).filter((k) => k.startsWith(GAME_KEY_PREFIX)); } catch (_) { return []; }
+}
+async function measureGameStorage() {
+    const keyBytes = (match) => gameStorageKeys().filter(match).reduce((n, k) => {
+        try { return n + (k.length + (localStorage.getItem(k) || '').length) * 2; } catch (_) { return n; } // UTF-16
+    }, 0);
+    let files = 0;
+    try {
+        for (const name of (await caches.keys()).filter((k) => k.startsWith(GAME_CACHE_PREFIX))) {
+            const cache = await caches.open(name);
+            const sizes = await Promise.all((await cache.keys()).map(async (req) => (await (await cache.match(req)).blob()).size));
+            files += sizes.reduce((a, b) => a + b, 0);
+        }
+    } catch (_) { /* no Cache API (private mode, old browser) */ }
+    const statsKeys = ['elevator:stats', 'elevator:unlocks', 'elevator:bestiary_seen'];
+    const slices = [
+        { label: 'OFFLINE GAME FILES', bytes: files },
+        { label: 'SAVED RUN', bytes: keyBytes((k) => k === 'elevator:run') },
+        { label: 'STATS & UNLOCKS', bytes: keyBytes((k) => statsKeys.includes(k)) },
+        { label: 'SETTINGS', bytes: keyBytes((k) => k !== 'elevator:run' && !statsKeys.includes(k)) },
+    ];
+    const total = slices.reduce((n, sl) => n + sl.bytes, 0);
+    const size = (b) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+    DOM.get('storage-total').textContent = total ? `${size(total)} USED BY THIS GAME ON THIS DEVICE` : 'NOTHING STORED YET';
+    const meter = DOM.get('storage-meter');
+    meter.setAttribute('aria-label', slices.map((sl) => `${sl.label} ${size(sl.bytes)}`).join(', '));
+    meter.replaceChildren(...slices.map((sl, i) => Object.assign(document.createElement('span'), { className: `seg${i}`, style: `flex-grow: ${sl.bytes}` })));
+    DOM.get('storage-legend').replaceChildren(...slices.map((sl, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="swatch seg${i}" aria-hidden="true"></span>${sl.label}<small>${sl.bytes ? size(sl.bytes) : '—'}</small>`;
+        return li;
+    }));
+}
+async function clearGameData() {
+    if (!confirm('Clear all Elevator Anomaly data on this device?\n\nYour saved run, stats, unlocks and settings will be deleted. This cannot be undone.')) return;
+    gameStorageKeys().forEach((k) => { try { localStorage.removeItem(k); } catch (_) {} });
+    try { for (const name of (await caches.keys()).filter((k) => k.startsWith(GAME_CACHE_PREFIX))) await caches.delete(name); } catch (_) {}
+    // Drop the offline worker too; the reload installs a fresh copy when online.
+    try { (await navigator.serviceWorker?.getRegistration())?.unregister(); } catch (_) {}
+    location.reload();
+}
+
+// Retro screen effects: FULL (flicker + colour filter) or LIGHT. Phones start on LIGHT.
+const FxMode = {
+    key: 'elevator:fx_mode',
+    get() {
+        try { return localStorage.getItem(this.key) || (IS_TOUCH ? 'light' : 'full'); } catch (_) { return IS_TOUCH ? 'light' : 'full'; }
+    },
+    apply(mode) {
+        document.documentElement.classList.toggle('fx-light', mode === 'light');
+        const btn = DOM.get('fx-mode-btn');
+        if (btn) btn.textContent = mode === 'light' ? 'LIGHT' : 'FULL';
+    },
+    toggle() {
+        const next = this.get() === 'light' ? 'full' : 'light';
+        try { localStorage.setItem(this.key, next); } catch (_) {}
+        this.apply(next);
+    },
+};
+FxMode.apply(FxMode.get());
 
 // Update the toggleDeck function to act as a wrapper for the manifest button
 function toggleDeck() {
