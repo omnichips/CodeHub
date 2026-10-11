@@ -9,6 +9,7 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.wasm': 'application/wasm', '.ttf': 'font/ttf', '.txt': 'text/plain',
+  '.gif': 'image/gif', '.mp3': 'audio/mpeg',
 };
 
 export function serve(dir, port = 0) {

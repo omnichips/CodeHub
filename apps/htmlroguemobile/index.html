@@ -2616,7 +2616,10 @@
         </div>
         <p class="settings-hint">LIGHT turns off the screen flicker and colour filter: smoother and easier on the battery on phones.</p>
         <h3>SOUND</h3>
-        <label class="settings-row">VOLUME
+        <label class="settings-row">MUSIC
+            <input id="music-volume-slider" type="range" min="0" max="1" step="0.01" value="0.5">
+        </label>
+        <label class="settings-row">EFFECTS
             <input id="sfx-volume-slider" type="range" min="0" max="1" step="0.01" value="0.3">
         </label>
         <div class="settings-row">MUTE
@@ -3032,6 +3035,7 @@ const SoundManager = (() => {
         setVolume,
         setMuted,
         isMuted,
+        getContext: getAudioContext,
         // Card play sound - ascending beep
         playCard() {
             playTone(400, 0.1, 0.8, 'sine');
@@ -3059,6 +3063,71 @@ const SoundManager = (() => {
     };
 })();
 
+// ============================================================================
+// BACKGROUND MUSIC - loops through Web Audio (iOS ignores an <audio> element's volume), with its own
+// volume. Some moments turn it down while they last ("duck"): boss intros, tutorial tips, the ancient
+// relic offer, the settings and stats panels, and the end of a run. The quietest duck wins.
+// ============================================================================
+const Music = {
+    src: 'assets/Overtime_in_the_Labyrinth.mp3',
+    key: 'elevator:music_volume',
+    volume: (() => { try { const v = parseFloat(localStorage.getItem('elevator:music_volume')); return Number.isFinite(v) ? v : 0.5; } catch (_) { return 0.5; } })(),
+    ducks: {}, // reason -> level 0..1
+    el: null,
+    gain: null,
+    // Browsers only allow sound after a tap, so this runs on the first one.
+    start() {
+        if (this.el) return;
+        this.el = new Audio(this.src);
+        this.el.loop = true;
+        try {
+            const ctx = SoundManager.getContext();
+            const gain = ctx.createGain();
+            gain.gain.value = 0;
+            ctx.createMediaElementSource(this.el).connect(gain).connect(ctx.destination);
+            this.gain = gain;
+        } catch (_) {
+            // No Web Audio: the element's own volume (which works everywhere except iOS, where Web Audio exists).
+            this.el.volume = 0;
+        }
+        this.el.play().catch(() => {});
+        this.apply(1.5); // fade in
+    },
+    level() {
+        return SoundManager.isMuted() ? 0 : this.volume * Math.min(1, ...Object.values(this.ducks));
+    },
+    // Glide to the current level over about `seconds`.
+    apply(seconds = 0.5) {
+        if (!this.gain) {
+            if (this.el) this.el.volume = this.level(); // fallback: no glide
+            return;
+        }
+        const ctx = SoundManager.getContext(), g = this.gain.gain;
+        g.cancelScheduledValues(ctx.currentTime);
+        g.setValueAtTime(g.value, ctx.currentTime);
+        g.setTargetAtTime(this.level(), ctx.currentTime, seconds / 3);
+    },
+    duck(reason, level) {
+        this.ducks[reason] = level;
+        this.apply(0.4);
+    },
+    unduck(reason) {
+        delete this.ducks[reason];
+        this.apply(0.9);
+    },
+    setVolume(v) {
+        this.volume = Math.max(0, Math.min(1, Number(v) || 0));
+        try { localStorage.setItem(this.key, String(this.volume)); } catch (_) {}
+        this.apply(0.1);
+    },
+};
+document.addEventListener('pointerdown', () => { SoundManager.unlock(); Music.start(); }, { once: true, capture: true });
+// No music in the background (and no battery spent on it).
+document.addEventListener('visibilitychange', () => {
+    if (!Music.el) return;
+    if (document.hidden) Music.el.pause(); else Music.el.play().catch(() => {});
+});
+
 // Wire small UI and restore state on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
     const slider = document.getElementById('sfx-volume-slider');
@@ -3071,10 +3140,16 @@ document.addEventListener('DOMContentLoaded', () => {
             SoundManager.setVolume(v);
         });
     }
+    const musicSlider = document.getElementById('music-volume-slider');
+    if (musicSlider) {
+        musicSlider.value = Music.volume;
+        musicSlider.addEventListener('input', (e) => Music.setVolume(e.target.value));
+    }
     if (btn) {
         btn.addEventListener('click', () => {
             const next = !SoundManager.isMuted();
             SoundManager.setMuted(next);
+            Music.apply(0.2);
             btn.textContent = next ? '🔇' : '🔊';
         });
         btn.textContent = SoundManager.isMuted() ? '🔇' : '🔊';
@@ -4203,6 +4278,7 @@ async function playBossIntroCutscene(enemyName) {
 
     // Hard lock input while cutscene text is displayed.
     isAnimating = true;
+    Music.duck('cutscene', 0.3);
     const hand = DOM.get('hand');
     if (hand) hand.style.pointerEvents = 'none';
     const endBtn = DOM.get('btn-end-turn');
@@ -4219,6 +4295,7 @@ async function playBossIntroCutscene(enemyName) {
 
     overlay.style.display = 'none';
     isAnimating = false;
+    Music.unduck('cutscene');
     if (hand) hand.style.pointerEvents = 'auto';
     if (endBtn) endBtn.disabled = false;
 }
@@ -4987,11 +5064,13 @@ const TutorialManager = {
         this.placeInstructionNear(anchorId);
         DOM.get('hand').style.pointerEvents = 'none';
         DOM.get('btn-end-turn').disabled = true;
+        Music.duck('tutorial', 0.5);
 
         await new Promise((resolve) => {
             const onClick = () => {
                 overlay.removeEventListener('click', onClick);
                 overlay.style.display = 'none';
+                Music.unduck('tutorial');
                 this.clearFocus();
                 DOM.get('hand').style.pointerEvents = 'auto';
                 DOM.get('btn-end-turn').disabled = false;
@@ -8238,6 +8317,7 @@ function triggerGameOver() {
     }
     RunSave.clear();
     Profile.runEnded('death');
+    Music.duck('end', 0); // fades out
     const deathScreen = DOM.get('death-screen');
     const deathText = DOM.get('death-text');
     const deathOverlay = DOM.get('death-crt-overlay');
@@ -8274,6 +8354,7 @@ function triggerGameOver() {
 function triggerWin() {
     RunSave.clear();
     Profile.runEnded('win');
+    Music.duck('end', 0.35);
     const winScreen = DOM.get('win-screen');
     const winText = DOM.get('win-text');
     const winBtn = DOM.get('win-continue-btn');
@@ -9557,6 +9638,7 @@ function openAncientRoomOptions() {
     nameEl.innerText = pick.name;
     descEl.innerText = pick.desc;
     overlay.style.display = 'flex';
+    Music.duck('ancient', 0.35);
     DOM.get('hand').style.pointerEvents = 'none';
 
     acceptBtn.onclick = () => {
@@ -9568,6 +9650,7 @@ function openAncientRoomOptions() {
         showCenterBanner(`ANCIENT MOD: ${pick.name}`, '#fbbf24', 2600);
         showPop('p-pop-anchor', `${pick.name} INSTALLED`, 'var(--active-node)');
         overlay.style.display = 'none';
+        Music.unduck('ancient');
         DOM.get('hand').style.pointerEvents = 'auto';
         generateElevators();
     };
@@ -9579,6 +9662,7 @@ function openAncientRoomOptions() {
         showPop('p-pop-anchor', `DECLINED: -${lost} CREDITS`, '#f97316');
         updateUI();
         overlay.style.display = 'none';
+        Music.unduck('ancient');
         DOM.get('hand').style.pointerEvents = 'auto';
         generateElevators();
     };
@@ -10281,9 +10365,11 @@ const Daily = {
 function openStats() {
     renderStats();
     DOM.get('stats-overlay').classList.add('open');
+    Music.duck('menu', 0.5);
 }
 function closeStats() {
     DOM.get('stats-overlay')?.classList.remove('open');
+    if (!DOM.get('settings-overlay')?.classList.contains('open')) Music.unduck('menu');
 }
 function renderStats() {
     const s = Profile.stats();
@@ -10317,10 +10403,12 @@ function renderStats() {
 // ============================================================================
 function openSettings() {
     DOM.get('settings-overlay').classList.add('open');
+    Music.duck('menu', 0.5);
     measureGameStorage();
 }
 function closeSettings() {
     DOM.get('settings-overlay')?.classList.remove('open');
+    Music.unduck('menu');
 }
 
 // This game's share of the device storage. Every app on the Hub shares one origin, so only the
