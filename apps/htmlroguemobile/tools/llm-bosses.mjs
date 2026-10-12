@@ -1,22 +1,29 @@
-// Draws the source sprites (44x60, same scale as the other enemy drawings) for the LLM bosses,
-// into tools/enemy-src. Then run: node tools/remaster-enemies.mjs OMNI_GPT GEMINI_TWINS ...
+// Draws the LLM boss sprites at the size of the hand-drawn enemies (bosses are 40px wide),
+// straight into assets/enemies. Run from the app folder: node tools/llm-bosses.mjs
+// Shapes below are laid out on a 44x60 grid and scaled by K onto the sprite.
 import fs from 'node:fs';
 import { writePng } from './png.mjs';
 
-const W = 44, H = 60;
+// 38px of drawing plus a 1px outline on each side = 40px, like the hand-drawn bosses.
+const K = 38 / 44, W = 40, H = 55;
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16), 255];
 function canvas() {
     const g = Array.from({ length: H }, () => Array(W).fill(null));
-    const put = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = c && hex(c); };
+    const put = (x, y, c) => { x = Math.round(x) + 1; y = Math.round(y) + 1; if (x >= 0 && y >= 0 && x < W && y < H) g[y][x] = c && hex(c); };
     const L = {
         g,
-        px(x, y, c) { put(x, y, c); return L; },
-        rect(x0, y0, x1, y1, c) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(x, y, c); return L; },
+        px(x, y, c) { put(x * K, y * K, c); return L; },
+        rect(x0, y0, x1, y1, c) {
+            for (let y = Math.round(y0 * K); y <= Math.round(y1 * K); y++) for (let x = Math.round(x0 * K); x <= Math.round(x1 * K); x++) put(x, y, c);
+            return L;
+        },
         ellipse(cx, cy, rx, ry, c) {
+            cx *= K; cy *= K; rx *= K; ry *= K;
             for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1.05) put(x, y, c);
             return L;
         },
         line(x0, y0, x1, y1, c, t = 1) {
+            [x0, y0, x1, y1] = [x0, y0, x1, y1].map((v) => v * K);
             const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 2 || 1;
             for (let k = 0; k <= n; k++) {
                 const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n;
@@ -25,6 +32,7 @@ function canvas() {
             return L;
         },
         poly(pts, c) {
+            pts = pts.map(([x, y]) => [x * K, y * K]);
             for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
                 let inside = false;
                 for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -37,7 +45,7 @@ function canvas() {
         },
         star(cx, cy, r1, r2, n, c, rot = -Math.PI / 2) {
             const pts = [];
-            for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1, a = rot + (i * Math.PI) / n; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+            for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1, a = rot + (i * Math.PI) / n; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } // poly scales these
             return L.poly(pts, c);
         },
     };
@@ -51,6 +59,13 @@ function outlined(g) {
         if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => g[y + dy]?.[x + dx])) out[y][x] = dark;
     }
     return out;
+}
+
+// Trim empty rows/columns, like the hand-drawn sprites.
+function crop(g) {
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    g.forEach((row, y) => row.forEach((c, x) => { if (c) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }));
+    return g.slice(y0, y1 + 1).map((row) => row.slice(x0, x1 + 1));
 }
 
 const BOSSES = {
@@ -120,6 +135,6 @@ const BOSSES = {
 for (const [key, draw] of Object.entries(BOSSES)) {
     const L = canvas();
     draw(L);
-    fs.writeFileSync(`tools/enemy-src/${key}.png`, writePng(outlined(L.g)));
+    fs.writeFileSync(`assets/enemies/${key}.png`, writePng(crop(outlined(L.g))));
 }
 console.log(`drew ${Object.keys(BOSSES).length} bosses`);
