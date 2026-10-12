@@ -21,6 +21,11 @@ const registry = JSON.parse(readFileSync(registryFile, 'utf8'));
 const problems = validateRegistry(registry);
 if (problems.length) fail(`${basename(registryFile)} has problems:\n  - ${problems.join('\n  - ')}`);
 
+// Which build this is, for a static app to show (/*HUB_BUILD*/ in its index.html): short commit · UTC date.
+// Vercel gives the commit in VERCEL_GIT_COMMIT_SHA; a local build asks git.
+const commit = (process.env.VERCEL_GIT_COMMIT_SHA || spawnSync('git', ['rev-parse', 'HEAD'], { cwd: hub, encoding: 'utf8' }).stdout || '').trim().slice(0, 7) || 'local';
+const buildLabel = `${commit} · ${new Date().toISOString().slice(0, 10)}`;
+
 const sizeOf = (p) => (statSync(p).isDirectory() ? readdirSync(p).reduce((sum, f) => sum + sizeOf(join(p, f)), 0) : statSync(p).size);
 
 rmSync(out, { recursive: true, force: true });
@@ -48,6 +53,8 @@ for (const app of registry.apps) {
     if (sizeOf(src) > MAX_APP_MB * 1024 * 1024) fail(`${app.id}: ${src} is over ${MAX_APP_MB} MB. Point "source.dir" at a smaller folder.`);
     cpSync(src, dest, { recursive: true, filter: (p) => !['node_modules', '.git', 'dist'].includes(basename(p)) });
     if (entry !== 'index.html') cpSync(join(src, entry), join(dest, 'index.html'));
+    const page = readFileSync(join(dest, 'index.html'), 'utf8');
+    if (page.includes('/*HUB_BUILD*/')) writeFileSync(join(dest, 'index.html'), page.replaceAll('/*HUB_BUILD*/', buildLabel));
     // An offline-capable static app ships a sw.js with [/*HUB_FILES*/] and /*HUB_VERSION*/ in it:
     // fill in every file it must cache and a hash of their contents, so each change is a new version.
     const sw = join(dest, 'sw.js');

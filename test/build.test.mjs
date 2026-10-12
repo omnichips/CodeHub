@@ -75,3 +75,10 @@ test("a static app's sw.js gets its file list and a version that changes with th
   assert.equal(r.status, 1);
   assert.match(r.stderr, /sw\.js needs/);
 });
+
+test("a static app's /*HUB_BUILD*/ becomes the commit and date it was built from", () => {
+  const r = run([good], { files: { 'index.html': "<script>const BUILD = '/*HUB_BUILD*/';</script>" } });
+  assert.equal(r.status, 0, r.stderr);
+  const html = readFileSync(join(r.out, 'one', 'index.html'), 'utf8');
+  assert.match(html, /const BUILD = '(\w{7}|local) · \d{4}-\d{2}-\d{2}';/);
+});

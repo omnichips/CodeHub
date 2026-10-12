@@ -2082,6 +2082,7 @@
             .card-upgraded { color: #22c55e; margin-left: 2px; }
             .ui-icon { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-align: middle; }
             .btn-gear .ui-icon, #btn-mute .ui-icon { width: 18px; height: 18px; display: block; }
+            .menu-build { position: absolute; right: 12px; bottom: 10px; z-index: 2; font-size: 7px; color: #64748b; }
             .title-note { margin-top: 8px; font-size: 8px; color: #94a3b8; min-height: 10px; }
             .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
             .stats-grid div { padding: 6px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 7px; }
@@ -2690,6 +2691,7 @@
         <button id="storage-clear-btn" class="btn-danger" onclick="clearGameData()">CLEAR ALL GAME DATA</button>
         <p class="settings-hint">Deletes this game's saved run, stats, unlocks, settings and offline copy on this device. Other apps on this site keep their data.</p>
         <button id="btn-hub" onclick="if (confirm('Leave this run for the main menu? You can continue from the last elevator.')) location.reload();"><img class="ui-icon" src="assets/ui/home.png" alt=""> EXIT TO MAIN MENU</button>
+        <p class="settings-hint build-version-text"></p>
     </div>
 </div>
 
@@ -2710,6 +2712,7 @@
     <div class="viewport">
         <div id="screen-menu" class="screen active">
             <div class="menu-bg" aria-hidden="true"></div>
+            <div class="menu-build build-version-text"></div>
             <div class="menu-box">
                 <div class="menu-kicker">AFTER HOURS &middot; 30 FLOORS</div>
                 <h1>Elevator<br>Anomaly</h1>
@@ -10897,6 +10900,12 @@ const FxMode = {
     },
 };
 FxMode.apply(FxMode.get());
+
+// Which build this is: the Hub build writes "<commit> · <date>" over the placeholder; an unbuilt copy says DEV.
+const BUILD = '/*HUB_BUILD*/';
+document.querySelectorAll('.build-version-text').forEach((el) => {
+    el.textContent = `BUILD ${BUILD.includes('HUB_BUILD') ? 'DEV' : BUILD}`;
+});
 
 // Update the toggleDeck function to act as a wrapper for the manifest button
 function toggleDeck() {
