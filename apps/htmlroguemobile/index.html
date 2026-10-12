@@ -4750,6 +4750,7 @@ let state = {
     oneTimeEffectApplied: {},
     // Tracks which boss floors already played intro dialogue.
     bossIntroSeenByRoom: {},
+    bossBreakRoom: null, // floor whose stop before the boss (rest site or shop) was taken
     tutorial: {
         active: false,
         enemyKey: 'SPARK_DRONE',
@@ -4772,7 +4773,7 @@ const RunSave = {
     key: 'elevator:run',
     version: 1,
     fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus',
-        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors', 'daily'],
+        'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors', 'daily', 'bossBreakRoom'],
     write() {
         if (state.tutorial.active) return;
         const run = { v: this.version, shopCount, shop: { removeCost: ShopManager.removeCost, restockCost: ShopManager.restockCost, ancientScrapCost: ShopManager.ancientScrapCost } };
@@ -5493,6 +5494,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     state.permanentMaxHpBonus = 0;
     state.freeProgramsNextShop = false;
     state.bossIntroSeenByRoom = {};
+    state.bossBreakRoom = null;
     state.oneTimeEffectApplied = {};
     state.debugEnabled = !!enableDebug;
     if (!tutorialMode && !options.resume) {
@@ -9734,6 +9736,24 @@ function generateElevators() {
         const optCont = DOM.get('floor-options');
         optCont.innerHTML = '';
         optCont.style.display = 'flex';
+        // First a stop between floor 9 and the boss that is not a floor of its own:
+        // the player picks a rest site or a shop (no shop once an ancient mod disabled shops).
+        if (state.bossBreakRoom !== state.room) {
+            if (header) header.innerText = 'BOSS AHEAD: REST OR RESUPPLY';
+            const stops = [['boss_rest', 'rest.gif', 'Rest Site', 'Heal or upgrade before the boss', 'rest-card']];
+            if (ModManager.getEffectValue('ancient_kill_maxhp_no_shop') <= 0) stops.push(['boss_shop', 'shop.gif', 'Shop', 'Stock up before the boss', 'shop-card']);
+            stops.forEach(([type, gif, label, desc, cls]) => {
+                const card = document.createElement('div');
+                card.className = 'option-card ' + cls;
+                card.innerHTML = `
+            <div class="opt-icon"><img src="assets/misc/${gif}" alt="" style="width:48px;height:48px;image-rendering:pixelated;"></div>
+            <div class="opt-label">${label}</div>
+            <div class="opt-desc">${desc}</div>`;
+                card.onclick = () => chooseDoor(type);
+                optCont.appendChild(card);
+            });
+            return;
+        }
         const bossCard = document.createElement('div');
         bossCard.className = 'option-card elite-card';
         bossCard.innerHTML = `
@@ -9801,16 +9821,9 @@ function generateElevators() {
     const minOptions = ModManager.getEffectValue('min_two_elevator_options') > 0 ? 2 : 1;
     const activeCount = Math.min(pool.length, Math.max(minOptions, baseActiveCount));
     // A run resumed on this elevator shows the same doors again, so reloading cannot re-roll them.
-    // The floor before every boss is a breather: the player picks a rest site or a shop
-    // (shop not offered once an ancient mod has disabled shops).
-    const shopsDisabled = ModManager.getEffectValue('ancient_kill_maxhp_no_shop') > 0;
-    const preBoss = state.room % 10 === 8 && state.room + 2 <= GAME_CONFIG.totalRooms;
-    const activePicks = preBoss
-        ? (shopsDisabled ? ['rest'] : ['rest', 'shop'])
-        : state.savedDoors?.room === state.room
+    const activePicks = state.savedDoors?.room === state.room
         ? state.savedDoors.picks
         : pool.sort(() => Math.random() - 0.5).slice(0, activeCount);
-    if (preBoss && header) header.innerText = 'BOSS AHEAD: REST OR RESUPPLY';
     state.savedDoors = { room: state.room, picks: activePicks };
     RunSave.write();
 
@@ -10070,6 +10083,12 @@ function advanceNonCombatFloor(roomType = 'event') {
 
 function chooseDoor(type) {
     Daily.reseed(`door-${state.room}-${type}`);
+    // Stop before a boss: the normal rest site / shop, but it is not a floor and not one of the run's shops.
+    const bossBreak = type === 'boss_rest' || type === 'boss_shop';
+    if (bossBreak) {
+        state.bossBreakRoom = state.room;
+        type = type.slice(5);
+    }
     const player = DOM.get('elev-player');
     const viewport = document.querySelector('.viewport');
     const shopLockedByAncient = ModManager.getEffectValue('ancient_kill_maxhp_no_shop') > 0;
@@ -10193,7 +10212,8 @@ function chooseDoor(type) {
                 });
                 return;
             } else if (type === 'rest') {
-                advanceNonCombatFloor('rest');
+                if (bossBreak) state.currentRoomType = 'rest';
+                else advanceNonCombatFloor('rest');
                 openRestSiteOptions();
             } else if (type === 'shop') {
                 if (shopLockedByAncient) {
@@ -10201,8 +10221,8 @@ function chooseDoor(type) {
                     generateElevators();
                     return;
                 }
-                advanceNonCombatFloor('shop');
-                shopCount++;
+                if (bossBreak) state.currentRoomType = 'shop';
+                else { advanceNonCombatFloor('shop'); shopCount++; }
                 const shopBonus = Math.max(0, Math.floor(ModManager.getEffectValue('credits_on_shop_enter')));
                 if (shopBonus > 0) {
                     const gained = addCredits(shopBonus);
