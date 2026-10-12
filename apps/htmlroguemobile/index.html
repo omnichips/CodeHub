@@ -9801,9 +9801,16 @@ function generateElevators() {
     const minOptions = ModManager.getEffectValue('min_two_elevator_options') > 0 ? 2 : 1;
     const activeCount = Math.min(pool.length, Math.max(minOptions, baseActiveCount));
     // A run resumed on this elevator shows the same doors again, so reloading cannot re-roll them.
-    const activePicks = state.savedDoors?.room === state.room
+    // The floor before every boss is a breather: the player picks a rest site or a shop
+    // (shop not offered once an ancient mod has disabled shops).
+    const shopsDisabled = ModManager.getEffectValue('ancient_kill_maxhp_no_shop') > 0;
+    const preBoss = state.room % 10 === 8 && state.room + 2 <= GAME_CONFIG.totalRooms;
+    const activePicks = preBoss
+        ? (shopsDisabled ? ['rest'] : ['rest', 'shop'])
+        : state.savedDoors?.room === state.room
         ? state.savedDoors.picks
         : pool.sort(() => Math.random() - 0.5).slice(0, activeCount);
+    if (preBoss && header) header.innerText = 'BOSS AHEAD: REST OR RESUPPLY';
     state.savedDoors = { room: state.room, picks: activePicks };
     RunSave.write();
 
