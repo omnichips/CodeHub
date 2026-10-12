@@ -4538,7 +4538,9 @@ async function playBossIntroCutscene(enemyName) {
     const text = DOM.get('boss-cutscene-text');
     if (!overlay || !speaker || !text) return;
 
-    const bossPool = Array.isArray(BOSS_INTRO_BOSS_LINES) ? BOSS_INTRO_BOSS_LINES : [];
+    // A boss with its own introLines (gameData.js) says one of those; the rest share the generic pool.
+    const ownLines = ENEMY_ROSTER[currentEnemy?.rosterKey]?.introLines;
+    const bossPool = ownLines?.length ? ownLines : (Array.isArray(BOSS_INTRO_BOSS_LINES) ? BOSS_INTRO_BOSS_LINES : []);
     const playerPool = Array.isArray(BOSS_INTRO_PLAYER_LINES) ? BOSS_INTRO_PLAYER_LINES : [];
     if (!bossPool.length || !playerPool.length) return;
 

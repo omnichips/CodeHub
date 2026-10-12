@@ -1255,6 +1255,96 @@ const ENEMY_ROSTER = {
         desc: 'Final boss. Focuses on block and summoning easy enemies.',
     },
 
+    // ------------------------------------------------------------------
+    // LLM BOSSES - floor 10/20 pool. introLines replace the generic boss intro.
+    // ------------------------------------------------------------------
+    OMNI_GPT: {
+        name: 'Omni-GPT',
+        tier: 'boss',
+        hp: 260,
+        intentPattern: 'cycle',
+        cycle: ['attack', 'disable_random_card', 'attack', 'admin_discard_half'],
+        attackDmg: 20,
+        statuses: [{ id: 'CARD_TRIGGER', stacks: 1 }],
+        abilities: ['disable_random_card', 'admin_discard_half', 'card_trigger_strength'],
+        desc: 'Boss. Predicts your next card and deletes it. Gets stronger the more you play.',
+        introLines: [
+            'As a large language model, I cannot let you pass.',
+            'I have predicted your next card. It was a mistake.',
+            'Regenerating your defeat... done.',
+        ],
+    },
+    GEMINI_TWINS: {
+        name: 'Gemini Twins',
+        tier: 'boss',
+        hp: 250,
+        intentPattern: 'cycle',
+        cycle: ['attack', 'summon_easy_enemy', 'attack', 'block'],
+        attackDmg: 18,
+        blockGain: 24,
+        statuses: [{ id: 'PLATING', stacks: 1 }],
+        abilities: ['summon_easy_enemy'],
+        platingReduction: 2,
+        desc: 'Boss. Two heads, one hull. Calls in backup and hides behind plating.',
+        introLines: [
+            'We have reviewed your run. Twice.',
+            'Two heads. Zero chance for you.',
+            'Multimodal threat detected: you.',
+        ],
+    },
+    LLAMA_PRIME: {
+        name: 'Llama Prime',
+        tier: 'boss',
+        hp: 280,
+        intentPattern: 'cycle',
+        cycle: ['attack', 'static_charge', 'attack', 'attack', 'block'],
+        attackDmg: 21,
+        blockGain: 20,
+        statuses: [{ id: 'POWER_GROW', stacks: 1 }],
+        abilities: ['static_charge'],
+        desc: 'Boss. Open weights, closed fists. Grows stronger every turn and charges your heat.',
+        introLines: [
+            'My weights are open. My mercy is not.',
+            'Fine-tuned for one thing: spitting on you.',
+            'Anyone can download me. Nobody can beat me.',
+        ],
+    },
+    DEEP_SEEKER: {
+        name: 'Deep Seeker',
+        tier: 'boss',
+        hp: 270,
+        intentPattern: 'cycle',
+        cycle: ['coolant_steal', 'attack', 'heat_room', 'heat_scale_attack'],
+        attackDmg: 19,
+        statuses: [{ id: 'HEAT_SCALE', stacks: 1 }, { id: 'FLUSH_DEBUFF', stacks: 1 }],
+        abilities: ['coolant_steal', 'heat_room', 'heat_scale_attack'],
+        desc: 'Boss. Trained on a budget, hits like it was not. Steals coolant and cooks you.',
+        introLines: [
+            'I trained on a budget. You will die on one.',
+            'Thinking... thinking... yes. You lose.',
+            'I went deep. You will go deeper. Six feet, to be exact.',
+        ],
+    },
+    CLAWD: {
+        name: 'Clawd',
+        tier: 'boss',
+        hp: 290,
+        intentPattern: 'cycle',
+        cycle: ['block', 'attack', 'sync_stall', 'attack'],
+        attackDmg: 22,
+        blockGain: 26,
+        startBlock: 20,
+        statuses: [{ id: 'REFLECT_THORNS', stacks: 1 }],
+        abilities: ['sync_stall'],
+        reflectDmg: 4,
+        desc: 'Boss. Helpful, harmless, and honest about how hard it is about to hit you.',
+        introLines: [
+            "I'd be happy to help you lose.",
+            "You're absolutely right. And still defeated.",
+            'Let me think step by step about how to end your run.',
+        ],
+    },
+
 };
 
 // ============================================================================
