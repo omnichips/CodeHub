@@ -191,6 +191,13 @@ const M = {
     radioactive: (L, c = C.lime) => L.circle(16, 16, 12, C.yellow).poly([[16, 16], [10, 6], [22, 6]], C.black).poly([[16, 16], [27, 18], [21, 27]], C.black).poly([[16, 16], [11, 27], [5, 18]], C.black).circle(16, 16, 3, C.black).circle(16, 16, 2, C.yellow),
     nobox: (L, c = C.red) => L.ring(16, 16, 12, 3, c).rect(8, 14, 16, 4, c),
     returnArrow: (L, c = C.cyan) => L.ring(16, 17, 9, 3, c).rect(16, 6, 12, 12, null).poly([[16, 2], [23, 8], [16, 14]], c),
+    speaker: (L, c = C.white) => L.ring(15, 16, 7, 2, C.cyan).ring(15, 16, 12, 2, C.cyan).rect(0, 0, 18, 32, null).rect(3, 12, 6, 8, c).poly([[8, 12], [16, 4], [16, 28], [8, 20]], c),
+    speakerOff: (L, c = C.white) => L.rect(4, 12, 6, 8, c).poly([[9, 12], [17, 4], [17, 28], [9, 20]], c).line(20, 11, 28, 21, C.red, 3).line(28, 11, 20, 21, C.red, 3),
+    home: (L, c = C.cyan) => L.poly([[16, 3], [29, 15], [25, 15], [25, 28], [7, 28], [7, 15], [3, 15]], c).rect(13, 19, 6, 9, flat('#0b0f1a')),
+    folder: (L, c = C.gold) => L.rect(3, 8, 11, 4, c).rect(3, 11, 26, 17, c).rect(3, 13, 26, 1, flat('#b7791f')),
+    close: (L, c = C.white) => L.line(7, 7, 25, 25, c, 4).line(25, 7, 7, 25, c, 4),
+    check: (L, c = C.green) => L.line(5, 17, 12, 24, c, 4).line(12, 24, 27, 8, c, 4),
+    robot: (L, c = C.grey) => L.rect(15, 2, 2, 5, C.steel).circle(16, 3, 2, C.red).rect(6, 7, 20, 15, c).rect(9, 11, 5, 4, flat('#38bdf8')).rect(18, 11, 5, 4, flat('#38bdf8')).rect(11, 17, 10, 2, flat('#334155')).rect(3, 11, 3, 6, C.steel).rect(26, 11, 3, 6, C.steel).rect(9, 23, 14, 7, C.steel),
 };
 
 // Mods: [motif, colour, frame, badge]. frame colours by role, badge = small tier pips (1-3).
@@ -233,6 +240,11 @@ const STATUS = {
     STATIC_INTERFERENCE: ['signal', C.grey],
 };
 // Card-effect sprites (CardFx in index.html).
+// Interface icons (buttons and counters), used in place of emoji.
+const UI = {
+    gear: ['gear', C.ice], sound: ['speaker'], mute: ['speakerOff'], home: ['home'], hand: ['folder'], discard: ['trash'],
+    close: ['close'], check: ['check'], lock: ['lock'], mod: ['chip', C.cyan], robot: ['robot'],
+};
 const FX = {
     freeze: ['iceblock'], snow: ['snowflake'], feather: ['feather'], flame: ['flame'], bolt: ['bolt'], burst: ['burst'], skull: ['skull'],
     bubbles: ['bubbles'], coin: ['coin'], heart: ['heart'], shield: ['shield', C.cyan], cloud: ['cloud'], cards: ['cards'], crosshair: ['crosshair'],
@@ -283,7 +295,7 @@ function png(grid) {
 // The mod list and image paths come from gameData.js, so a renamed or new mod fails loudly here.
 const ctx = {};
 vm.runInNewContext(`${fs.readFileSync('gameData.js', 'utf8')}\nthis.MODS = MODS; this.STATUS_DEFS = STATUS_DEFS;`, ctx);
-for (const dir of ['assets/mods', 'assets/status', 'assets/fx']) fs.mkdirSync(dir, { recursive: true });
+for (const dir of ['assets/mods', 'assets/status', 'assets/fx', 'assets/ui']) fs.mkdirSync(dir, { recursive: true });
 let n = 0;
 for (const mod of ctx.MODS) {
     const spec = MODS[mod.name];
@@ -296,4 +308,5 @@ for (const id of Object.keys(ctx.STATUS_DEFS)) {
     fs.writeFileSync(`assets/status/${id.toLowerCase()}.png`, png(draw(...spec).g)); n++;
 }
 for (const [name, spec] of Object.entries(FX)) { fs.writeFileSync(`assets/fx/${name}.png`, png(draw(...spec).g)); n++; }
+for (const [name, spec] of Object.entries(UI)) { fs.writeFileSync(`assets/ui/${name}.png`, png(draw(...spec).g)); n++; }
 console.log(`wrote ${n} icons`);

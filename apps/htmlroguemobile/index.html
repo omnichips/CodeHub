@@ -1625,11 +1625,14 @@
                     left: 50%;
                     transform: translateX(-50%);
                 }
+                /* Intent sits beside the enemy (the side facing the player), not over its sprite. */
                 .enemy-intent-wrap {
-                    top: -55px;
-                    left: 100%;
-                    transform: translateX(-50%);
+                    top: 28%;
+                    left: 0;
+                    transform: translate(-85%, -50%);
                 }
+                /* The second enemy's intent goes on its far side so it doesn't cover the first enemy. */
+                #e-box-2 .enemy-intent-wrap { left: 100%; transform: translate(-15%, -50%); }
                 .enemy-name-wrap .status-tooltip,
                 .enemy-intent-wrap .status-tooltip {
                     display: none;
@@ -1656,6 +1659,9 @@
                 .enemy-intent-wrap.tip-open .status-tooltip {
                     display: block;
                 }
+                /* An open tooltip sits on top of the intent bubble and the sprites, not behind them. */
+                .enemy-name-wrap.tip-open, .enemy-intent-wrap.tip-open, .status-icon.tip-open { z-index: 5000; }
+                @media (hover: hover) { .enemy-name-wrap:hover, .enemy-intent-wrap:hover, .status-icon:hover { z-index: 5000; } }
                 .enemy-intent-wrap .intent-bubble {
                     position: relative;
                     top: auto;
@@ -2071,8 +2077,11 @@
             .legend li { display: flex; align-items: center; gap: 8px; }
             .legend small { margin-left: auto; color: #94a3b8; font-size: 8px; }
             .swatch { width: 10px; height: 10px; flex: none; }
-            .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 16px; line-height: 1; padding: 4px 10px; cursor: pointer; border-radius: 3px; font-family: system-ui, sans-serif !important; } /* the pixel font has no gear */
+            .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 16px; line-height: 1; padding: 4px 10px; cursor: pointer; border-radius: 3px; }
             .btn-menu-small { font-size: 8px; padding: 8px 10px; color: #94a3b8; border-left-width: 1px; }
+            .card-upgraded { color: #22c55e; margin-left: 2px; }
+            .ui-icon { width: 1.5em; height: 1.5em; image-rendering: pixelated; vertical-align: middle; }
+            .btn-gear .ui-icon, #btn-mute .ui-icon { width: 18px; height: 18px; display: block; }
             .title-note { margin-top: 8px; font-size: 8px; color: #94a3b8; min-height: 10px; }
             .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
             .stats-grid div { padding: 6px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 7px; }
@@ -2254,7 +2263,10 @@
                 font-family: var(--font-main);
                 font-size: 7px;
                 padding: 4px 6px;
-                white-space: nowrap;
+                white-space: normal;
+                width: 160px;
+                text-align: center;
+                line-height: 1.25;
                 z-index: 200;
                 pointer-events: none;
                 border-radius: 2px;
@@ -2550,7 +2562,8 @@
                 .status-icon, .status-glyph { font-size: 12px; }
                 /* Name, then intent, centred above the enemy */
                 .enemy-name-wrap { top: -46px; }
-                .enemy-intent-wrap { top: -32px; left: 50%; transform: translateX(-50%); }
+                .enemy-intent-wrap { top: 30%; left: 0; transform: translate(-80%, -50%); }
+                #e-box-2 .enemy-intent-wrap { left: 100%; transform: translate(-20%, -50%); }
                 .intent-bubble { min-width: 44px; height: 24px; }
                 .intent-screen::before { opacity: 0.45; }
                 #e-intent-text, #e2-intent-text { font-size: 12px; }
@@ -2641,7 +2654,7 @@
         <button id="btn-manifest" onclick="toggleDeck(); event.stopPropagation();">MANIFEST</button>
         <button id="btn-internet" onclick="openInternet(); event.stopPropagation();" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-family:var(--font-main); font-size:9px; padding:6px 12px; cursor:pointer; border-radius:3px;">INTERNET</button>
         <button id="btn-bestiary" onclick="openBestiary(); event.stopPropagation();" style="background:#1e293b; color:var(--accent); border:1px solid var(--accent); font-family:var(--font-main); font-size:9px; padding:6px 12px; cursor:pointer; border-radius:3px;">BESTIARY</button>
-        <button id="btn-settings" class="btn-gear" onclick="openSettings(); event.stopPropagation();" aria-label="Settings">⚙</button>
+        <button id="btn-settings" class="btn-gear" onclick="openSettings(); event.stopPropagation();" aria-label="Settings"><img class="ui-icon" src="assets/ui/gear.png" alt=""></button>
     </div>
 </div>
 
@@ -2668,7 +2681,7 @@
             <input id="sfx-volume-slider" type="range" min="0" max="1" step="0.01" value="0.3">
         </label>
         <div class="settings-row">MUTE
-            <button id="btn-mute" aria-label="Mute">🔊</button>
+            <button id="btn-mute" aria-label="Mute"><img class="ui-icon" src="assets/ui/sound.png" alt=""></button>
         </div>
         <h3>STORAGE</h3>
         <p id="storage-total" class="settings-hint">MEASURING…</p>
@@ -2676,7 +2689,7 @@
         <ul id="storage-legend" class="legend"></ul>
         <button id="storage-clear-btn" class="btn-danger" onclick="clearGameData()">CLEAR ALL GAME DATA</button>
         <p class="settings-hint">Deletes this game's saved run, stats, unlocks, settings and offline copy on this device. Other apps on this site keep their data.</p>
-        <button id="btn-hub" onclick="if (confirm('Leave the game? You can continue from the last elevator.')) location.href = '../';">⌂ EXIT TO HUB</button>
+        <button id="btn-hub" onclick="if (confirm('Leave this run for the main menu? You can continue from the last elevator.')) location.reload();"><img class="ui-icon" src="assets/ui/home.png" alt=""> EXIT TO MAIN MENU</button>
     </div>
 </div>
 
@@ -2861,10 +2874,10 @@
 
         <div class="hand-col-right">
             <button class="btn-view" id="btn-hand" title="View Hand" style="display:none;">
-                📁 <span id="count-hand">0</span>/<span id="count-total">0</span>
+                <img class="ui-icon" src="assets/ui/hand.png" alt=""> <span id="count-hand">0</span>/<span id="count-total">0</span>
             </button>
             <button class="btn-view" id="btn-discard" title="View Discard" style="display:none;">
-                🗑️ <span id="count-discard">0</span>
+                <img class="ui-icon" src="assets/ui/discard.png" alt=""> <span id="count-discard">0</span>
             </button>
             <button class="btn-end" onclick="endTurn()" id="btn-end-turn">END TURN</button>
         </div>
@@ -2894,7 +2907,7 @@
 <div id="update-banner" role="status">
     <span>NEW VERSION READY</span>
     <button onclick="location.reload()">RELOAD</button>
-    <button class="update-dismiss" aria-label="Later" onclick="this.parentElement.classList.remove('open')">✕</button>
+    <button class="update-dismiss" aria-label="Later" onclick="this.parentElement.classList.remove('open')"><img class="ui-icon" src="assets/ui/close.png" alt=""></button>
 </div>
 
 <div id="tutorial-overlay">
@@ -3209,9 +3222,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const next = !SoundManager.isMuted();
             SoundManager.setMuted(next);
             Music.apply(0.2);
-            btn.textContent = next ? '🔇' : '🔊';
+            btn.innerHTML = uiIcon(next ? 'mute' : 'sound');
         });
-        btn.textContent = SoundManager.isMuted() ? '🔇' : '🔊';
+        btn.innerHTML = uiIcon(SoundManager.isMuted() ? 'mute' : 'sound');
     }
 });
 
@@ -3572,7 +3585,7 @@ function buildModChoiceCard(modData, onPick) {
     fallback.style.fontSize = '26px';
     fallback.style.lineHeight = '1';
     fallback.style.display = 'none';
-    fallback.innerText = '\uD83E\uDDE9';
+    fallback.innerHTML = uiIcon('mod');
 
     icon.onerror = () => {
         icon.remove();
@@ -3960,6 +3973,9 @@ const CardFx = {
 // ============================================================================
 // DOM UTILITIES - Common element access patterns
 // ============================================================================
+// Pixel interface icon (assets/ui, drawn by tools/make-icons.mjs) for buttons and labels.
+const uiIcon = (name) => `<img class="ui-icon" src="assets/ui/${name}.png" alt="">`;
+
 const DOM = {
     get: (id) => document.getElementById(id),
     query: (selector) => document.querySelector(selector),
@@ -4706,6 +4722,9 @@ let state = {
     runCardPowerBonus: {},
     // Program-specific permanent heat tuning that persists through a run.
     runCardHeatBonus: {},
+    // Rest-site upgrades for block and heal cards, same idea.
+    runCardBlockBonus: {},
+    runCardHealBonus: {},
     // Permanent max HP gains from combat effects (not from installed mods).
     permanentMaxHpBonus: 0,
     // Next shop visit can have 0-cost programs.
@@ -4772,7 +4791,7 @@ let state = {
 const RunSave = {
     key: 'elevator:run',
     version: 1,
-    fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus',
+    fields: ['hp', 'maxHp', 'gold', 'room', 'deck', 'mods', 'runDestroyedProgramKeys', 'runCardPowerBonus', 'runCardHeatBonus', 'runCardBlockBonus', 'runCardHealBonus',
         'permanentMaxHpBonus', 'freeProgramsNextShop', 'debugEnabled', 'oneTimeEffectApplied', 'bossIntroSeenByRoom', 'savedDoors', 'daily', 'bossBreakRoom'],
     write() {
         if (state.tutorial.active) return;
@@ -4788,6 +4807,8 @@ const RunSave = {
     },
     restore(run) {
         this.fields.forEach((k) => { if (k in run) state[k] = run[k]; });
+        state.runCardBlockBonus ||= {};
+        state.runCardHealBonus ||= {};
         shopCount = run.shopCount || 0;
         Object.assign(ShopManager, run.shop);
         // Rebuild mod effects without re-granting one-time bonuses.
@@ -5062,6 +5083,34 @@ function getCardRuntimePower(card) {
     const key = CardRules.getProgramKey(card);
     const bonus = Number(state.runCardPowerBonus[key] || 0);
     return Math.max(0, Number(card?.pwr || 0) + bonus);
+}
+
+function getCardRuntimeBlock(card) {
+    const key = CardRules.getProgramKey(card);
+    return Math.max(0, Number(card?.blk || 0) + Number(state.runCardBlockBonus?.[key] || 0));
+}
+function getCardBaseHeal(card) {
+    return parseInt(String(card?.desc || '').match(/Heal (\d+)/)?.[1] || 0, 10);
+}
+function getCardRuntimeHeal(card) {
+    const base = getCardBaseHeal(card);
+    return base ? base + Number(state.runCardHealBonus?.[CardRules.getProgramKey(card)] || 0) : 0;
+}
+// Card text with this run's upgrades written in (damage, block, vent, heal), so the card shows what it does.
+function describeWithUpgrades(card) {
+    let desc = String(card?.desc || '');
+    const key = CardRules.getProgramKey(card);
+    if (!key) return desc;
+    const pwr = Number(card.pwr || 0), blk = Number(card.blk || 0), heat = Number(card.heat || 0);
+    if (pwr > 0 && state.runCardPowerBonus[key]) desc = desc.replace(new RegExp(`\\b${pwr}(\\s*dmg)`, 'i'), `${getCardRuntimePower(card)}$1`);
+    if (blk > 0 && state.runCardBlockBonus?.[key]) desc = desc.replace(new RegExp(`\\b${blk}(\\s*block)`, 'i'), `${getCardRuntimeBlock(card)}$1`);
+    if (heat < 0 && state.runCardHeatBonus[key]) desc = desc.replace(new RegExp(`(Vent\\s*)${-heat}\\b`, 'i'), `$1${-getCardRuntimeHeat(card)}`);
+    if (state.runCardHealBonus?.[key]) desc = desc.replace(/(Heal\s*)\d+/i, `$1${getCardRuntimeHeal(card)}`);
+    return desc;
+}
+function isCardUpgraded(card) {
+    const key = CardRules.getProgramKey(card);
+    return !!key && [state.runCardPowerBonus, state.runCardHeatBonus, state.runCardBlockBonus, state.runCardHealBonus].some((m) => m?.[key]);
 }
 
 // Runtime heat accessor with permanent run upgrades/debuffs.
@@ -5379,7 +5428,7 @@ const TutorialManager = {
         } else if (firstNew === 'draw') {
             await this.showInstruction('Draw cards give you more options right now.\n\nUse draw to find the right answer for the turn.');
         } else if (firstNew === 'discard') {
-            await this.showInstruction('Discard effects move cards out of your hand.\n\nThis helps cycle your deck and shape your next draw.');
+            await this.showInstruction('Discard cards let you pick which cards to throw away (only cards that say "random" pick for you).\n\nThrow away what you cannot use to cycle your deck and shape your next draw.');
         }
 
         const allDone = Object.values(seen).every(Boolean);
@@ -5403,6 +5452,14 @@ const TutorialManager = {
         } else {
             await this.showInstruction('Tutorial complete.\n\nYou are now ready to start a normal run.', 'TUTORIAL COMPLETE');
         }
+        await this.showInstruction(
+            'A run is 30 floors. Floors 10, 20 and 30 are bosses.\n\nRight before each boss you get a stop: a REST SITE or a SHOP, your pick.',
+            'TIPS: THE RUN'
+        );
+        await this.showInstruction(
+            'At a REST SITE you can heal or UPGRADE a program for the rest of the run:\nattacks hit harder or cost less heat, block cards block more, vent cards vent more, heal cards heal more.\n\nUpgraded cards show a green + after their name.',
+            'TIPS: UPGRADES'
+        );
         this.returnToMenu();
     },
     returnToMenu() {
@@ -5491,6 +5548,8 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     state.lastNonAttackCardPlayed = null;
     state.lastAttackDamageDealt = 0;
     state.runCardHeatBonus = {};
+    state.runCardBlockBonus = {};
+    state.runCardHealBonus = {};
     state.permanentMaxHpBonus = 0;
     state.freeProgramsNextShop = false;
     state.bossIntroSeenByRoom = {};
@@ -5605,7 +5664,9 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
                 'btn-bestiary'
             );
             await TutorialManager.showInstruction(
-                'This is enemy INTENT.\nIt shows what the enemy plans to do on its turn (for example attack damage or block).',
+                'This is enemy INTENT, beside the enemy.\nIt shows what the enemy plans to do on its turn (for example attack damage or block).\n\n' +
+                (IS_TOUCH ? 'Tap the intent, the enemy name or a status icon under the enemy to read it. Tap anywhere else to close it.'
+                          : 'Hover the intent, the enemy name or a status icon under the enemy to read it.'),
                 'UI: INTENT',
                 'e-intent-text'
             );
@@ -5625,12 +5686,12 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
                 'hand'
             );
             await TutorialManager.showInstruction(
-                'CURSE cards are dead draws and usually cannot be played.\n\nExample in this tutorial: GLITCH LOOP.',
+                'CURSE cards cannot be played. A curse takes up a hand slot for one turn, then goes to the discard pile.\n\nExample in this tutorial: GLITCH LOOP.',
                 'CARD TAG: CURSE',
                 'hand'
             );
             await TutorialManager.showInstruction(
-                (IS_TOUCH ? 'Drag a card onto the enemy to play it.\nTap a card to read it.\n\n' : '') +
+                (IS_TOUCH ? 'Drag attacks onto an enemy, and other cards anywhere above your hand, to play them.\nTap a card to read it.\n\n' : '') +
                 'Now play cards.\n\nUse all 5 tutorial card types once:\nAttack, Block, Vent, Draw, Discard.\nEach type is explained only on first use.\n\nAfter all are explained, defeat the enemy to complete the tutorial.'
             );
             return;
@@ -5664,7 +5725,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
 // ============================================================================
 const StatusManager = {
     // Centralized placeholders/icons to avoid mojibake across editors/encodings.
-    ROBOT_ICON: '\uD83E\uDD16',
+    ROBOT_ICON: 'robot', // assets/ui/robot.png, placeholder for a mod whose icon is missing
 
     // Apply statuses that fire at the START of the player's turn (end-of-enemy-turn)
     // Called from finalizeTurn()
@@ -5828,6 +5889,8 @@ const StatusManager = {
 
         // Icons that are new (or gained stacks) since the last render fade in.
         const before = new Set((bar.dataset.shown || '').split(','));
+        // A tapped-open tooltip stays open through the redraw (tapping an enemy also redraws its bar).
+        const openId = bar.querySelector('.status-icon.tip-open')?.dataset.status;
         bar.dataset.shown = statuses.map((st) => `${st.id}:${st.stacks || 0}`).join(',');
         bar.innerHTML = '';
         statuses.forEach(s => {
@@ -5844,7 +5907,8 @@ const StatusManager = {
             }
 
             const iconEl = document.createElement('div');
-            iconEl.className = 'status-icon';
+            iconEl.className = s.id === openId ? 'status-icon tip-open' : 'status-icon';
+            iconEl.dataset.status = s.id;
             const stackText = s.id === 'STRENGTH'
                 ? `+${s.stacks || 0}`
                 : `${s.stacks || 0}`;
@@ -7257,7 +7321,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
     const card = state.hand[cardIndex];
     const hasAncientSwap = ModManager.getEffectValue('ancient_swap_attack_block') > 0;
     const effectivePowerValue = hasAncientSwap ? Number(card?.blk || 0) : Number(card?.pwr || 0);
-    const effectiveBlockValue = hasAncientSwap ? Number(card?.pwr || 0) : Number(card?.blk || 0);
+    const effectiveBlockValue = hasAncientSwap ? Number(card?.pwr || 0) : getCardRuntimeBlock(card);
     const tutorialTags = TutorialManager.getCardTags(card, effectivePowerValue, effectiveBlockValue);
     const cardKey = CardRules.getProgramKey(card);
     const aliveBeforePlay = EnemyPartyManager.getAliveIndices().length;
@@ -7496,8 +7560,11 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
     // --- 2. DISCARD EFFECT LOGIC ---
     const discardHandMatch = /Discard\s*hand/i.test(card.desc || '');
     const discardNumMatch = (card.desc || '').match(/Discard\s*(\d+)\b/i);
+    // "Draw 2, Discard 2" draws first, so the new cards can be the ones thrown away.
+    const drawBeforeDiscard = /Draw[^.]*,\s*Discard/i.test(card.desc || '');
     // Generic discard parser only handles "Discard hand" or "Discard N" to avoid
     // colliding with custom specials like "Discard all attacks".
+    const runDiscard = async () => {
     if (discardHandMatch || discardNumMatch) {
         if (discardHandMatch) {
             for (let i = state.hand.length - 1; i >= 0; i--) {
@@ -7514,23 +7581,37 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
             cardIndex = 0; 
         } else {
             const discCount = parseInt(discardNumMatch?.[1] || 1);
-            for(let i=0; i < discCount; i++) {
-                if (state.hand.length > 1) { 
-                    let targetIdx;
-                    do { targetIdx = Math.floor(Math.random() * state.hand.length); } 
+            // The player picks each card, unless the card says the discard is random.
+            const randomDiscard = /random/i.test(card.desc || '');
+            // Hand elements kept in step with state.hand (cards drawn this play have none yet).
+            const els = Array.from(handContainer.children);
+            for (let i = 0; i < discCount; i++) {
+                if (state.hand.length <= 1) break;
+                const choices = state.hand.filter((_, j) => j !== cardIndex);
+                let targetIdx = -1;
+                if (!randomDiscard && choices.length > 1) {
+                    const pick = await openCardChoiceOverlay(`DISCARD ${i + 1} OF ${discCount}: PICK A CARD`, choices, { locked: true, cancelLabel: 'RANDOM' });
+                    targetIdx = pick ? state.hand.indexOf(pick) : -1;
+                }
+                if (targetIdx < 0) {
+                    do { targetIdx = Math.floor(Math.random() * state.hand.length); }
                     while (targetIdx === cardIndex);
-                    
-                    const targetEl = handContainer.children[targetIdx];
+                }
+
+                const targetEl = els[targetIdx];
+                if (targetEl) {
                     targetEl.classList.add('anim-card-discard');
                     targetEl.style.pointerEvents = 'none';
                     cardsToRemove.push(targetEl);
-                    
-                    state.discard.push(state.hand.splice(targetIdx, 1)[0]);
-                    if (targetIdx < cardIndex) cardIndex--;
                 }
+                els.splice(targetIdx, 1);
+                state.discard.push(state.hand.splice(targetIdx, 1)[0]);
+                if (targetIdx < cardIndex) cardIndex--;
             }
         }
     }
+    };
+    if (!drawBeforeDiscard) await runDiscard();
 
     // --- 3. DRAW / HEAL / GOLD (Popups Restored) ---
     if (card.desc.includes("Draw")) {
@@ -7553,8 +7634,9 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
             if (state.draw.length > 0) state.hand.push(state.draw.pop());
         }
     }
+    if (drawBeforeDiscard) await runDiscard();
     if (card.desc.includes("Heal")) {
-        const healAmt = (parseInt(card.desc.match(/Heal (\d+)/)?.[1] || 0)) * mirrorMultiplier;
+        const healAmt = getCardRuntimeHeal(card) * mirrorMultiplier;
         state.hp = Math.min(state.maxHp, state.hp + healAmt);
         showPop('p-pop-anchor', `+${healAmt} HP`, '#22c55e');
     }
@@ -8557,7 +8639,7 @@ async function endTurn() {
     if (TutorialManager.isActive() && !state.tutorial.turnFlowExplained) {
         state.tutorial.turnFlowExplained = true;
         await TutorialManager.showInstruction(
-            'After you end turn, your hand refills up to 5 cards.\n\nThe draw pile only reshuffles from discard when the draw pile is empty.',
+            'After you end turn, your hand refills up to 5 cards. Cards you did not play stay in your hand; curses go to the discard pile.\n\nThe draw pile only reshuffles from discard when the draw pile is empty.',
             'TUTORIAL: TURN FLOW',
             'btn-end-turn'
         );
@@ -8837,7 +8919,7 @@ function createProgramCard(program) {
     }
 
     // --- 2. ORIGINAL LOGIC: Descriptions & Tags ---
-    const coloredDesc = highlightProgramDescription(program.desc);
+    const coloredDesc = highlightProgramDescription(describeWithUpgrades(program));
     const tags = [];
     if (CardRules.isExhaust(program)) tags.push('EXHAUST');
     if (CardRules.isAoe(program)) tags.push('AOE');
@@ -8848,7 +8930,8 @@ function createProgramCard(program) {
 
     const displayPower = getCardRuntimePower(program);
     const displayHeat = getCardRuntimeHeat(program);
-    const powerSuffix = (program.pwr || 0) > 0 && displayPower !== (program.pwr || 0)
+    // [N] only when the card text could not be rewritten with the upgraded damage (e.g. multi-hit cards).
+    const powerSuffix = (program.pwr || 0) > 0 && displayPower !== (program.pwr || 0) && !describeWithUpgrades(program).includes(`${displayPower} dmg`)
         ? ` <span style="color:#f97316;">[${displayPower}]</span>`
         : '';
 
@@ -8903,7 +8986,7 @@ function createProgramCard(program) {
     d.innerHTML = `
         <div class="card-title-bar" style="background: ${titleBg} !important;"></div>
         <div class="card-body">
-            <div class="card-internal-title">${program.name}${powerSuffix}</div>
+            <div class="card-internal-title">${program.name}${isCardUpgraded(program) ? '<span class="card-upgraded">+</span>' : ''}${powerSuffix}</div>
             ${tagLine}
             <div class="card-img-container">
                 <img src="${program.img || ''}" 
@@ -9623,11 +9706,11 @@ function renderBattleModHud() {
             img.onerror = function() {
                 this.remove();
                 // Centralized mod icon fallback keeps placeholder stable.
-                chip.textContent = StatusManager.ROBOT_ICON;
+                chip.innerHTML = uiIcon(StatusManager.ROBOT_ICON);
             };
             chip.appendChild(img);
         } else {
-            chip.textContent = StatusManager.ROBOT_ICON;
+            chip.innerHTML = uiIcon(StatusManager.ROBOT_ICON);
         }
         wrap.appendChild(chip);
         wrap.appendChild(tip);
@@ -9892,14 +9975,15 @@ function openRestSiteOptions() {
         <div class="opt-label">UPGRADE</div>
         <div class="opt-desc">Choose 1 program to upgrade</div>`;
     upgradeCard.onclick = async () => {
-        const upgradable = state.deck.filter(c => !!CardRules.getProgramKey(c));
+        const upgradable = state.deck.filter(c => upgradeOptions(c).length > 0);
         if (!upgradable.length) {
             showPop('p-pop-anchor', 'NO UPGRADABLE PROGRAM', 'var(--hp)');
             return;
         }
         const selected = await openCardChoiceOverlay('SELECT PROGRAM TO UPGRADE', upgradable);
         if (!selected) return;
-        const result = applySelectedProgramUpgrade(selected);
+        const result = await applySelectedProgramUpgrade(selected);
+        if (!result) return;
         showPop('p-pop-anchor', result, '#22c55e');
         updateUI();
         renderHand();
@@ -10050,29 +10134,48 @@ function exitRestSiteWithAnimation(onDone) {
     }, 800);
 }
 
-// Permanent run upgrade helper for rest-site upgrade choice.
-// Upgrade rule: either halve heat cost or increase damage by +50%.
-function applySelectedProgramUpgrade(pick) {
-    if (!pick) return 'NO PROGRAM TO UPGRADE';
-    const key = CardRules.getProgramKey(pick);
-    if (!key) return 'UPGRADE FAILED';
-    const baseHeat = Number(pick.heat || 0);
-    const basePower = Number(pick.pwr || 0);
-    const canHeat = baseHeat > 0;
-    const canPower = basePower > 0;
-    if (!canHeat && !canPower) return `${pick.name}: NO VALID UPGRADE`;
-
-    const chooseHeatUpgrade = canHeat && (!canPower || Math.random() < 0.5);
-    if (chooseHeatUpgrade) {
-        const currentHeat = getCardRuntimeHeat(pick);
-        const newHeat = Math.floor(Math.max(0, currentHeat) / 2);
-        const delta = newHeat - currentHeat;
-        state.runCardHeatBonus[key] = (state.runCardHeatBonus[key] || 0) + delta;
-        return `${pick.name}: HEAT ${currentHeat} -> ${newHeat}`;
+// Rest-site upgrades (per program, for the rest of the run). Each card improves at what it does:
+// attacks hit harder, block cards block more, vent cards vent more, heals heal more, and anything with a
+// heat cost can instead cost half. Steps are +50% of the base value (with a small minimum).
+function upgradeOptions(card) {
+    const key = CardRules.getProgramKey(card);
+    if (!key || card.cursed) return [];
+    const opts = [];
+    const pwr = Number(card.pwr || 0), blk = Number(card.blk || 0), baseHeat = Number(card.heat || 0), heal = getCardBaseHeal(card);
+    const heat = getCardRuntimeHeat(card);
+    if (pwr > 0) opts.push({ map: 'runCardPowerBonus', delta: Math.max(2, Math.ceil(pwr * 0.5)), label: (d) => `DMG +${d}` });
+    if (blk > 0) opts.push({ map: 'runCardBlockBonus', delta: Math.max(3, Math.ceil(blk * 0.5)), label: (d) => `BLOCK +${d}` });
+    if (baseHeat < 0) opts.push({ map: 'runCardHeatBonus', delta: -Math.max(5, Math.ceil(-baseHeat * 0.5)), label: (d) => `VENT +${-d}` });
+    if (heal > 0) opts.push({ map: 'runCardHealBonus', delta: Math.max(2, Math.ceil(heal * 0.5)), label: (d) => `HEAL +${d}` });
+    if (heat > 1) opts.push({ map: 'runCardHeatBonus', delta: Math.floor(heat / 2) - heat, label: () => `HEAT ${heat} -> ${Math.floor(heat / 2)}` });
+    return opts;
+}
+// Applies one option to the run (or undoes it with sign -1, for previews).
+function applyUpgradeOption(card, opt, sign = 1) {
+    const key = CardRules.getProgramKey(card);
+    state[opt.map][key] = (state[opt.map][key] || 0) + opt.delta * sign;
+    if (!state[opt.map][key]) delete state[opt.map][key];
+}
+// Returns the message to show, or null if the player backed out.
+async function applySelectedProgramUpgrade(pick) {
+    const opts = upgradeOptions(pick);
+    if (!opts.length) return null;
+    let opt = opts[0];
+    if (opts.length > 1) {
+        // Show the card as it would be after each upgrade and let the player pick.
+        const previews = opts.map((o) => {
+            applyUpgradeOption(pick, o);
+            const preview = { ...pick, name: `${pick.name}+`, desc: `${o.label(o.delta)}. ${describeWithUpgrades(pick)}`,
+                pwr: getCardRuntimePower(pick), heat: getCardRuntimeHeat(pick), upgradeOption: o };
+            applyUpgradeOption(pick, o, -1);
+            return preview;
+        });
+        const chosen = await openCardChoiceOverlay(`UPGRADE ${pick.name}: PICK ONE`, previews);
+        if (!chosen) return null;
+        opt = chosen.upgradeOption;
     }
-    const bonus = Math.max(1, Math.ceil(basePower * 0.5));
-    state.runCardPowerBonus[key] = (state.runCardPowerBonus[key] || 0) + bonus;
-    return `${pick.name}: DMG +${bonus}`;
+    applyUpgradeOption(pick, opt);
+    return `${pick.name}: ${opt.label(opt.delta)}`;
 }
 
 function advanceNonCombatFloor(roomType = 'event') {
@@ -10295,7 +10398,7 @@ function renderModShelf() {
                 fallback.style.alignItems = 'center';
                 fallback.style.justifyContent = 'center';
                 // Centralized mod icon fallback for missing/broken images.
-                fallback.textContent = StatusManager.ROBOT_ICON;
+                fallback.innerHTML = uiIcon(StatusManager.ROBOT_ICON);
                 chip.prepend(fallback);
             };
             chip.appendChild(icon);
@@ -10305,7 +10408,7 @@ function renderModShelf() {
             fallback.style.display = 'flex';
             fallback.style.alignItems = 'center';
             fallback.style.justifyContent = 'center';
-            fallback.textContent = StatusManager.ROBOT_ICON;
+            fallback.innerHTML = uiIcon(StatusManager.ROBOT_ICON);
             chip.appendChild(fallback);
         }
 
@@ -10326,16 +10429,25 @@ function renderModShelf() {
 }
 
 // Shared chooser overlay for card-selection effects (e.g. Algorithm Search).
-async function openCardChoiceOverlay(titleText, cards = []) {
-    return new Promise((resolve) => {
+// locked: the manifest close button and Escape cannot dismiss it; only a card or the skip button answer.
+async function openCardChoiceOverlay(titleText, cards = [], { locked = false, cancelLabel = 'CANCEL' } = {}) {
+    return new Promise((resolveChoice) => {
         const overlay = DOM.get('deck-overlay');
         const grid = DOM.get('deck-grid');
         const title = DOM.get('overlay-title');
         const shelf = DOM.get('mod-shelf-container');
+        const manifestClose = DOM.get('deck-close-btn');
         if (!overlay || !grid || !title) {
-            resolve(null);
+            resolveChoice(null);
             return;
         }
+        const resolve = (value) => {
+            overlay.dataset.locked = '0';
+            if (manifestClose) manifestClose.style.display = 'inline-block';
+            resolveChoice(value);
+        };
+        overlay.dataset.locked = locked ? '1' : '0';
+        if (manifestClose) manifestClose.style.display = locked ? 'none' : 'inline-block';
 
         overlay.style.display = 'flex';
         title.innerText = titleText;
@@ -10345,7 +10457,7 @@ async function openCardChoiceOverlay(titleText, cards = []) {
 
         const closeBtn = document.createElement('button');
         closeBtn.style.marginTop = '24px';
-        closeBtn.innerText = 'CANCEL';
+        closeBtn.innerText = cancelLabel;
         closeBtn.onclick = () => {
             overlay.style.display = 'none';
             DOM.get('hand').style.pointerEvents = 'auto';
@@ -10508,7 +10620,7 @@ function openPileOverlay(mode) {
             fallback.style.display = 'flex';
             fallback.style.alignItems = 'center';
             fallback.style.justifyContent = 'center';
-            fallback.textContent = StatusManager.ROBOT_ICON;
+            fallback.innerHTML = uiIcon(StatusManager.ROBOT_ICON);
             wrapper.insertBefore(fallback, descEl);
         };
 
@@ -10696,7 +10808,7 @@ function renderStats() {
         <h3>UNLOCKS</h3>
         <ul class="stats-list">${UNLOCKS.map((u) => {
             const ok = u.earned(s);
-            return `<li class="${ok ? 'ok' : 'locked'}">${ok ? '✓' : '🔒'} ${u.goal}<small>${u.reward}</small></li>`;
+            return `<li class="${ok ? 'ok' : 'locked'}">${uiIcon(ok ? 'check' : 'lock')} ${u.goal}<small>${u.reward}</small></li>`;
         }).join('')}</ul>
         <p class="settings-hint">Unlocks apply to normal runs, not the daily run.</p>
         <h3>RECENT RUNS</h3>
@@ -10710,6 +10822,8 @@ function renderStats() {
 // ============================================================================
 function openSettings() {
     DOM.get('settings-overlay').classList.add('open');
+    // Exit to main menu only makes sense during a run (the title screen has its own Exit to the Hub).
+    DOM.get('btn-hub').style.display = DOM.get('screen-menu').classList.contains('active') ? 'none' : '';
     Music.duck('menu', 0.5);
     measureGameStorage();
 }
