@@ -208,32 +208,57 @@
                 transition: opacity 1s ease-in-out; /* Fade timing */
             }
 
-            #screen-menu h1 {
-                font-size: 32px;
-                color: var(--accent);
-                text-shadow: 0 0 10px var(--accent);
-                animation: title-pulsate 2s ease-in-out infinite;
+            /* Title screen: the hallway (assets/mainbg) behind a dark fade on the left, where the menu sits. */
+            .menu-bg {
+                position: absolute;
+                inset: 0;
+                background: url('assets/mainbg.webp') 70% center / cover no-repeat;
+                animation: menu-drift 40s ease-in-out infinite alternate;
             }
-
-            @keyframes title-pulsate {
-                0%, 100% { transform: scale(1); opacity: 1; text-shadow: 0 0 10px var(--accent); }
-                50% { transform: scale(1.05); opacity: 0.8; text-shadow: 0 0 25px var(--accent); }
-            }
-
+            @keyframes menu-drift { from { transform: scale(1); } to { transform: scale(1.07) translateX(-1.5%); } }
             #screen-menu::before {
                 content: "";
                 position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
+                inset: 0;
+                z-index: 1;
                 pointer-events: none;
-                animation: light-flicker 4s infinite;
+                background:
+                    linear-gradient(90deg, rgba(2, 6, 23, 0.94) 0%, rgba(2, 6, 23, 0.78) 34%, rgba(2, 6, 23, 0.1) 68%, transparent 100%),
+                    linear-gradient(0deg, rgba(2, 6, 23, 0.7) 0%, transparent 35%);
             }
-
-            @keyframes light-flicker {
-                0%, 100% { opacity: 0.3; }
-                5%, 15%, 25% { opacity: 0.8; }
-                10%, 20% { opacity: 0.4; }
-                50% { opacity: 0.2; }
+            /* The hallway lights buzz now and then. */
+            #screen-menu::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                z-index: 1;
+                pointer-events: none;
+                background: rgba(2, 6, 23, 0.35);
+                opacity: 0;
+                animation: light-buzz 9s steps(1) infinite;
+            }
+            @keyframes light-buzz {
+                0%, 61%, 63.5%, 65%, 100% { opacity: 0; }
+                62%, 64% { opacity: 1; }
+            }
+            #screen-menu h1 {
+                margin: 0 0 22px;
+                font-size: 34px;
+                line-height: 1.25;
+                color: #e0f2fe;
+                text-shadow: 0 0 14px rgba(56, 189, 248, 0.75), 3px 3px 0 #0c4a6e;
+                animation: title-hum 6s ease-in-out infinite;
+            }
+            @keyframes title-hum {
+                0%, 100% { text-shadow: 0 0 14px rgba(56, 189, 248, 0.75), 3px 3px 0 #0c4a6e; }
+                50% { text-shadow: 0 0 22px rgba(56, 189, 248, 0.95), 3px 3px 0 #0c4a6e; }
+            }
+            .menu-kicker { font-size: 8px; letter-spacing: 2px; color: #7dd3fc; opacity: 0.8; margin-bottom: 12px; }
+            .menu-actions { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 270px; }
+            .menu-actions .btn-menu-init { width: 100%; }
+            .menu-secondary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; max-width: 320px; }
+            @media (prefers-reduced-motion: reduce) {
+                .menu-bg, #screen-menu::after, #screen-menu h1 { animation: none; }
             }
 
             .screen.active {
@@ -241,7 +266,7 @@
                 opacity: 1;
             }
 
-            #screen-menu.active { justify-content: center; align-items: center; background: var(--bg); }
+            #screen-menu.active { justify-content: flex-start; align-items: center; background: var(--bg); overflow: hidden; }
             #screen-nav.active { flex-direction: column; }
 
             #screen-battle.active { 
@@ -250,13 +275,11 @@
                 /* The transition is handled by the generic .screen class now */
             }
 
-            .menu-box { 
-                border: 2px solid var(--accent); 
-                padding: 60px; 
-                background: var(--panel); 
-                text-align: center; 
-                border-radius: 8px; 
-                box-shadow: 0 0 30px rgba(56, 189, 248, 0.2); 
+            .menu-box {
+                position: relative;
+                z-index: 2;
+                text-align: left;
+                margin-left: max(6vw, env(safe-area-inset-left));
             }
             .btn-menu { 
                 padding: 15px 30px; 
@@ -269,23 +292,28 @@
                 border-radius: 4px; 
             }
 
+            /* Title-screen buttons: dark glass with a lit edge, like the elevator call panels. */
             .btn-menu-init {
-                padding: 15px 30px; 
-                margin-top: 30px; 
-                background: #ffffff; /* Start White */
-                border: 2px solid #ffffff; 
-                font-weight: bold; 
-                cursor: pointer; 
-                color: #000; 
-                border-radius: 4px; 
-                transition: all 0.3s ease;
+                display: block;
+                padding: 13px 16px;
+                text-align: left;
+                font-family: var(--font-main);
+                font-size: 11px;
+                color: #e2e8f0;
+                background: rgba(15, 23, 42, 0.72);
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                border-left: 3px solid rgba(56, 189, 248, 0.6);
+                border-radius: 3px;
+                cursor: pointer;
+                transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
             }
-
-            .btn-menu-init:hover {
-                background: #22c55e; /* Turn Green on Hover */
-                border-color: #22c55e;
-                color: #fff;
-                box-shadow: 0 0 20px #22c55e;
+            .btn-menu-init.menu-primary { color: #04121f; background: #38bdf8; border-color: #7dd3fc; box-shadow: 0 0 18px rgba(56, 189, 248, 0.45); }
+            .menu-actions #continue-row:not([style*="none"]) ~ #init-btn { color: #e2e8f0; background: rgba(15, 23, 42, 0.72); border-color: rgba(56, 189, 248, 0.35); box-shadow: none; }
+            .btn-menu-init:focus-visible { outline: 2px solid #fde68a; outline-offset: 2px; }
+            .btn-menu-init:active { transform: translateY(1px); }
+            @media (hover: hover) {
+                .btn-menu-init:hover { color: #fff; background: rgba(14, 116, 144, 0.85); border-color: #7dd3fc; transform: translateX(4px); }
+                .btn-menu-init.menu-primary:hover { color: #04121f; background: #7dd3fc; }
             }
 
             .btn-explode {
@@ -1468,6 +1496,17 @@
                 opacity: 0;
                 z-index: 5;
             }
+            /* CardFx sprite (assets/fx). translate centres it on its spot; the animation owns transform. */
+            .fx-sprite {
+                position: absolute;
+                translate: -50% -50%;
+                width: 64px;
+                height: 64px;
+                image-rendering: pixelated;
+                pointer-events: none;
+                z-index: 6;
+            }
+            @media (orientation: landscape) and (max-height: 500px) { .fx-sprite { width: 44px; height: 44px; } }
             #ui-gold, #ui-heat { display: inline-block; } /* so ActionFx can scale them */
             #p-anim-container, #e-anim-container {
                 display: inline-block;
@@ -2033,7 +2072,7 @@
             .legend small { margin-left: auto; color: #94a3b8; font-size: 8px; }
             .swatch { width: 10px; height: 10px; flex: none; }
             .btn-gear { background: #1e293b; color: var(--accent); border: 1px solid var(--accent); font-size: 16px; line-height: 1; padding: 4px 10px; cursor: pointer; border-radius: 3px; font-family: system-ui, sans-serif !important; } /* the pixel font has no gear */
-            .btn-menu-small { font-size: 9px; padding: 8px 14px; }
+            .btn-menu-small { font-size: 8px; padding: 8px 10px; color: #94a3b8; border-left-width: 1px; }
             .title-note { margin-top: 8px; font-size: 8px; color: #94a3b8; min-height: 10px; }
             .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
             .stats-grid div { padding: 6px; border: 1px solid #334155; background: #0b1220; color: #94a3b8; font-size: 7px; }
@@ -2493,9 +2532,13 @@
                 .settings-row input[type="range"] { width: 130px; }
 
                 /* Title */
-                .menu-box { padding: 20px 24px; }
-                #screen-menu h1 { font-size: 20px; margin: 0 0 4px; }
-                .btn-menu-init, .btn-menu { margin-top: 12px; padding: 10px 14px; font-size: 9px; }
+                #screen-menu h1 { font-size: 22px; margin: 0 0 12px; }
+                .menu-kicker { margin-bottom: 8px; }
+                .menu-actions { gap: 6px; width: 230px; }
+                .menu-secondary { margin-top: 10px; }
+                .btn-menu-init { padding: 9px 12px; font-size: 9px; }
+                .btn-menu-small { padding: 7px 9px; font-size: 7px; }
+                .btn-menu { margin-top: 12px; padding: 10px 14px; font-size: 9px; }
 
                 /* Battle: smaller sprites, bars and intent */
                 .battle-grid { padding-bottom: 6px; }
@@ -2553,7 +2596,9 @@
                 .shop-keeper-area img { width: 110px !important; }
                 #shopkeeper-line { font-size: 7px !important; margin-top: 8px !important; text-align: center; }
                 .shop-ui-area { width: 78%; padding: 8px 10px 0; gap: 8px; overflow-y: auto; box-sizing: border-box; }
-                .shop-ui-area > div:last-child { position: sticky; bottom: 0; z-index: 200; padding: 4px 0; background: #000; margin-top: 0 !important; }
+                /* Only the LEAVE SHOP button floats over the shelf; its row is see-through and lets taps through. */
+                .shop-ui-area > div:last-child { position: sticky; bottom: 8px; z-index: 200; margin-top: 0 !important; pointer-events: none; }
+                .shop-ui-area > div:last-child button { pointer-events: auto; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7); }
                 #shop-ui-content { gap: 8px !important; flex: none !important; }
                 .shop-window { padding: 30px 8px 8px; margin-bottom: 0; }
                 .shop-price-badge { font-size: 8px; padding: 2px 4px; }
@@ -2651,21 +2696,25 @@
 
     <div class="viewport">
         <div id="screen-menu" class="screen active">
-            <div class="menu-box" style="position: relative; z-index: 2;">
-                <h1>Elevator Anomaly</h1>
-                <div id="continue-row" style="display:none;">
-                    <button class="btn-menu-init" id="continue-btn" onclick="initRun(false, this, { resume: RunSave.read() })">Continue</button>
+            <div class="menu-bg" aria-hidden="true"></div>
+            <div class="menu-box">
+                <div class="menu-kicker">AFTER HOURS &middot; 30 FLOORS</div>
+                <h1>Elevator<br>Anomaly</h1>
+                <div class="menu-actions">
+                    <div id="continue-row" style="display:none;">
+                        <button class="btn-menu-init menu-primary" id="continue-btn" onclick="initRun(false, this, { resume: RunSave.read() })">Continue</button>
+                    </div>
+                    <button class="btn-menu-init menu-primary" id="init-btn" onclick="initRun(false, this)">Play Normally</button>
+                    <button class="btn-menu-init" id="init-daily-btn" onclick="initRun(false, this, { daily: Daily.today() })">Daily Run</button>
+                    <div id="daily-note" class="title-note"></div>
+                    <button class="btn-menu-init" id="init-tutorial-btn" onclick="startTutorialRun(this)">Tutorial</button>
                 </div>
-                <button class="btn-menu-init" id="init-btn" onclick="initRun(false, this)">Play Normally</button>
-                <button class="btn-menu-init" id="init-daily-btn" style="margin-left:10px;" onclick="initRun(false, this, { daily: Daily.today() })">Daily Run</button>
-                <button class="btn-menu-init" id="init-tutorial-btn" style="margin-left:10px;" onclick="startTutorialRun(this)">Tutorial</button>
-                <div id="daily-note" class="title-note"></div>
-                <div>
+                <div class="menu-secondary">
                     <button class="btn-menu-init btn-menu-small" id="title-stats-btn" onclick="openStats()">Stats</button>
-                    <button class="btn-menu-init btn-menu-small" id="title-settings-btn" style="margin-left:8px;" onclick="openSettings()">⚙ Settings</button>
+                    <button class="btn-menu-init btn-menu-small" id="title-settings-btn" onclick="openSettings()">Settings</button>
                     <!-- Debug boot toggle: starts run with all debug controls enabled. -->
-                    <button class="btn-menu-init btn-menu-small" id="init-debug-btn" style="margin-left:8px;" onclick="initRun(true, this)">Run with Cheats</button>
-                    <button class="btn-menu-init btn-menu-small" id="exit-hub-btn" style="margin-left:8px;" onclick="location.href = '../'">Exit</button>
+                    <button class="btn-menu-init btn-menu-small" id="init-debug-btn" onclick="initRun(true, this)">Cheats</button>
+                    <button class="btn-menu-init btn-menu-small" id="exit-hub-btn" onclick="location.href = '../'">Exit</button>
                 </div>
             </div>
         </div>
@@ -3695,6 +3744,216 @@ const ActionFx = {
             this.glow(document.querySelector('.mini-heat-container'), color);
             this.pop(DOM.get('ui-heat'), 1.2);
         }
+    },
+};
+
+// ============================================================================
+// CARD FX - a pixel-sprite effect for the card being played: FREEZE encases the enemy in ice,
+// TICKLE wiggles a feather under it, fire cards burn, lightning falls, and so on.
+// Sprites are assets/fx/*.png (tools/make-icons.mjs). Purely visual and never awaited,
+// so it cannot hold up a turn. Named cards first, then a fallback from what the card does.
+// ============================================================================
+const CardFx = {
+    // kind: [sprite, who it plays on, animation]
+    kinds: {
+        freeze: ['freeze', 'enemy', 'encase'], tickle: ['feather', 'enemy', 'tickle'], burn: ['flame', 'enemy', 'burn'],
+        zap: ['bolt', 'enemy', 'fall'], boom: ['burst', 'enemy', 'boom'], bomb: ['bomb', 'enemy', 'fall'],
+        slash: ['sword', 'enemy', 'slash'], punch: ['fist', 'enemy', 'strike'], skull: ['skull', 'enemy', 'strike'],
+        poison: ['bubbles', 'enemy', 'rise'], glitch: ['glitch', 'enemy', 'glitch'], wave: ['wave', 'enemy', 'sweep'],
+        aim: ['crosshair', 'enemy', 'lockon'], coinhit: ['coin', 'enemy', 'strike'], timestop: ['clock', 'enemy', 'timestop'],
+        hit: ['star', 'enemy', 'strike'],
+        shield: ['shield', 'player', 'rise'], heal: ['heart', 'player', 'rise'], steam: ['cloud', 'player', 'rise'],
+        snow: ['snow', 'player', 'rise'], draw: ['cards', 'player', 'rise'], coin: ['coin', 'player', 'rise'], clock: ['clock', 'player', 'rise'],
+    },
+    byCard: {
+        freeze: ['FREEZE'],
+        tickle: ['TICKLE', 'TICKLE_STORM'],
+        burn: ['BURN', 'SCALD', 'HADOU', 'HADES', 'ICARUS', 'ABLAZE', 'HINOKAMI', 'SUN_BREATHING', 'PHOENIX', 'MELTDOWN', 'AVATAR', 'OVERLOAD', 'MOB'],
+        zap: ['BOLT', 'SURGE', 'THOR', 'PULSE', 'TURBO', 'STATIC_INTERFERENCE', 'PING', 'WARP_DRIVE'],
+        boom: ['EXPLOSION', 'FRAG', 'BLAST', 'RECOIL', 'SHIVA', 'THE_SNAP', 'GOD_THREAD', 'CHAOS_PATCH', 'PLUS_EXTRA', 'OVER_9000', 'RANDOMBS'],
+        bomb: ['SPIKE_BOMB', 'ATGM'],
+        slash: ['SLICE', 'SAMURAI', 'EXCALIB', 'LASH', 'SPIKE', 'STING', 'THRUST', 'ACHILLES', 'SPEED_BLITZ', 'SPARTA', 'AZTEC'],
+        punch: ['STEVE_PUNCH', 'SLAP', 'SUCKER_PUNCH', 'FALCON', 'COMBO', 'STRIKE', 'HOLLOW_P', 'GORDON', 'BLACK_FLASH', 'FRIENDLY_HUG',
+            'EIGHT_GATES', 'STRENGTH_POT', 'HUMP', 'POLYGON', 'LEEROY', 'CAESAR', 'NETHERITE', 'ALLBASE', 'VIKING', 'BLOOD_BEND', 'PLUNDERER', 'IRON_MAN'],
+        skull: ['OMAEWA', 'FATALITY', 'MOU_SHINDE', 'WASTED', 'OBJ_SURVIVE', 'ANUBIS', 'OH_WOW', 'SCAR_COUNT'],
+        poison: ['CORROSIVE_LEAK', 'CORROSIVE_STORM', 'SCAR_ROT'],
+        glitch: ['ERROR_404', 'DATA_CORRUPTION', 'COLOR_CARD', 'HAL9000', 'REDPILL', 'DOMAIN_EXP'],
+        wave: ['FUSRO', 'WATER', 'DRAIN'],
+        aim: ['SIMO', 'TARGET_LOCK', 'ROBIN', 'BOUNTY_HUNTER', 'SCATTERSHOT', 'DOUBLE_TAP', 'GAMBLERS_SHOT'],
+        coinhit: ['CREDIT_BLAST', 'BRIBERY', 'SIPHON_CREDITS', 'DEEP_POCKET'],
+        timestop: ['THE_WORLD', 'KONODIO'],
+        snow: ['CHILL', 'MIST', 'BLUEPILL', 'TOTAL_CONCENTRATE', 'PROMET', 'BRUSH_OFF', 'LIMITLESS', 'KEDAVRA'],
+        clock: ['TIME_ROCK', 'SNOOZE', 'SYSTEM_LAG', 'RETURN'],
+        coin: ['MIDAS', 'PHILO_STONE', 'TRADE_IN', 'INSURANCE_POLICY', 'GOD_MODE', 'GAMBLE'],
+    },
+    kindFor(card) {
+        if (!this.lookup) {
+            this.lookup = {};
+            Object.entries(this.byCard).forEach(([kind, keys]) => keys.forEach((k) => { this.lookup[k] = kind; }));
+        }
+        const named = this.lookup[CardRules.getProgramKey(card)];
+        if (named) return named;
+        const desc = String(card.desc || '');
+        if (Number(card.pwr || 0) > 0 || /\bdmg\b|damage/i.test(desc) && !/take/i.test(desc)) return 'hit';
+        if (Number(card.blk || 0) > 0 || /block/i.test(desc)) return 'shield';
+        if (/heal/i.test(desc)) return 'heal';
+        if (/vent/i.test(desc)) return 'steam';
+        if (/draw/i.test(desc)) return 'draw';
+        if (/credit/i.test(desc)) return 'coin';
+        return null;
+    },
+    // targets: enemy slot indices the card lands on.
+    play(card, targets) {
+        const spec = this.kinds[this.kindFor(card)];
+        if (!spec) return;
+        const [sprite, side, anim] = spec;
+        const hosts = side === 'player' ? ['p-anim-container'] : targets.map((i) => (i === 1 ? 'e2-anim-container' : 'e-anim-container'));
+        hosts.forEach((id) => {
+            const host = DOM.get(id);
+            if (host) this[ActionFx.reduced.matches ? 'fade' : anim](host, sprite);
+        });
+    },
+    spawn(host, sprite, x = 50, y = 50, size = null) {
+        const img = document.createElement('img');
+        img.className = 'fx-sprite';
+        img.src = `assets/fx/${sprite}.png`;
+        img.alt = '';
+        img.style.left = `${x}%`;
+        img.style.top = `${y}%`;
+        if (size) { img.style.width = size; img.style.height = size; }
+        host.appendChild(img);
+        return img;
+    },
+    run(img, frames, duration, delay = 0, easing = ActionFx.ease) {
+        img.style.opacity = '0';
+        img.animate(frames, { duration, delay, easing, fill: 'both' }).finished.then(() => img.remove(), () => img.remove());
+    },
+    sprite(host) {
+        return host.querySelector('#e-shape, #e2-shape, #p-shape');
+    },
+    tint(host, filter, duration) {
+        this.sprite(host)?.animate([{ filter }, { filter, offset: 0.8 }, {}], { duration, easing: 'ease-out' });
+    },
+    fade(host, sprite) {
+        this.run(this.spawn(host, sprite), [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }], 700);
+    },
+    strike(host, sprite) {
+        this.run(this.spawn(host, sprite), [
+            { opacity: 0, transform: 'scale(0.4) rotate(-20deg)' },
+            { opacity: 1, transform: 'scale(1.3) rotate(0deg)', offset: 0.25 },
+            { opacity: 1, transform: 'scale(1.1)', offset: 0.6 },
+            { opacity: 0, transform: 'scale(1.6)' },
+        ], 600);
+    },
+    fall(host, sprite) {
+        this.run(this.spawn(host, sprite, 50, 45), [
+            { opacity: 0, transform: 'translateY(-170px) scale(1.2)' },
+            { opacity: 1, transform: 'translateY(-170px) scale(1.2)', offset: 0.08 },
+            { opacity: 1, transform: 'translateY(0) scale(1.3)', offset: 0.4, easing: 'ease-out' },
+            { opacity: 0, transform: 'scale(1.9)' },
+        ], 650, 0, 'ease-in');
+        setTimeout(() => this.strike(host, 'star'), 250);
+        this.tint(host, 'brightness(1.8) drop-shadow(0 0 10px #facc15)', 500);
+    },
+    boom(host, sprite) {
+        [[50, 50, 0], [32, 38, 110], [68, 62, 200]].forEach(([x, y, delay]) => {
+            this.run(this.spawn(host, sprite, x, y), [
+                { opacity: 0, transform: 'scale(0.3)' },
+                { opacity: 1, transform: 'scale(1.6)', offset: 0.3 },
+                { opacity: 0, transform: 'scale(2.2)' },
+            ], 550, delay);
+        });
+        this.tint(host, 'brightness(1.6) sepia(0.6)', 700);
+    },
+    burn(host, sprite) {
+        [[30, 82, 0], [50, 78, 90], [70, 82, 180]].forEach(([x, y, delay]) => {
+            this.run(this.spawn(host, sprite, x, y), [
+                { opacity: 0, transform: 'translateY(10px) scaleY(0.5)' },
+                { opacity: 1, transform: 'translateY(-6px) scaleY(1.2)', offset: 0.25 },
+                { opacity: 1, transform: 'translateY(-14px) scaleY(0.9) scaleX(1.1)', offset: 0.5 },
+                { opacity: 1, transform: 'translateY(-24px) scaleY(1.15)', offset: 0.75 },
+                { opacity: 0, transform: 'translateY(-40px) scaleY(0.7)' },
+            ], 900, delay);
+        });
+        this.tint(host, 'drop-shadow(0 0 12px #f97316) brightness(1.3)', 1000);
+    },
+    slash(host, sprite) {
+        this.run(this.spawn(host, sprite), [
+            { opacity: 0, transform: 'translate(-70px, -70px) rotate(-45deg) scale(1.4)' },
+            { opacity: 1, transform: 'translate(-35px, -35px) rotate(0deg) scale(1.4)', offset: 0.3 },
+            { opacity: 1, transform: 'translate(35px, 35px) rotate(25deg) scale(1.4)', offset: 0.7 },
+            { opacity: 0, transform: 'translate(60px, 60px) rotate(35deg) scale(1.4)' },
+        ], 420, 0, 'ease-in-out');
+        setTimeout(() => this.strike(host, 'star'), 200);
+    },
+    rise(host, sprite) {
+        [[50, 0], [32, 140], [68, 260]].slice(0, sprite === 'bubbles' ? 3 : 1).forEach(([x, delay]) => {
+            this.run(this.spawn(host, sprite, x, 55), [
+                { opacity: 0, transform: 'translateY(16px) scale(0.7)' },
+                { opacity: 1, transform: 'translateY(-10px) scale(1.1)', offset: 0.3 },
+                { opacity: 0, transform: 'translateY(-60px) scale(1)' },
+            ], 950, delay);
+        });
+        if (sprite === 'bubbles') this.tint(host, 'drop-shadow(0 0 10px #a3e635) hue-rotate(60deg)', 1100);
+    },
+    // FREEZE: the enemy goes pale blue inside a block of ice, then the ice shatters into snowflakes.
+    encase(host, sprite) {
+        this.run(this.spawn(host, sprite, 50, 52, '78%'), [
+            { opacity: 0, transform: 'scale(1.35)' },
+            { opacity: 0.8, transform: 'scale(1)', offset: 0.15 },
+            { opacity: 0.8, transform: 'scale(1)', offset: 0.75 },
+            { opacity: 0, transform: 'scale(1.12)' },
+        ], 1400);
+        this.tint(host, 'saturate(0.2) brightness(1.4) drop-shadow(0 0 10px #7dd3fc)', 1400);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dx, dy]) => {
+            this.run(this.spawn(host, 'snow', 50 + dx * 20, 52 + dy * 20, '32px'), [
+                { opacity: 1, transform: 'translate(0, 0) rotate(0deg)' },
+                { opacity: 0, transform: `translate(${dx * 50}px, ${dy * 50}px) rotate(${dx * 120}deg)` },
+            ], 500, 1050, 'ease-out');
+        });
+    },
+    // TICKLE: a feather under the enemy wiggles back and forth while the enemy squirms.
+    tickle(host, sprite) {
+        this.run(this.spawn(host, sprite, 50, 96), [
+            { opacity: 0, transform: 'translateX(-14px) rotate(-30deg)' },
+            { opacity: 1, transform: 'translateX(14px) rotate(25deg)', offset: 0.15 },
+            { opacity: 1, transform: 'translateX(-14px) rotate(-30deg)', offset: 0.3 },
+            { opacity: 1, transform: 'translateX(14px) rotate(25deg)', offset: 0.45 },
+            { opacity: 1, transform: 'translateX(-14px) rotate(-30deg)', offset: 0.6 },
+            { opacity: 1, transform: 'translateX(14px) rotate(25deg)', offset: 0.75 },
+            { opacity: 0, transform: 'translateX(0) rotate(0deg) translateY(10px)' },
+        ], 1300, 0, 'ease-in-out');
+        this.sprite(host)?.animate(
+            [0, -4, 4, -3, 3, -4, 4, -2, 0].map((x, i) => ({ transform: `translateX(${x}px) rotate(${x / 2}deg)`, offset: i / 8 })),
+            { duration: 1300 },
+        );
+    },
+    glitch(host, sprite) {
+        this.strike(host, sprite);
+        this.sprite(host)?.animate(
+            [0, 6, -5, 4, -6, 0].map((x, i) => ({ transform: `translateX(${x}px)`, filter: `hue-rotate(${i * 70}deg) contrast(1.5)` })),
+            { duration: 450, easing: 'steps(6)' },
+        );
+    },
+    sweep(host, sprite) {
+        this.run(this.spawn(host, sprite, 50, 60), [
+            { opacity: 0, transform: 'translateX(-180px) scale(2)' },
+            { opacity: 1, transform: 'translateX(-60px) scale(2)', offset: 0.35 },
+            { opacity: 1, transform: 'translateX(10px) scale(2.2)', offset: 0.7 },
+            { opacity: 0, transform: 'translateX(40px) scale(2.4)' },
+        ], 650, 0, 'ease-out');
+    },
+    lockon(host, sprite) {
+        this.run(this.spawn(host, sprite), [
+            { opacity: 0, transform: 'scale(2.6) rotate(90deg)' },
+            { opacity: 1, transform: 'scale(1.2) rotate(0deg)', offset: 0.4 },
+            { opacity: 1, transform: 'scale(1.2)', offset: 0.75 },
+            { opacity: 0, transform: 'scale(0.9)' },
+        ], 750);
+    },
+    timestop(host, sprite) {
+        this.strike(host, sprite);
+        this.tint(host, 'grayscale(1) brightness(0.8)', 1200);
     },
 };
 
@@ -7001,9 +7260,6 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
     const hadTargetLockAtPlayStart = state.combatFlags.targetLockNextCard > 0;
     // Snapshot discard count before this card modifies piles (used by DUMP).
     const discardCountAtPlayStart = state.discard.length;
-    // Mirror status doubles the next non-Mirror card, then expires.
-    const mirrorCastActive = consumeMirrorCastForCard(card);
-    const mirrorMultiplier = mirrorCastActive ? 2 : 1;
 
     // --- JUNK DATA: costs 10 heat to discard, does nothing else ---
     if (card.isJunk) {
@@ -7051,7 +7307,13 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         return;
     }
 
-    let cardsToRemove = [cardElement]; 
+    // Mirror status doubles the next non-Mirror card, then expires. Read only once the card is really being played,
+    // so a locked card or a target prompt does not use it up.
+    const mirrorCastActive = consumeMirrorCastForCard(card);
+    const mirrorMultiplier = mirrorCastActive ? 2 : 1;
+    // Effect sprite on whoever the card lands on (every living enemy for area cards).
+    CardFx.play(card, CardRules.isAoe(cardForTargeting) ? aliveEnemyIndices : [forcedTargetIndex ?? activeEnemyIndex]);
+    let cardsToRemove = [cardElement];
 
     // --- Notify StatusManager that a card is being played ---
     StatusManager.onPlayerPlayCard();
@@ -8449,6 +8711,13 @@ function finalizeTurn() {
         ? prevActiveEnemy
         : (aliveEnemyIndices[0] ?? 0);
     EnemyPartyManager.setActiveEnemyByIndex(restoreTarget, true, true);
+    // Curses are dead draws: they block a hand slot for one turn, then go to the discard pile.
+    // The hand is kept between turns, so without this they piled up until no card could be played.
+    const curses = state.hand.filter(c => c?.cursed);
+    if (curses.length) {
+        state.hand = state.hand.filter(c => !c?.cursed);
+        state.discard.push(...curses);
+    }
     drawHand();
     updateUI();
 
@@ -9885,9 +10154,8 @@ function chooseDoor(type) {
                         advanceNonCombatFloor('curse');
                         const curse = getRandomCurseCard();
                         if (curse) {
+                            // Deck only: the hand here is the last fight's leftovers, and startRoom rebuilds it.
                             state.deck.push({ ...curse });
-                            state.hand.push({ ...curse });
-                            renderHand();
                             updateUI();
                             showPop('p-pop-anchor', `CURSED: ${curse.name}`, 'var(--hp)');
                         } else {
