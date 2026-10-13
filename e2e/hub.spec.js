@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { serve } from '../scripts/serve.mjs';
@@ -61,4 +62,38 @@ test('works offline under /fairshare/ and does not take over the rest of the sit
   await page.getByRole('button', { name: 'Create trip' }).click();
   await expect(page.getByRole('heading', { name: 'Offline trip' })).toBeVisible();
   expect(failed).toEqual([]);
+});
+
+test('QSendr opens from the home screen, gives the laptop script, and keeps the exe out of the site', async ({ page, request }) => {
+  await page.goto('/');
+  await page.getByRole('main', { name: 'Apps' }).getByRole('link', { name: 'QSendr' }).click();
+  await expect(page).toHaveURL('/qsendr/');
+  await expect(page.getByRole('link', { name: 'Download qsendr.py' })).toBeVisible();
+  expect(await (await request.get('/qsendr/qsendr.py')).text()).toContain('def make_server');
+  expect(await page.locator('.hash').textContent()).toMatch(/^[0-9A-F]{64}$/); // the exe's fingerprint, for the release it links to
+  expect((await request.get('/qsendr/QSendr.exe')).status()).toBe(404); // the exe lives on a release, not on the site
+  expect((await request.get('/qsendr/dist/QSendr.exe')).status()).toBe(404);
+  expect((await request.get('/qsendr/__pycache__/')).status()).toBe(404);
+});
+
+test('QSendr installs from its own address: manifest, icons and links are all under /qsendr/', async ({ page, request }) => {
+  await page.goto('/qsendr/');
+  expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('manifest.webmanifest');
+  const manifest = await (await request.get('/qsendr/manifest.webmanifest')).json();
+  expect(manifest).toMatchObject({ name: 'QSendr', start_url: './', scope: './', display: 'standalone' });
+  for (const icon of manifest.icons) expect((await request.get(`/qsendr/${icon.src}`)).status(), icon.src).toBe(200);
+  expect((await request.get('/qsendr/icons/apple-touch-icon.png')).status()).toBe(200);
+});
+
+test('QSendr works offline under /qsendr/ and does not take over the rest of the site', async ({ page }) => {
+  const server = await serve('dist');
+  const origin = `http://localhost:${server.port}`;
+  await page.goto(`${origin}/qsendr/`);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); // now controlled by the service worker
+  expect(await page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  expect(await page.evaluate(() => navigator.serviceWorker.controller.scriptURL)).toBe(`${origin}/qsendr/sw.js`);
+  await server.close();
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Download qsendr.py' })).toBeVisible(); // served from the cache, server gone
 });

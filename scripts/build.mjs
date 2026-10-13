@@ -51,7 +51,7 @@ for (const app of registry.apps) {
     const entry = app.source.entry ?? 'index.html';
     if (!existsSync(join(src, entry))) fail(`${app.id}: entry file not found: ${join(src, entry)}`);
     if (sizeOf(src) > MAX_APP_MB * 1024 * 1024) fail(`${app.id}: ${src} is over ${MAX_APP_MB} MB. Point "source.dir" at a smaller folder.`);
-    cpSync(src, dest, { recursive: true, filter: (p) => !['node_modules', '.git', 'dist'].includes(basename(p)) });
+    cpSync(src, dest, { recursive: true, filter: (p) => !['node_modules', '.git', 'dist', '__pycache__'].includes(basename(p)) });
     if (entry !== 'index.html') cpSync(join(src, entry), join(dest, 'index.html'));
     const page = readFileSync(join(dest, 'index.html'), 'utf8');
     if (page.includes('/*HUB_BUILD*/')) writeFileSync(join(dest, 'index.html'), page.replaceAll('/*HUB_BUILD*/', buildLabel));

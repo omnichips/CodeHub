@@ -14,6 +14,13 @@
       "color": "#0f172a",
       "icon": "assets/player.png",
       "source": { "type": "static", "dir": "apps/htmlroguemobile" }
+    },
+    {
+      "id": "qsendr",
+      "name": "QSendr",
+      "color": "#1b2a4a",
+      "icon": "logo.png",
+      "source": { "type": "static", "dir": "apps/qrscans" }
     }
   ]
 }
