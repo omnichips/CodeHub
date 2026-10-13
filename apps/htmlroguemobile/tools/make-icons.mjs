@@ -198,6 +198,15 @@ const M = {
     close: (L, c = C.white) => L.line(7, 7, 25, 25, c, 4).line(25, 7, 7, 25, c, 4),
     check: (L, c = C.green) => L.line(5, 17, 12, 24, c, 4).line(12, 24, 27, 8, c, 4),
     robot: (L, c = C.grey) => L.rect(15, 2, 2, 5, C.steel).circle(16, 3, 2, C.red).rect(6, 7, 20, 15, c).rect(9, 11, 5, 4, flat('#38bdf8')).rect(18, 11, 5, 4, flat('#38bdf8')).rect(11, 17, 10, 2, flat('#334155')).rect(3, 11, 3, 6, C.steel).rect(26, 11, 3, 6, C.steel).rect(9, 23, 14, 7, C.steel),
+    // Spire pack motifs.
+    hammer: (L, c = C.steel) => L.line(9, 26, 21, 12, C.brown, 3).poly([[13, 7], [22, 2], [29, 11], [20, 16]], c).line(14, 8, 21, 3, flat('#e5e7eb')),
+    chain: (L, c = C.grey) => L.ring(9, 10, 5, 2, c).ring(16, 16, 5, 2, light(c)).ring(23, 22, 5, 2, c),
+    tesla: (L, c = C.cyan) => L.rect(13, 14, 6, 14, C.steel).rect(10, 26, 12, 3, C.dgrey).circle(16, 10, 6, C.grey).ring(16, 10, 6, 1, flat('#e5e7eb'))
+        .line(10, 6, 4, 2, c, 2).line(22, 6, 28, 2, c, 2).line(9, 12, 3, 15, c, 2).line(23, 12, 29, 15, c, 2),
+    snake: (L, c = C.lime) => L.ring(16, 18, 9, 4, c).rect(16, 9, 14, 9, null).ellipse(22, 9, 5, 4, c).px(23, 8, flat('#0b0f1a')).line(26, 10, 29, 12, flat('#ef4444')).px(29, 13, flat('#ef4444')),
+    choker: (L, c = C.purple) => L.ring(16, 15, 11, 3, c).rect(13, 22, 6, 6, C.gold).circle(16, 25, 2, flat('#fde68a')),
+    plug: (L, c = C.yellow) => L.rect(9, 12, 14, 12, C.grey).rect(11, 4, 3, 8, C.steel).rect(18, 4, 3, 8, C.steel).rect(14, 24, 4, 6, C.dgrey).poly([[17, 13], [12, 19], [16, 19], [14, 23], [20, 17], [16, 17]], c),
+    shieldStack: (L, c = C.blue) => L.poly([[3, 9], [15, 9], [15, 16], [9, 23], [3, 16]], dark(c)).poly([[14, 6], [28, 6], [28, 15], [21, 25], [14, 15]], c),
 };
 
 // Mods: [motif, colour, frame, badge]. frame colours by role, badge = small tier pips (1-3).
@@ -227,6 +236,11 @@ const MODS = {
     'ANCIENT ALTAR': ['altar', null, F.ancient, 0], 'VOID REACTOR': ['void', null, F.ancient, 0], 'BLIND TREASURY': ['eyeShut', null, F.ancient, 0],
     'TITAN HUNGER': ['fist', undefined, F.ancient, 0], 'OBLIVION CORE': ['eye', C.magenta, F.ancient, 0], 'REVERSAL ENGINE': ['swap', null, F.ancient, 0],
     'FRACTURED LEDGER': ['book', C.magenta, F.ancient, 0],
+    'IDLE SHIELD': ['shield', C.green, F.def, 0], 'CAPACITOR BANK': ['battery', C.blue, F.def, 2], 'SURGE PROTECTOR': ['plug', C.yellow, F.def, 0],
+    'COOLING FINS': ['fan', C.blue, F.def, 1], 'ARC GAP': ['bolt', C.purple, F.atk, 1], 'TRIPLE THREAD': ['spiral', C.red, F.atk, 0],
+    'EXPLOIT KIT': ['crosshair', C.orange, F.atk, 1], 'TESLA COIL': ['tesla', C.cyan, F.atk, 0], 'IDLE CLOCK': ['clock', C.ice, F.draw, 2],
+    'COOL HEAD': ['snowflake', C.blue, F.heat, 2], 'INFINITE LOOP': ['spiral', C.cyan, F.draw, 2], 'TAINTED COOLANT': ['flask', C.purple, F.heat, 3],
+    'SNECKO CHIP': ['snake', C.lime, F.draw, 3], 'VELVET THROTTLE': ['choker', C.purple, F.heat, 3], 'GARBAGE COLLECTOR': ['trash', null, F.draw, 3],
 };
 const STATUS = {
     STATIC_CHARGE: ['bolt', C.yellow], HEAT_ROOM: ['flame'], JUNK_DATA: ['trash'], SYNC_STALL: ['lock', C.purple], FLUSH_DEBUFF: ['snowflake', C.cyan],
@@ -238,6 +252,9 @@ const STATUS = {
     HEAT_SCALE: ['chart', C.orange], POWER_GROW: ['sprout'], CARD_TRIGGER: ['eye', C.red], BLOCK_TRIGGER: ['bricks'], RED_STANCE: ['stance', C.red],
     BLUE_STANCE: ['stance', C.blue], CORROSIVE_LEAK: ['radioactive'], CORRUPTION: ['skull', C.lime], BIT_ROT: ['flask', C.purple], LOGIC_BOMB: ['bomb'],
     STATIC_INTERFERENCE: ['signal', C.grey],
+    PLAYER_SCRAP_ARMOR: ['shield', C.steel], PLAYER_RECYCLER: ['returnArrow', C.green], PLAYER_ZERO_DAY: ['chip', C.red],
+    PLAYER_PAPERCUTS: ['card', C.white], PLAYER_BURN_IN: ['flame', C.red], THROTTLED: ['thermo', C.purple], EXPOSED: ['crosshair', C.orange],
+    WEAKENED: ['chain'], PATCHED: ['wrench', C.cyan], SKIM: ['coin'], LOAD_BALANCE: ['shieldStack', C.cyan], ECHO: ['mirror'], FORKABLE: ['swap'],
 };
 // Card-effect sprites (CardFx in index.html).
 // Interface icons (buttons and counters), used in place of emoji.
@@ -249,6 +266,7 @@ const FX = {
     freeze: ['iceblock'], snow: ['snowflake'], feather: ['feather'], flame: ['flame'], bolt: ['bolt'], burst: ['burst'], skull: ['skull'],
     bubbles: ['bubbles'], coin: ['coin'], heart: ['heart'], shield: ['shield', C.cyan], cloud: ['cloud'], cards: ['cards'], crosshair: ['crosshair'],
     clock: ['clock'], drop: ['drop'], fist: ['fist'], sword: ['sword'], glitch: ['glitch'], wave: ['wave'], star: ['burst', C.white], bomb: ['bomb'],
+    hammer: ['hammer'], chain: ['chain'], chip: ['chip', C.purple], magnet: ['magnet'], lock: ['lock'], thermo: ['thermo', C.purple], paper: ['card', C.white],
 };
 
 function draw(motif, color) {

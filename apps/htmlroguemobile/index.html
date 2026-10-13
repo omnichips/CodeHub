@@ -2475,10 +2475,13 @@
                 z-index: 3000;
                 display: flex;
                 gap: 6px;
+                /* One row across the whole top; a second row only once that is full. */
+                left: 10px;
                 flex-wrap: wrap;
-                max-width: 240px;
-                pointer-events: auto;
+                justify-content: flex-end;
+                pointer-events: none;
             }
+            #battle-mod-hud > * { pointer-events: auto; }
             #battle-mod-hud .battle-mod-chip {
                 width: 26px;
                 height: 26px;
@@ -2521,6 +2524,39 @@
                 transition: none !important;
             }
             .card.card-dragging { opacity: 0.25 !important; }
+            /* Spire pack effects: sprites flying between things, mods that just fired, cards an enemy locked, Fork Process splitting. */
+            .fly-fx { position: fixed; width: 24px; height: 24px; z-index: 12000; pointer-events: none; image-rendering: pixelated; }
+            #battle-mod-hud .battle-mod-chip.mod-proc { animation: mod-proc 0.6s ease-out; }
+            @keyframes mod-proc {
+                0% { transform: scale(1); }
+                30% { transform: scale(1.45); box-shadow: 0 0 14px var(--accent); filter: brightness(1.8); }
+                100% { transform: scale(1); }
+            }
+            .card-lock-badge {
+                position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 31;
+                padding: 1px 6px; font-size: 7px; color: #0b0f1a; background: #fbbf24; white-space: nowrap;
+            }
+            .card.card-jammed { filter: saturate(0.3) brightness(0.8); border: 2px solid #f97316 !important; }
+            .card.card-jammed .card-lock-badge { background: #f97316; color: #fff; }
+            .card.card-jammed::after {
+                content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 30;
+                background: repeating-linear-gradient(-45deg, rgba(249, 115, 22, 0.35) 0 6px, transparent 6px 12px);
+            }
+            .card.card-ransom { border: 2px solid #fbbf24 !important; box-shadow: 0 0 10px rgba(251, 191, 36, 0.6); }
+            .card.card-jam-hit { animation: card-jam-hit 0.5s ease-out; }
+            @keyframes card-jam-hit {
+                0%, 100% { translate: 0 0; }
+                20% { translate: -7px 0; rotate: -4deg; }
+                40% { translate: 7px 0; rotate: 4deg; }
+                60% { translate: -4px 0; rotate: -2deg; }
+            }
+            .enemy-split-in { animation: enemy-split-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
+            @keyframes enemy-split-in {
+                0% { opacity: 0; transform: scale(0.2); filter: brightness(3) drop-shadow(0 0 12px #22d3ee); }
+                60% { opacity: 1; transform: scale(1.15); }
+                100% { transform: scale(1); filter: none; }
+            }
+            @media (prefers-reduced-motion: reduce) { .enemy-split-in, .card.card-jam-hit, #battle-mod-hud .battle-mod-chip.mod-proc { animation: none; } }
             /* Damage preview while dragging an attack over an enemy. */
             .hp-preview {
                 position: absolute;
@@ -3715,7 +3751,7 @@ const DamagePreview = {
     key: '',
     show(card, slots) {
         const isAttack = card && (Number(card.pwr || 0) > 0 || ModManager.getEffectValue('ancient_swap_attack_block') > 0 && Number(card.blk || 0) > 0
-            || ['damage_from_credits_pct', 'random_damage_range'].includes(card.special));
+            || DAMAGE_SPECIALS.includes(card.special));
         const targets = isAttack ? slots : [];
         const key = targets.join();
         if (key === this.key) return;
@@ -3745,6 +3781,14 @@ const DamagePreview = {
     },
 };
 
+// Attacks, and cards whose text deals damage or names an enemy (Deep Pocket heals one, Snap clears block...).
+function cardAffectsEnemies(card) {
+    if (!card) return false;
+    const attack = Number(card.pwr || 0) > 0 || ModManager.getEffectValue('ancient_swap_attack_block') > 0 && Number(card.blk || 0) > 0
+        || DAMAGE_SPECIALS.includes(card.special);
+    return attack || /\b(enem(y|ies)|deal)\b/i.test(String(card.desc || ''));
+}
+
 const CardTouch = {
     card: null,      // card under the finger
     start: null,     // where the touch began
@@ -3760,16 +3804,20 @@ const CardTouch = {
         clearTimeout(this.timer);
         const card = this.card, r = card.getBoundingClientRect();
         const ghost = card.cloneNode(true);
+        // Only the card itself: no leftover hand slide/lift, so the copy starts right under the finger.
+        ghost.classList.remove('card-reflow', 'card-targeting', 'card-vibrate', 'anim-card-play', 'anim-card-discard');
         ghost.classList.add('card-drag-ghost');
         ghost.style.cssText = `width:${r.width}px;height:${r.height}px;`;
         this.offset = { x: touch.clientX - r.left, y: touch.clientY - r.top };
         document.body.appendChild(ghost);
         this.ghost = ghost;
         card.classList.add('card-dragging');
-        EnemyPartyManager.getAliveIndices().forEach((i) => DOM.get(i === 0 ? 'e-box' : 'e-box-2').classList.add('drop-ready'));
+        // Enemies light up as drop targets only for cards that do something to them.
+        this.hitsEnemies = cardAffectsEnemies(state.hand[Array.from(DOM.get('hand').children).indexOf(card)]);
+        if (this.hitsEnemies) EnemyPartyManager.getAliveIndices().forEach((i) => DOM.get(i === 0 ? 'e-box' : 'e-box-2').classList.add('drop-ready'));
     },
     moveDrag(touch) {
-        const slot = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.enemy-slot') || null;
+        const slot = this.hitsEnemies ? document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.enemy-slot') || null : null;
         // Over a target the card shrinks around the finger and fades, so the damage preview shows.
         this.ghost.style.transformOrigin = `${this.offset.x}px ${this.offset.y}px`;
         this.ghost.style.opacity = slot ? '0.6' : '1';
@@ -4181,24 +4229,32 @@ const CardFx = {
         poison: ['bubbles', 'enemy', 'rise'], glitch: ['glitch', 'enemy', 'glitch'], wave: ['wave', 'enemy', 'sweep'],
         aim: ['crosshair', 'enemy', 'lockon'], coinhit: ['coin', 'enemy', 'strike'], timestop: ['clock', 'enemy', 'timestop'],
         hit: ['star', 'enemy', 'strike'],
+        smash: ['hammer', 'enemy', 'fall'], bash: ['shield', 'enemy', 'strike'], weaken: ['chain', 'enemy', 'strike'],
+        power: ['chip', 'player', 'rise'],
         shield: ['shield', 'player', 'rise'], heal: ['heart', 'player', 'rise'], steam: ['cloud', 'player', 'rise'],
         snow: ['snow', 'player', 'rise'], draw: ['cards', 'player', 'rise'], coin: ['coin', 'player', 'rise'], clock: ['clock', 'player', 'rise'],
     },
     byCard: {
         freeze: ['FREEZE'],
+        smash: ['SLEDGEHAMMER'],
+        bash: ['SHIELD_BASH'],
+        weaken: ['CHOKEHOLD'],
+        power: ['SCRAP_ARMOR', 'RECYCLER', 'ZERO_DAY', 'PAPERCUTS', 'BURN_IN'],
+        shield: ['DOUBLE_DOWN', 'TRIAGE'],
+        draw: ['PANIC_SWAP', 'DUPLICATE'],
         tickle: ['TICKLE', 'TICKLE_STORM'],
         burn: ['BURN', 'SCALD', 'HADOU', 'HADES', 'ICARUS', 'ABLAZE', 'HINOKAMI', 'SUN_BREATHING', 'PHOENIX', 'MELTDOWN', 'AVATAR', 'OVERLOAD', 'MOB'],
-        zap: ['BOLT', 'SURGE', 'THOR', 'PULSE', 'TURBO', 'STATIC_INTERFERENCE', 'PING', 'WARP_DRIVE'],
-        boom: ['EXPLOSION', 'FRAG', 'BLAST', 'RECOIL', 'SHIVA', 'THE_SNAP', 'GOD_THREAD', 'CHAOS_PATCH', 'PLUS_EXTRA', 'OVER_9000', 'RANDOMBS'],
+        zap: ['BOLT_ARRAY', 'BOLT', 'SURGE', 'THOR', 'PULSE', 'TURBO', 'STATIC_INTERFERENCE', 'PING', 'WARP_DRIVE'],
+        boom: ['PURGE_EXE', 'EXPLOSION', 'FRAG', 'BLAST', 'RECOIL', 'SHIVA', 'THE_SNAP', 'GOD_THREAD', 'CHAOS_PATCH', 'PLUS_EXTRA', 'OVER_9000', 'RANDOMBS'],
         bomb: ['SPIKE_BOMB', 'ATGM'],
-        slash: ['SLICE', 'SAMURAI', 'EXCALIB', 'LASH', 'SPIKE', 'STING', 'THRUST', 'ACHILLES', 'SPEED_BLITZ', 'SPARTA', 'AZTEC'],
-        punch: ['STEVE_PUNCH', 'SLAP', 'SUCKER_PUNCH', 'FALCON', 'COMBO', 'STRIKE', 'HOLLOW_P', 'GORDON', 'BLACK_FLASH', 'FRIENDLY_HUG',
+        slash: ['ITERATE', 'SLICE', 'SAMURAI', 'EXCALIB', 'LASH', 'SPIKE', 'STING', 'THRUST', 'ACHILLES', 'SPEED_BLITZ', 'SPARTA', 'AZTEC'],
+        punch: ['PURE_ATTACK', 'STEVE_PUNCH', 'SLAP', 'SUCKER_PUNCH', 'FALCON', 'COMBO', 'STRIKE', 'HOLLOW_P', 'GORDON', 'BLACK_FLASH', 'FRIENDLY_HUG',
             'EIGHT_GATES', 'STRENGTH_POT', 'HUMP', 'POLYGON', 'LEEROY', 'CAESAR', 'NETHERITE', 'ALLBASE', 'VIKING', 'BLOOD_BEND', 'PLUNDERER', 'IRON_MAN'],
         skull: ['OMAEWA', 'FATALITY', 'MOU_SHINDE', 'WASTED', 'OBJ_SURVIVE', 'ANUBIS', 'OH_WOW', 'SCAR_COUNT'],
         poison: ['CORROSIVE_LEAK', 'CORROSIVE_STORM', 'SCAR_ROT'],
         glitch: ['ERROR_404', 'DATA_CORRUPTION', 'COLOR_CARD', 'HAL9000', 'REDPILL', 'DOMAIN_EXP'],
-        wave: ['FUSRO', 'WATER', 'DRAIN'],
-        aim: ['SIMO', 'TARGET_LOCK', 'ROBIN', 'BOUNTY_HUNTER', 'SCATTERSHOT', 'DOUBLE_TAP', 'GAMBLERS_SHOT'],
+        wave: ['OVERFLOW', 'FUSRO', 'WATER', 'DRAIN'],
+        aim: ['EXPLOIT', 'SIMO', 'TARGET_LOCK', 'ROBIN', 'BOUNTY_HUNTER', 'SCATTERSHOT', 'DOUBLE_TAP', 'GAMBLERS_SHOT'],
         coinhit: ['CREDIT_BLAST', 'BRIBERY', 'SIPHON_CREDITS', 'DEEP_POCKET'],
         timestop: ['THE_WORLD', 'KONODIO'],
         snow: ['CHILL', 'MIST', 'BLUEPILL', 'TOTAL_CONCENTRATE', 'PROMET', 'BRUSH_OFF', 'LIMITLESS', 'KEDAVRA'],
@@ -5090,7 +5146,7 @@ async function openRelicRewardChoice(optionCount = 2) {
         const closeBtn = DOM.get('deck-close-btn');
         if (!overlay || !grid || !title) { resolve(); return; }
 
-        const pool = getStandardModPool().filter(m => !state.mods.includes(m.name)).sort(() => Math.random() - 0.5).slice(0, optionCount);
+        const pool = getStandardModPool(true).filter(m => !state.mods.includes(m.name)).sort(() => Math.random() - 0.5).slice(0, optionCount);
         if (!pool.length) { resolve(); return; }
 
         overlay.style.display = 'flex';
@@ -5397,6 +5453,12 @@ function applyEnemyVisual(el, enemy) {
 // CARD RULES - Attribute-driven card behavior checks.
 // Keep all special checks centralized so new cards only need card attributes.
 // ============================================================================
+// Cards with no printed damage that still attack (their damage is worked out in computeAttackDamage).
+const DAMAGE_SPECIALS = ['damage_from_credits_pct', 'random_damage_range', 'damage_equal_block'];
+function isAttackCard(card) {
+    return Number(card?.pwr || 0) > 0 || DAMAGE_SPECIALS.includes(card?.special);
+}
+
 const CardRules = {
     getProgramKey(card) {
         if (!card || !card.name) return '';
@@ -5426,6 +5488,10 @@ const CardRules = {
             const hasOtherAttack = (state.hand || []).some(c => c !== card && Number(c?.pwr || 0) > 0);
             if (!hasOtherAttack) return false;
         }
+        // PURE ATTACK: every other card in hand must be an attack.
+        if (card.special === 'only_attacks_in_hand') {
+            return (state.hand || []).every((c) => c === card || isAttackCard(c));
+        }
         // Generic low HP gate
         if (card.special === 'playable_below_hp') {
             return state.hp < (card.hpThreshold || 15);
@@ -5438,13 +5504,13 @@ const CardRules = {
     },
     isUtilityOnly(card) {
         // Cards with no direct damage resolve instantly with one click.
-        const damageSpecials = ['damage_from_credits_pct', 'random_damage_range'];
+        const damageSpecials = DAMAGE_SPECIALS;
         const hasAncientSwap = ModManager.getEffectValue('ancient_swap_attack_block') > 0;
         const effectivePower = hasAncientSwap ? Number(card?.blk || 0) : Number(card?.pwr || 0);
         return !effectivePower && !damageSpecials.includes(card?.special);
     },
     needsEnemyTarget(card) {
-        const damageSpecials = ['damage_from_credits_pct', 'random_damage_range'];
+        const damageSpecials = DAMAGE_SPECIALS;
         const hasAncientSwap = ModManager.getEffectValue('ancient_swap_attack_block') > 0;
         const effectivePower = hasAncientSwap ? Number(card?.blk || 0) : Number(card?.pwr || 0);
         return (effectivePower > 0 || damageSpecials.includes(card?.special)) && !this.isAoe(card);
@@ -5461,45 +5527,96 @@ const CardRules = {
 function computeAttackDamage(card, mirrorMultiplier = 1, rolled = null) {
     const hasAncientSwap = ModManager.getEffectValue('ancient_swap_attack_block') > 0;
     const effectivePowerValue = hasAncientSwap ? Number(card?.blk || 0) : Number(card?.pwr || 0);
-    let baseDmg = hasAncientSwap ? Math.max(0, effectivePowerValue) : getCardRuntimePower(card);
-    if (card.name === "BATCH") baseDmg = state.hand.length * 5;
-    baseDmg += ModManager.getEffectValue('dmg_up');
-    baseDmg += Math.max(0, Math.floor(state.combatFlags.playerStrength || 0));
-    if (state.heat >= 50) baseDmg += ModManager.getEffectValue('dmg_at_half_heat');
-    if (ModManager.getEffectValue('i3_core_scaling') > 0) {
-        baseDmg += Math.floor(Math.max(0, state.heat) / 2);
-    }
-    if (state.hp <= state.maxHp * 0.25) baseDmg += ModManager.getEffectValue('low_hp_power');
-    const curseScale = Number(ModManager.getEffectValue('curse_damage_scale') || 0);
-    if (curseScale > 0) {
-        const ownedCurses = getOwnedCurseCount();
-        if (ownedCurses > 0) {
-            const curseMult = 1 + (ownedCurses * curseScale);
-            baseDmg = Math.max(0, Math.floor(baseDmg * curseMult));
-        }
-    }
-    // First-attack bonus (once per turn), as ModManager.consumeAttackBonus would grant it.
-    if (effectivePowerValue > 0 && !state.combatFlags.firstAttackBonusUsedThisTurn) baseDmg += ModManager.getEffectValue('first_attack_bonus');
-    if (state.combatFlags.autoLoaderReady) baseDmg *= 2;
-    if (card.special === 'damage_from_credits_pct') {
-        baseDmg = Math.max(0, Math.floor(state.gold * (card.creditPct || 0.12)));
-    }
-    if (card.special === 'random_damage_range') baseDmg = rolled ?? Math.max(1, card.minDmg || 1);
-    // Ancient damage amplifiers (stack multiplicatively).
-    let ancientDamageMult = 1;
-    if (ModManager.getEffectValue('ancient_one_hp_no_overheat_double_dmg') > 0) ancientDamageMult *= 2;
-    if (ModManager.getEffectValue('ancient_hidden_stats_berserk') > 0) ancientDamageMult *= 2;
-    if (ancientDamageMult > 1) baseDmg *= ancientDamageMult;
-    // Cards with "X dmg x N" in description resolve as true multi-hit attacks.
-    let hits = Number(card.hits || 1) * mirrorMultiplier;
-    let perHit = baseDmg;
+    // 1. The card's own number per hit.
+    let perHit = hasAncientSwap ? Math.max(0, effectivePowerValue) : getCardRuntimePower(card);
+    if (card.name === "BATCH") perHit = state.hand.length * 5;
+    if (card.special === 'damage_from_credits_pct') perHit = Math.max(0, Math.floor(state.gold * (card.creditPct || 0.12)));
+    if (card.special === 'random_damage_range') perHit = rolled ?? Math.max(1, card.minDmg || 1);
+    if (card.special === 'damage_equal_block') perHit = Math.max(0, state.block);
+    if (card.special === 'bolt_array') perHit += 3 * (state.deck || []).filter((c) => c?.name === 'BOLT').length;
+    let castHits = Number(card.hits || 1);
+    // Cards with "X dmg x N" in description resolve as true multi-hit attacks; upgrades scale each hit.
     const multiHitMatch = (card.desc || '').match(/(\d+)\s*dmg\s*x\s*(\d+)/i);
     if (multiHitMatch) {
-        perHit = parseInt(multiHitMatch[1], 10) || baseDmg;
-        hits = (parseInt(multiHitMatch[2], 10) || 1) * mirrorMultiplier;
+        const descPerHit = parseInt(multiHitMatch[1], 10) || perHit;
+        perHit = card.pwr > 0 && !hasAncientSwap ? Math.max(1, Math.round(descPerHit * getCardRuntimePower(card) / card.pwr)) : descPerHit;
+        castHits = parseInt(multiHitMatch[2], 10) || 1;
     }
-    if (state.combatFlags.nextAttackDouble > 0) perHit = Math.max(0, Math.floor(perHit * 2));
-    return { perHit, hits };
+    // 2. Flat bonuses, once per card (not per hit, or multi-hit cards would multiply them).
+    let flat = ModManager.getEffectValue('dmg_up');
+    flat += Math.max(0, Math.floor(state.combatFlags.playerStrength || 0)) * (card.special === 'strength_x3' ? 3 : 1);
+    if (state.heat >= 50) flat += ModManager.getEffectValue('dmg_at_half_heat');
+    if (ModManager.getEffectValue('i3_core_scaling') > 0) flat += Math.floor(Math.max(0, state.heat) / 2);
+    if (state.hp <= state.maxHp * 0.25) flat += ModManager.getEffectValue('low_hp_power');
+    // First-attack bonus (once per turn), as ModManager.consumeAttackBonus would grant it.
+    if (effectivePowerValue > 0 && !state.combatFlags.firstAttackBonusUsedThisTurn) flat += ModManager.getEffectValue('first_attack_bonus');
+    // 3. Multipliers, all stacking multiplicatively, on the whole card.
+    let mult = getDamageMultiplier();
+    if (state.combatFlags.autoLoaderReady) mult *= 2;
+    const total = Math.max(0, Math.floor((perHit * castHits + flat) * mult));
+    // Split over the hits; what does not divide evenly lands on the first hit of each cast (Mirror casts twice).
+    const each = Math.floor(total / castHits);
+    return { perHit: each, hits: castHits * mirrorMultiplier, castHits, firstHitExtra: total - each * castHits };
+}
+
+// Every damage multiplier not tied to attack cards: Hex Core, the 2x ancient relics, and pending
+// 2X ATTACK charges (Double Impact / Limitbreak; each one doubles again). They all stack.
+function getDamageMultiplier() {
+    let mult = 1;
+    const curseScale = Number(ModManager.getEffectValue('curse_damage_scale') || 0);
+    if (curseScale > 0) mult *= 1 + getOwnedCurseCount() * curseScale;
+    if (ModManager.getEffectValue('ancient_one_hp_no_overheat_double_dmg') > 0) mult *= 2;
+    if (ModManager.getEffectValue('ancient_hidden_stats_berserk') > 0) mult *= 2;
+    mult *= 2 ** Math.max(0, state.combatFlags.nextAttackDouble || 0);
+    return mult;
+}
+
+// Damage from cards that work out their own number (MOB, RANDOMBS, GAMBLE...): same multipliers
+// as attacks, and they use up a pending 2X ATTACK.
+// enemy: who it lands on (its Exposed counts), or null for damage to every enemy.
+function scaleCardDamage(dmg, enemy = currentEnemy) {
+    let scaled = Math.max(0, Math.floor(dmg * getDamageMultiplier()));
+    if (enemy && (enemy.activeStatuses || []).some((st) => st.id === 'EXPOSED')) scaled = Math.floor(scaled * 1.5);
+    if (state.combatFlags.nextAttackDouble > 0) {
+        state.combatFlags.nextAttackDouble = 0;
+        showPop('p-pop-anchor', '2X ATTACK', '#f97316');
+    }
+    return scaled;
+}
+
+// Per-target changes to one hit of a card: Exposed takes 50% more, Patch Daemon takes half from programs it has seen.
+// No side effects, so the drag preview can use it too.
+function adjustDamageToEnemy(enemy, card, dmg) {
+    if ((enemy?.activeStatuses || []).some((st) => st.id === 'EXPOSED')) dmg = Math.floor(dmg * 1.5);
+    if (enemy?.rosterKey === 'PATCH_DAEMON' && (enemy.patched || []).includes(card?.name)) dmg = Math.floor(dmg / 2);
+    return dmg;
+}
+// The Load Balancer standing next to this enemy, if any (it takes half of what its partner is dealt).
+function balancerFor(enemy) {
+    if (!enemy || enemy.rosterKey === 'LOAD_BALANCER') return null;
+    return enemyParty.find((e) => e && e !== enemy && e.hp > 0 && e.rosterKey === 'LOAD_BALANCER') || null;
+}
+// After a card has hit a target: Exposed / Weakened from the card, and Patch Daemon learning the program.
+function afterCardHitsEnemy(card, targetIdx) {
+    const enemy = enemyParty[targetIdx];
+    if (!enemy || enemy.hp <= 0) return;
+    const anchor = targetIdx === 1 ? 'e2-pop-anchor' : 'e-pop-anchor';
+    if (card.special === 'apply_exposed') {
+        StatusManager.addStatusToEnemyIndex(targetIdx, 'EXPOSED', card.stacks || 2);
+        showPop(anchor, 'EXPOSED', '#f97316');
+    }
+    if (card.special === 'apply_weakened') {
+        StatusManager.addStatusToEnemyIndex(targetIdx, 'WEAKENED', card.stacks || 2);
+        showPop(anchor, 'WEAKENED', '#a3e635');
+    }
+    if (enemy.rosterKey === 'PATCH_DAEMON' && card.name && !(enemy.patched || []).includes(card.name)) {
+        enemy.patched = [...(enemy.patched || []), card.name];
+        const st = (enemy.activeStatuses || []).find((x) => x.id === 'PATCHED');
+        if (st) st.stacks = enemy.patched.length;
+        else enemy.activeStatuses.push({ id: 'PATCHED', stacks: 1 });
+        showPop(anchor, `PATCHED: ${card.name}`, '#38bdf8');
+        StatusManager.renderStatusBar('enemy');
+    }
 }
 
 function rollRandomCardDamage(card) {
@@ -5515,14 +5632,15 @@ function previewAttackOnEnemy(card, enemy) {
         ? [Math.max(1, card.minDmg || 1), Math.max(Math.max(1, card.minDmg || 1), card.maxDmg || 25)]
         : [null];
     const results = range.map((rolled) => {
-        const { perHit, hits } = computeAttackDamage(card, state.combatFlags.mirrorNextCard > 0 && card.special !== 'mirror_next_card' ? 2 : 1, rolled);
+        const { perHit, hits, castHits, firstHitExtra } = computeAttackDamage(card, state.combatFlags.mirrorNextCard > 0 && card.special !== 'mirror_next_card' ? 2 : 1, rolled);
         let bonus = 0;
         if (card.special === 'bonus_if_no_block' && (enemy.block || 0) <= 0) bonus += Number(card.bonusDmg || 0);
         if (card.special === 'bonus_if_enemy_not_attacking' && !enemy.isAttacking) bonus += Number(card.bonusDmg || 0);
         let block = enemy.block || 0, total = 0;
         for (let h = 0; h < hits; h++) {
-            let dmg = Math.max(0, perHit + bonus - (enemy.platingReduction || 0));
+            let dmg = Math.max(0, adjustDamageToEnemy(enemy, card, perHit + (h % castHits === 0 ? firstHitExtra : 0) + bonus) - (enemy.platingReduction || 0));
             if (block > 0 && !card.ignoreBlock) { const absorbed = Math.min(dmg, block); block -= absorbed; dmg -= absorbed; }
+            if (balancerFor(enemy)) dmg -= Math.floor(dmg / 2);
             total += dmg;
         }
         return total;
@@ -5567,6 +5685,7 @@ function isCardUpgraded(card) {
 
 // Runtime heat accessor with permanent run upgrades/debuffs.
 function getCardRuntimeHeat(card) {
+    if (card?.sneckoHeat != null) return card.sneckoHeat;
     const key = CardRules.getProgramKey(card);
     const heatBonus = Number(state.runCardHeatBonus[key] || 0);
     return Number(card?.heat || 0) + heatBonus;
@@ -5608,8 +5727,8 @@ function getRandomCurseCard() {
 function getOwnedCurseCount() {
     return (state.deck || []).reduce((n, card) => n + (card?.cursed ? 1 : 0), 0);
 }
-function getStandardModPool() {
-    return MODS.filter(m => !m.ancient);
+function getStandardModPool(includeRare = false) {
+    return MODS.filter(m => !m.ancient && (includeRare || !m.rare));
 }
 function getAncientModPool() {
     return MODS.filter(m => !!m.ancient);
@@ -5649,7 +5768,9 @@ function getCurrentHandLimit() {
     return 5
         + (state.turnCount === 0 ? (ModManager.runtime.drawFirstTurnBonus || 0) : 0)
         + Math.max(0, Math.floor(ModManager.getEffectValue('hand_limit_bonus')))
-        + (ModManager.getEffectValue('core_overclocker') > 0 ? 2 : 0);
+        + (ModManager.getEffectValue('core_overclocker') > 0 ? 2 : 0)
+        + (ModManager.getEffectValue('snecko') > 0 ? 2 : 0)
+        + Math.max(0, Math.floor(state.combatFlags.idleClockBonus || 0));
 }
 
 function grantPermanentMaxHp(amount, healAmount = 0) {
@@ -5967,7 +6088,12 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     try { SoundManager.unlock(); } catch (_) {}
     
     await new Promise(r => setTimeout(r, 500));
-    if (!options.resume && !tutorialMode) await Intro.play();
+    if (!options.resume && !tutorialMode) {
+        const intro = Intro.play();
+        // Take the menu away once the intro has faded in over it, so it cannot show through when the intro fades out.
+        setTimeout(() => DOM.hide('screen-menu'), 500);
+        await intro;
+    }
     menuScreen.style.opacity = '0';
     // A fresh run that replaces an unfinished one counts as abandoned in the history.
     const unfinished = !options.resume && !tutorialMode ? RunSave.read() : null;
@@ -6444,15 +6570,16 @@ const EnemyAI = {
         const template = ENEMY_ROSTER[rosterKey];
         if (!template) return null;
         // Enemies get stronger every floor, without end.
-        const scale = enemyScale(state.room), scaled = (v) => Math.round((v || 0) * scale);
+        const hpScale = enemyScale(state.room), dmgScale = enemyDamageScale(state.room);
+        const scaledHp = (v) => Math.round((v || 0) * hpScale), scaled = (v) => Math.round((v || 0) * dmgScale);
         const enemyState = {
             rosterKey,
             name:           template.name,
             tier:           template.tier,
             colorIndex:     template.colorIndex || 0,
             shapeIndex:     template.shapeIndex || 0,
-            hp:             scaled(template.hp),
-            maxHp:          scaled(template.hp),
+            hp:             scaledHp(template.hp),
+            maxHp:          scaledHp(template.hp),
             block:          template.startBlock || 0,
             intent:         0,
             attackDmg:      scaled(template.attackDmg),
@@ -6475,6 +6602,10 @@ const EnemyAI = {
             passiveAlsoAttack: !!template.passiveAlsoAttack,
             retortDmg:      template.retortDmg || 0,
             retortFired:    false,
+            beforeTurn:     template.beforeTurn || '',
+            afterTurn:      template.afterTurn || '',
+            stolen:         0,
+            patched:        [],
             skipNextAttack: 0,
             desc:           template.desc || '',
             activeStatuses: [],
@@ -6550,6 +6681,7 @@ const EnemyAI = {
             if (StatusManager.hasStatus('enemy', 'STATIC_INTERFERENCE')) {
                 displayDmg = Math.max(1, Math.floor(displayDmg * 0.6));
             }
+            if (StatusManager.hasStatus('enemy', 'WEAKENED')) displayDmg = Math.floor(displayDmg * 0.75);
             // Multi-hit intent text displays base hit x multiplier.
             const hits = Math.max(1, Number(currentEnemy.attackHits || 1));
             const intentValue = hits > 1 ? `${displayDmg} x ${hits}` : `${displayDmg}`;
@@ -6559,7 +6691,19 @@ const EnemyAI = {
             currentEnemy.isAttacking = true;
             currentEnemy.intentType = 'special';
             currentEnemy.intent = '666';
-        } else if (nextAction === 'block') {
+        } else if (nextAction === 'echo') {
+            // Echo Bot shows what it will copy, live, as the player plays cards.
+            const last = state.combatFlags.lastCard;
+            currentEnemy.isAttacking = last?.kind === 'attack';
+            currentEnemy.intentType = last?.kind === 'attack' ? 'attack' : last?.kind === 'block' ? 'block' : 'special';
+            currentEnemy.intent = last?.kind === 'attack' ? Math.max(1, Math.floor(last.value / 2))
+                : last?.kind === 'block' ? last.value
+                : last?.kind === 'vent' ? '+10 HEAT' : 'ECHO';
+        } else if (nextAction === 'encrypt') {
+            currentEnemy.isAttacking = false;
+            currentEnemy.intentType = 'special';
+            currentEnemy.intent = 'LOCK 2';
+        } else if (nextAction === 'block' || nextAction === 'balance_shield') {
             currentEnemy.isAttacking = false;
             currentEnemy.intentType = 'block';
             currentEnemy.intent = currentEnemy.blockGain || 10;
@@ -6591,11 +6735,25 @@ const EnemyAI = {
         }
         // Feedback Loop: always use heat-scale attack
         if (currentEnemy.rosterKey === 'FEEDBACK_LOOP') return 'heat_scale_attack';
+        if (currentEnemy.rosterKey === 'ECHO_BOT') return 'echo';
         // Doom Idol: count down to one lethal hit.
         if (currentEnemy.rosterKey === 'DOOM_IDOL') {
             return (currentEnemy.turnsUntilDoom || 0) <= 1 ? 'doom_strike' : 'passive';
         }
         return 'attack';
+    },
+
+    // Regenerates the intent of every living enemy that matches (e.g. Echo Bot after each card).
+    refreshIntents(match) {
+        const prevIdx = activeEnemyIndex, prev = currentEnemy;
+        enemyParty.forEach((enemy, idx) => {
+            if (!enemy || enemy.hp <= 0 || !match(enemy)) return;
+            activeEnemyIndex = idx;
+            currentEnemy = enemy;
+            this.generateIntent();
+        });
+        activeEnemyIndex = prevIdx;
+        currentEnemy = prev;
     },
 
     // Centralized player-debuff application with mirror support.
@@ -6648,7 +6806,7 @@ const EnemyAI = {
 
         // Decrement temporary enemy debuffs each enemy turn.
         (currentEnemy.activeStatuses || []).forEach((s) => {
-            if (s.id === 'STATIC_INTERFERENCE') s.stacks = Math.max(0, (s.stacks || 1) - 1);
+            if (['STATIC_INTERFERENCE', 'EXPOSED', 'WEAKENED'].includes(s.id)) s.stacks = Math.max(0, (s.stacks || 1) - 1);
             if (s.id === 'BIT_ROT' && action === 'attack') {
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - 4);
                 showPop('e-pop-anchor', '-4 ROT', '#f97316');
@@ -6656,7 +6814,7 @@ const EnemyAI = {
             }
         });
         currentEnemy.activeStatuses = (currentEnemy.activeStatuses || []).filter(
-            s => (s.stacks || 0) > 0 || !['STATIC_INTERFERENCE', 'BIT_ROT'].includes(s.id)
+            s => (s.stacks || 0) > 0 || !['STATIC_INTERFERENCE', 'BIT_ROT', 'EXPOSED', 'WEAKENED'].includes(s.id)
         );
 
         // Anomaly 01 passive: always switch stance each turn, independent of main intent.
@@ -6668,6 +6826,7 @@ const EnemyAI = {
             currentEnemy.turnsUntilDoom = Math.max(1, (currentEnemy.turnsUntilDoom || 1) - 1);
         }
 
+        if (currentEnemy.beforeTurn && !wasBribedThisTurn) await this.executeAbility(currentEnemy.beforeTurn);
         await this.executeAbility(action);
 
         // Passive+attack enemies (e.g., Sand Packet) should still attack
@@ -6680,6 +6839,7 @@ const EnemyAI = {
         ) {
             await this.executeAbility('attack');
         }
+        if (currentEnemy.afterTurn && !wasBribedThisTurn && state.hp > 0) await this.executeAbility(currentEnemy.afterTurn);
     },
 
     // Execute a specific ability / action by key
@@ -6708,6 +6868,7 @@ const EnemyAI = {
                 if (StatusManager.hasStatus('enemy', 'STATIC_INTERFERENCE')) {
                     dmg = Math.max(1, Math.floor(dmg * 0.6));
                 }
+                if (StatusManager.hasStatus('enemy', 'WEAKENED')) dmg = Math.floor(dmg * 0.75);
 
                 const hits = currentEnemy.attackHits || 1;
 
@@ -6792,6 +6953,117 @@ const EnemyAI = {
                     currentEnemy.flushDebuffActive = true;
                     this.applyDebuffToPlayer('FLUSH_DEBUFF', 1);
                 }
+                // Coin Skimmer: every hit takes credits.
+                if (currentEnemy.rosterKey === 'COIN_SKIMMER' && state.gold > 0) {
+                    const taken = spendCredits(Math.min(10, state.gold));
+                    currentEnemy.stolen = (currentEnemy.stolen || 0) + taken;
+                    const st = currentEnemy.activeStatuses.find((x) => x.id === 'SKIM');
+                    if (st) st.stacks = currentEnemy.stolen;
+                    else currentEnemy.activeStatuses.push({ id: 'SKIM', stacks: currentEnemy.stolen });
+                    StatusManager.renderStatusBar('enemy');
+                    showPop('p-pop-anchor', `-${taken} CREDITS (SKIMMED)`, '#fbbf24');
+                    flyFx('coin', DOM.get('p-shape'), enemyShapeEl(activeEnemyIndex), 3);
+                }
+                break;
+            }
+
+            // ---- Spire pack abilities ----
+            // Static Magnet: pulls half the player's Block onto itself before it attacks.
+            case 'magnet_pull': {
+                const pulled = Math.floor((state.block || 0) / 2);
+                if (pulled <= 0) break;
+                state.block -= pulled;
+                currentEnemy.block = (currentEnemy.block || 0) + pulled;
+                showPop('p-pop-anchor', `-${pulled} BLK (PULLED)`, 'var(--block)');
+                showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `+${pulled} BLK`, 'var(--block)');
+                flyFx('magnet', enemyShapeEl(activeEnemyIndex), DOM.get('p-shape'));
+                setTimeout(() => flyFx('shield', DOM.get('p-shape'), enemyShapeEl(activeEnemyIndex), 2), 250);
+                await new Promise((r) => setTimeout(r, 650));
+                updateUI();
+                break;
+            }
+            // Paper Jam: the leftmost card in hand cannot be played next turn.
+            case 'paper_jam': {
+                const victim = state.hand.find((c) => c && !c.cursed && !c.jammed);
+                if (!victim) break;
+                victim.jammed = true;
+                renderHand();
+                const el = DOM.get('hand')?.querySelector(`.card[data-runtime-card-id="${ensureRuntimeCardId(victim)}"]`);
+                flyFx('paper', enemyShapeEl(activeEnemyIndex), el);
+                el?.classList.add('card-jam-hit');
+                showPop('p-pop-anchor', `JAMMED: ${victim.name}`, '#f97316');
+                break;
+            }
+            // Defragmenter: the strongest attack in hand goes to the bottom of the draw pile.
+            case 'defrag_bury': {
+                let best = -1;
+                state.hand.forEach((c, i) => {
+                    if (c && !c.cursed && Number(c.pwr || 0) > 0 && (best < 0 || getCardRuntimePower(c) > getCardRuntimePower(state.hand[best]))) best = i;
+                });
+                if (best < 0) break;
+                const el = DOM.get('hand')?.children[best];
+                flyFx('paper', el, DOM.get('btn-hand') || DOM.get('hand'));
+                const [buried] = state.hand.splice(best, 1);
+                state.draw.unshift(buried); // draw takes from the end, so index 0 is the bottom
+                showPop('p-pop-anchor', `BURIED: ${buried.name}`, '#c084fc');
+                renderHand();
+                break;
+            }
+            // Throttler: the player's overheat limit drops for the rest of the fight.
+            case 'throttle': {
+                const now = Math.min(40, (state.combatFlags.throttle || 0) + 10);
+                if (now === state.combatFlags.throttle) break;
+                state.combatFlags.throttle = now;
+                setPlayerStatus('THROTTLED', now);
+                flyFx('thermo', enemyShapeEl(activeEnemyIndex), DOM.get('p-shape'));
+                showPop('p-pop-anchor', '-10 HEAT LIMIT', '#c084fc');
+                break;
+            }
+            // Ransomware: locks 2 cards in hand behind a 15-credit payment.
+            case 'encrypt': {
+                await AnimationManager.play('enemy', 'block');
+                const open = state.hand.filter((c) => c && !c.cursed && !c.ransom && !c.isJunk);
+                const picks = open.sort(() => Math.random() - 0.5).slice(0, 2);
+                picks.forEach((c) => { c.ransom = true; });
+                renderHand();
+                picks.forEach((c) => {
+                    const el = DOM.get('hand')?.querySelector(`.card[data-runtime-card-id="${ensureRuntimeCardId(c)}"]`);
+                    flyFx('lock', enemyShapeEl(activeEnemyIndex), el);
+                });
+                if (picks.length) showPop('p-pop-anchor', `${picks.length} CARDS LOCKED`, '#fbbf24');
+                break;
+            }
+            // Echo Bot: copies the last card the player played.
+            case 'echo': {
+                const last = state.combatFlags.lastCard;
+                const host = DOM.get(activeEnemyIndex === 1 ? 'e2-anim-container' : 'e-anim-container');
+                if (host) CardFx.glitch(host, 'glitch');
+                if (last?.kind === 'attack') {
+                    const saved = currentEnemy.attackDmg;
+                    currentEnemy.attackDmg = Math.max(1, Math.floor(last.value / 2));
+                    await this.executeAbility('attack');
+                    currentEnemy.attackDmg = saved;
+                } else if (last?.kind === 'block') {
+                    await AnimationManager.play('enemy', 'block');
+                    currentEnemy.block = (currentEnemy.block || 0) + last.value;
+                    showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `+${last.value} BLK (ECHO)`, 'var(--block)');
+                } else if (last?.kind === 'vent') {
+                    state.heat += 10;
+                    showPop('p-pop-anchor', '+10 HEAT (ECHO)', 'var(--heat)');
+                } else {
+                    showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', 'NOTHING TO ECHO', '#94a3b8');
+                }
+                break;
+            }
+            // Load Balancer: its Block goes to its partner while the partner lives.
+            case 'balance_shield': {
+                await AnimationManager.play('enemy', 'block');
+                const gain = currentEnemy.blockGain || 10;
+                const partnerIdx = enemyParty.findIndex((e) => e && e !== currentEnemy && e.hp > 0);
+                const target = partnerIdx >= 0 ? enemyParty[partnerIdx] : currentEnemy;
+                target.block = (target.block || 0) + gain;
+                if (partnerIdx >= 0) flyFx('shield', enemyShapeEl(activeEnemyIndex), enemyShapeEl(partnerIdx), 2);
+                showPop(enemyParty.indexOf(target) === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `+${gain} BLK`, 'var(--block)');
                 break;
             }
 
@@ -7129,6 +7401,15 @@ const EnemyPartyManager = {
         if (!enemyParty.length) {
             enemyParty.push(EnemyAI.createEnemyState('SPARK_DRONE'));
         }
+        // The Load Balancer never comes alone (and two Balancers would only shield each other).
+        if (enemyParty.some((e) => e.rosterKey === 'LOAD_BALANCER') && !state.tutorial?.active) {
+            if (enemyParty.length === 1) enemyParty.push(null);
+            if (enemyParty.every((e) => !e || e.rosterKey === 'LOAD_BALANCER')) {
+                let key = 'LOAD_BALANCER';
+                for (let tries = 0; key === 'LOAD_BALANCER' && tries < 20; tries++) key = EnemyAI.pickEnemyForFloor(floor, roomType);
+                enemyParty[1] = EnemyAI.createEnemyState(key === 'LOAD_BALANCER' ? 'SPARK_DRONE' : key);
+            }
+        }
         Profile.markSeen(enemyParty.map((e) => e.rosterKey));
         // Generate initial intent for each enemy slot.
         enemyParty.forEach((enemy, idx) => {
@@ -7206,6 +7487,7 @@ const EnemyPartyManager = {
     },
 
     resolveEnemyDefeat() {
+        this.processDeaths();
         const alive = this.getAliveIndices();
         if (!alive.length) return true;
         if (currentEnemy.hp <= 0 || !alive.includes(activeEnemyIndex)) {
@@ -7215,6 +7497,65 @@ const EnemyPartyManager = {
             this.renderTargetPicker();
         }
         return false;
+    },
+
+    // What happens the moment an enemy goes down (once per enemy).
+    processDeaths() {
+        enemyParty.forEach((enemy, idx) => {
+            if (!enemy || enemy.hp > 0 || enemy.deathProcessed) return;
+            enemy.deathProcessed = true;
+            const anchor = idx === 1 ? 'e2-pop-anchor' : 'e-pop-anchor';
+            // Coin Skimmer: its loot comes back with interest if it dies quickly.
+            if (enemy.rosterKey === 'COIN_SKIMMER' && enemy.stolen > 0) {
+                if (state.turnCount < 4) {
+                    const back = addCredits(Math.ceil(enemy.stolen * 1.5));
+                    showPop('p-pop-anchor', `+${back} CREDITS RECOVERED`, '#fbbf24');
+                    flyFx('coin', enemyShapeEl(idx), DOM.get('p-shape'), 4);
+                } else {
+                    showPop(anchor, 'CREDITS LOST', '#94a3b8');
+                }
+            }
+            // Ransomware: the last one down lifts every lock.
+            if (enemy.rosterKey === 'RANSOMWARE' && !enemyParty.some((e) => e && e.hp > 0 && e.rosterKey === 'RANSOMWARE')) {
+                [state.hand, state.draw, state.discard].forEach((pile) => pile.forEach((c) => { if (c) delete c.ransom; }));
+                showPop('p-pop-anchor', 'DECRYPTED', '#22c55e');
+                renderHand();
+            }
+            // Fork Process: splits into two half-HP copies the first time.
+            if (enemy.rosterKey === 'FORK_PROCESS' && !enemy.isFork) {
+                const makeFork = () => {
+                    const fork = EnemyAI.createEnemyState('FORK_PROCESS');
+                    fork.maxHp = fork.hp = Math.max(1, Math.ceil(enemy.maxHp / 2));
+                    fork.attackDmg = fork.baseAttackDmg = Math.max(1, Math.ceil(enemy.baseAttackDmg * 0.6));
+                    fork.isFork = true;
+                    fork.deathProcessed = false;
+                    fork.name = 'Fork Shard';
+                    fork.activeStatuses = [];
+                    return fork;
+                };
+                enemyParty[idx] = makeFork();
+                const slots = [idx];
+                if (enemyParty.length < 2) { enemyParty.push(makeFork()); slots.push(1); }
+                showPop(anchor, 'FORKED!', '#22d3ee');
+                const prevIdx = activeEnemyIndex, prev = currentEnemy;
+                slots.forEach((i) => { activeEnemyIndex = i; currentEnemy = enemyParty[i]; EnemyAI.generateIntent(); });
+                activeEnemyIndex = prevIdx;
+                currentEnemy = enemyParty[prevIdx] || prev;
+                // The new halves pop out of the old one.
+                requestAnimationFrame(() => slots.forEach((i) => {
+                    const el = enemyShapeEl(i);
+                    if (!el) return;
+                    applyEnemyVisual(el, enemyParty[i]);
+                    el.classList.remove('enemy-vibrate', 'enemy-explode', 'enemy-split-in');
+                    delete el.dataset.deathAnimating;
+                    void el.offsetWidth;
+                    el.classList.add('enemy-split-in');
+                    const host = DOM.get(i === 1 ? 'e2-anim-container' : 'e-anim-container');
+                    if (host) CardFx.boom(host, 'burst');
+                }));
+                updateUI();
+            }
+        });
     },
 
     forEachAlive(callback) {
@@ -7283,7 +7624,17 @@ async function startRoom(type) {
         heatGeneratedThisTurn: 0,
         heatGeneratedLastTurn: 0,
         playerStrength: 0,
-        bonusStrengthPerTurn: 0
+        bonusStrengthPerTurn: 0,
+        scrapArmor: 0,
+        recycler: 0,
+        zeroDay: 0,
+        papercuts: 0,
+        burnIn: 0,
+        throttle: 0,
+        idleClockBonus: 0,
+        lastCard: null,
+        attacksResolvedThisTurn: 0,
+        nonAttacksResolvedThisTurn: 0
     };
     state.turnCount = 0;
 
@@ -7315,6 +7666,7 @@ async function startRoom(type) {
 
     // Clear all statuses from previous fight
     StatusManager.clearAll();
+    clearCombatCardFlags();
     // New floor/combat start: clear temporary exhaust locks from previous floor.
     clearRoundExhaustLocks();
 
@@ -7742,6 +8094,80 @@ function debugSpawnSecondEnemyChoice() {
     updateUI();
 }
 
+// Every way a card gets exhausted comes through here, so the exhaust synergies see all of them.
+// toDiscard: exhausted cards normally stay visible in the discard pile for the rest of the floor.
+function exhaustCard(card, toDiscard = true) {
+    if (!card) return;
+    card.exhausted = true;
+    state.exhaust.push(card);
+    if (toDiscard) state.discard.push(card);
+    const armor = state.combatFlags.scrapArmor || 0;
+    if (armor > 0) {
+        gainPlayerBlock(armor, 'BLK');
+        showPop('p-pop-anchor', `+${armor} BLK (SCRAP)`, 'var(--block)');
+    }
+    const recycle = state.combatFlags.recycler || 0;
+    if (recycle > 0) {
+        const drawn = ModManager.drawCards(recycle);
+        if (drawn) showPop('p-pop-anchor', `+${drawn} DRAW (RECYCLE)`, '#c084fc');
+    }
+    if (ModManager.getEffectValue('exhaust_add_random') > 0) {
+        const [extra] = ProgramLibrary.randomFromPool('COMMON_REWARD', 1);
+        if (extra) {
+            state.hand.push({ ...extra, exhaust: true, generated: true });
+            showPop('p-pop-anchor', `+${extra.name}`, '#a3e635');
+            flashMod('GARBAGE COLLECTOR');
+        }
+    }
+}
+// Sets a player status to an exact stack count (powers show their running total).
+function setPlayerStatus(id, stacks) {
+    const st = (state.activeStatuses || []).find((x) => x.id === id);
+    if (st) st.stacks = stacks;
+    else (state.activeStatuses = state.activeStatuses || []).push({ id, stacks });
+    StatusManager.renderStatusBar('player');
+}
+// Card flags that only make sense inside one fight.
+function clearCombatCardFlags() {
+    [state.deck, state.hand, state.draw, state.discard].forEach((pile) => (pile || []).forEach((c) => {
+        if (!c || typeof c !== 'object') return;
+        delete c.jammed;
+        delete c.ransom;
+        delete c.sneckoHeat;
+    }));
+}
+// A small sprite flying from one element to another (stolen credits, pulled Block, a buried card...).
+function flyFx(sprite, fromEl, toEl, count = 1) {
+    if (!fromEl || !toEl || ActionFx.reduced.matches) return;
+    const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+    const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+    for (let i = 0; i < count; i++) {
+        const img = document.createElement('img');
+        img.className = 'fly-fx';
+        img.src = `assets/fx/${sprite}.png`;
+        img.alt = '';
+        img.style.left = `${a.left + a.width / 2 - 12}px`;
+        img.style.top = `${a.top + a.height / 2 - 12}px`;
+        document.body.appendChild(img);
+        img.animate([
+            { opacity: 0, transform: 'translate(0, 0) scale(0.5)' },
+            { opacity: 1, transform: `translate(${dx * 0.2}px, ${dy * 0.2 - 40}px) scale(1.2)`, offset: 0.3 },
+            { opacity: 1, transform: `translate(${dx}px, ${dy}px) scale(0.9)`, offset: 0.9 },
+            { opacity: 0, transform: `translate(${dx}px, ${dy}px) scale(1.4)` },
+        ], { duration: 700, delay: i * 110, easing: 'cubic-bezier(0.5, 0, 0.4, 1)', fill: 'both' })
+            .finished.then(() => img.remove(), () => img.remove());
+    }
+}
+// A mod in the top bar pulses when it does something.
+function flashMod(name) {
+    const chip = document.querySelector(`#battle-mod-hud .battle-mod-chip[data-mod="${name}"]`);
+    if (!chip) return;
+    chip.classList.remove('mod-proc');
+    void chip.offsetWidth;
+    chip.classList.add('mod-proc');
+}
+const enemyShapeEl = (idx) => DOM.get(idx === 1 ? 'e2-shape' : 'e-shape');
+
 // One card resolves at a time. A play waits on animations and removes its card by the hand index it
 // read at the start, so a second card started part-way (easy with drag-to-play) removed the wrong card
 // or put an empty slot in the discard pile, which then crashed END TURN when the pile was reshuffled.
@@ -7809,6 +8235,16 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         showPop('p-pop-anchor', 'CARD CONDITION NOT MET', '#f97316');
         return;
     }
+    if (card.jammed) {
+        showPop('p-pop-anchor', 'CARD JAMMED', '#f97316');
+        cardElement.animate([{ transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'none' }], { duration: 160, iterations: 2 });
+        return;
+    }
+    if (ModManager.getEffectValue('velvet_throttle') > 0 && (state.combatFlags.cardsPlayedThisTurn || 0) >= 6) {
+        showPop('p-pop-anchor', '6 CARDS PER TURN', '#f97316');
+        flashMod('VELVET THROTTLE');
+        return;
+    }
     if (!CardRules.needsEnemyTarget(card)) {
         if (pendingTargetCardElement) pendingTargetCardElement.classList.remove('card-targeting');
         pendingTargetCardElement = null;
@@ -7824,6 +8260,20 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         EnemyPartyManager.requestTargetSelection(cardElement);
         return;
     }
+
+    // Ransomware lock: pay to play.
+    if (card.ransom) {
+        if (state.gold < 15) {
+            showPop('p-pop-anchor', 'LOCKED: NEED 15 CREDITS', '#fbbf24');
+            return;
+        }
+        spendCredits(15);
+        card.ransom = false;
+        showPop('p-pop-anchor', '-15 CREDITS: UNLOCKED', '#fbbf24');
+        flyFx('coin', DOM.get('ui-gold') || DOM.get('p-shape'), cardElement, 2);
+    }
+    // Echo Bot copies the kind of the last card played (set below as the card resolves).
+    state.combatFlags.lastCard = { kind: 'other', value: 0 };
 
     // Mirror status doubles the next non-Mirror card, then expires. Read only once the card is really being played,
     // so a locked card or a target prompt does not use it up.
@@ -7848,12 +8298,12 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         // --- 1. DAMAGE & BLOCK LOGIC ---
     Profile.cardPlayed(card);
     // Damage branch supports normal attack cards and damage-special utility cards.
-    const hasDamageSpecial = ['damage_from_credits_pct', 'random_damage_range'].includes(card.special);
+    const hasDamageSpecial = DAMAGE_SPECIALS.includes(card.special);
     if (effectivePowerValue > 0 || hasDamageSpecial) {
         // Damage comes from computeAttackDamage (shared with the drag preview); read it before the
         // one-shot bonuses below are used up, exactly as the old inline maths did.
         const rolledDamage = card.special === 'random_damage_range' ? rollRandomCardDamage(card) : null;
-        let { perHit: playerDmgPerHit, hits: playerHits } = computeAttackDamage(card, mirrorMultiplier, rolledDamage);
+        let { perHit: playerDmgPerHit, hits: playerHits, castHits, firstHitExtra } = computeAttackDamage(card, mirrorMultiplier, rolledDamage);
         // Centralized first-attack bonus passive (once per turn).
         ModManager.consumeAttackBonus({ ...card, pwr: effectivePowerValue });
         if (state.combatFlags.nextAttackDouble > 0) {
@@ -7889,7 +8339,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 if (!alive.length) break;
                 const pick = alive[Math.floor(Math.random() * alive.length)];
                 EnemyPartyManager.setActiveEnemyByIndex(pick, true);
-                let dmg = Math.max(0, effectivePowerValue + ModManager.getEffectValue('dmg_up'));
+                let dmg = playerDmgPerHit + (r % castHits === 0 ? firstHitExtra : 0);
                 if (currentEnemy.block > 0) {
                     const absorbed = Math.min(dmg, currentEnemy.block);
                     currentEnemy.block -= absorbed;
@@ -7921,7 +8371,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
             // Mainframe Golem: gains +2 power per 10 heat accumulated this fight
             if (currentEnemy.rosterKey === 'MAINFRAME_GOLEM') {
                 const golemBonus = Math.floor((state.golemHeatAccum || 0) / 10) * 2;
-                currentEnemy.attackDmg = (ENEMY_ROSTER.MAINFRAME_GOLEM.attackDmg || 12) + golemBonus;
+                currentEnemy.attackDmg = (currentEnemy.baseAttackDmg || 12) + golemBonus;
             }
 
             // Signal Ghost / EVASION: 25% chance to fully negate damage
@@ -7932,7 +8382,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
 
             AnimationManager.play('enemy', 'hit');
             for (let h = 0; h < playerHits; h++) {
-                let dmg = playerDmgPerHit + perTargetBonus;
+                let dmg = adjustDamageToEnemy(currentEnemy, card, playerDmgPerHit + perTargetBonus + (h % castHits === 0 ? firstHitExtra : 0));
                 const platReduction = currentEnemy.platingReduction || 0;
                 dmg = Math.max(0, dmg - platReduction);
 
@@ -7940,6 +8390,15 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                     let absorbed = Math.min(dmg, currentEnemy.block);
                     currentEnemy.block -= absorbed;
                     dmg -= absorbed;
+                }
+                // Load Balancer next to it soaks half.
+                const balancer = balancerFor(currentEnemy);
+                if (balancer && dmg > 1) {
+                    const share = Math.floor(dmg / 2);
+                    dmg -= share;
+                    balancer.hp = Math.max(0, balancer.hp - share);
+                    showPop(enemyParty.indexOf(balancer) === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${share} SHARED`, '#38bdf8');
+                    flyFx('shield', DOM.get(targetIdx === 1 ? 'e2-shape' : 'e-shape'), DOM.get(enemyParty.indexOf(balancer) === 1 ? 'e2-shape' : 'e-shape'));
                 }
 
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
@@ -7949,6 +8408,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 await new Promise(r => setTimeout(r, 70));
             }
 
+            afterCardHitsEnemy(card, targetIdx);
             const lifestealPct = ModManager.getEffectValue('attack_lifesteal');
             if (lifestealPct > 0 && totalDealtToTarget > 0) {
                 const leech = Math.max(1, Math.floor(totalDealtToTarget * lifestealPct));
@@ -7982,8 +8442,8 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
             }
         }
         state.lastAttackDamageDealt = Math.max(0, totalAttackDamage);
-        // Card specials that affect next attack cadence.
-        if (card.special === 'next_attack_double') state.combatFlags.nextAttackDouble = 1;
+        Profile.attackLanded(state.lastAttackDamageDealt);
+        state.combatFlags.lastCard = { kind: 'attack', value: state.lastAttackDamageDealt };
     }
     if (effectiveBlockValue > 0) {
         await AnimationManager.play('player', 'block');
@@ -7992,6 +8452,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         totalBlk += ModManager.getEffectValue('block_bonus');
         gainPlayerBlock(totalBlk, 'BLK');
         showPop('p-pop-anchor', `+${totalBlk} BLK`, 'var(--block)');
+        state.combatFlags.lastCard = { kind: 'block', value: totalBlk };
     }
     // Utility block specials from new program pack.
     if (card.special === 'block_equal_last_attack') {
@@ -8231,8 +8692,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 if (candidates.length > 0) {
                     const pick = candidates[Math.floor(Math.random() * candidates.length)];
                     const exhausted = state.hand.splice(pick.i, 1)[0];
-                    exhausted.exhausted = true;
-                    state.exhaust.push(exhausted);
+                    exhaustCard(exhausted, false);
                     if (pick.i < cardIndex) cardIndex--;
                     showPop('p-pop-anchor', 'RANDOM EXHAUST', '#f97316');
                 }
@@ -8311,7 +8771,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 break;
             }
             case 'damage_equal_draw_count': {
-                const dmg = Math.max(0, state.draw.length);
+                const dmg = scaleCardDamage(state.draw.length);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                 showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 break;
@@ -8333,8 +8793,102 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 }
                 break;
             }
+            case 'overflow': {
+                const dmg = scaleCardDamage(Math.floor(Math.max(0, state.heat) / 10) * 5, null);
+                if (dmg > 0) damageAllEnemies(dmg, '#38bdf8');
+                if (state.heat > 0) {
+                    showPop('p-pop-anchor', `-${state.heat} HEAT (OVERFLOW)`, 'var(--heat)');
+                    state.heat = 0;
+                    showHeatLossEffect();
+                    StatusManager.onPlayerVent();
+                    ModManager.onPlayerVent();
+                    state.combatFlags.lastCard = { kind: 'vent', value: 1 };
+                }
+                break;
+            }
+            case 'purge_hand':
+            case 'triage': {
+                // PURGE.EXE takes every other card; TRIAGE only the non-attacks.
+                let count = 0;
+                for (let i = state.hand.length - 1; i >= 0; i--) {
+                    if (i === cardIndex || (card.special === 'triage' && isAttackCard(state.hand[i]))) continue;
+                    handUIElements[i]?.classList.add('anim-card-discard');
+                    const [gone] = state.hand.splice(i, 1);
+                    if (i < cardIndex) cardIndex--;
+                    exhaustCard(gone);
+                    count++;
+                }
+                if (card.special === 'purge_hand') {
+                    const dmg = scaleCardDamage(count * 7);
+                    if (dmg > 0) {
+                        currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
+                        showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg} PURGE`, 'var(--hp)');
+                    }
+                } else if (count > 0) {
+                    gainPlayerBlock(count * 8, 'BLK');
+                    showPop('p-pop-anchor', `+${count * 8} BLK`, 'var(--block)');
+                }
+                break;
+            }
+            case 'double_block':
+                if (state.block > 0) {
+                    const gained = gainPlayerBlock(state.block, 'BLK');
+                    if (gained > 0) showPop('p-pop-anchor', `+${gained} BLK (x2)`, 'var(--block)');
+                }
+                break;
+            case 'panic_swap': {
+                const count = state.hand.length - 1;
+                state.hand.forEach((c, i) => {
+                    if (i === cardIndex) return;
+                    handUIElements[i]?.classList.add('anim-card-discard');
+                    state.discard.push(c);
+                });
+                state.hand = [state.hand[cardIndex]];
+                cardIndex = 0;
+                const drawn = ModManager.drawCards(count);
+                showPop('p-pop-anchor', `SWAPPED ${drawn}`, '#c084fc');
+                break;
+            }
+            case 'duplicate': {
+                const choices = state.hand.filter((c, i) => i !== cardIndex && !c.cursed && !c.isJunk);
+                if (!choices.length) {
+                    showPop('p-pop-anchor', 'NOTHING TO COPY', '#ef4444');
+                    break;
+                }
+                const pick = choices.length === 1 ? choices[0]
+                    : (await openCardChoiceOverlay('DUPLICATE: PICK A CARD', choices, { locked: true, cancelLabel: 'RANDOM' })) || choices[Math.floor(Math.random() * choices.length)];
+                const copy = { ...pick, exhaust: true, generated: true };
+                ['__runtimeCardId', 'jammed', 'ransom', 'exhausted', 'sneckoHeat'].forEach((k) => delete copy[k]);
+                state.hand.push(copy);
+                showPop('p-pop-anchor', `COPIED ${pick.name}`, '#c084fc');
+                break;
+            }
+            case 'power_scrap_armor':
+                state.combatFlags.scrapArmor = (state.combatFlags.scrapArmor || 0) + 3;
+                setPlayerStatus('PLAYER_SCRAP_ARMOR', state.combatFlags.scrapArmor);
+                break;
+            case 'power_recycler':
+                state.combatFlags.recycler = (state.combatFlags.recycler || 0) + 1;
+                setPlayerStatus('PLAYER_RECYCLER', state.combatFlags.recycler);
+                break;
+            case 'power_zero_day':
+                state.combatFlags.zeroDay = 1;
+                setPlayerStatus('PLAYER_ZERO_DAY', 1);
+                break;
+            case 'power_papercuts':
+                state.combatFlags.papercuts = (state.combatFlags.papercuts || 0) + 1;
+                setPlayerStatus('PLAYER_PAPERCUTS', state.combatFlags.papercuts);
+                break;
+            case 'power_burn_in':
+                state.combatFlags.burnIn = (state.combatFlags.burnIn || 0) + 2;
+                setPlayerStatus('PLAYER_BURN_IN', state.combatFlags.burnIn);
+                break;
+            case 'next_attack_double':
+                state.combatFlags.nextAttackDouble = (state.combatFlags.nextAttackDouble || 0) + 1;
+                showPop('p-pop-anchor', 'NEXT ATTACK: 2X DMG', '#f97316');
+                break;
             case 'limitbreak':
-                state.combatFlags.nextAttackDouble = 1;
+                state.combatFlags.nextAttackDouble = (state.combatFlags.nextAttackDouble || 0) + 1;
                 state.combatFlags.nextAttackHeatMultiplier = 3;
                 showPop('p-pop-anchor', 'NEXT ATTACK: 2X DMG / 3X HEAT', '#f97316');
                 break;
@@ -8352,7 +8906,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 break;
             case 'damage_per_hand_card': {
                 const per = Math.max(1, Number(card.handCardDmg || 5));
-                const dmg = Math.max(0, state.hand.length * per);
+                const dmg = scaleCardDamage(state.hand.length * per);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                 showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 break;
@@ -8404,7 +8958,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', 'BLOCK 0', 'var(--block)');
                 break;
             case 'damage_from_current_heat_x2': {
-                const dmg = Math.max(0, state.heat * 2);
+                const dmg = scaleCardDamage(state.heat * 2);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                 showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 break;
@@ -8434,7 +8988,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
             case 'iron_man': {
                 const uniqueNames = new Set((state.discard || []).map(c => String(c?.name || '').trim()).filter(Boolean));
                 const count = uniqueNames.size;
-                const dmg = count * 10;
+                const dmg = scaleCardDamage(count * 10);
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                 showPop(activeEnemyIndex === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 for (let i = 0; i < count; i++) {
@@ -8497,7 +9051,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                     showPop('p-pop-anchor', `ERROR 404 -> ${random.name}`, '#c084fc');
                 }
                 if (random?.pwr) {
-                    const dmg = Math.max(0, random.pwr + ModManager.getEffectValue('dmg_up'));
+                    const dmg = scaleCardDamage(random.pwr + ModManager.getEffectValue('dmg_up'));
                     currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                     showPop('e-pop-anchor', `-${dmg} RANDOM`, 'var(--hp)');
                 }
@@ -8531,8 +9085,9 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                     state.hp = Math.max(0, state.hp - 30);
                     showPop('p-pop-anchor', '-30 GAMBLE', 'var(--hp)');
                 } else {
-                    currentEnemy.hp = Math.max(0, currentEnemy.hp - 30);
-                    showPop('e-pop-anchor', '-30 GAMBLE', 'var(--hp)');
+                    const dmg = scaleCardDamage(30);
+                    currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
+                    showPop('e-pop-anchor', `-${dmg} GAMBLE`, 'var(--hp)');
                 }
                 break;
             case 'permanent_self_upgrade': {
@@ -8617,6 +9172,10 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
         heatDelta = 0;
         showPop('p-pop-anchor', '0 HEAT (PRE-PROCESSOR)', '#fbbf24');
     }
+    if (state.combatFlags.zeroDay && !isAttackCard(card) && heatDelta > 0) {
+        heatDelta = 0;
+        showPop('p-pop-anchor', '0 HEAT (ZERO-DAY)', '#ef4444');
+    }
 
     // Coolant Thief debuff: halve vent cards
     if (heatDelta < 0 && StatusManager.hasStatus('player', 'FLUSH_DEBUFF')) {
@@ -8628,6 +9187,7 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
     // Vent cap: player can only remove 10 heat per turn via vent cards
     
     if (heatDelta < 0) {
+        state.combatFlags.lastCard = { kind: 'vent', value: -heatDelta };
         showHeatLossEffect();
         // Notify Mini-Turbine that player vented
         StatusManager.onPlayerVent();
@@ -8688,33 +9248,31 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 state.runDestroyedProgramKeys.push(key);
             }
             showPop('p-pop-anchor', 'DESTROYED', '#f97316');
-        } else if (CardRules.isExhaust(playedCard)) {
-            playedCard.exhausted = true;
-            state.exhaust.push(playedCard);
-            // Keep exhausted cards visible in discard for this floor/combat.
-            // Next floor reset clears the exhausted lock and makes them usable again.
-            state.discard.push(playedCard);
+        } else if (CardRules.isExhaust(playedCard) || (state.combatFlags.zeroDay && !isAttackCard(playedCard))) {
+            // Exhausted cards stay visible in discard for this floor; the next floor makes them usable again.
+            exhaustCard(playedCard);
             showPop('p-pop-anchor', 'EXHAUSTED', '#f97316');
         } else {
             state.discard.push(playedCard);
         }
     }
+    if (playedCard) delete playedCard.sneckoHeat;
     state.lastPlayedCard = playedCard ? { ...playedCard } : state.lastPlayedCard;
     if (playedCard && Number(playedCard.pwr || 0) <= 0) {
         state.lastNonAttackCardPlayed = { ...playedCard };
     }
     // Centralized post-play mod passives (e.g., draw cadence).
-    ModManager.onPlayerCardResolved();
+    ModManager.onPlayerCardResolved(playedCard);
+    EnemyAI.refreshIntents((e) => e.intentPattern === 'ai');
     await TutorialManager.onCardPlayed(card, tutorialTags);
 
     cardsToRemove.forEach(el => {
         if (el && el.parentNode === handContainer) el.remove();
     });
 
-    if (currentEnemy.hp <= 0) {
-        if (EnemyPartyManager.resolveEnemyDefeat()) {
-            handleEnemyDeath();
-        }
+    // Any enemy can go down from one card now (area mods, Papercuts, the Load Balancer's share).
+    if (enemyParty.some((e) => e && e.hp <= 0 && !e.deathProcessed) && EnemyPartyManager.resolveEnemyDefeat()) {
+        handleEnemyDeath();
     } else if (forceEndTurnFromOverheat || /end turn/i.test(String(card.desc || ''))) {
         setTimeout(endTurn, 0); // once this card has finished (endTurn waits for cardPlayInProgress)
     } else {
@@ -8852,6 +9410,7 @@ async function handleEnemyDeath() {
         return;
     }
     Profile.fightWon();
+    clearCombatCardFlags();
     isAnimating = true;
     // Lock defeated slot for death animation so updateUI does not hide it early.
     const defeatedEnemyIndex = activeEnemyIndex;
@@ -9041,6 +9600,10 @@ async function endTurn() {
         state.combatFlags.insurancePolicyArmed = false;
     }
 
+    // Paper Jam's jams last one turn.
+    state.hand.forEach((c) => { if (c) delete c.jammed; });
+    ModManager.onTurnEnd();
+
     // Clear previous one-turn Sync Stall before enemies apply fresh debuffs.
     state.statusHeat.syncStall = 0;
     StatusManager.removeStatus('player', 'SYNC_STALL');
@@ -9194,7 +9757,9 @@ function finalizeTurn() {
     StatusManager.renderStatusBar('player');
     // Clear block
     if (ModManager.getEffectValue('retain_block') <= 0) {
-        state.block = 0;
+        const cap = ModManager.getEffectValue('block_decay_cap');
+        state.block = cap > 0 ? Math.max(0, state.block - cap) : 0;
+        if (state.block > 0) flashMod('CAPACITOR BANK');
     }
     // Reduce heat naturally
     state.heat = Math.max(0, state.heat - ModManager.getHeatReduction());
@@ -9371,6 +9936,7 @@ function createProgramCard(program) {
     if (CardRules.isExhaust(program)) tags.push('EXHAUST');
     if (CardRules.isAoe(program)) tags.push('AOE');
     if (CardRules.isDestroy(program)) tags.push('DESTROY');
+    if (program.power) tags.unshift('POWER');
     const tagLine = tags.length
         ? `<div style="font-size:7px;color:#f97316;margin-bottom:2px;">${tags.join(' | ')}</div>`
         : '';
@@ -9531,6 +10097,8 @@ function renderHand(newCardsCount = 0) {
     const overlapOffset = step - cardWidth; // negative => overlap
 
     state.hand.forEach((c, i) => {  
+        // SNECKO CHIP: a card that costs Heat gets a random cost the first time it shows in hand.
+        if (ModManager.getEffectValue('snecko') > 0 && c.sneckoHeat == null && Number(c.heat || 0) > 0) c.sneckoHeat = Math.floor(Math.random() * 31);
         const d = createProgramCard(c);
         d.dataset.runtimeCardId = ensureRuntimeCardId(c);
         d.dataset.baseZ = String(i + 1);
@@ -9574,6 +10142,14 @@ function renderHand(newCardsCount = 0) {
             err.style.zIndex = '30';
             err.innerText = isCursed ? 'CURSED' : (runDestroyed ? 'DESTROYED' : (unplayableByRule ? 'LOCKED' : 'ERROR'));
             d.appendChild(err);
+        }
+        // Enemy locks: Paper Jam (this turn) and Ransomware (pay 15 credits).
+        if (c.jammed || c.ransom) {
+            d.classList.add(c.jammed ? 'card-jammed' : 'card-ransom');
+            const badge = document.createElement('div');
+            badge.className = 'card-lock-badge';
+            badge.innerText = c.jammed ? 'JAMMED' : 'LOCKED 15¢';
+            d.appendChild(badge);
         }
         
         // Stop bubbling so clicking a front card cannot trigger a card behind it.
@@ -9704,6 +10280,19 @@ const ModManager = {
         const heatStart = this.getEffectValue('heat_start');
         if (heatStart !== 0) state.heat = Math.max(0, state.heat + heatStart);
         if (this.getEffectValue('core_overclocker') > 0) state.heat = Math.max(0, state.heat + 50);
+        if (this.getEffectValue('expose_on_combat_start') > 0) {
+            enemyParty.forEach((e, i) => { if (e?.hp > 0) StatusManager.addStatusToEnemyIndex(i, 'EXPOSED', 1); });
+            flashMod('EXPLOIT KIT');
+        }
+        if (this.getEffectValue('tainted_coolant') > 0) {
+            enemyParty.forEach((e, i) => {
+                if (!e) return;
+                e.attackDmg = (e.attackDmg || 0) + 3;
+                e.baseAttackDmg = (e.baseAttackDmg || 0) + 3;
+                StatusManager.addStatusToEnemyIndex(i, 'STRENGTH', 3);
+            });
+            EnemyAI.refreshIntents(() => true);
+        }
     },
 
     getEffectValue(effectKey) {
@@ -9712,16 +10301,17 @@ const ModManager = {
 
     getOverheatThreshold() {
         const base = GAME_CONFIG.overheatThreshold;
-        const bonus = this.runtime.overheatThresholdBonus;
+        const bonus = this.runtime.overheatThresholdBonus + 50 * this.getEffectValue('velvet_throttle');
+        const throttle = Math.max(0, state.combatFlags?.throttle || 0); // Throttler, this fight only
         if (this.getEffectValue('ancient_triple_income_half_heatlimit') > 0) {
-            return Math.max(1, Math.floor(base * 0.5) + bonus);
+            return Math.max(1, Math.floor(base * 0.5) + bonus - throttle);
         }
-        return base + bonus;
+        return Math.max(10, base + bonus - throttle);
     },
 
     getHeatReduction() {
         if (this.getEffectValue('i3_core_scaling') > 0) return 0;
-        return GAME_CONFIG.heatReduction + this.runtime.heatReductionBonus;
+        return GAME_CONFIG.heatReduction + this.runtime.heatReductionBonus + 10 * this.getEffectValue('tainted_coolant');
     },
 
     // Get active mod count
@@ -9769,9 +10359,17 @@ const ModManager = {
         state.combatFlags.autoLoaderReady = false;
         state.combatFlags.blockGainReflectThisTurn = 0;
         state.combatFlags.heatGeneratedThisTurn = 0;
+        state.combatFlags.attacksResolvedThisTurn = 0;
+        state.combatFlags.nonAttacksResolvedThisTurn = 0;
+        state.combatFlags.lastCard = null;
         StatusManager.removeStatus('player', 'AUTO_LOADER_READY');
         StatusManager.removeStatus('player', 'AUTO_LOADER_CD');
         if (this.getEffectValue('double_every_6th_attack') > 0) setAutoLoaderCountdown(4);
+        const tesla = this.getEffectValue('turn_start_aoe');
+        if (tesla > 0) {
+            damageAllEnemies(tesla, '#38bdf8');
+            flashMod('TESLA COIL');
+        }
         // Retain a fixed amount of block from Gooey Slime/other effects.
         if (state.combatFlags.blockRetainNextTurn > 0) {
             gainPlayerBlock(state.combatFlags.blockRetainNextTurn, 'BLK');
@@ -9792,6 +10390,26 @@ const ModManager = {
         }
     },
 
+    // End of the player's turn, before the enemies act.
+    onTurnEnd() {
+        const idleShield = this.getEffectValue('block_if_none_end_turn');
+        if (idleShield > 0 && state.block <= 0) {
+            gainPlayerBlock(idleShield, 'BLK');
+            showPop('p-pop-anchor', `+${idleShield} BLK (IDLE)`, 'var(--block)');
+            flashMod('IDLE SHIELD');
+        }
+        const coolHead = this.getEffectValue('vent_if_no_attacks');
+        if (coolHead > 0 && !(state.combatFlags.attacksResolvedThisTurn > 0) && state.heat > 0) {
+            const vented = Math.min(state.heat, coolHead);
+            state.heat -= vented;
+            showPop('p-pop-anchor', `-${vented} HEAT (COOL HEAD)`, 'var(--heat)');
+            flashMod('COOL HEAD');
+        }
+        const idleClock = this.getEffectValue('draw_if_few_cards');
+        state.combatFlags.idleClockBonus = idleClock > 0 && (state.combatFlags.cardsPlayedThisTurn || 0) <= 3 ? idleClock : 0;
+        if (state.combatFlags.idleClockBonus) flashMod('IDLE CLOCK');
+    },
+
     // First attack each turn bonus (ALPHA STRIKE BUS).
     consumeAttackBonus(card) {
         if (!card?.pwr) return 0;
@@ -9805,8 +10423,19 @@ const ModManager = {
         return bonus;
     },
 
-    // First hit reduction each turn (IMPACT BAFFLE).
+    // Damage that got past Block: the mods and statuses below, then SURGE PROTECTOR turns a small hit into 1.
     modifyIncomingDamage(rawDamage, allowLag = true) {
+        const dmg = this.modifyIncomingDamageBase(rawDamage, allowLag);
+        const cap = this.getEffectValue('small_hits_to_one');
+        if (cap > 0 && dmg > 1 && dmg <= cap) {
+            showPop('p-pop-anchor', 'SURGE PROTECTED', '#38bdf8');
+            flashMod('SURGE PROTECTOR');
+            return 1;
+        }
+        return dmg;
+    },
+    // First hit reduction each turn (IMPACT BAFFLE).
+    modifyIncomingDamageBase(rawDamage, allowLag = true) {
         const incoming = Math.max(0, Number(rawDamage) || 0);
         if (incoming <= 0) return 0;
         const reduction = this.getEffectValue('first_hit_reduction');
@@ -9854,8 +10483,35 @@ const ModManager = {
     },
 
     // Card cadence draw passive (LOOP BUFFER).
-    onPlayerCardResolved() {
+    onPlayerCardResolved(card = null) {
         state.combatFlags.cardsPlayedThisTurn = (state.combatFlags.cardsPlayedThisTurn || 0) + 1;
+        if (card && isAttackCard(card)) {
+            const n = state.combatFlags.attacksResolvedThisTurn = (state.combatFlags.attacksResolvedThisTurn || 0) + 1;
+            const fins = this.getEffectValue('block_every_3_attacks');
+            if (fins > 0 && n % 3 === 0) {
+                gainPlayerBlock(fins, 'BLK');
+                showPop('p-pop-anchor', `+${fins} BLK (FINS)`, 'var(--block)');
+                flashMod('COOLING FINS');
+            }
+            const thread = this.getEffectValue('str_every_3_attacks');
+            if (thread > 0 && n % 3 === 0) {
+                state.combatFlags.playerStrength = (state.combatFlags.playerStrength || 0) + thread;
+                showPop('p-pop-anchor', `+${thread} STR (THREAD)`, '#f97316');
+                flashMod('TRIPLE THREAD');
+            }
+        } else if (card) {
+            const n = state.combatFlags.nonAttacksResolvedThisTurn = (state.combatFlags.nonAttacksResolvedThisTurn || 0) + 1;
+            const arc = this.getEffectValue('aoe_every_3_skills');
+            if (arc > 0 && n % 3 === 0) {
+                damageAllEnemies(arc, '#c084fc');
+                flashMod('ARC GAP');
+            }
+        }
+        if ((state.combatFlags.papercuts || 0) > 0) damageAllEnemies(state.combatFlags.papercuts, '#e5e7eb');
+        if (this.getEffectValue('draw_on_empty_hand') > 0 && state.hand.length === 0 && this.drawCards(1)) {
+            showPop('p-pop-anchor', '+1 DRAW (LOOP)', '#c084fc');
+            flashMod('INFINITE LOOP');
+        }
         const everyN = Math.max(0, Math.floor(this.getEffectValue('draw_every_n_cards')));
         if (everyN > 0 && (state.combatFlags.cardsPlayedThisTurn % everyN === 0)) {
             const drawn = this.drawCards(1);
@@ -9903,6 +10559,11 @@ const ModManager = {
 
     // Shared overheat response hook for mod passives.
     onOverheat() {
+        const burnIn = state.combatFlags.burnIn || 0;
+        if (burnIn > 0) {
+            state.combatFlags.playerStrength = (state.combatFlags.playerStrength || 0) + burnIn;
+            showPop('p-pop-anchor', `+${burnIn} STR (BURN-IN)`, '#f97316');
+        }
         const blockGain = this.getEffectValue('block_on_overheat');
         if (blockGain > 0) {
             gainPlayerBlock(blockGain);
@@ -9979,6 +10640,7 @@ function getEnemyIntentTooltip(enemy) {
 }
 
 function updateUI() {
+    Achievements.check();
     syncNonePassLock();
     syncPlayerCardFlagStatuses();
     ActionFx.watch();
@@ -10145,6 +10807,7 @@ function renderBattleModHud() {
 
         const chip = document.createElement('div');
         chip.className = 'battle-mod-chip';
+        chip.dataset.mod = mod.name;
         const iconSrc = mod.image || mod.img || '';
         if (iconSrc) {
             const img = document.createElement('img');
@@ -10294,22 +10957,6 @@ function generateElevators() {
             <div class="opt-desc">Proceed to floor ${state.room + 1} boss</div>`;
         bossCard.onclick = () => chooseDoor('boss');
         optCont.appendChild(bossCard);
-        return;
-    }
-
-    // Every 5th room offers a guaranteed relic choice
-    if (state.room > 0 && state.room % 5 === 0) {
-        const optCont = DOM.get('floor-options');
-        optCont.innerHTML = '';
-        optCont.style.display = 'flex';
-        const relicCard = document.createElement('div');
-        relicCard.className = 'option-card elite-card';
-        relicCard.innerHTML = `
-            <div class="opt-icon"><img src="assets/misc/upgrade.gif" alt="RELIC" style="width:48px;height:48px;image-rendering:pixelated;"></div>
-            <div class="opt-label">RELIC REWARD</div>
-            <div class="opt-desc">Choose 1 of 2 relics or take coins</div>`;
-        relicCard.onclick = () => chooseDoor('relic_reward');
-        optCont.appendChild(relicCard);
         return;
     }
 
@@ -10506,68 +11153,6 @@ function openAncientRoomOptions() {
 }
 
 // Every 5th room: choose 1 of 2 relics or take 75 credits instead
-function openRelicRewardFloor() {
-    Daily.reseed(`relic-floor-${state.room}`);
-    const elevBg = DOM.get('elev-bg');
-    if (elevBg) elevBg.style.backgroundImage = "url('assets/maps/general/restsite/restarea.png')";
-    const header = DOM.get('options-header');
-    if (header) {
-        header.innerText = 'RELIC REWARD';
-        DOM.show('options-header', 'block');
-    }
-    const optCont = DOM.get('floor-options');
-    if (!optCont) return;
-    optCont.innerHTML = '';
-    optCont.style.display = 'flex';
-
-    // Get 2 random unowned relics
-    const unownedRelics = MODS.filter(m => !state.mods.includes(m.name) && !m.ancient).sort(() => Math.random() - 0.5).slice(0, 2);
-    
-    if (unownedRelics.length > 0) {
-        // Create relic choice buttons
-        unownedRelics.forEach((relic, idx) => {
-            const card = document.createElement('div');
-            card.className = 'option-card shop-card';
-            card.innerHTML = `
-                <div class="opt-label">${relic.name}</div>
-                <div class="opt-desc">${relic.desc}</div>`;
-            card.onclick = () => {
-                state.mods.push(relic.name);
-                ModManager.applyModEffect(relic);
-                SoundManager.playRelic();
-                renderBattleModHud();
-                renderModShelf();
-                updateUI();
-                showPop('p-pop-anchor', `${relic.name} INSTALLED`, 'var(--active-node)');
-                exitRestSiteWithAnimation(() => {
-                    const baseBg = DOM.get('elev-bg');
-                    if (baseBg) baseBg.style.backgroundImage = "url('assets/maps/general/elevator/ElevOption.png')";
-                    generateElevators();
-                });
-            };
-            optCont.appendChild(card);
-        });
-    }
-
-    // Always offer a "take credits" option
-    const coinsCard = document.createElement('div');
-    coinsCard.className = 'option-card rest-card';
-    coinsCard.innerHTML = `
-        <div class="opt-label">SKIP RELIC</div>
-        <div class="opt-desc">Take 75 credits instead</div>`;
-    coinsCard.onclick = () => {
-        const gained = addCredits(75);
-        showPop('p-pop-anchor', `+${gained} CREDITS`, 'var(--active-node)');
-        updateUI();
-        exitRestSiteWithAnimation(() => {
-            const baseBg = DOM.get('elev-bg');
-            if (baseBg) baseBg.style.backgroundImage = "url('assets/maps/general/elevator/ElevOption.png')";
-            generateElevators();
-        });
-    };
-    optCont.appendChild(coinsCard);
-}
-
 // ============================================================================
 // STORY EVENT FLOORS - a short scene with 2-3 choices on its own background.
 // A choice's run() returns a message to show, or false to stay on the event (e.g. a cancelled card pick).
@@ -10862,7 +11447,7 @@ function upgradeOptions(card) {
     const opts = [];
     const pwr = Number(card.pwr || 0), blk = Number(card.blk || 0), baseHeat = Number(card.heat || 0), heal = getCardBaseHeal(card);
     const heat = getCardRuntimeHeat(card);
-    if (pwr > 0) opts.push({ map: 'runCardPowerBonus', delta: Math.max(2, Math.ceil(pwr * 0.5)), label: (d) => `DMG +${d}` });
+    if (pwr > 0) opts.push({ map: 'runCardPowerBonus', delta: Math.max(2, Math.ceil(pwr * 0.5)) * (card.special === 'iterate' ? 2 : 1), label: (d) => `DMG +${d}` });
     if (blk > 0) opts.push({ map: 'runCardBlockBonus', delta: Math.max(3, Math.ceil(blk * 0.5)), label: (d) => `BLOCK +${d}` });
     if (baseHeat < 0) opts.push({ map: 'runCardHeatBonus', delta: -Math.max(5, Math.ceil(-baseHeat * 0.5)), label: (d) => `VENT +${-d}` });
     if (heal > 0) opts.push({ map: 'runCardHealBonus', delta: Math.max(2, Math.ceil(heal * 0.5)), label: (d) => `HEAL +${d}` });
@@ -11066,9 +11651,6 @@ function chooseDoor(type) {
             } else if (type === 'event') {
                 advanceNonCombatFloor('event');
                 openEventFloor();
-            } else if (type === 'relic_reward') {
-                advanceNonCombatFloor('relic_reward');
-                openRelicRewardFloor();
             } else {
                 // Starts elite/boss/standard combat from elevator selection.
                 if (type === 'elite') startRoom('ELITE');
@@ -11443,10 +12025,12 @@ const Profile = {
         const s = this.stats();
         fn(s);
         this.save(this.keys.stats, s);
+        Achievements.check();
     },
     runStarted() { this.update((s) => { s.runs++; }); },
     reachedRoom(room) { this.update((s) => { s.bestRoom = Math.max(s.bestRoom, room); }); },
-    fightWon() { this.update((s) => { s.fightsWon++; }); },
+    fightWon() { this.update((s) => { s.fightsWon++; if (state.hp <= 5) s.closeCall = true; }); },
+    attackLanded(dmg) { if (dmg > (this.stats().bestHit || 0)) this.update((s) => { s.bestHit = dmg; }); },
     cardPlayed(card) { this.update((s) => { s.cardPlays[card.name] = (s.cardPlays[card.name] || 0) + 1; }); },
     // result: 'win' | 'death' | 'abandoned'. run: the run's state (the live one, or an old save).
     runEnded(result, run = state) {
@@ -11472,6 +12056,49 @@ const Profile = {
         const seen = this.seen(), before = seen.size;
         keys.filter(Boolean).forEach((k) => seen.add(k));
         if (seen.size !== before) this.save(this.keys.seen, [...seen]);
+    },
+};
+
+// ACHIEVEMENTS - earned once and kept (not in the tutorial or debug runs). s: lifetime stats, run: the live run.
+const ACHIEVEMENTS = [
+    { id: 'first_fight', name: 'FIRST CONTACT', goal: 'Win a fight', earned: (s) => s.fightsWon >= 1 },
+    { id: 'fights_100', name: 'EXTERMINATOR', goal: 'Win 100 fights', earned: (s) => s.fightsWon >= 100 },
+    { id: 'floor_10', name: 'GOING UP', goal: 'Reach floor 10', earned: (s) => s.bestRoom >= 10 },
+    { id: 'floor_20', name: 'HIGH RISE', goal: 'Reach floor 20', earned: (s) => s.bestRoom >= 20 },
+    { id: 'core', name: 'CORE BREACH', goal: 'Clear floor 30', earned: (s) => s.wins >= 1 },
+    { id: 'floor_40', name: 'NO CEILING', goal: 'Reach floor 40', earned: (s) => s.bestRoom >= 40 },
+    { id: 'runs_10', name: 'REPEAT OFFENDER', goal: 'Start 10 runs', earned: (s) => s.runs >= 10 },
+    { id: 'daily', name: 'DAILY SHIFT', goal: 'Finish a daily run', earned: (s) => s.history.some((h) => h.daily) },
+    { id: 'close_call', name: 'CLOSE CALL', goal: 'Win a fight with 5 hull or less', earned: (s) => !!s.closeCall },
+    { id: 'hit_100', name: 'OVERKILL', goal: 'Deal 100 damage with one card', earned: (s) => (s.bestHit || 0) >= 100 },
+    { id: 'hit_500', name: 'ONE PUNCH', goal: 'Deal 500 damage with one card', earned: (s) => (s.bestHit || 0) >= 500 },
+    { id: 'rich', name: 'HOARDER', goal: 'Hold 500 credits', earned: (s, run) => run.gold >= 500 },
+    { id: 'mods_8', name: 'FULLY MODDED', goal: 'Have 8 mods in one run', earned: (s, run) => (run.mods || []).length >= 8 },
+    { id: 'deck_25', name: 'BLOATWARE', goal: 'Have 25 programs in your manifest', earned: (s, run) => (run.deck || []).length >= 25 },
+    { id: 'curses_3', name: 'HEXED', goal: 'Carry 3 curses at once', earned: () => getOwnedCurseCount() >= 3 },
+    { id: 'ancient', name: 'FORBIDDEN TECH', goal: 'Install an ancient mod', earned: () => hasAncientMod() },
+];
+const Achievements = {
+    key: 'elevator:achievements',
+    earned() {
+        return new Set(Profile.load(this.key, []));
+    },
+    // Announces anything newly earned, one banner after another.
+    check() {
+        if (!Profile.counts()) return;
+        const have = this.earned(), s = Profile.stats();
+        const fresh = ACHIEVEMENTS.filter((a) => !have.has(a.id) && a.earned(s, state));
+        if (!fresh.length) return;
+        fresh.forEach((a) => have.add(a.id));
+        Profile.save(this.key, [...have]);
+        fresh.forEach((a) => {
+            const at = Math.max(Date.now(), this.nextBannerAt || 0);
+            this.nextBannerAt = at + 2700;
+            setTimeout(() => {
+                showCenterBanner(`ACHIEVEMENT: ${a.name}`, '#fbbf24', 2500);
+                SoundManager.playRelic();
+            }, at - Date.now());
+        });
     },
 };
 
@@ -11537,6 +12164,11 @@ function renderStats() {
             return `<li class="${ok ? 'ok' : 'locked'}">${uiIcon(ok ? 'check' : 'lock')} ${u.goal}<small>${u.reward}</small></li>`;
         }).join('')}</ul>
         <p class="settings-hint">Unlocks apply to normal runs, not the daily run.</p>
+        <h3>ACHIEVEMENTS ${Achievements.earned().size}/${ACHIEVEMENTS.length}</h3>
+        <ul class="stats-list">${ACHIEVEMENTS.map((a) => {
+            const ok = Achievements.earned().has(a.id);
+            return `<li class="${ok ? 'ok' : 'locked'}">${uiIcon(ok ? 'check' : 'lock')} ${a.name}<small>${a.goal}</small></li>`;
+        }).join('')}</ul>
         <h3>RECENT RUNS</h3>
         <ul class="stats-list">${s.history.length ? s.history.map((h) => `
             <li>${esc(h.date)} ${result(h)}${h.daily ? ' <span class="tag-daily">DAILY</span>' : ''}
@@ -11577,7 +12209,7 @@ async function measureGameStorage() {
             files += sizes.reduce((a, b) => a + b, 0);
         }
     } catch (_) { /* no Cache API (private mode, old browser) */ }
-    const statsKeys = ['elevator:stats', 'elevator:unlocks', 'elevator:bestiary_seen'];
+    const statsKeys = ['elevator:stats', 'elevator:unlocks', 'elevator:bestiary_seen', 'elevator:achievements'];
     const slices = [
         { label: 'OFFLINE GAME FILES', bytes: files },
         { label: 'SAVED RUN', bytes: keyBytes((k) => k === 'elevator:run') },

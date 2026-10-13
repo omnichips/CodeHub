@@ -242,6 +242,28 @@ const PROGRAMS = {
 
      REBOOT:   { name: "REBOOT",   heat: 0,   cost: 100, exhaust: true, special: "recycle_discard_to_draw", desc: "Return discard pile to draw.",         img: "assets/program/Reboot.png" }, // NO CHANGE
 
+    // ----------------------------------------------------------------
+    // Spire pack: attacks, skills and powers (a power lasts the whole fight and Exhausts when played)
+    // ----------------------------------------------------------------
+    SLEDGEHAMMER: { name: "SLEDGEHAMMER", pwr: 14, heat: 14, cost: 75, special: "strength_x3", desc: "Deals 14 dmg. Strength counts 3 times.", img: "assets/program/Sledgehammer.png" },
+    SHIELD_BASH:  { name: "SHIELD BASH", heat: 8, cost: 70, special: "damage_equal_block", desc: "Deal dmg equal to your Block.", img: "assets/program/ShieldBash.png" },
+    OVERFLOW:     { name: "OVERFLOW", heat: 0, cost: 85, special: "overflow", desc: "Deal 5 dmg to every enemy per 10 Heat, then Vent all Heat.", img: "assets/program/Overflow.png" },
+    PURE_ATTACK:  { name: "PURE ATTACK", pwr: 18, heat: 4, cost: 65, special: "only_attacks_in_hand", desc: "Deals 18 dmg. Only if every card in hand is an attack.", img: "assets/program/PureAttack.png" },
+    ITERATE:      { name: "ITERATE", pwr: 12, heat: 10, cost: 70, special: "iterate", desc: "Deals 12 dmg. Rest-site upgrades on it are doubled.", img: "assets/program/Iterate.png" },
+    BOLT_ARRAY:   { name: "BOLT ARRAY", pwr: 6, heat: 12, cost: 60, special: "bolt_array", desc: "Deals 6 dmg, +3 per BOLT you own.", img: "assets/program/BoltArray.png" },
+    EXPLOIT:      { name: "EXPLOIT", pwr: 8, heat: 10, cost: 75, special: "apply_exposed", stacks: 2, desc: "Deals 8 dmg. Target is Exposed for 2 turns.", img: "assets/program/Exploit.png" },
+    CHOKEHOLD:    { name: "CHOKEHOLD", pwr: 10, heat: 12, cost: 75, special: "apply_weakened", stacks: 2, desc: "Deals 10 dmg. Target is Weakened for 2 turns.", img: "assets/program/Chokehold.png" },
+    PURGE_EXE:    { name: "PURGE.EXE", heat: 15, cost: 95, special: "purge_hand", desc: "Exhaust your hand. Deal 7 dmg per card.", img: "assets/program/PurgeExe.png" },
+    DOUBLE_DOWN:  { name: "DOUBLE DOWN", heat: 10, cost: 80, special: "double_block", desc: "Double your Block.", img: "assets/program/DoubleDown.png" },
+    TRIAGE:       { name: "TRIAGE", heat: 6, cost: 70, special: "triage", desc: "Exhaust your other non-attacks. Gain 8 Block each.", img: "assets/program/Triage.png" },
+    PANIC_SWAP:   { name: "PANIC SWAP", heat: 0, cost: 55, exhaust: true, special: "panic_swap", desc: "Throw away your hand, draw that many.", img: "assets/program/PanicSwap.png" },
+    DUPLICATE:    { name: "DUPLICATE", heat: 8, cost: 80, special: "duplicate", desc: "Copy a card in your hand. The copy Exhausts.", img: "assets/program/Duplicate.png" },
+    SCRAP_ARMOR:  { name: "SCRAP ARMOR", heat: 6, cost: 80, exhaust: true, power: true, special: "power_scrap_armor", desc: "Power: whenever a card Exhausts, gain 3 Block.", img: "assets/program/ScrapArmor.png" },
+    RECYCLER:     { name: "RECYCLER", heat: 6, cost: 85, exhaust: true, power: true, special: "power_recycler", desc: "Power: whenever a card Exhausts, draw 1.", img: "assets/program/Recycler.png" },
+    ZERO_DAY:     { name: "ZERO-DAY", heat: 10, cost: 140, exhaust: true, power: true, rare: true, special: "power_zero_day", desc: "Power: non-attacks cost 0 Heat but Exhaust.", img: "assets/program/ZeroDay.png" },
+    PAPERCUTS:    { name: "PAPERCUTS", heat: 12, cost: 90, exhaust: true, power: true, special: "power_papercuts", desc: "Power: each card you play hits every enemy for 1.", img: "assets/program/Papercuts.png" },
+    BURN_IN:      { name: "BURN-IN", heat: 5, cost: 75, exhaust: true, power: true, special: "power_burn_in", desc: "Power: whenever you overheat, gain 2 Strength.", img: "assets/program/BurnIn.png" },
+
 
 
 };
@@ -252,8 +274,8 @@ const PROGRAMS = {
 // Add/remove keys here to control where cards can be obtained.
 // ============================================================================
 const PROGRAM_POOLS = {
-    SHOP: Object.keys(PROGRAMS).filter(k => !PROGRAMS[k].bossOnly),
-    COMMON_REWARD: Object.keys(PROGRAMS).filter(k => !PROGRAMS[k].bossOnly),
+    SHOP: Object.keys(PROGRAMS).filter(k => !PROGRAMS[k].bossOnly && !PROGRAMS[k].rare),
+    COMMON_REWARD: Object.keys(PROGRAMS).filter(k => !PROGRAMS[k].bossOnly && !PROGRAMS[k].rare),
     ELITE_REWARD: [
         ...Object.keys(PROGRAMS).filter(k => !PROGRAMS[k].bossOnly),
         'OVERCLOCK', 'FORTRESS', 'LIMIT', 'SHIVA', 'OMAEWA', 'IDDQD'
@@ -261,7 +283,7 @@ const PROGRAM_POOLS = {
     BOSS_ONLY: Object.keys(PROGRAMS).filter(k => PROGRAMS[k].bossOnly),
     // Boss rewards can include all boss-only cards plus a few strong legacy cards.
     BOSS_REWARD: [
-        ...Object.keys(PROGRAMS).filter(k => PROGRAMS[k].bossOnly),
+        ...Object.keys(PROGRAMS).filter(k => PROGRAMS[k].bossOnly || PROGRAMS[k].rare),
         'OMAEWA', 'FATALITY', 'SHIVA', 'IDDQD', 'LIMIT', 'FORTRESS', 'OVERCLOCK'
     ],
 };
@@ -351,6 +373,24 @@ const MODS = [
     { name: "OBLIVION CORE",        desc: "Your HP/Block values are hidden. All your damage is permanently 2x.", cost: 9999, effect: "ancient_hidden_stats_berserk", value: 1, img: "assets/mods/oblivioncore.png", ancient: true },
     { name: "REVERSAL ENGINE",      desc: "All attack values become Block and all Block values deal damage. Lose 10 Hull when installed.", cost: 9999, effect: "ancient_swap_attack_block", value: 1, img: "assets/mods/reversalengine.png", ancient: true },
     { name: "FRACTURED LEDGER",     desc: "Credits gained are tripled, but overheat threshold is halved.", cost: 9999, effect: "ancient_triple_income_half_heatlimit", value: 1, img: "assets/mods/fracturedledger.png", ancient: true },
+    // ----------------------------------------------------------------
+    // Spire pack. rare: only offered as an elite / boss relic reward, never in shops or events.
+    // ----------------------------------------------------------------
+    { name: "IDLE SHIELD",       desc: "If you end your turn with 0 Block, gain 6 Block.", cost: 90, effect: "block_if_none_end_turn", value: 6, img: "assets/mods/idleshield.png" },
+    { name: "CAPACITOR BANK",    desc: "You lose only 15 Block at the start of your turn.", cost: 120, effect: "block_decay_cap", value: 15, img: "assets/mods/capacitorbank.png" },
+    { name: "SURGE PROTECTOR",   desc: "Unblocked hits of 5 or less deal 1.", cost: 110, effect: "small_hits_to_one", value: 5, img: "assets/mods/surgeprotector.png" },
+    { name: "COOLING FINS",      desc: "Every 3rd attack in a turn gains 4 Block.", cost: 95, effect: "block_every_3_attacks", value: 4, img: "assets/mods/coolingfins.png" },
+    { name: "ARC GAP",           desc: "Every 3rd non-attack in a turn deals 5 dmg to every enemy.", cost: 105, effect: "aoe_every_3_skills", value: 5, img: "assets/mods/arcgap.png" },
+    { name: "TRIPLE THREAD",     desc: "Every 3rd attack in a turn gives +1 Strength this fight.", cost: 150, effect: "str_every_3_attacks", value: 1, img: "assets/mods/triplethread.png" },
+    { name: "EXPLOIT KIT",       desc: "Enemies start every fight Exposed for 1 turn.", cost: 140, effect: "expose_on_combat_start", value: 1, img: "assets/mods/exploitkit.png" },
+    { name: "TESLA COIL",        desc: "At the start of your turn, deal 3 dmg to every enemy.", cost: 145, effect: "turn_start_aoe", value: 3, img: "assets/mods/teslacoil.png" },
+    { name: "IDLE CLOCK",        desc: "Play 3 cards or fewer in a turn: draw 2 extra next turn.", cost: 130, effect: "draw_if_few_cards", value: 2, img: "assets/mods/idleclock.png" },
+    { name: "COOL HEAD",         desc: "Play no attacks in a turn: vent 15 Heat at its end.", cost: 120, effect: "vent_if_no_attacks", value: 15, img: "assets/mods/coolhead.png" },
+    { name: "INFINITE LOOP",     desc: "Whenever your hand is empty on your turn, draw 1.", cost: 135, effect: "draw_on_empty_hand", value: 1, img: "assets/mods/infiniteloop.png" },
+    { name: "TAINTED COOLANT",   desc: "+10 natural heat reduction. Enemies start each fight with 3 Strength.", cost: 200, effect: "tainted_coolant", value: 1, img: "assets/mods/taintedcoolant.png", rare: true },
+    { name: "SNECKO CHIP",       desc: "Draw 2 extra each turn. Cards that cost Heat cost a random 0-30 when drawn.", cost: 200, effect: "snecko", value: 1, img: "assets/mods/sneckochip.png", rare: true },
+    { name: "VELVET THROTTLE",   desc: "+50 overheat limit. You can play only 6 cards per turn.", cost: 200, effect: "velvet_throttle", value: 1, img: "assets/mods/velvetthrottle.png", rare: true },
+    { name: "GARBAGE COLLECTOR", desc: "Whenever a card Exhausts, add a random program to your hand. It Exhausts.", cost: 200, effect: "exhaust_add_random", value: 1, img: "assets/mods/garbagecollector.png", rare: true },
 ];
 
 // Normalize mod image fields for UI systems that use either key.
@@ -455,6 +495,14 @@ const STATUS_DEFS = {
     MIRROR_DEBUFF:   { id: 'MIRROR_DEBUFF',   label: 'Mirror', desc: 'Reflects next enemy-applied debuff.' },
 
 
+    // Spire pack powers (last the whole fight).
+    PLAYER_SCRAP_ARMOR: { id: 'PLAYER_SCRAP_ARMOR', label: 'Scrap Armor', desc: 'Gain this much Block whenever a card Exhausts.' },
+    PLAYER_RECYCLER:    { id: 'PLAYER_RECYCLER',    label: 'Recycler',    desc: 'Draw this many whenever a card Exhausts.' },
+    PLAYER_ZERO_DAY:    { id: 'PLAYER_ZERO_DAY',    label: 'Zero-Day',    desc: 'Non-attacks cost 0 Heat but Exhaust.' },
+    PLAYER_PAPERCUTS:   { id: 'PLAYER_PAPERCUTS',   label: 'Papercuts',   desc: 'Each card you play hits every enemy for this much.' },
+    PLAYER_BURN_IN:     { id: 'PLAYER_BURN_IN',     label: 'Burn-In',     desc: 'Gain this much Strength whenever you overheat.' },
+    THROTTLED:          { id: 'THROTTLED',          label: 'Throttled',   desc: 'Your overheat limit is lowered by this much for the fight.' },
+
     // --- Enemy self-buffs ---
     STRENGTH:      { id: 'STRENGTH',      label: 'Power Up',   desc: 'Increases damage dealt.' },
     PLATING:       { id: 'PLATING',       label: 'Plating',   desc: 'Takes 2 less damage per hit.' },
@@ -471,6 +519,13 @@ const STATUS_DEFS = {
     CORRUPTION:    { id: 'CORRUPTION',    label: 'Corruption', desc: 'Lose 10 HP at start of turn.' },
     BIT_ROT:       { id: 'BIT_ROT',       label: 'Bit Rot', desc: 'Lose 4 HP whenever attacking.' },
     LOGIC_BOMB:    { id: 'LOGIC_BOMB',    label: 'Logic Bomb', desc: 'Explodes after countdown.' },
+    EXPOSED:       { id: 'EXPOSED',       label: 'Exposed',   desc: 'Takes 50% more damage from your cards. Turns left.' },
+    WEAKENED:      { id: 'WEAKENED',      label: 'Weakened',  desc: 'Deals 25% less attack damage. Turns left.' },
+    PATCHED:       { id: 'PATCHED',       label: 'Patched',   desc: 'Programs that already hit it deal half damage to it.' },
+    SKIM:          { id: 'SKIM',          label: 'Skimmed',   desc: 'Credits it has stolen. Kill it within 4 turns to get them back +50%.' },
+    LOAD_BALANCE:  { id: 'LOAD_BALANCE',  label: 'Balancer',  desc: 'Takes half of the damage dealt to its partner, and gives it its Block.' },
+    ECHO:          { id: 'ECHO',          label: 'Echo',      desc: 'Copies the type of the last card you played.' },
+    FORKABLE:      { id: 'FORKABLE',      label: 'Fork',      desc: 'Splits into two half-HP copies the first time it dies.' },
     STATIC_INTERFERENCE:{ id: 'STATIC_INTERFERENCE', label: 'Interference', desc: 'Intent hidden and damage reduced.' },
 };
 
@@ -720,6 +775,60 @@ const ENEMY_ROSTER = {
     },
 
     // ------------------------------------------------------------------
+    // SPIRE PACK EASY ENEMIES (each one puts pressure on a different system)
+    // beforeTurn / afterTurn: an ability the enemy also runs before / after its action every turn.
+    // ------------------------------------------------------------------
+    COIN_SKIMMER: {
+        name: 'Coin Skimmer',
+        tier: 'easy',
+        hp: 30,
+        intentPattern: 'always_attack',
+        attackDmg: 4,
+        abilities: ['credit_skim'],
+        desc: 'Every hit steals 10 credits. Kill it within 4 turns to get them back with 50% interest.',
+    },
+    PAPER_JAM: {
+        name: 'Paper Jam',
+        tier: 'easy',
+        hp: 36,
+        intentPattern: 'always_attack',
+        attackDmg: 5,
+        afterTurn: 'paper_jam',
+        abilities: ['paper_jam'],
+        desc: 'Jams the leftmost card in your hand each turn: it cannot be played that turn.',
+    },
+    FORK_PROCESS: {
+        name: 'Fork Process',
+        tier: 'easy',
+        hp: 40,
+        intentPattern: 'always_attack',
+        attackDmg: 5,
+        statuses: [{ id: 'FORKABLE', stacks: 1 }],
+        abilities: ['fork_split'],
+        desc: 'The first time it dies it splits into two copies with half HP. Area damage shines here.',
+    },
+    STATIC_MAGNET: {
+        name: 'Static Magnet',
+        tier: 'easy',
+        hp: 34,
+        intentPattern: 'always_attack',
+        attackDmg: 6,
+        beforeTurn: 'magnet_pull',
+        abilities: ['magnet_pull'],
+        desc: 'Before it attacks, it pulls half your Block onto itself. Block in smaller amounts.',
+    },
+    ECHO_BOT: {
+        name: 'Echo Bot',
+        tier: 'easy',
+        hp: 32,
+        intentPattern: 'ai',
+        attackDmg: 0,
+        statuses: [{ id: 'ECHO', stacks: 1 }],
+        abilities: ['echo'],
+        desc: 'Copies your last card: an attack hits you for half, a block card gives it that Block, a vent gives you +10 Heat. End on a weak card.',
+    },
+
+    // ------------------------------------------------------------------
     // MEDIUM ENEMIES  (used on floors 5-8; mixed on floors 4-5 and 8-9)
     // ------------------------------------------------------------------
 
@@ -900,6 +1009,61 @@ const ENEMY_ROSTER = {
         statuses: [],
         abilities: [],
         desc: 'Consistent 3 damage poke that ignores Block.',
+    },
+
+    // ------------------------------------------------------------------
+    // SPIRE PACK MEDIUM ENEMIES
+    // ------------------------------------------------------------------
+    PATCH_DAEMON: {
+        name: 'Patch Daemon',
+        tier: 'medium',
+        hp: 75,
+        intentPattern: 'always_attack',
+        attackDmg: 9,
+        abilities: ['patch'],
+        desc: 'Every program that hits it gets patched: that program deals half damage to it for the rest of the fight. Mix it up.',
+    },
+    RANSOMWARE: {
+        name: 'Ransomware',
+        tier: 'medium',
+        hp: 70,
+        intentPattern: 'cycle',
+        cycle: ['attack', 'encrypt'],
+        attackDmg: 8,
+        abilities: ['encrypt'],
+        desc: 'Every other turn it locks 2 cards in your hand. A locked card costs 15 credits to play. Locks lift when it dies.',
+    },
+    THROTTLER: {
+        name: 'Throttler',
+        tier: 'medium',
+        hp: 80,
+        intentPattern: 'always_attack',
+        attackDmg: 10,
+        afterTurn: 'throttle',
+        abilities: ['throttle'],
+        desc: 'Each turn it lowers your overheat limit by 10 for this fight (down to -40).',
+    },
+    DEFRAGMENTER: {
+        name: 'Defragmenter',
+        tier: 'medium',
+        hp: 72,
+        intentPattern: 'always_attack',
+        attackDmg: 11,
+        afterTurn: 'defrag_bury',
+        abilities: ['defrag_bury'],
+        desc: 'Each turn it moves your strongest attack in hand to the bottom of your draw pile. Play your best card first.',
+    },
+    LOAD_BALANCER: {
+        name: 'Load Balancer',
+        tier: 'medium',
+        hp: 65,
+        intentPattern: 'cycle',
+        cycle: ['balance_shield', 'attack'],
+        attackDmg: 7,
+        blockGain: 10,
+        statuses: [{ id: 'LOAD_BALANCE', stacks: 1 }],
+        abilities: ['balance_shield'],
+        desc: 'Always arrives with a partner. Takes half of the damage dealt to it and gives it its Block. Kill the Balancer first.',
     },
 
     // ------------------------------------------------------------------
@@ -1363,10 +1527,8 @@ const FLOOR_MAP = (() => {
             map[floor] = { pool: 'medium' };
         } else if (floor <= 19) {
             map[floor] = { pool: 'medium_mix' };
-        } else if (floor <= 25) {
-            map[floor] = { pool: 'elite' };
         } else {
-            map[floor] = { pool: 'medium_mix' };
+            map[floor] = { pool: 'elite' }; // 21-29: the last stretch before the core is the hardest
         }
     }
     return map;
@@ -1407,9 +1569,12 @@ const PLAYER_STATS = {
 // ============================================================================
 const GAME_CONFIG = {
     cycleRooms: 30,             // floors keep going; the enemy pools repeat every 30 floors
-    // Enemy HP / damage / block multiplier per floor: a gentle climb through the first cycle, steeper after.
-    scalePerFloor: 0.01,
-    scalePerFloorEndless: 0.06,
+    // Enemy multiplier per floor, rising faster the higher you go so a strong deck cannot coast:
+    // HP x1.30 on floor 10, x1.92 on 20, x2.84 on 30, x4.06 on 40. Tuned so an average run ends around floor 30.
+    scalePerFloor: 0.02,
+    scaleAccel: 0.0015,
+    // Damage and block grow at this fraction of the HP growth (x2.10 hits on floor 30), so late fights are long, not one-shots.
+    damageScaleShare: 0.6,
     overheatDamage: 10,         // Damage taken when exceeding heat threshold
     overheatThreshold: 100,     // Heat limit before damage
     heatReduction: 10,          // Heat lost per turn
@@ -1420,8 +1585,11 @@ function floorPool(floor) {
     return FLOOR_MAP[((Math.max(1, floor) - 1) % GAME_CONFIG.cycleRooms) + 1].pool;
 }
 function enemyScale(floor) {
-    const f = Math.max(1, Number(floor) || 1), cycle = GAME_CONFIG.cycleRooms;
-    return 1 + GAME_CONFIG.scalePerFloor * (Math.min(f, cycle) - 1) + GAME_CONFIG.scalePerFloorEndless * Math.max(0, f - cycle);
+    const n = Math.max(1, Number(floor) || 1) - 1;
+    return 1 + GAME_CONFIG.scalePerFloor * n + GAME_CONFIG.scaleAccel * n * n;
+}
+function enemyDamageScale(floor) {
+    return 1 + (enemyScale(floor) - 1) * GAME_CONFIG.damageScaleShare;
 }
 
 // ============================================================================
