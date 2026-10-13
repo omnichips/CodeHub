@@ -1,4 +1,5 @@
-// Draws the story-event floor backgrounds (and the event door icon) in the style of the hallway art:
+// Draws the story-event floor backgrounds, the event door icon and the intro scenes (the lab, the locked
+// security door, the old TV the ghost takes over) in the style of the hallway art:
 // flat pixel art, ceiling lights, a wall, a checkered floor in perspective. Drawn at 448x144 and scaled
 // x4 to 1792x576 like the other maps. Run from the app folder: node tools/event-backgrounds.mjs
 import fs from 'node:fs';
@@ -153,10 +154,73 @@ const scenes = {
     },
 };
 
+// Intro scenes. The intro places the ghost, the TV and the player on these by image coordinates
+// (percent of 448x144), so keep the broken tube at x 208-240, the scanner at x 272-286 and the TV cart at x 328-358.
+const introScenes = {
+    lab: () => {
+        const L = scene({ ceiling: '#0f1f1c', ceilingEdge: '#1c332e', wall: '#0b1715', base: '#1c332e', pillar: '#10211e',
+            floorA: '#0d1f1b', floorB: '#163330', light: '#86efac', lights: [[54, false], [330, true]], pillars: [60, 370] });
+        // Containment tubes with green fluid; the middle one is shattered and empty.
+        [104, 160, 264, 320, 208].forEach((x, i) => {
+            const broken = i === 4;
+            L.rect(x - 2, 28, x + 34, 33, '#334155').rect(x - 2, FLOOR_Y - 6, x + 34, FLOOR_Y, '#334155');
+            if (!broken) {
+                L.rect(x, 34, x + 32, FLOOR_Y - 7, '#14532d').rect(x, 34, x + 32, 40, '#0f3d22');
+                for (let k = 0; k < 6; k++) L.px(x + 6 + ((k * 11) % 22), 50 + ((k * 17) % 40), '#86efac');
+                L.rect(x + 3, 36, x + 4, FLOOR_Y - 9, '#4ade80');
+            } else {
+                L.rect(x, 34, x + 32, FLOOR_Y - 7, '#06120f');
+                // Jagged glass left in the frame, shards and a puddle on the floor.
+                [[x, 34, x + 6, 52], [x + 26, 34, x + 32, 46], [x, 84, x + 5, FLOOR_Y - 7], [x + 25, 78, x + 32, FLOOR_Y - 7]].forEach(([a, b, c, d]) => L.rect(a, b, c, d, '#7dd3fc'));
+                [[x - 14, 112], [x + 40, 116], [x + 8, 122], [x + 52, 110], [x - 24, 120]].forEach(([a, b]) => L.rect(a, b, a + 3, b + 1, '#bae6fd'));
+                for (let y = 108; y < 116; y++) for (let k = x - 6; k < x + 40; k++) if (((k - x - 16) / 24) ** 2 + ((y - 112) / 4) ** 2 < 1) L.px(k, y, '#22c55e');
+            }
+        });
+        // Warning light and a monitor showing a flatline.
+        L.circle(224, 24, 3, '#ef4444');
+        L.rect(30, 56, 52, 74, '#1f2937').rect(32, 58, 50, 72, '#022c22').rect(33, 65, 49, 65, '#22c55e');
+        L.rect(396, 56, 418, 74, '#1f2937').rect(398, 58, 416, 72, '#022c22').rect(400, 61, 410, 61, '#ef4444').rect(400, 64, 406, 64, '#ef4444');
+        return L.g;
+    },
+    gate: () => {
+        const L = scene({ ceiling: '#18181b', ceilingEdge: '#27272a', wall: '#27272a', base: '#18181b', pillar: '#202024',
+            floorA: '#1c1c20', floorB: '#2c2c32', light: '#fca5a5', lights: [[54, true], [330, false]], pillars: [] });
+        // Blast door with hazard edges.
+        L.rect(176, 24, 272, FLOOR_Y - 1, '#3f3f46');
+        L.rect(184, 30, 264, FLOOR_Y - 1, '#52525b').rect(223, 30, 225, FLOOR_Y - 1, '#18181b');
+        for (let y = 30; y < FLOOR_Y; y += 8) L.rect(184, y, 188, y + 3, '#facc15').rect(260, y + 4, 264, y + 7, '#facc15');
+        [[196, 50], [236, 50], [196, 80], [236, 80]].forEach(([x, y]) => L.rect(x, y, x + 12, y + 2, '#3f3f46'));
+        // Scanner panel with its red light.
+        L.rect(272, 54, 286, 74, '#18181b').frame(272, 54, 286, 74, '#52525b').rect(275, 58, 283, 66, '#7f1d1d').rect(277, 60, 281, 64, '#ef4444').rect(275, 69, 283, 71, '#ef4444');
+        // Storage: a shelf of junk and the cart the old TV sits on (the TV itself is a sprite).
+        L.rect(328, 93, 358, 96, '#78716c').rect(330, 97, 331, FLOOR_Y + 4, '#57534e').rect(355, 97, 356, FLOOR_Y + 4, '#57534e').rect(330, FLOOR_Y + 2, 356, FLOOR_Y + 3, '#57534e');
+        L.rect(370, 40, 430, 42, '#57534e').rect(370, 70, 430, 72, '#57534e').rect(372, 42, 373, FLOOR_Y, '#44403c').rect(427, 42, 428, FLOOR_Y, '#44403c');
+        L.rect(378, 28, 398, 39, '#92400e').rect(402, 32, 422, 39, '#713f12').rect(380, 58, 392, 69, '#52525b').rect(396, 62, 420, 69, '#a16207').rect(384, 90, 410, FLOOR_Y, '#78350f');
+        // Warning stripes on the floor in front of the door.
+        for (let x = 176; x < 272; x += 10) L.rect(x, FLOOR_Y + 2, x + 4, FLOOR_Y + 4, '#facc15');
+        return L.g;
+    },
+};
+// The TV, 26x23, drawn like the player's head: round blue-grey case, antenna, knobs, a dark screen.
+function tv() {
+    const g = Array.from({ length: 23 }, () => Array(26).fill(null));
+    const put = (x, y, c) => { if (g[y] && x >= 0 && x < 26) g[y][x] = hex(c); };
+    for (let y = 4; y < 23; y++) for (let x = 0; x < 26; x++) if (((x - 12.5) / 13) ** 2 + ((y - 13.5) / 9.6) ** 2 <= 1) put(x, y, '#475569');
+    for (let y = 7; y < 21; y++) for (let x = 0; x < 26; x++) if (((x - 14) / 8.5) ** 2 + ((y - 14) / 6) ** 2 <= 1) put(x, y, '#111827');
+    for (let i = 0; i < 5; i++) put(5 - i, 4 - i, '#94a3b8');
+    put(0, 0, '#cbd5e1');
+    put(3, 11, '#ef4444'); put(3, 14, '#facc15'); put(3, 17, '#22c55e');
+    put(11, 10, '#374151'); put(12, 10, '#374151');
+    return g;
+}
+
 // Scale up by S like the other maps.
 const upscale = (g) => g.flatMap((row) => Array(S).fill(row.flatMap((c) => Array(S).fill(c))));
 fs.mkdirSync('assets/maps/events', { recursive: true });
 for (const [name, draw] of Object.entries(scenes)) fs.writeFileSync(`assets/maps/events/${name}.png`, writePng(upscale(draw())));
+fs.mkdirSync('assets/maps/intro', { recursive: true });
+for (const [name, draw] of Object.entries(introScenes)) fs.writeFileSync(`assets/maps/intro/${name}.png`, writePng(upscale(draw())));
+fs.writeFileSync('assets/maps/intro/tv.png', writePng(upscale(tv())));
 
 // Event door icon: a speech bubble with "!" (16x16, shown at 48px).
 const icon = [

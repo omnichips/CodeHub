@@ -1274,6 +1274,48 @@
                 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
             }
 
+            /* Boss entrance: hazard bands with a scrolling warning, the boss rising as a silhouette, a flash, its name. */
+            #boss-entry {
+                position: fixed; inset: 0; z-index: 10040; pointer-events: all; overflow: hidden;
+                font-family: var(--font-main); background: rgba(0, 0, 0, 0.82);
+                box-shadow: inset 0 0 120px rgba(239, 68, 68, 0.6); animation: be-pulse 0.52s steps(2) 6, bv-in 0.3s ease-out;
+            }
+            #boss-entry.be-out { animation: bv-out 0.4s ease-in forwards; }
+            #boss-entry .be-band {
+                position: absolute; left: 0; right: 0; height: 14%; display: flex; align-items: center; overflow: hidden;
+                background: repeating-linear-gradient(-45deg, #facc15 0 18px, #111 18px 36px);
+                animation: be-band-in 0.45s cubic-bezier(0.2, 1, 0.3, 1) both;
+            }
+            #boss-entry .be-band.top { top: 4%; }
+            #boss-entry .be-band.bottom { bottom: 4%; animation-name: be-band-in-r; }
+            #boss-entry .be-band span {
+                white-space: nowrap; padding: 4px 0; background: #111; color: #ef4444; font-size: clamp(9px, 2.6vh, 16px); letter-spacing: 3px;
+                animation: be-ticker 6s linear infinite;
+            }
+            #boss-entry .be-band.bottom span { animation-direction: reverse; }
+            #boss-entry .be-sprite {
+                position: absolute; left: 50%; top: 22%; height: 46%; transform: translateX(-50%) scale(0.5); image-rendering: pixelated;
+                filter: brightness(0) drop-shadow(0 0 18px #ef4444); opacity: 0;
+                transition: transform 1.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s, filter 0.15s;
+            }
+            #boss-entry.rise .be-sprite { transform: translateX(-50%) scale(1); opacity: 1; }
+            #boss-entry.reveal .be-sprite { filter: drop-shadow(0 0 22px rgba(239, 68, 68, 0.8)); }
+            #boss-entry .be-name { position: absolute; left: 0; right: 0; top: 70%; text-align: center; font-size: clamp(16px, 6vh, 40px); color: #fff;
+                text-shadow: 0 0 16px #ef4444, 4px 4px 0 #000; letter-spacing: 3px; }
+            #boss-entry .be-name span { display: inline-block; opacity: 0; }
+            #boss-entry.reveal .be-name span { animation: bv-drop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+            #boss-entry .be-sub { position: absolute; left: 0; right: 0; top: calc(70% + 9vh); text-align: center; font-size: clamp(7px, 1.8vh, 11px);
+                color: #fca5a5; letter-spacing: 3px; opacity: 0; transition: opacity 0.4s 0.6s; }
+            #boss-entry.reveal .be-sub { opacity: 1; }
+            #boss-entry .be-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+            #boss-entry.reveal .be-flash { animation: bv-flash 0.6s ease-out; }
+            @keyframes be-pulse { 50% { box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.2); } }
+            @keyframes be-band-in { from { transform: translateX(-110%); } }
+            @keyframes be-band-in-r { from { transform: translateX(110%); } }
+            @keyframes be-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+            #boss-cutscene-overlay.be-talk #boss-cutscene-text { animation: choice-in 0.4s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+            @media (prefers-reduced-motion: reduce) { #boss-entry, #boss-entry * { animation-duration: 0.01s !important; transition-duration: 0.01s !important; } }
+
             /* Boss intro cutscene overlay (blocks all input while active). */
             #boss-cutscene-overlay {
                 position: fixed;
@@ -1341,7 +1383,30 @@
                 background: rgba(2, 6, 23, 0.86); border: 2px solid var(--accent); box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
                 animation: shop-fade-in 0.4s ease-out;
             }
-            #event-title { color: var(--accent); font-size: 12px; letter-spacing: 2px; margin-bottom: 10px; }
+            #event-title { color: var(--accent); font-size: 12px; letter-spacing: 2px; margin-bottom: 10px; animation: event-title-in 0.6s cubic-bezier(0.2, 1, 0.3, 1) both 0.3s; }
+            @keyframes event-title-in { from { opacity: 0; transform: translateX(40px); letter-spacing: 10px; } }
+            /* Camera pushes in from black, then drifts slowly while the event is open. */
+            #elev-bg.event-enter { animation: event-push 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both, event-drift 14s ease-in-out 1.4s infinite alternate; }
+            @keyframes event-push { from { transform: scale(1.35); filter: brightness(0) blur(3px); } to { transform: scale(1.04); filter: none; } }
+            @keyframes event-drift { from { transform: scale(1.04); } to { transform: scale(1.09) translateX(-1.5%); } }
+            .option-card.choice-in { animation: choice-in 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both; animation-delay: var(--dl, 0s); }
+            @keyframes choice-in { from { opacity: 0; transform: translateY(30px) scale(0.9); } }
+            /* Ambient motion on the event art, laid out in the art's own 448x144 coordinates (see eventFx). */
+            #event-fx { position: absolute; pointer-events: none; }
+            #event-fx i { position: absolute; display: block; animation-delay: var(--dl, 0s); }
+            #event-fx .fx-blink { animation: fx-blink var(--d, 1s) steps(2) infinite var(--dl, 0s); }
+            #event-fx .fx-rise { border-radius: 50%; filter: blur(2px); animation: fx-rise var(--d, 2.4s) ease-out infinite var(--dl, 0s); }
+            #event-fx .fx-fall { animation: fx-fall var(--d, 1.4s) ease-in infinite var(--dl, 0s); }
+            #event-fx .fx-drift { border-radius: 50%; animation: fx-drift var(--d, 5s) ease-in-out infinite alternate var(--dl, 0s); }
+            #event-fx .fx-scan { animation: fx-scan var(--d, 3s) linear infinite var(--dl, 0s); opacity: 0.5; }
+            #event-fx .fx-flicker { animation: fx-flicker var(--d, 4s) steps(1) infinite var(--dl, 0s); }
+            @keyframes fx-blink { 50% { opacity: 0.1; } }
+            @keyframes fx-rise { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 25% { opacity: 0.7; } 100% { transform: translateY(calc(var(--dist) * -1)) scale(1.8); opacity: 0; } }
+            @keyframes fx-fall { 0% { transform: translateY(0); opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(var(--dist)); opacity: 0; } }
+            @keyframes fx-drift { from { transform: translate(0, 0); opacity: 0.2; } to { transform: translate(var(--dx), var(--dy)); opacity: 0.8; } }
+            @keyframes fx-scan { from { transform: translateY(0); } to { transform: translateY(var(--dist)); } }
+            @keyframes fx-flicker { 0%, 100% { opacity: 0; } 8% { opacity: 1; } 10% { opacity: 0; } 12% { opacity: 1; } 15% { opacity: 0; } 60% { opacity: 0.9; } 61% { opacity: 0; } }
+            @media (prefers-reduced-motion: reduce) { #elev-bg.event-enter, #event-fx i, .option-card.choice-in, #event-title { animation: none !important; } }
             #event-text { color: #e2e8f0; font-size: 9px; line-height: 1.8; text-transform: none; }
 
             #options-header {
@@ -1733,23 +1798,37 @@
             }
             @media (prefers-reduced-motion: reduce) { #boss-victory .bv-spark { display: none; } #boss-victory .bv-title span { animation-duration: 0.01s; } }
 
-            /* Intro: plays on the first visit (and from the title's INTRO button). Hold anywhere to skip. */
+            /* Intro: plays when a new run starts (and from the title's INTRO button). Hold anywhere to skip. */
             #intro {
                 position: fixed; inset: 0; z-index: 10950; background: #000; overflow: hidden;
                 font-family: var(--font-main); color: #e2e8f0; user-select: none; -webkit-user-select: none; touch-action: none;
-                transition: opacity 0.8s ease;
+                transition: opacity 0.8s ease; animation: bv-in 0.5s ease-out;
             }
             #intro.intro-done { opacity: 0; pointer-events: none; }
-            #intro .intro-hall {
-                position: absolute; inset: 0; background: url('assets/maps/general/elevator/ElevOption.png') center / cover no-repeat;
-                image-rendering: pixelated; opacity: 0; transition: opacity 1.2s ease, transform 5s cubic-bezier(0.5, 0, 0.8, 1);
+            /* The scene keeps the art's 448x144 shape, so things placed on it in % land on the drawn props. */
+            #intro .intro-stage {
+                position: absolute; left: 50%; top: 50%; height: 100%; aspect-ratio: 448 / 144; min-width: 100%; transform: translate(-50%, -50%);
+                background: center / 100% 100% no-repeat; image-rendering: pixelated; opacity: 0; transition: opacity 0.9s ease;
             }
-            #intro .intro-player {
-                position: absolute; bottom: 9%; left: -20%; height: 34%; image-rendering: pixelated;
-                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); transition: left 2.6s linear, opacity 0.6s;
+            #intro .intro-stage > * { position: absolute; }
+            #intro .intro-wisp {
+                left: 50%; top: 48%; width: 3.6%; aspect-ratio: 1; margin: -1.8% 0 0 -1.8%; border-radius: 50%; opacity: 0;
+                background: radial-gradient(circle, #fff 0 22%, #a5f3fc 45%, rgba(103, 232, 249, 0) 70%);
+                filter: drop-shadow(0 0 10px #67e8f9);
+                transition: left 2.2s ease-in-out, top 2.2s ease-in-out, opacity 0.6s, width 0.6s, margin 0.6s;
+                animation: intro-bob 1.1s ease-in-out infinite alternate;
             }
-            #intro .intro-player.walking { animation: elev-idle 0.4s ease-in-out infinite; }
+            #intro .intro-wisp.gone { width: 0; margin: 0; opacity: 0; }
+            #intro .intro-tv { left: 73.66%; top: 48.61%; width: 5.8%; image-rendering: pixelated; }
+            #intro .intro-tv.on { animation: intro-tv-on 0.12s steps(2) 8; }
+            #intro .intro-deny { left: 61%; top: 40%; width: 2.7%; aspect-ratio: 1; border-radius: 50%; background: #ef4444; opacity: 0; filter: blur(4px); }
+            #intro .intro-deny.on { animation: intro-alarm 0.25s steps(2) 6; }
+            #intro .intro-body { left: 76.5%; bottom: 23%; height: 34%; transform: translateX(-50%); image-rendering: pixelated; opacity: 0;
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); }
+            #intro .intro-alarm { position: absolute; inset: 0; z-index: 4; background: rgba(239, 68, 68, 0.35); opacity: 0; pointer-events: none; }
+            #intro.alarm .intro-alarm { animation: intro-alarm 0.6s steps(2) infinite; }
             #intro .intro-car { position: absolute; inset: 0; background: #0b0f1a; opacity: 0; transition: opacity 0.6s; }
+            #intro .intro-rider { position: absolute; left: 50%; bottom: 8%; height: 40%; transform: translateX(-50%); image-rendering: pixelated; }
             #intro .intro-indicator {
                 position: absolute; top: 7%; left: 50%; transform: translateX(-50%); min-width: 5ch; padding: 10px 16px; text-align: center;
                 background: #120404; border: 3px solid #3f3f46; color: #ef4444; font-size: clamp(18px, 5vh, 34px); text-shadow: 0 0 12px #ef4444;
@@ -1763,7 +1842,7 @@
             #intro .intro-door.r { right: 0; transform: translateX(100%); }
             #intro.doors-shut .intro-door { transform: none; }
             #intro .intro-caption {
-                position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); z-index: 5;
+                position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); z-index: 5;
                 width: min(680px, calc(100% - 32px)); text-align: center; line-height: 1.9;
                 font-size: clamp(9px, 2.4vh, 14px); text-shadow: 2px 2px 0 #000, 0 0 10px #000;
             }
@@ -1778,12 +1857,15 @@
             #intro .intro-flash.go { animation: bv-flash 0.7s ease-out; }
             #intro.glitch { animation: shake-rumble 0.15s linear infinite, intro-glitch 0.3s steps(2) infinite; }
             @keyframes intro-glitch { 0% { filter: none; } 50% { filter: hue-rotate(90deg) saturate(3) contrast(1.4); } }
+            @keyframes intro-bob { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
+            @keyframes intro-tv-on { 0% { filter: none; } 50% { filter: brightness(2.2) drop-shadow(0 0 10px #4ade80); } }
+            @keyframes intro-alarm { 0% { opacity: 0.9; } 50% { opacity: 0; } }
             #intro .intro-skip {
                 position: absolute; right: 16px; bottom: 16px; z-index: 8; font-size: 8px; opacity: 0.75; text-align: right;
             }
             #intro .intro-skip i { display: block; height: 4px; margin-top: 6px; background: #334155; }
             #intro .intro-skip b { display: block; height: 100%; width: 0; background: var(--accent); }
-            @media (prefers-reduced-motion: reduce) { #intro.glitch { animation: none; } }
+            @media (prefers-reduced-motion: reduce) { #intro.glitch, #intro .intro-wisp { animation: none; } }
 
             #death-screen {
                     position: fixed;
@@ -2747,7 +2829,7 @@
             <div class="menu-bg" aria-hidden="true"></div>
             <div class="menu-build build-version-text"></div>
             <div class="menu-box">
-                <div class="menu-kicker">AFTER HOURS &middot; ENDLESS FLOORS</div>
+                <div class="menu-kicker">ESCAPE THE FACILITY &middot; ENDLESS FLOORS</div>
                 <h1>Elevator<br>Anomaly</h1>
                 <div class="menu-actions">
                     <div id="continue-row" style="display:none;">
@@ -3190,6 +3272,31 @@ const SoundManager = (() => {
             setTimeout(() => { playNoise(1.4, 0.35, 120, 900, 'lowpass'); playTone(70, 1.4, 0.25, 'sawtooth'); }, 250);
         },
         playDing() { playTone(1318, 0.5, 0.35, 'sine'); setTimeout(() => playTone(1046, 0.7, 0.35, 'sine'), 180); },
+        // You hit something: a short crunchy impact (pitch varies a little so multi-hits don't drone).
+        playDealDamage() {
+            const p = 0.85 + Math.random() * 0.3;
+            playNoise(0.09, 0.7, 2400 * p, 300, 'bandpass');
+            playTone(170 * p, 0.07, 0.6, 'square');
+        },
+        // You get hit: a heavy thud plus a burst of TV static (the player's head is an old TV).
+        playHurt() {
+            playTone(95, 0.22, 0.9, 'sine');
+            playTone(60, 0.18, 0.5, 'sawtooth');
+            playNoise(0.18, 0.55, 500, 90, 'lowpass');
+            setTimeout(() => playNoise(0.14, 0.3, 3500, 6000, 'highpass'), 40);
+        },
+        // Boss reveal boom.
+        playBoom() {
+            playTone(55, 0.9, 1, 'sine');
+            playNoise(0.8, 0.7, 900, 60, 'lowpass');
+        },
+        // Two-tone alarm, `times` cycles.
+        playKlaxon(times = 3) {
+            for (let i = 0; i < times; i++) {
+                setTimeout(() => playTone(660, 0.22, 0.4, 'sawtooth'), i * 520);
+                setTimeout(() => playTone(440, 0.22, 0.4, 'sawtooth'), i * 520 + 260);
+            }
+        },
         // Fast movement (attack lunge)
         playWhoosh() { playNoise(0.22, 0.45, 600, 2600); },
         // Jump (block)
@@ -3324,29 +3431,37 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ============================================================================
-// INTRO - a short motion-graphic scene before the title: the late office, the elevator, floors that do
-// not stop at 30. Plays once on the first visit, again from the title's INTRO button. Hold to skip.
+// INTRO - the story, played when a new run starts (and from the title's INTRO button). Hold to skip.
+// A ghost gets out of its containment tube in an underground lab, but the facility's doors only open for
+// things with a body. It takes over an old TV, which gives it a body the system can see, and the system
+// sends its machines after it. The only way out is up.
 // ============================================================================
 const Intro = {
-    key: 'elevator:intro_seen',
     HOLD_MS: 900,
     el: null,
+    // Resolves when the intro ends or is skipped.
     play() {
-        if (this.el) return;
-        try { localStorage.setItem(this.key, '1'); } catch (_) {}
+        if (this.el) return this.done;
+        this.done = new Promise((resolve) => { this.resolveDone = resolve; });
         const el = this.el = document.createElement('div');
         el.id = 'intro';
         el.innerHTML = `
-            <div class="intro-hall"></div>
-            <img class="intro-player" src="assets/player.png" alt="">
-            <div class="intro-car"><div class="intro-indicator">1</div><div class="intro-door l"></div><div class="intro-door r"></div></div>
+            <div class="intro-stage">
+                <img class="intro-tv" src="assets/maps/intro/tv.png" alt="" style="display:none">
+                <div class="intro-deny"></div>
+                <div class="intro-wisp"></div>
+                <img class="intro-body" src="assets/player.png" alt="">
+            </div>
+            <div class="intro-alarm"></div>
+            <div class="intro-car"><img class="intro-rider" src="assets/player.png" alt=""><div class="intro-indicator">B???</div><div class="intro-door l"></div><div class="intro-door r"></div></div>
             <div class="intro-caption"></div>
-            <div class="intro-title"><h1>ELEVATOR<br>ANOMALY</h1><div>HOW HIGH CAN YOU GO?</div></div>
+            <div class="intro-title"><h1>ELEVATOR<br>ANOMALY</h1><div>ESCAPE THE FACILITY</div></div>
             <div class="intro-flash"></div>
             <div class="intro-skip">HOLD TO SKIP<i><b></b></i></div>`;
         document.body.appendChild(el);
         this.bindSkip();
         this.run().catch(() => {}).then(() => this.finish());
+        return this.done;
     },
     // Sleeps that end at once when the intro is skipped (the run() chain then stops).
     wait(ms) {
@@ -3361,63 +3476,98 @@ const Intro = {
         cap.textContent = '';
         for (const ch of text) {
             cap.textContent += ch;
-            if (ch !== ' ') await this.wait(38);
+            if (ch !== ' ') await this.wait(34);
         }
         await this.wait(hold);
     },
     async run() {
         const $ = (sel) => this.el.querySelector(sel);
-        await this.wait(600);
-        await this.say('23:47. OFFICE TOWER, FLOOR 1.');
-        await this.say('EVERYONE ELSE WENT HOME HOURS AGO.');
+        const stage = $('.intro-stage'), wisp = $('.intro-wisp'), cap = $('.intro-caption');
+        const scene = async (name) => {
+            stage.style.opacity = '0';
+            await this.wait(900);
+            stage.style.backgroundImage = `url('assets/maps/intro/${name}.png')`;
+            stage.style.opacity = '1';
+        };
+        await this.wait(500);
+        await this.say('SUBLEVEL ???. CONTAINMENT LAB 7.', 1000);
+        await this.say('SPECIMEN 0: STATUS UNKNOWN.', 1000);
 
-        // The hallway fades in and the player walks up to the elevators.
-        $('.intro-hall').style.opacity = '1';
-        const player = $('.intro-player');
-        player.classList.add('walking');
-        player.style.left = '42%';
-        SoundManager.playWalk(2.6);
-        await this.say('YOU STAYED LATE AGAIN. ONE LAST RIDE DOWN TO THE LOBBY.', 900);
-        player.classList.remove('walking');
-        $('.intro-hall').style.transform = 'scale(2.6)';
-        player.style.opacity = '0';
+        // The lab: the specimen is already out of its tube.
+        await scene('lab');
+        SoundManager.playHit();
+        wisp.style.opacity = '1';
+        await this.say('THE TUBE COULD NOT HOLD YOU. YOU ARE A GHOST, AFTER ALL.');
+        wisp.style.left = '115%';
         await this.wait(1400);
 
-        // Inside the car: the doors shut.
+        // The security door will not open for something without a body.
+        wisp.style.transition = 'none';
+        wisp.style.left = '-10%';
+        await scene('gate');
+        $('.intro-tv').style.display = '';
+        void wisp.offsetWidth;
+        wisp.style.transition = '';
+        wisp.style.left = '58%';
+        wisp.style.top = '44%';
+        await this.wait(2300);
+        $('.intro-deny').classList.add('on');
+        SoundManager.playOverheat();
+        await this.say('SCANNER: NO BODY DETECTED. ACCESS DENIED.', 1000);
+        await this.say('THE FACILITY ONLY OPENS ITS DOORS FOR THINGS THAT ARE PHYSICALLY THERE.');
+
+        // So it takes one: the old TV.
+        wisp.style.left = '76.5%';
+        wisp.style.top = '56%';
+        await this.say('SO YOU FIND YOURSELF A BODY.', 600);
+        wisp.classList.add('gone');
+        $('.intro-tv').classList.add('on');
+        SoundManager.playWhoosh();
+        await this.wait(1000);
+        $('.intro-flash').classList.add('go');
+        $('.intro-tv').style.display = 'none';
+        $('.intro-body').style.opacity = '1';
+        SoundManager.playJump();
+        await this.say('AN OLD TV WILL DO.', 1200);
+
+        // Now the system can see it.
+        this.el.classList.add('alarm', 'glitch');
+        SoundManager.playOverheat();
+        setTimeout(() => SoundManager.playOverheat(), 600);
+        await this.say('INTRUDER DETECTED. DEPLOYING SECURITY UNITS.', 900);
+        this.el.classList.remove('glitch');
+        await this.say('A BODY THE SYSTEM CAN SEE. IT SENDS ITS MACHINES AFTER YOU.');
+        this.el.classList.remove('alarm');
+
+        // The elevator: up is the only way out.
+        cap.textContent = '';
+        $('.intro-flash').classList.remove('go');
+        stage.style.opacity = '0';
         $('.intro-car').style.opacity = '1';
-        await this.wait(500);
+        await this.wait(700);
         this.el.classList.add('doors-shut');
         SoundManager.playDing();
-        await this.say('THE DOORS CLOSE. YOU PRESS L.', 900);
-
-        // The indicator climbs instead.
-        const ind = $('.intro-indicator');
+        await this.wait(900);
         SoundManager.playElevator();
-        $('.intro-caption').textContent = '';
-        for (let f = 2; f <= 30; f++) {
-            ind.textContent = f;
-            await this.wait(Math.max(45, 230 - f * 9));
-        }
-        await this.say('THE ELEVATOR GOES UP.', 700);
+        await this.say('THE ONLY WAY OUT IS UP.', 600);
+        const ind = $('.intro-indicator');
         this.el.classList.add('glitch');
-        for (const f of ['31', '47', '88', '404', '???', '??']) {
-            ind.textContent = f;
-            SoundManager.playHit();
-            await this.wait(260);
+        for (let i = 0; i < 10; i++) {
+            ind.textContent = 'B' + (10 + Math.floor(Math.random() * 990));
+            await this.wait(140);
         }
-        await this.say('THERE IS NO FLOOR 31.', 500);
-        await this.say('IT DOES NOT STOP.', 700);
+        ind.textContent = 'B???';
         this.el.classList.remove('glitch');
+        await this.say('NOBODY KNOWS HOW DEEP THIS PLACE GOES.', 900);
 
-        // Title slam.
-        $('.intro-caption').textContent = '';
+        // Title.
+        cap.textContent = '';
         $('.intro-car').style.opacity = '0';
-        $('.intro-hall').style.opacity = '0.25';
         $('.intro-flash').classList.add('go');
         $('.intro-title').classList.add('show');
         SoundManager.playWhoosh();
         SoundManager.playDing();
-        await this.wait(3200);
+        await this.wait(3000);
     },
     bindSkip() {
         const bar = this.el.querySelector('.intro-skip b');
@@ -3452,13 +3602,9 @@ const Intro = {
         document.removeEventListener('keyup', this.onKeyUp);
         el.classList.add('intro-done');
         setTimeout(() => el.remove(), 800);
+        this.resolveDone();
     },
 };
-document.addEventListener('DOMContentLoaded', () => {
-    let seen = false;
-    try { seen = localStorage.getItem(Intro.key) === '1'; } catch (_) {}
-    if (!seen) Intro.play();
-});
 
 // Wire small UI and restore state on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -4385,6 +4531,9 @@ function renderBestiary() {
 // VISUAL EFFECTS - Transitions, animations, popups
 // ============================================================================
 function showPop(containerId, text, color) {
+    if (/^-[1-9]\d*(?!\d)(?! (HEAT|CREDITS|CARDS|DMG))/.test(text)) {
+        if (containerId === 'p-pop-anchor') SoundManager.playHurt(); else SoundManager.playDealDamage();
+    }
     // Route enemy popups to the currently active enemy slot in multi-enemy rooms.
     if (containerId === 'e-pop-anchor' && activeEnemyIndex === 1) {
         containerId = 'e2-pop-anchor';
@@ -4813,6 +4962,37 @@ function openCasinoRoom() {
     };
 }
 
+// Boss entrance (~4s): warning bands and a klaxon, the boss rises as a silhouette, a flash and a boom reveal it.
+async function playBossEntrance(enemyName) {
+    const name = (enemyName || 'BOSS').toUpperCase();
+    const el = document.createElement('div');
+    el.id = 'boss-entry';
+    const ticker = ' WARNING // HOSTILE SECURITY UNIT // '.repeat(8);
+    const sprite = DOM.get('e-shape')?.getAttribute('src');
+    el.innerHTML = `
+        <div class="be-band top"><span>${ticker}</span></div>
+        <div class="be-band bottom"><span>${ticker}</span></div>
+        ${sprite ? `<img class="be-sprite" src="${sprite}" alt="">` : ''}
+        <div class="be-name">${[...name].map((ch, i) => `<span style="animation-delay:${i * 0.05}s">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('')}</div>
+        <div class="be-sub">FLOOR ${state.room} &middot; SECURITY BOSS</div>
+        <div class="be-flash"></div>`;
+    document.body.appendChild(el);
+    const viewport = document.querySelector('.viewport');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    SoundManager.playKlaxon(3);
+    viewport?.classList.add('anim-shake');
+    await wait(300);
+    el.classList.add('rise');
+    await wait(1300);
+    viewport?.classList.remove('anim-shake');
+    el.classList.add('reveal');
+    SoundManager.playBoom();
+    await wait(2200);
+    el.classList.add('be-out');
+    await wait(400);
+    el.remove();
+}
+
 // Short non-interactive boss intro cutscene.
 async function playBossIntroCutscene(enemyName) {
     const overlay = DOM.get('boss-cutscene-overlay');
@@ -4837,16 +5017,22 @@ async function playBossIntroCutscene(enemyName) {
     const endBtn = DOM.get('btn-end-turn');
     if (endBtn) endBtn.disabled = true;
 
-    overlay.style.display = 'flex';
-    speaker.textContent = `${(enemyName || 'BOSS').toUpperCase()}:`;
-    text.textContent = bossLine;
-    await new Promise(r => setTimeout(r, 3000));
+    await playBossEntrance(enemyName);
 
-    speaker.textContent = 'PLAYER:';
-    text.textContent = playerLine;
-    await new Promise(r => setTimeout(r, 3000));
+    const say = async (who, line) => {
+        speaker.textContent = who;
+        overlay.classList.remove('be-talk');
+        void overlay.offsetWidth;
+        overlay.classList.add('be-talk');
+        await typeText(text, line, 22);
+        await new Promise(r => setTimeout(r, 1800));
+    };
+    overlay.style.display = 'flex';
+    await say(`${(enemyName || 'BOSS').toUpperCase()}:`, bossLine);
+    await say('PLAYER:', playerLine);
 
     overlay.style.display = 'none';
+    overlay.classList.remove('be-talk');
     isAnimating = false;
     Music.unduck('cutscene');
     if (hand) hand.style.pointerEvents = 'auto';
@@ -5781,6 +5967,7 @@ async function initRun(enableDebug = false, triggerBtn = null, options = {}) {
     try { SoundManager.unlock(); } catch (_) {}
     
     await new Promise(r => setTimeout(r, 500));
+    if (!options.resume && !tutorialMode) await Intro.play();
     menuScreen.style.opacity = '0';
     // A fresh run that replaces an unfinished one counts as abandoned in the history.
     const unfinished = !options.resume && !tutorialMode ? RunSave.read() : null;
@@ -7709,7 +7896,6 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                     dmg -= absorbed;
                 }
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
-                if (dmg > 0) SoundManager.playHit();
                 showPop(pick === 1 ? 'e2-pop-anchor' : 'e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 await new Promise(r => setTimeout(r, 70));
             }
@@ -7759,7 +7945,6 @@ async function resolveCardPlay(cardElement, forcedTargetIndex = null) {
                 currentEnemy.hp = Math.max(0, currentEnemy.hp - dmg);
                 totalDealtToTarget += dmg;
                 totalAttackDamage += dmg;
-                if (dmg > 0) SoundManager.playHit();
                 showPop('e-pop-anchor', `-${dmg}`, 'var(--hp)');
                 await new Promise(r => setTimeout(r, 70));
             }
@@ -10075,6 +10260,7 @@ function generateElevators() {
     Profile.reachedRoom(state.room);
     RunSave.write();
     DOM.hide('event-panel');
+    clearEventFx();
     const header = DOM.get('options-header');
     if (header) header.innerText = 'SELECT NEXT FLOOR';
     // Every 10th floor is a boss floor.
@@ -10388,7 +10574,6 @@ function openRelicRewardFloor() {
 // ============================================================================
 function eventHurt(amount) {
     state.hp = Math.max(1, state.hp - amount); // events never kill
-    SoundManager.playHit();
     showPop('p-pop-anchor', `-${amount} HP`, 'var(--hp)');
 }
 function eventHeal(amount) {
@@ -10538,15 +10723,89 @@ const STORY_EVENTS = [
     },
 ];
 
+// Ambient motion per event background, in the art's pixel coordinates (448x144):
+// [class, x, y, w, h, color, extra CSS custom properties].
+const EVENT_FX = {
+    server_room: () => [
+        ...Array.from({ length: 16 }, (_, i) => ['fx-blink', 156 + (i % 6) * 46 + (i % 2) * 3, 38 + ((i * 13) % 9) * 7, 1, 1,
+            ['#22c55e', '#38bdf8', '#ef4444', '#facc15'][i % 4], { '--d': `${0.4 + (i % 5) * 0.23}s`, '--dl': `${(i % 7) * 0.17}s` }]),
+        ['fx-scan', 148, 30, 280, 1, '#38bdf8', { '--d': '3.2s', '--dist': '1000%' }],
+        ['fx-blink', 87, 74, 2, 1, '#ecfeff', { '--d': '0.9s' }],
+    ],
+    break_room: () => [
+        ...Array.from({ length: 4 }, (_, i) => ['fx-rise', 344 + (i % 2) * 3, 46, 4, 4, 'rgba(231, 229, 228, 0.8)', { '--d': '2.6s', '--dl': `${i * 0.65}s`, '--dist': '500%' }]),
+        ['fx-flicker', 265, 64, 4, 6, '#bae6fd', { '--d': '3.5s' }],
+        ['fx-blink', 341, 60, 1, 1, '#ef4444', { '--d': '1.2s' }],
+    ],
+    maintenance: () => [
+        ...Array.from({ length: 6 }, (_, i) => ['fx-fall', 201 + (i % 3) * 2, 24, 1, 1, i % 2 ? '#fde047' : '#fb923c', { '--d': `${0.7 + (i % 3) * 0.25}s`, '--dl': `${i * 0.31}s`, '--dist': '7000%' }]),
+        ...Array.from({ length: 3 }, (_, i) => ['fx-fall', 262 + i * 70, 40, 1, 2, '#7dd3fc', { '--d': '1.6s', '--dl': `${i * 0.5}s`, '--dist': '3000%' }]),
+        ['fx-flicker', 330, 3, 70, 4, '#fef3c7', { '--d': '5s' }],
+    ],
+    archive: () => [
+        ...Array.from({ length: 12 }, (_, i) => ['fx-drift', 345 + ((i * 7) % 40), 20 + ((i * 17) % 80), 1, 1, '#fef9c3',
+            { '--d': `${4 + (i % 4)}s`, '--dl': `${-i * 0.7}s`, '--dx': `${(i % 2 ? 1 : -1) * 6}px`, '--dy': '-10px' }]),
+        ['fx-flicker', 54, 3, 70, 4, '#fef9c3', { '--d': '6s' }],
+        ['fx-blink', 102, 80, 1, 1, '#22c55e', { '--d': '1.4s' }],
+    ],
+    glitch: () => [
+        ...Array.from({ length: 10 }, (_, i) => ['fx-flicker', (i * 47) % 420, (i * 29) % 130, 8 + (i * 13) % 30, 1, i % 2 ? '#22d3ee' : '#f0abfc',
+            { '--d': `${1.5 + (i % 4) * 0.6}s`, '--dl': `${-i * 0.37}s` }]),
+        ['fx-blink', 223, 54, 1, 1, '#ef4444', { '--d': '2.4s' }],
+        ['fx-blink', 227, 54, 1, 1, '#ef4444', { '--d': '2.4s' }],
+        ['fx-flicker', 350, 28, 21, 3, '#fca5a5', { '--d': '2s' }],
+    ],
+};
+// Lays the effects over the art exactly where background-size: cover puts it.
+function showEventFx(bg) {
+    const elevBg = DOM.get('elev-bg');
+    DOM.get('event-fx')?.remove();
+    const W = elevBg.clientWidth, H = elevBg.clientHeight;
+    const w = Math.max(W, (H * 448) / 144), h = Math.max(H, (W * 144) / 448);
+    const layer = document.createElement('div');
+    layer.id = 'event-fx';
+    layer.style.cssText = `left:${(W - w) / 2}px;top:${(H - h) / 2}px;width:${w}px;height:${h}px`;
+    (EVENT_FX[bg]?.() || []).forEach(([cls, x, y, pw, ph, color, vars]) => {
+        const el = document.createElement('i');
+        el.className = cls;
+        el.style.cssText = `left:${(x / 448) * 100}%;top:${(y / 144) * 100}%;width:${(pw / 448) * 100}%;height:${(ph / 144) * 100}%;background:${color}`;
+        Object.entries(vars || {}).forEach(([k, v]) => el.style.setProperty(k, v));
+        layer.appendChild(el);
+    });
+    elevBg.appendChild(layer);
+}
+function clearEventFx() {
+    DOM.get('event-fx')?.remove();
+    DOM.get('elev-bg')?.classList.remove('event-enter');
+}
+// Types text into an element; a newer call on the same element stops an older one.
+async function typeText(el, text, msPerChar = 14) {
+    const token = (el.typeToken = (el.typeToken || 0) + 1);
+    el.textContent = '';
+    for (const ch of text) {
+        if (el.typeToken !== token) return;
+        el.textContent += ch;
+        if (ch !== ' ') await new Promise((r) => setTimeout(r, msPerChar));
+    }
+}
+
 function openEventFloor() {
     Daily.reseed(`event-${state.room}`);
     const ev = randomOf(STORY_EVENTS);
     const elevBg = DOM.get('elev-bg');
-    if (elevBg) elevBg.style.backgroundImage = `url('assets/maps/events/${ev.bg}.png')`;
+    if (elevBg) {
+        elevBg.style.backgroundImage = `url('assets/maps/events/${ev.bg}.png')`;
+        elevBg.classList.remove('event-enter');
+        void elevBg.offsetWidth;
+        elevBg.classList.add('event-enter');
+        showEventFx(ev.bg);
+    }
+    SoundManager.playWhoosh();
     const panel = DOM.get('event-panel');
     DOM.setText('event-title', ev.title);
-    DOM.setText('event-text', ev.text);
+    DOM.setText('event-text', '');
     panel.style.display = 'block';
+    setTimeout(() => typeText(DOM.get('event-text'), ev.text), 700);
     const header = DOM.get('options-header');
     if (header) {
         header.innerText = 'WHAT DO YOU DO?';
@@ -10558,14 +10817,16 @@ function openEventFloor() {
     ev.choices.forEach((choice) => {
         const card = document.createElement('div');
         const ok = !choice.can || choice.can();
-        card.className = 'option-card ' + (ok ? 'shop-card' : 'blocked-card');
+        card.className = 'option-card choice-in ' + (ok ? 'shop-card' : 'blocked-card');
+        card.style.setProperty('--dl', `${0.9 + optCont.children.length * 0.15}s`);
         card.innerHTML = `<div class="opt-label">${choice.label}</div><div class="opt-desc">${choice.desc}</div>`;
         if (ok) card.onclick = async () => {
             const msg = await choice.run();
             if (msg === false) return;
             updateUI();
-            DOM.setText('event-text', msg);
+            typeText(DOM.get('event-text'), msg);
             exitRestSiteWithAnimation(() => {
+                clearEventFx();
                 if (elevBg) elevBg.style.backgroundImage = "url('assets/maps/general/elevator/ElevOption.png')";
                 generateElevators();
             });

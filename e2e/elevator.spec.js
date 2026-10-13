@@ -26,30 +26,32 @@ const sticksOut = (page) =>
     return out;
   });
 
-// The intro plays once on a first visit; these tests start as a returning player (one test below covers it).
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => { if (!sessionStorage.getItem('intro-test')) localStorage.setItem('elevator:intro_seen', '1'); });
-});
-
-test('the intro plays on a first visit, holding skips it, and it does not come back', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('intro-test', '1'));
-  await page.goto('/elevator/');
-  await page.evaluate(() => localStorage.removeItem('elevator:intro_seen'));
-  await page.reload();
+// A new run opens with the intro; holding anywhere skips it.
+async function startRun(page) {
+  await page.getByRole('button', { name: 'Play Normally' }).tap();
   const intro = page.locator('#intro');
   await expect(intro).toBeVisible();
   await page.mouse.move(300, 200);
   await page.mouse.down();
   await expect(intro).toHaveCount(0, { timeout: 5_000 });
   await page.mouse.up();
+}
+
+test('a new run starts with the intro, holding skips it, and Continue does not replay it', async ({ page }) => {
+  await page.goto('/elevator/');
+  await expect(page.locator('#intro')).toHaveCount(0); // not on the title screen
+  await startRun(page);
+  await page.locator('#deck-grid > *').first().tap(); // starter mod
+  await expect(page.locator('#floor-options .option-card:not(.blocked-card)').first()).toBeVisible();
   await page.reload();
-  await page.waitForTimeout(500);
-  await expect(intro).toHaveCount(0);
+  await page.getByRole('button', { name: 'Continue' }).tap();
+  await page.waitForTimeout(1200);
+  await expect(page.locator('#intro')).toHaveCount(0);
 });
 
 test('a run fits the screen: nothing sticks out, End Turn and MANIFEST are on screen', async ({ page }) => {
   await page.goto('/elevator/');
-  await page.getByRole('button', { name: 'Play Normally' }).tap();
+  await startRun(page);
   await page.locator('#deck-grid > *').first().tap(); // starter mod
   const door = page.locator('#floor-options .option-card:not(.blocked-card)').first();
   await expect(door).toBeVisible();
@@ -91,7 +93,7 @@ test('works offline under /elevator/ after the first visit, font included', asyn
 
   await server.close();
   await page.reload();
-  await page.getByRole('button', { name: 'Play Normally' }).tap();
+  await startRun(page);
   await page.locator('#deck-grid > *').first().tap();
   await expect(page.locator('#floor-options .option-card').first()).toBeVisible();
   expect(await page.evaluate(() => document.fonts.check('12px "Press Start 2P"'))).toBe(true);
