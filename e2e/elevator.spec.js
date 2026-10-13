@@ -26,6 +26,27 @@ const sticksOut = (page) =>
     return out;
   });
 
+// The intro plays once on a first visit; these tests start as a returning player (one test below covers it).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { if (!sessionStorage.getItem('intro-test')) localStorage.setItem('elevator:intro_seen', '1'); });
+});
+
+test('the intro plays on a first visit, holding skips it, and it does not come back', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('intro-test', '1'));
+  await page.goto('/elevator/');
+  await page.evaluate(() => localStorage.removeItem('elevator:intro_seen'));
+  await page.reload();
+  const intro = page.locator('#intro');
+  await expect(intro).toBeVisible();
+  await page.mouse.move(300, 200);
+  await page.mouse.down();
+  await expect(intro).toHaveCount(0, { timeout: 5_000 });
+  await page.mouse.up();
+  await page.reload();
+  await page.waitForTimeout(500);
+  await expect(intro).toHaveCount(0);
+});
+
 test('a run fits the screen: nothing sticks out, End Turn and MANIFEST are on screen', async ({ page }) => {
   await page.goto('/elevator/');
   await page.getByRole('button', { name: 'Play Normally' }).tap();

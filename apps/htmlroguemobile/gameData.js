@@ -1348,7 +1348,7 @@ const ENEMY_ROSTER = {
 
 // ============================================================================
 // FLOOR MAP - Defines enemy tier pool per floor.
-// 30 floors total, every 10th floor is always boss.
+// One 30-floor cycle, every 10th floor is always boss. Floors past 30 repeat the cycle (see floorPool).
 // ============================================================================
 const FLOOR_MAP = (() => {
     const map = {};
@@ -1406,12 +1406,23 @@ const PLAYER_STATS = {
 // GAME MECHANICS - Core rules and balance
 // ============================================================================
 const GAME_CONFIG = {
-    totalRooms: 30,             // 30 total floors
-    winConditionRoom: 31,       // Room number that triggers the win screen
+    cycleRooms: 30,             // floors keep going; the enemy pools repeat every 30 floors
+    // Enemy HP / damage / block multiplier per floor: a gentle climb through the first cycle, steeper after.
+    scalePerFloor: 0.01,
+    scalePerFloorEndless: 0.06,
     overheatDamage: 10,         // Damage taken when exceeding heat threshold
     overheatThreshold: 100,     // Heat limit before damage
     heatReduction: 10,          // Heat lost per turn
 };
+
+// Enemy pool for any floor, endless: floor 31 plays like floor 1, and so on (only stronger, see enemyScale).
+function floorPool(floor) {
+    return FLOOR_MAP[((Math.max(1, floor) - 1) % GAME_CONFIG.cycleRooms) + 1].pool;
+}
+function enemyScale(floor) {
+    const f = Math.max(1, Number(floor) || 1), cycle = GAME_CONFIG.cycleRooms;
+    return 1 + GAME_CONFIG.scalePerFloor * (Math.min(f, cycle) - 1) + GAME_CONFIG.scalePerFloorEndless * Math.max(0, f - cycle);
+}
 
 // ============================================================================
 // SHOPKEEPER + BOSS DIALOGUE

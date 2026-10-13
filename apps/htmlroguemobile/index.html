@@ -1333,6 +1333,17 @@
                 gap: 0;
             }
 
+            /* Story event floors: the scene's text sits in a box over the event background. */
+            #event-panel {
+                /* Right of the player, who stands at 20% from the left. */
+                position: absolute; z-index: 6; right: 64px; top: calc(var(--top-nav-height) + 12px); /* clear of the mod badges */
+                width: min(560px, 60%); box-sizing: border-box; padding: 14px 18px;
+                background: rgba(2, 6, 23, 0.86); border: 2px solid var(--accent); box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+                animation: shop-fade-in 0.4s ease-out;
+            }
+            #event-title { color: var(--accent); font-size: 12px; letter-spacing: 2px; margin-bottom: 10px; }
+            #event-text { color: #e2e8f0; font-size: 9px; line-height: 1.8; text-transform: none; }
+
             #options-header {
                 font-size: 11px;
                 font-weight: bold;
@@ -1697,6 +1708,82 @@
                     line-height: 1.25;
                     z-index: 5000;
                 }
+
+            /* Boss defeated: flash, title drops in letter by letter, particles burst from the middle. */
+            #boss-victory {
+                position: fixed; inset: 0; z-index: 12005; pointer-events: none;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+                background: radial-gradient(circle, rgba(250, 204, 21, 0.25) 0%, rgba(0, 0, 0, 0.75) 70%);
+                animation: bv-in 0.25s ease-out, bv-out 0.5s ease-in 3.5s forwards;
+                font-family: var(--font-main); text-align: center; overflow: hidden;
+            }
+            #boss-victory::before { content: ''; position: absolute; inset: 0; background: #fff; animation: bv-flash 0.6s ease-out forwards; }
+            #boss-victory .bv-title { font-size: clamp(22px, 6vw, 44px); color: #facc15; text-shadow: 0 0 18px #facc15, 4px 4px 0 #000; letter-spacing: 4px; }
+            #boss-victory .bv-title span { display: inline-block; opacity: 0; animation: bv-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+            #boss-victory .bv-sub { font-size: clamp(8px, 2vw, 12px); color: #fff; text-shadow: 2px 2px 0 #000; opacity: 0; animation: bv-in 0.4s ease-out 1.2s forwards; line-height: 1.8; padding: 0 16px; }
+            #boss-victory .bv-spark { position: absolute; left: 50%; top: 50%; width: 32px; height: 32px; margin: -16px; image-rendering: pixelated;
+                animation: bv-burst 1.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; }
+            @keyframes bv-in { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes bv-out { to { opacity: 0; } }
+            @keyframes bv-flash { from { opacity: 0.9; } to { opacity: 0; } }
+            @keyframes bv-drop { 0% { opacity: 0; transform: translateY(-80px) scale(2); } 100% { opacity: 1; transform: none; } }
+            @keyframes bv-burst {
+                0% { transform: translate(0, 0) scale(0.4) rotate(0); opacity: 1; }
+                100% { transform: translate(var(--dx), var(--dy)) scale(1.2) rotate(var(--rot)); opacity: 0; }
+            }
+            @media (prefers-reduced-motion: reduce) { #boss-victory .bv-spark { display: none; } #boss-victory .bv-title span { animation-duration: 0.01s; } }
+
+            /* Intro: plays on the first visit (and from the title's INTRO button). Hold anywhere to skip. */
+            #intro {
+                position: fixed; inset: 0; z-index: 10950; background: #000; overflow: hidden;
+                font-family: var(--font-main); color: #e2e8f0; user-select: none; -webkit-user-select: none; touch-action: none;
+                transition: opacity 0.8s ease;
+            }
+            #intro.intro-done { opacity: 0; pointer-events: none; }
+            #intro .intro-hall {
+                position: absolute; inset: 0; background: url('assets/maps/general/elevator/ElevOption.png') center / cover no-repeat;
+                image-rendering: pixelated; opacity: 0; transition: opacity 1.2s ease, transform 5s cubic-bezier(0.5, 0, 0.8, 1);
+            }
+            #intro .intro-player {
+                position: absolute; bottom: 9%; left: -20%; height: 34%; image-rendering: pixelated;
+                filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7)); transition: left 2.6s linear, opacity 0.6s;
+            }
+            #intro .intro-player.walking { animation: elev-idle 0.4s ease-in-out infinite; }
+            #intro .intro-car { position: absolute; inset: 0; background: #0b0f1a; opacity: 0; transition: opacity 0.6s; }
+            #intro .intro-indicator {
+                position: absolute; top: 7%; left: 50%; transform: translateX(-50%); min-width: 5ch; padding: 10px 16px; text-align: center;
+                background: #120404; border: 3px solid #3f3f46; color: #ef4444; font-size: clamp(18px, 5vh, 34px); text-shadow: 0 0 12px #ef4444;
+            }
+            #intro .intro-door {
+                position: absolute; top: 24%; bottom: 0; width: 50%;
+                background: linear-gradient(90deg, #52525b, #71717a 40%, #52525b); border: 3px solid #27272a; box-sizing: border-box;
+                transition: transform 1.1s cubic-bezier(0.5, 0, 0.3, 1);
+            }
+            #intro .intro-door.l { left: 0; transform: translateX(-100%); }
+            #intro .intro-door.r { right: 0; transform: translateX(100%); }
+            #intro.doors-shut .intro-door { transform: none; }
+            #intro .intro-caption {
+                position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%); z-index: 5;
+                width: min(680px, calc(100% - 32px)); text-align: center; line-height: 1.9;
+                font-size: clamp(9px, 2.4vh, 14px); text-shadow: 2px 2px 0 #000, 0 0 10px #000;
+            }
+            #intro .intro-title {
+                position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+                opacity: 0; transform: scale(1.6); transition: opacity 0.25s, transform 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+            }
+            #intro .intro-title.show { opacity: 1; transform: none; }
+            #intro .intro-title h1 { margin: 0; text-align: center; font-size: clamp(26px, 9vh, 64px); line-height: 1.2; color: var(--accent); text-shadow: 0 0 24px var(--accent), 5px 5px 0 #000; }
+            #intro .intro-title div { font-size: clamp(8px, 2vh, 12px); letter-spacing: 3px; }
+            #intro .intro-flash { position: absolute; inset: 0; z-index: 7; background: #fff; opacity: 0; pointer-events: none; }
+            #intro .intro-flash.go { animation: bv-flash 0.7s ease-out; }
+            #intro.glitch { animation: shake-rumble 0.15s linear infinite, intro-glitch 0.3s steps(2) infinite; }
+            @keyframes intro-glitch { 0% { filter: none; } 50% { filter: hue-rotate(90deg) saturate(3) contrast(1.4); } }
+            #intro .intro-skip {
+                position: absolute; right: 16px; bottom: 16px; z-index: 8; font-size: 8px; opacity: 0.75; text-align: right;
+            }
+            #intro .intro-skip i { display: block; height: 4px; margin-top: 6px; background: #334155; }
+            #intro .intro-skip b { display: block; height: 100%; width: 0; background: var(--accent); }
+            @media (prefers-reduced-motion: reduce) { #intro.glitch { animation: none; } }
 
             #death-screen {
                     position: fixed;
@@ -2140,62 +2227,6 @@
             .fx-light #global-crt-overlay { animation: none; }
 
             /* ============================================================
-               WIN SCREEN - Mirrors death screen styling but green
-               ============================================================ */
-            #win-screen {
-                display: none;
-                position: fixed;
-                top: 0; left: 0; width: 100vw; height: 100dvh;
-                background: #000;
-                z-index: 12000;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                gap: 40px;
-            }
-
-            #win-crt-overlay {
-                position: absolute;
-                top: 0; left: 0; width: 100%; height: 100%;
-                background: repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 1px,
-                    transparent 1px, transparent 3px
-                );
-                pointer-events: none;
-            }
-
-            #win-text {
-                font-family: var(--font-main);
-                font-size: 36px;
-                color: #22c55e;
-                text-shadow: 0 0 20px #22c55e, 0 0 40px #22c55e;
-                animation: win-pulse 1.5s ease-in-out infinite;
-                position: relative;
-                z-index: 2;
-                letter-spacing: 4px;
-            }
-
-            @keyframes win-pulse {
-                0%, 100% { opacity: 1; text-shadow: 0 0 20px #22c55e; }
-                50%       { opacity: 0.85; text-shadow: 0 0 50px #22c55e; }
-            }
-
-            #win-continue-btn {
-                font-family: var(--font-main);
-                font-size: 12px;
-                padding: 15px 30px;
-                background: #22c55e;
-                color: #000;
-                border: 2px solid #22c55e;
-                cursor: pointer;
-                border-radius: 4px;
-                position: relative;
-                z-index: 2;
-                animation: btn-hover-pulse 1.5s ease-in-out infinite;
-            }
-
-            /* ============================================================
                ENEMY NAME LABEL - Appears above the intent bubble
                ============================================================ */
             #e-name-label, #e2-name-label {
@@ -2599,6 +2630,9 @@
 
                 /* Elevator / rest site doors */
                 #options-header { font-size: 9px; margin-bottom: 4px; }
+                #event-panel { top: calc(var(--top-nav-height) + 6px); padding: 8px 12px; }
+                #event-title { font-size: 9px; margin-bottom: 6px; }
+                #event-text { font-size: 7px; line-height: 1.7; }
                 #floor-options { gap: 10px; }
                 .option-card { width: 124px; height: 92px; padding: 6px; gap: 3px; font-size: 7px; }
                 .option-card img { width: 28px !important; height: 28px !important; }
@@ -2631,7 +2665,6 @@
                 #casino-reel { min-height: 48px; margin-bottom: 8px; }
                 #casino-reward-visual { min-height: 0; }
                 #death-text { font-size: 24px; }
-                #win-text { font-size: 20px; }
                 #tutorial-box { padding: 10px; }
                 #tutorial-text { font-size: 8px; line-height: 1.5; }
             }
@@ -2646,7 +2679,7 @@
     
     <div class="top-nav" id="ui-nav" style="display:none;">
     <div class="nav-arrow">▼</div>
-    <span>ROOM: <span id="ui-room">0</span> / 30</span>
+    <span>ROOM: <span id="ui-room">0</span></span>
     <span>TURN: <span id="ui-turn" style="color:#94a3b8">0</span></span>
     <span>HULL: <span id="ui-hp-nav" style="color:var(--hp)">50</span></span>
     <span>HEAT: <span id="ui-heat" style="color:var(--heat)">0%</span></span> 
@@ -2714,7 +2747,7 @@
             <div class="menu-bg" aria-hidden="true"></div>
             <div class="menu-build build-version-text"></div>
             <div class="menu-box">
-                <div class="menu-kicker">AFTER HOURS &middot; 30 FLOORS</div>
+                <div class="menu-kicker">AFTER HOURS &middot; ENDLESS FLOORS</div>
                 <h1>Elevator<br>Anomaly</h1>
                 <div class="menu-actions">
                     <div id="continue-row" style="display:none;">
@@ -2728,6 +2761,7 @@
                 <div class="menu-secondary">
                     <button class="btn-menu-init btn-menu-small" id="title-stats-btn" onclick="openStats()">Stats</button>
                     <button class="btn-menu-init btn-menu-small" id="title-settings-btn" onclick="openSettings()">Settings</button>
+                    <button class="btn-menu-init btn-menu-small" id="title-intro-btn" onclick="Intro.play()">Intro</button>
                     <!-- Debug boot toggle: starts run with all debug controls enabled. -->
                     <button class="btn-menu-init btn-menu-small" id="init-debug-btn" onclick="initRun(true, this)">Cheats</button>
                     <button class="btn-menu-init btn-menu-small" id="exit-hub-btn" onclick="location.href = '../'">Exit</button>
@@ -2738,6 +2772,7 @@
         <div id="screen-nav" class="screen" style="position:relative; overflow:hidden;">
             <div id="elev-bg" style="position:absolute;top:0;left:0;width:100%;height:100%;background-image:url('assets/maps/general/elevator/ElevOption.png');background-size:cover;background-position:center;z-index:1;">
                 </div>
+            <div id="event-panel" style="display:none;"><div id="event-title"></div><div id="event-text"></div></div>
             <img id="elev-player" src="assets/player.png" style="position:absolute;bottom:10%;left:-120px;width:120px;height:auto;z-index:5;image-rendering:pixelated;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.7));opacity:0;" />
         </div>
 
@@ -2921,17 +2956,6 @@
     </div>
 </div>
 
-<!-- ============================================================
-     WIN SCREEN - Shown after defeating the Floor 10 elite enemy
-     ============================================================ -->
-<div id="win-screen">
-    <div id="win-crt-overlay"></div>
-    <div id="win-text"></div>
-    <button id="win-continue-btn" onclick="location.reload()" style="display:none;">
-        PLAY AGAIN
-    </button>
-</div>
-
 <div id="screen-blackout"></div>
 <div id="room-reveal-overlay"><div id="room-reveal-label"></div></div>
 <div id="boss-cutscene-overlay">
@@ -3080,6 +3104,35 @@ const SoundManager = (() => {
         }
     }
 
+    // Filtered white noise for steps, whooshes and the elevator hum. freq glides to freqTo over the sound.
+    let noiseBuffer;
+    function playNoise(duration, relVolume = 0.5, freq = 1000, freqTo = freq, type = 'bandpass') {
+        try {
+            const ctx = getAudioContext(), t = ctx.currentTime;
+            if (!noiseBuffer) {
+                noiseBuffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+            }
+            const src = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), gain = ctx.createGain();
+            src.buffer = noiseBuffer;
+            src.loop = true;
+            filter.type = type;
+            filter.frequency.setValueAtTime(freq, t);
+            filter.frequency.exponentialRampToValueAtTime(Math.max(20, freqTo), t + duration);
+            gain.gain.setValueAtTime(relVolume, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+            src.connect(filter).connect(gain).connect(masterGain || ctx.destination);
+            src.start(t);
+            src.stop(t + duration + 0.02);
+        } catch (_) {}
+    }
+
+    // A short tune: [frequency, start, length] in seconds.
+    function playNotes(notes, relVolume = 0.5, type = 'triangle') {
+        notes.forEach(([f, at, len]) => setTimeout(() => playTone(f, len, relVolume, type), at * 1000));
+    }
+
     function setVolume(v) {
         masterVolume = Math.max(0, Math.min(1, Number(v) || 0));
         try { localStorage.setItem('elevator:sfx_volume', String(masterVolume)); } catch (_) {}
@@ -3123,6 +3176,33 @@ const SoundManager = (() => {
         playCredits() { playTone(800, 0.05, 0.6, 'sine'); setTimeout(() => playTone(600, 0.05, 0.6, 'sine'), 60); },
         // Victory/treasure - bright tones
         playVictory() { playTone(523, 0.12, 0.7, 'sine'); setTimeout(() => playTone(659, 0.12, 0.7, 'sine'), 140); setTimeout(() => playTone(784, 0.2, 0.7, 'sine'), 280); },
+        // Button press - short tick
+        playClick() { playTone(1100, 0.03, 0.35, 'square'); },
+        // One footstep
+        playStep() { playNoise(0.06, 0.5, 260, 120, 'lowpass'); },
+        // Footsteps for a walk of about `seconds`
+        playWalk(seconds = 0.9) {
+            for (let t = 0; t < seconds; t += 0.22) setTimeout(() => this.playStep(), t * 1000);
+        },
+        // Elevator: a ding, then a rising hum
+        playElevator() {
+            this.playDing();
+            setTimeout(() => { playNoise(1.4, 0.35, 120, 900, 'lowpass'); playTone(70, 1.4, 0.25, 'sawtooth'); }, 250);
+        },
+        playDing() { playTone(1318, 0.5, 0.35, 'sine'); setTimeout(() => playTone(1046, 0.7, 0.35, 'sine'), 180); },
+        // Fast movement (attack lunge)
+        playWhoosh() { playNoise(0.22, 0.45, 600, 2600); },
+        // Jump (block)
+        playJump() { playTone(300, 0.12, 0.4, 'square'); setTimeout(() => playTone(450, 0.1, 0.3, 'square'), 60); },
+        // Boss defeated: a short fanfare, about 3.5 seconds
+        playBossVictory() {
+            const C = 523.25, E = 659.25, G = 783.99, C2 = 1046.5, A = 880, F = 698.46, D = 587.33;
+            playNotes([[C, 0, 0.14], [E, 0.15, 0.14], [G, 0.3, 0.14], [C2, 0.45, 0.4],
+                [A, 0.95, 0.14], [C2, 1.1, 0.14], [F, 1.25, 0.3], [G, 1.6, 0.14], [D, 1.75, 0.14], [G, 1.9, 0.3],
+                [C2, 2.3, 1.2], [G, 2.3, 1.2], [E, 2.3, 1.2]], 0.45, 'square');
+            playNotes([[130.81, 0, 0.4], [174.61, 0.95, 0.4], [196, 1.6, 0.5], [130.81, 2.3, 1.3]], 0.6, 'triangle');
+            setTimeout(() => playNoise(1.2, 0.3, 4000, 8000, 'highpass'), 2300);
+        },
         // Relic/mod installed
         playRelic() { playTone(740, 0.1, 0.7, 'sine'); setTimeout(() => playTone(880, 0.1, 0.7, 'sine'), 120); setTimeout(() => playTone(1047, 0.15, 0.7, 'sine'), 240); },
     };
@@ -3133,8 +3213,16 @@ const SoundManager = (() => {
 // volume. Some moments turn it down while they last ("duck"): boss intros, tutorial tips, the ancient
 // relic offer, the settings and stats panels, and the end of a run. The quietest duck wins.
 // ============================================================================
+const MUSIC_TRACKS = {
+    menu: 'assets/music/Overtime_in_the_Labyrinth.mp3',
+    nav: 'assets/music/Held_Between_Floors.mp3',
+    shop: 'assets/music/The_Merchant_s_Three_Step.mp3',
+    battle: 'assets/music/Bone_Click_Waltz.mp3',
+    elite: 'assets/music/Wraith_in_the_Server_Core.mp3',
+    boss: 'assets/music/The_Last_Altar.mp3',
+};
 const Music = {
-    src: 'assets/Overtime_in_the_Labyrinth.mp3',
+    src: MUSIC_TRACKS.menu,
     key: 'elevator:music_volume',
     volume: (() => { try { const v = parseFloat(localStorage.getItem('elevator:music_volume')); return Number.isFinite(v) ? v : 0.5; } catch (_) { return 0.5; } })(),
     ducks: {}, // reason -> level 0..1
@@ -3145,6 +3233,10 @@ const Music = {
         if (this.el) return;
         this.el = new Audio(this.src);
         this.el.loop = true;
+        // A missing track file falls back to the menu theme instead of silence.
+        this.el.addEventListener('error', () => {
+            if (this.src !== MUSIC_TRACKS.menu) { this.src = MUSIC_TRACKS.menu; this.el.src = this.src; this.el.play().catch(() => {}); }
+        });
         try {
             const ctx = SoundManager.getContext();
             const gain = ctx.createGain();
@@ -3180,6 +3272,21 @@ const Music = {
         delete this.ducks[reason];
         this.apply(0.9);
     },
+    // Switch tracks: fade out, swap, fade in. Before the first tap it only remembers the choice.
+    play(src) {
+        if (src === this.src) return;
+        this.src = src;
+        if (!this.el) return;
+        clearTimeout(this.swapTimer);
+        this.ducks.swap = 0;
+        this.apply(0.3);
+        this.swapTimer = setTimeout(() => {
+            this.el.src = this.src;
+            if (!document.hidden) this.el.play().catch(() => {});
+            delete this.ducks.swap;
+            this.apply(0.8);
+        }, this.gain ? 350 : 0);
+    },
     setVolume(v) {
         this.volume = Math.max(0, Math.min(1, Number(v) || 0));
         try { localStorage.setItem(this.key, String(this.volume)); } catch (_) {}
@@ -3197,10 +3304,160 @@ function startSoundOnTap() {
     if (Music.el && !Music.el.paused) SOUND_START_EVENTS.forEach((t) => document.removeEventListener(t, startSoundOnTap, true));
 }
 SOUND_START_EVENTS.forEach((t) => document.addEventListener(t, startSoundOnTap, true));
+// Every button and floor/option card ticks when pressed.
+document.addEventListener('click', (e) => {
+    if (e.target.closest?.('button:not(:disabled), .option-card:not(.blocked-card)')) SoundManager.playClick();
+}, true);
+// Character movement sounds follow the CSS animations, so every place that moves the player gets them.
+const MOVE_SOUNDS = {
+    'elev-walk-in': () => SoundManager.playWalk(0.9),
+    'walk-off-right': () => SoundManager.playWalk(0.5),
+    'walk-off-up': () => SoundManager.playElevator(),
+    'attack-lunge-player': () => SoundManager.playWhoosh(),
+    'jump-block': () => SoundManager.playJump(),
+};
+document.addEventListener('animationstart', (e) => MOVE_SOUNDS[e.animationName]?.());
 // No music in the background (and no battery spent on it).
 document.addEventListener('visibilitychange', () => {
     if (!Music.el) return;
     if (document.hidden) Music.el.pause(); else Music.el.play().catch(() => {});
+});
+
+// ============================================================================
+// INTRO - a short motion-graphic scene before the title: the late office, the elevator, floors that do
+// not stop at 30. Plays once on the first visit, again from the title's INTRO button. Hold to skip.
+// ============================================================================
+const Intro = {
+    key: 'elevator:intro_seen',
+    HOLD_MS: 900,
+    el: null,
+    play() {
+        if (this.el) return;
+        try { localStorage.setItem(this.key, '1'); } catch (_) {}
+        const el = this.el = document.createElement('div');
+        el.id = 'intro';
+        el.innerHTML = `
+            <div class="intro-hall"></div>
+            <img class="intro-player" src="assets/player.png" alt="">
+            <div class="intro-car"><div class="intro-indicator">1</div><div class="intro-door l"></div><div class="intro-door r"></div></div>
+            <div class="intro-caption"></div>
+            <div class="intro-title"><h1>ELEVATOR<br>ANOMALY</h1><div>HOW HIGH CAN YOU GO?</div></div>
+            <div class="intro-flash"></div>
+            <div class="intro-skip">HOLD TO SKIP<i><b></b></i></div>`;
+        document.body.appendChild(el);
+        this.bindSkip();
+        this.run().catch(() => {}).then(() => this.finish());
+    },
+    // Sleeps that end at once when the intro is skipped (the run() chain then stops).
+    wait(ms) {
+        return new Promise((resolve, reject) => {
+            if (!this.el) return reject();
+            const t = setTimeout(() => (this.el ? resolve() : reject()), ms);
+            this.cancel = () => { clearTimeout(t); reject(); };
+        });
+    },
+    async say(text, hold = 1600) {
+        const cap = this.el.querySelector('.intro-caption');
+        cap.textContent = '';
+        for (const ch of text) {
+            cap.textContent += ch;
+            if (ch !== ' ') await this.wait(38);
+        }
+        await this.wait(hold);
+    },
+    async run() {
+        const $ = (sel) => this.el.querySelector(sel);
+        await this.wait(600);
+        await this.say('23:47. OFFICE TOWER, FLOOR 1.');
+        await this.say('EVERYONE ELSE WENT HOME HOURS AGO.');
+
+        // The hallway fades in and the player walks up to the elevators.
+        $('.intro-hall').style.opacity = '1';
+        const player = $('.intro-player');
+        player.classList.add('walking');
+        player.style.left = '42%';
+        SoundManager.playWalk(2.6);
+        await this.say('YOU STAYED LATE AGAIN. ONE LAST RIDE DOWN TO THE LOBBY.', 900);
+        player.classList.remove('walking');
+        $('.intro-hall').style.transform = 'scale(2.6)';
+        player.style.opacity = '0';
+        await this.wait(1400);
+
+        // Inside the car: the doors shut.
+        $('.intro-car').style.opacity = '1';
+        await this.wait(500);
+        this.el.classList.add('doors-shut');
+        SoundManager.playDing();
+        await this.say('THE DOORS CLOSE. YOU PRESS L.', 900);
+
+        // The indicator climbs instead.
+        const ind = $('.intro-indicator');
+        SoundManager.playElevator();
+        $('.intro-caption').textContent = '';
+        for (let f = 2; f <= 30; f++) {
+            ind.textContent = f;
+            await this.wait(Math.max(45, 230 - f * 9));
+        }
+        await this.say('THE ELEVATOR GOES UP.', 700);
+        this.el.classList.add('glitch');
+        for (const f of ['31', '47', '88', '404', '???', '??']) {
+            ind.textContent = f;
+            SoundManager.playHit();
+            await this.wait(260);
+        }
+        await this.say('THERE IS NO FLOOR 31.', 500);
+        await this.say('IT DOES NOT STOP.', 700);
+        this.el.classList.remove('glitch');
+
+        // Title slam.
+        $('.intro-caption').textContent = '';
+        $('.intro-car').style.opacity = '0';
+        $('.intro-hall').style.opacity = '0.25';
+        $('.intro-flash').classList.add('go');
+        $('.intro-title').classList.add('show');
+        SoundManager.playWhoosh();
+        SoundManager.playDing();
+        await this.wait(3200);
+    },
+    bindSkip() {
+        const bar = this.el.querySelector('.intro-skip b');
+        let timer = null, start = 0;
+        const press = (e) => {
+            if (timer || e.repeat) return;
+            start = performance.now();
+            timer = setInterval(() => {
+                const p = Math.min(1, (performance.now() - start) / this.HOLD_MS);
+                bar.style.width = p * 100 + '%';
+                if (p >= 1) this.finish();
+            }, 30);
+        };
+        const release = () => { clearInterval(timer); timer = null; bar.style.width = '0'; };
+        this.el.addEventListener('pointerdown', press);
+        this.el.addEventListener('pointerup', release);
+        this.el.addEventListener('pointercancel', release);
+        this.el.addEventListener('pointerleave', release);
+        this.onKeyDown = (e) => press(e);
+        this.onKeyUp = release;
+        document.addEventListener('keydown', this.onKeyDown);
+        document.addEventListener('keyup', this.onKeyUp);
+        this.release = release;
+    },
+    finish() {
+        const el = this.el;
+        if (!el) return;
+        this.el = null;
+        this.cancel?.();
+        this.release();
+        document.removeEventListener('keydown', this.onKeyDown);
+        document.removeEventListener('keyup', this.onKeyUp);
+        el.classList.add('intro-done');
+        setTimeout(() => el.remove(), 800);
+    },
+};
+document.addEventListener('DOMContentLoaded', () => {
+    let seen = false;
+    try { seen = localStorage.getItem(Intro.key) === '1'; } catch (_) {}
+    if (!seen) Intro.play();
 });
 
 // Wire small UI and restore state on DOM ready
@@ -4162,6 +4419,12 @@ function showHeatLossEffect() {
 function showScreen(id) {
     DOM.queryAll('.screen').forEach(s => s.classList.remove('active'));
     DOM.get(id).classList.add('active');
+    const type = state.currentRoomType;
+    Music.play(MUSIC_TRACKS[{
+        'screen-nav': 'nav',
+        'screen-shop': 'shop',
+        'screen-battle': type === 'boss' ? 'boss' : type === 'elite' ? 'elite' : 'battle',
+    }[id] || 'menu']);
 }
 
 function screenFlash(callback) {
@@ -5491,8 +5754,6 @@ const TutorialManager = {
         if (tut) tut.style.display = 'none';
         const death = DOM.get('death-screen');
         if (death) death.style.display = 'none';
-        const win = DOM.get('win-screen');
-        if (win) win.style.display = 'none';
         closeAllOverlays();
         const ids = ['init-btn', 'init-debug-btn', 'init-tutorial-btn'];
         ids.forEach((id) => {
@@ -5995,19 +6256,21 @@ const EnemyAI = {
     createEnemyState(rosterKey) {
         const template = ENEMY_ROSTER[rosterKey];
         if (!template) return null;
+        // Enemies get stronger every floor, without end.
+        const scale = enemyScale(state.room), scaled = (v) => Math.round((v || 0) * scale);
         const enemyState = {
             rosterKey,
             name:           template.name,
             tier:           template.tier,
             colorIndex:     template.colorIndex || 0,
             shapeIndex:     template.shapeIndex || 0,
-            hp:             template.hp,
-            maxHp:          template.hp,
+            hp:             scaled(template.hp),
+            maxHp:          scaled(template.hp),
             block:          template.startBlock || 0,
             intent:         0,
-            attackDmg:      template.attackDmg || 0,
-            baseAttackDmg:  template.attackDmg || 0,
-            blockGain:      template.blockGain  || 0,
+            attackDmg:      scaled(template.attackDmg),
+            baseAttackDmg:  scaled(template.attackDmg),
+            blockGain:      scaled(template.blockGain),
             intentPattern:  template.intentPattern,
             cycle:          template.cycle ? [...template.cycle] : [],
             cycleIndex:     0,
@@ -6619,11 +6882,8 @@ const EnemyAI = {
         if (state.tutorial?.active) {
             return state.tutorial.enemyKey || 'SPARK_DRONE';
         }
-        const floorEntry = FLOOR_MAP[floor];
-        if (!floorEntry) return 'SPARK_DRONE'; // fallback
-
-        const pool = roomType === 'elite' ? 'elite' : (roomType === 'boss' ? 'boss' : floorEntry.pool);
-        if (pool === 'boss' && Number(floor) === 30 && ENEMY_ROSTER.FINAL_ORCHESTRATOR) {
+        const pool = roomType === 'elite' ? 'elite' : (roomType === 'boss' ? 'boss' : floorPool(floor));
+        if (pool === 'boss' && Number(floor) % GAME_CONFIG.cycleRooms === 0 && ENEMY_ROSTER.FINAL_ORCHESTRATOR) {
             return 'FINAL_ORCHESTRATOR';
         }
         const allKeys = Object.keys(ENEMY_ROSTER);
@@ -8346,9 +8606,12 @@ function showCardPicker(count, limit) {
                         w.style.height = rect.height + "px";
                         w.style.zIndex = "20000";
 
-                        // Step 1: fly up.
+                        // Step 1: fly to the middle of the screen (a fixed 300px up overshot short phone screens).
+                        const locked = w.getBoundingClientRect();
+                        const dx = window.innerWidth / 2 - (locked.left + locked.width / 2);
+                        const dy = window.innerHeight / 2 - (locked.top + locked.height / 2);
                         w.style.transition = "transform 0.5s ease-out";
-                        w.style.transform = "translateY(-300px)";
+                        w.style.transform = `translate(${dx}px, ${dy}px)`;
 
                         // Step 2: explode after a short hold.
                         setTimeout(() => {
@@ -8449,7 +8712,8 @@ async function handleEnemyDeath() {
     await new Promise(r => setTimeout(r, 280));
 
     // Centralized reward + transition block (works even if shape is missing).
-    const finishVictoryTransition = () => {
+    const finishVictoryTransition = async () => {
+        if (state.currentRoomType === 'boss') await playBossVictory();
         // Calculate credits based on room type
         let creditsEarned = 10;
         if (state.currentRoomType === 'enemy_coin') creditsEarned = 60;
@@ -8476,16 +8740,10 @@ async function handleEnemyDeath() {
             // it stays hidden during the card picker / reward screen.
             // startRoom() restores it when the next fight begins.
 
-            // Every boss-clear (except final win) rotates to a fresh battle map.
-            if (state.currentRoomType === 'boss' && state.room < GAME_CONFIG.totalRooms) {
+            // Every boss-clear rotates to a fresh battle map.
+            if (state.currentRoomType === 'boss') {
                 rotateBattleBackdrop(true);
                 rotateWindowBackdrop(true);
-            }
-
-            // ---- WIN CONDITION: final floor cleared ----
-            if (state.room >= GAME_CONFIG.totalRooms) {
-                triggerWin();
-                return;
             }
 
             // Check if room rewards a card
@@ -8662,6 +8920,37 @@ async function endTurn() {
     isAnimating = false;
 }
 
+// Boss defeated: fanfare + title card (~4s) before the rewards. Every 30th floor is a cleared system core,
+// which counts as a win in the stats (the run keeps going).
+async function playBossVictory() {
+    const coreCleared = state.room % GAME_CONFIG.cycleRooms === 0;
+    if (coreCleared) Profile.update((s) => { s.wins++; });
+    Music.duck('victory', 0);
+    SoundManager.playBossVictory();
+    const el = document.createElement('div');
+    el.id = 'boss-victory';
+    const title = coreCleared ? 'CORE CLEARED' : 'BOSS DEFEATED';
+    el.innerHTML = `<div class="bv-title">${[...title].map((ch, i) => `<span style="animation-delay:${0.2 + i * 0.06}s">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('')}</div>
+        <div class="bv-sub">${coreCleared ? `FLOOR ${state.room}. THE ELEVATOR KEEPS GOING UP.` : `FLOOR ${state.room} CLEARED`}</div>`;
+    const fx = ['star', 'coin', 'bolt', 'burst'];
+    for (let i = 0; i < 28; i++) {
+        const spark = document.createElement('img');
+        const angle = (i / 28) * Math.PI * 2, dist = 160 + Math.random() * 260;
+        spark.className = 'bv-spark';
+        spark.src = `assets/fx/${fx[i % fx.length]}.png`;
+        spark.alt = '';
+        spark.style.cssText = `--dx:${Math.cos(angle) * dist}px;--dy:${Math.sin(angle) * dist}px;--rot:${Math.random() * 720 - 360}deg;animation-delay:${0.1 + Math.random() * 0.3}s`;
+        el.appendChild(spark);
+    }
+    document.body.appendChild(el);
+    const viewport = document.querySelector('.viewport');
+    viewport?.classList.add('anim-shake');
+    setTimeout(() => viewport?.classList.remove('anim-shake'), 500);
+    await new Promise((r) => setTimeout(r, 4000));
+    el.remove();
+    Music.unduck('victory');
+}
+
 // ============================================================================
 // DEATH SCREEN & GAME OVER
 // ============================================================================
@@ -8709,36 +8998,6 @@ function triggerGameOver() {
     }, 1000);
 }
 
-// ============================================================================
-// WIN SCREEN - Triggered after defeating the final floor (10) enemy
-// ============================================================================
-function triggerWin() {
-    RunSave.clear();
-    Profile.runEnded('win');
-    Music.duck('end', 0.35);
-    const winScreen = DOM.get('win-screen');
-    const winText = DOM.get('win-text');
-    const winBtn = DOM.get('win-continue-btn');
-    const fullMessage = "YOU WIN!";
-
-    winScreen.style.display = 'flex';
-    winText.innerText = "";
-
-    setTimeout(() => {
-        let i = 0;
-        const typer = setInterval(() => {
-            winText.textContent += fullMessage[i];
-            i++;
-            if (i >= fullMessage.length) {
-                clearInterval(typer);
-                // Show the continue button after the text finishes
-                setTimeout(() => {
-                    winBtn.style.display = 'block';
-                }, 800);
-            }
-        }, 150);
-    }, 800);
-}
 
 
 
@@ -9815,10 +10074,11 @@ function generateElevators() {
     Daily.reseed(`doors-${state.room}`);
     Profile.reachedRoom(state.room);
     RunSave.write();
+    DOM.hide('event-panel');
     const header = DOM.get('options-header');
     if (header) header.innerText = 'SELECT NEXT FLOOR';
     // Every 10th floor is a boss floor.
-    if (state.room > 0 && state.room < GAME_CONFIG.totalRooms && state.room % 10 === 9) {
+    if (state.room > 0 && state.room % 10 === 9) {
         const optCont = DOM.get('floor-options');
         optCont.innerHTML = '';
         optCont.style.display = 'flex';
@@ -9881,7 +10141,8 @@ function generateElevators() {
         rest: 0.20,  // was 0.25 (slightly rarer)
         ancient: 0.70,
         // Easy-to-find tweakable for casino room frequency.
-        casino: 0.35
+        casino: 0.35,
+        event: 0.45,
     };
     if (!isFirstFloorSelection) {
         if (ModManager.getEffectValue('ancient_kill_maxhp_no_shop') <= 0 && shopCount < 2 && Math.random() < ELEVATOR_ROOM_CHANCE.shop) pool.push('shop');
@@ -9889,6 +10150,7 @@ function generateElevators() {
         if (Math.random() < ELEVATOR_ROOM_CHANCE.rest) pool.push('rest');
         if (Math.random() < ELEVATOR_ROOM_CHANCE.casino) pool.push('casino');
         if (!hasAncientMod() && Math.random() < ELEVATOR_ROOM_CHANCE.ancient) pool.push('ancient');
+        if (Math.random() < ELEVATOR_ROOM_CHANCE.event) pool.push('event');
     }
 
     const meta = {
@@ -9899,6 +10161,7 @@ function generateElevators() {
         shop:       { icon: '<img src="assets/misc/shop.gif" alt="SHOP" style="width:48px;height:48px;image-rendering:pixelated;">', label: 'Shop', desc: 'Buy upgrades & programs', cls: 'shop-card' },
         casino:     { icon: '<img src="assets/misc/casino.gif" alt="SHOP" style="width:48px;height:48px;image-rendering:pixelated;">', label: 'Casino', desc: 'Spin for 50 credits', cls: 'shop-card' },
         ancient:    { icon: '<img src="assets/misc/ancient.gif" alt="ANCIENT" style="width:48px;height:48px;image-rendering:pixelated;">', label: 'Ancient Room', desc: 'Push the button... or dont.', cls: 'elite-card' },
+        event:      { icon: '<img src="assets/misc/event.png" alt="EVENT" style="width:48px;height:48px;image-rendering:pixelated;">', label: 'Event', desc: 'Something is going on', cls: 'rest-card' },
         mystery:    { icon: '<img src="assets/misc/mystery.gif" alt="?" style="width:48px;height:48px;image-rendering:pixelated;">', label: 'Unknown', desc: 'No one knows...', cls: '' },
     };
 
@@ -10119,6 +10382,198 @@ function openRelicRewardFloor() {
     optCont.appendChild(coinsCard);
 }
 
+// ============================================================================
+// STORY EVENT FLOORS - a short scene with 2-3 choices on its own background.
+// A choice's run() returns a message to show, or false to stay on the event (e.g. a cancelled card pick).
+// ============================================================================
+function eventHurt(amount) {
+    state.hp = Math.max(1, state.hp - amount); // events never kill
+    SoundManager.playHit();
+    showPop('p-pop-anchor', `-${amount} HP`, 'var(--hp)');
+}
+function eventHeal(amount) {
+    state.hp = Math.min(state.maxHp, state.hp + amount);
+    SoundManager.playHeal();
+}
+function eventAddCurse() {
+    const curse = getRandomCurseCard();
+    if (curse) state.deck.push(curse);
+    return curse ? ` Cursed: ${curse.name}.` : '';
+}
+const eventUnownedMods = () => getStandardModPool().filter((m) => !state.mods.includes(m.name));
+const eventUpgradable = () => state.deck.filter((c) => upgradeOptions(c).length > 0);
+const randomOf = (list) => list[Math.floor(Math.random() * list.length)];
+async function eventDeleteCard(title, cards = state.deck) {
+    const pick = await openCardChoiceOverlay(title, cards);
+    if (!pick) return null;
+    state.deck.splice(state.deck.indexOf(pick), 1);
+    return pick;
+}
+const leaveChoice = (label = 'LEAVE', desc = 'Walk away.') => ({ label, desc, run: () => 'You move on.' });
+
+const STORY_EVENTS = [
+    {
+        title: 'MAINTENANCE BOT', bg: 'maintenance',
+        text: 'A squat maintenance bot blocks the hallway, sweeping up stray code. "MANIFEST BLOATED. I CAN DEFRAGMENT IT. PAYMENT: SOME OF YOUR HULL."',
+        choices: [
+            { label: 'DEFRAGMENT', desc: 'Lose 20 HP. Delete a program.', can: () => state.hp > 20 && state.deck.length > 1,
+                run: async () => { const c = await eventDeleteCard('DELETE A PROGRAM (COSTS 20 HP)'); if (!c) return false; eventHurt(20); return `${c.name} deleted.`; } },
+            leaveChoice('DECLINE', 'Keep your hull.'),
+        ],
+    },
+    {
+        title: 'VENDING MACHINE', bg: 'break_room',
+        text: 'A vending machine hums in the empty break room. Every slot reads SOLD OUT except one: a single can of COOLANT COLA.',
+        choices: [
+            { label: 'BUY IT', desc: 'Pay 30 credits. Heal 20 HP.', can: () => state.gold >= 30,
+                run: () => { spendCredits(30); eventHeal(20); return 'Ice cold. +20 HP.'; } },
+            { label: 'KICK IT', desc: 'Half the time +40 credits, otherwise lose 10 HP.',
+                run: () => {
+                    if (Math.random() < 0.5) return `Coins spill out. +${addCredits(40)} credits.`;
+                    eventHurt(10);
+                    return 'The machine kicks back.';
+                } },
+            leaveChoice(),
+        ],
+    },
+    {
+        title: 'ABANDONED TERMINAL', bg: 'server_room',
+        text: 'A terminal is still logged in. Whoever used it left in a hurry. A download bar blinks: PROGRAM READY. A second window offers to OPTIMIZE.',
+        choices: [
+            { label: 'DOWNLOAD', desc: 'Gain a rare program. Gain a curse.',
+                run: () => {
+                    const prog = ProgramLibrary.randomFromPool('ELITE_REWARD', 1)[0];
+                    if (prog) state.deck.push({ ...prog });
+                    return `Downloaded ${prog?.name || 'nothing'}.${eventAddCurse()}`;
+                } },
+            { label: 'OPTIMIZE', desc: 'Lose 10 HP. Upgrade a random program.', can: () => state.hp > 10 && eventUpgradable().length > 0,
+                run: () => {
+                    const card = randomOf(eventUpgradable()), opt = randomOf(upgradeOptions(card));
+                    applyUpgradeOption(card, opt);
+                    eventHurt(10);
+                    return `${card.name}: ${opt.label(opt.delta)}.`;
+                } },
+            leaveChoice('LOG OUT', 'Leave it alone.'),
+        ],
+    },
+    {
+        title: 'THE COFFEE MACHINE', bg: 'break_room',
+        text: 'The coffee machine gurgles. It has been brewing the same pot since 1998. It smells like burnt circuits, and also like courage.',
+        choices: [
+            { label: 'DRINK IT', desc: 'Lose 6 HP. +8 max HP.', can: () => state.hp > 6,
+                run: () => { eventHurt(6); grantPermanentMaxHp(8); return 'Horrible. You feel sturdier. +8 max HP.'; } },
+            { label: 'POUR IT OUT', desc: 'Into your vents. Heal 15 HP.', run: () => { eventHeal(15); return 'Warm. Soothing. +15 HP.'; } },
+            leaveChoice(),
+        ],
+    },
+    {
+        title: 'LOST AND FOUND', bg: 'archive',
+        text: 'A cardboard box marked LOST & FOUND. Inside: a briefcase that ticks, and a keycard with no name on it.',
+        choices: [
+            { label: 'BRIEFCASE', desc: '+75 credits. Gain a curse.',
+                run: () => `+${addCredits(75)} credits.${eventAddCurse()}` },
+            { label: 'KEYCARD', desc: 'Lose 15 HP. Gain a random mod.', can: () => state.hp > 15 && eventUnownedMods().length > 0,
+                run: () => {
+                    const mod = randomOf(eventUnownedMods());
+                    eventHurt(15);
+                    state.mods.push(mod.name);
+                    ModManager.applyModEffect(mod);
+                    SoundManager.playRelic();
+                    renderBattleModHud();
+                    renderModShelf();
+                    return `The keycard opens a locker: ${mod.name}.`;
+                } },
+            leaveChoice(),
+        ],
+    },
+    {
+        title: 'THE LATE REFLECTION', bg: 'glitch',
+        text: 'A mirror in the hallway shows your reflection half a second late. It holds up a copy of one of your programs and waits.',
+        choices: [
+            { label: 'TAKE COPY', desc: 'Lose 12 HP. Duplicate a program.', can: () => state.hp > 12,
+                run: async () => {
+                    const pick = await openCardChoiceOverlay('DUPLICATE A PROGRAM (COSTS 12 HP)', state.deck);
+                    if (!pick) return false;
+                    state.deck.push(JSON.parse(JSON.stringify(pick)));
+                    eventHurt(12);
+                    return `${pick.name} copied.`;
+                } },
+            { label: 'TRADE PLACES', desc: 'Change a program into a random one.', can: () => state.deck.length > 1,
+                run: async () => {
+                    const old = await eventDeleteCard('PICK A PROGRAM TO CHANGE');
+                    if (!old) return false;
+                    const prog = ProgramLibrary.randomFromPool('COMMON_REWARD', 1)[0];
+                    if (prog) state.deck.push({ ...prog });
+                    return `${old.name} became ${prog?.name || 'nothing'}.`;
+                } },
+            leaveChoice('LOOK AWAY', 'Do not make eye contact.'),
+        ],
+    },
+    {
+        title: 'THE SHREDDER', bg: 'archive',
+        text: 'An industrial shredder sits alone in the archive, humming. A sticky note on it reads: FEED ME. I ONLY EAT BAD IDEAS.',
+        choices: [
+            { label: 'SHRED CURSE', desc: 'Lose 8 HP. Delete a curse.', can: () => state.hp > 8 && getOwnedCurseCount() > 0,
+                run: async () => {
+                    const c = await eventDeleteCard('SHRED A CURSE', state.deck.filter((card) => card.cursed));
+                    if (!c) return false;
+                    eventHurt(8);
+                    return `${c.name} shredded.`;
+                } },
+            { label: 'SHRED PROGRAM', desc: 'Pay 40 credits. Delete a program.', can: () => state.gold >= 40 && state.deck.length > 1,
+                run: async () => { const c = await eventDeleteCard('SHRED A PROGRAM (40 CREDITS)'); if (!c) return false; spendCredits(40); return `${c.name} shredded.`; } },
+            leaveChoice(),
+        ],
+    },
+    {
+        title: 'THE NIGHT JANITOR', bg: 'maintenance',
+        text: 'An old janitor mops the same tile over and over. "Long night, huh? Everybody who rides that thing ends up down here sooner or later. I can patch you up."',
+        choices: [
+            { label: 'GET PATCHED', desc: 'Pay 25 credits. Heal 30 HP.', can: () => state.gold >= 25,
+                run: () => { spendCredits(25); eventHeal(30); return '"There. Good as new. Mostly."'; } },
+            { label: 'HELP HIM MOP', desc: 'Heal 8 HP. +20 credits.',
+                run: () => { eventHeal(8); return `He pays you for your time. +${addCredits(20)} credits.`; } },
+            leaveChoice(),
+        ],
+    },
+];
+
+function openEventFloor() {
+    Daily.reseed(`event-${state.room}`);
+    const ev = randomOf(STORY_EVENTS);
+    const elevBg = DOM.get('elev-bg');
+    if (elevBg) elevBg.style.backgroundImage = `url('assets/maps/events/${ev.bg}.png')`;
+    const panel = DOM.get('event-panel');
+    DOM.setText('event-title', ev.title);
+    DOM.setText('event-text', ev.text);
+    panel.style.display = 'block';
+    const header = DOM.get('options-header');
+    if (header) {
+        header.innerText = 'WHAT DO YOU DO?';
+        DOM.show('options-header', 'block');
+    }
+    const optCont = DOM.get('floor-options');
+    optCont.innerHTML = '';
+    optCont.style.display = 'flex';
+    ev.choices.forEach((choice) => {
+        const card = document.createElement('div');
+        const ok = !choice.can || choice.can();
+        card.className = 'option-card ' + (ok ? 'shop-card' : 'blocked-card');
+        card.innerHTML = `<div class="opt-label">${choice.label}</div><div class="opt-desc">${choice.desc}</div>`;
+        if (ok) card.onclick = async () => {
+            const msg = await choice.run();
+            if (msg === false) return;
+            updateUI();
+            DOM.setText('event-text', msg);
+            exitRestSiteWithAnimation(() => {
+                if (elevBg) elevBg.style.backgroundImage = "url('assets/maps/general/elevator/ElevOption.png')";
+                generateElevators();
+            });
+        };
+        optCont.appendChild(card);
+    });
+}
+
 // Rest-site exit transition so options feel like a completed room action.
 function exitRestSiteWithAnimation(onDone) {
     const player = DOM.get('elev-player');
@@ -10182,7 +10637,7 @@ async function applySelectedProgramUpgrade(pick) {
 }
 
 function advanceNonCombatFloor(roomType = 'event') {
-    state.room = Math.min(GAME_CONFIG.totalRooms, Math.max(0, Number(state.room || 0) + 1));
+    state.room = Math.max(0, Number(state.room || 0) + 1);
     state.currentRoomType = roomType;
     updateUI();
 }
@@ -10235,7 +10690,7 @@ function chooseDoor(type) {
 
             if (type === 'mystery') {
                 // Question mark room randomizer (includes curse + announced combat variants).
-                const mysteryPool = ['rest', 'elite', 'enemy_nodrop', 'enemy_card', 'enemy_coin', 'curse', 'casino'];
+                const mysteryPool = ['rest', 'elite', 'enemy_nodrop', 'enemy_card', 'enemy_coin', 'curse', 'casino', 'event'];
                 if (state.room === 0) {
                     // Exclude curse and casino from first floor mystery rolls
                     const index = mysteryPool.indexOf('curse');
@@ -10254,6 +10709,7 @@ function chooseDoor(type) {
                     casino: 'CASINO NODE',
                     ancient: 'ANCIENT CHAMBER',
                     curse: 'CURSE EVENT',
+                    event: 'STORY EVENT',
                     elite: 'ELITE COMBAT',
                     boss: 'BOSS COMBAT',
                     enemy_card: 'CARD COMBAT',
@@ -10296,6 +10752,9 @@ function chooseDoor(type) {
                             showPop('p-pop-anchor', 'NO CURSE DATA', 'var(--hp)');
                         }
                         generateElevators();
+                    } else if (rolled === 'event') {
+                        advanceNonCombatFloor('event');
+                        openEventFloor();
                     } else if (rolled === 'ancient') {
                         advanceNonCombatFloor('ancient');
                         openAncientRoomOptions();
@@ -10343,6 +10802,9 @@ function chooseDoor(type) {
             } else if (type === 'ancient') {
                 advanceNonCombatFloor('ancient');
                 openAncientRoomOptions();
+            } else if (type === 'event') {
+                advanceNonCombatFloor('event');
+                openEventFloor();
             } else if (type === 'relic_reward') {
                 advanceNonCombatFloor('relic_reward');
                 openRelicRewardFloor();
