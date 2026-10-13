@@ -6,125 +6,126 @@
   <meta name="theme-color" content="#1b2a4a">
   <title>QSendr</title>
   <link rel="icon" type="image/png" href="icons/icon-192.png">
-  <!-- Installable: Add to Home Screen opens it like an app; sw.js makes the guide work offline. -->
+  <!-- Installable: Add to Home Screen opens it like an app; sw.js makes it start offline. -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="QSendr">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script>try { const t = localStorage.getItem('qsendr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <!-- ui.css and ui.js are the laptop page's look and room screens; py sync_ui.py rewrites them from qsendr.py. -->
+  <link rel="stylesheet" href="ui.css">
   <style>
-    :root {
-      --maroon: #8a1f2d; --navy: #1b2a4a;
-      --bg: #f6f4f2; --card: #fff; --text: #1b2a4a; --muted: #55607a; --code: #eef0f5; --line: #dfe2ea;
-      color-scheme: light dark;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #0f1626; --card: #18223a; --text: #eef1f7; --muted: #a9b3c9; --code: #0b1120; --line: #2a3654; --maroon: #b3263a; }
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-           padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
-    main { max-width: 560px; margin: 0 auto; }
-    header { background: var(--navy); color: #fff; border-radius: 20px; padding: 24px 20px; margin-bottom: 16px; }
-    header h1 { margin: 0 0 4px; font-size: 28px; display: flex; align-items: center; gap: 12px; }
-    header h1 img { width: 44px; height: 44px; }
-    header h1 span { color: #ff8a9a; }
-    header p { margin: 0; opacity: .9; }
-    section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 12px; }
-    h2 { font-size: 18px; margin: 0 0 10px; }
-    ol, ul { margin: 0; padding-left: 22px; }
-    li + li { margin-top: 10px; }
-    .muted { color: var(--muted); font-size: 14px; }
-    .btn { display: flex; align-items: center; justify-content: center; min-height: 52px; border-radius: 14px; background: var(--maroon);
-           color: #fff; font-weight: 600; text-decoration: none; margin: 4px 0 8px; }
-    .btn:focus-visible, button:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
-    .cmd { display: flex; gap: 8px; align-items: center; background: var(--code); border-radius: 10px; padding: 6px 6px 6px 12px; margin-top: 6px; }
+    /* The app's own parts: the guide in Settings, and the pages other devices see after scanning a QR code. */
+    .gh { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 560px; margin: 0 auto 16px; padding: 4px 0; }
+    .gh h1 { margin: 0; font-size: 20px; display: flex; align-items: center; } .gh h1 span { color: var(--accent); }
+    .gh h1 img { width: 28px; height: 28px; margin-right: 8px; }
+    #gme { font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+    .guest { max-width: 560px; margin: 0 auto; }
+    .guest .cta { width: 100%; }
+    .guest .item .btn, .guest .item button { min-height: 48px; min-width: 112px; }
+    label.field { display: block; font-weight: 600; margin: 12px 0 4px; }
+    .guide ol, .guide ul { list-style: revert; padding-left: 22px; } .guide li + li { margin-top: 8px; }
+    .guide .btn { margin: 4px 0 8px; }
+    .cmd { display: flex; gap: 8px; align-items: center; background: var(--soft); border-radius: 12px; padding: 6px 6px 6px 12px; margin-top: 6px; }
     .cmd code { flex: 1; overflow-x: auto; white-space: nowrap; font: 14px/1.4 ui-monospace, Consolas, monospace; }
-    .cmd button { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+    .cmd button { min-height: 36px; padding: 0 12px; font-size: 14px; }
+    .hash { font: 12px/1.5 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; background: var(--soft); border-radius: 10px; padding: 6px 10px; margin: 4px 0 0; }
     code { font-family: ui-monospace, Consolas, monospace; }
-    .hash { font: 12px/1.5 ui-monospace, Consolas, monospace; overflow-wrap: anywhere; background: var(--code); border-radius: 8px; padding: 6px 10px; margin: 4px 0 0; }
-    details summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+    .guide a { color: var(--accent); }
   </style>
 </head>
 <body>
-<main>
-  <header>
-    <h1><img src="logo.png" alt=""><span><span style="color:#fff">Q</span>Sendr</span></h1>
-    <p>Send a file from your laptop to any phone: choose it, and the phone scans a QR code. No cable and no internet: same Wi-Fi or your phone's hotspot is enough.</p>
-  </header>
+<div id="shell"></div>
 
-  <section>
-    <h2>Get it</h2>
-    <a class="btn" href="qsendr.py" download>Download qsendr.py</a>
-    <p class="muted">Runs on your laptop. Needs Python 3 and one small library, installed once:</p>
-    <div class="cmd"><code>py -m pip install segno</code><button type="button">Copy</button></div>
-    <p class="muted" style="margin-top: 12px">Then start it from the folder you saved it in:</p>
-    <div class="cmd"><code>py qsendr.py</code><button type="button">Copy</button></div>
-    <details style="margin-top: 14px">
-      <summary>Windows app (no Python needed)</summary>
-      <p class="muted">One file, nothing to install, with an icon by the clock. Download <b>QSendr.exe</b> from the
-        <a href="https://github.com/omnichips/CodeHub/releases" rel="noopener">releases page</a>. Windows 10 or 11.</p>
-      <p class="muted">The first time, Windows may say <b>"Windows protected your PC"</b> because the app isn't signed by a paid
-        certificate. Click <b>More info</b>, then <b>Run anyway</b>.</p>
-      <p class="muted">Check it wasn't changed: its SHA-256 fingerprint (<!--size-->22 MB<!--/size-->) is</p>
-      <p class="hash"><!--sha256-->86EAB93D468875F828CD2CB65C960491E3CDC0E0FA3BB08E37624EE31C4E23E7<!--/sha256--></p>
-      <p class="muted">In PowerShell, in your Downloads folder, this must print the same:</p>
-      <div class="cmd"><code>(Get-FileHash QSendr.exe).Hash</code><button type="button">Copy</button></div>
-    </details>
-  </section>
+<div id="settings" class="panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <div class="panelbar settings">
+    <button class="iconbtn" type="button" data-close aria-label="Back to the main screen"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h2 id="settings-title">Settings</h2>
+  </div>
+  <div class="settings">
+    <section aria-labelledby="look-h">
+      <h3 id="look-h">Appearance</h3>
+      <div class="seg" role="radiogroup" aria-labelledby="look-h">
+        <label><input type="radio" name="theme" value="system"><span>System</span></label>
+        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+      </div>
+    </section>
 
-  <section>
-    <h2>Use it</h2>
-    <ol>
-      <li>Put the laptop and phone on the same Wi-Fi, or connect the laptop to the phone's hotspot.</li>
-      <li>Open QSendr. Its page opens in your browser, and its icon (the red chip) sits by the clock.</li>
-      <li>Click the box in the middle and choose a file (up to 100 MB), or drop one on it. Folders can't be shared.</li>
-      <li>The phone scans the QR code with its camera. The download starts by itself. Any number of phones can scan it.</li>
-      <li>Sharing stops after 10 minutes, or straight away with <b>Close now</b>. To quit, right-click the chip by the clock and choose <b>Quit</b>.</li>
-    </ol>
-  </section>
+    <section aria-labelledby="log-h"><h3 id="log-h">Activity</h3><ol id="log"></ol></section>
 
-  <section>
-    <h2>The Room, and Settings</h2>
-    <p>The people icon at the top left opens the <b>Room</b>, a lunch room seen from above: for several files, or when phones need
-      to send to the laptop or to each other. Phones join with a name and get their own shape and colour at the tables; you let them in.
-      Nothing a phone sends is saved on the laptop unless you click <b>Download</b>, and the rest is deleted when the room closes.</p>
-    <p>The gear at the top right holds the app's settings: light or dark look, notifications, network help, a Wi-Fi QR, the activity list and Quit.</p>
-  </section>
+    <section class="guide" aria-labelledby="how-h">
+      <h3 id="how-h">How it works</h3>
+      <ul>
+        <li><b>Share a file:</b> choose it, and anyone who scans the QR code with their camera gets it. It closes after 10 minutes, or straight away with <b>Close now</b>. Up to 100 MB.</li>
+        <li><b>Room</b> (the people icon): everyone who scans the room's QR sits at a table and can send files and text to the others. You let people in, and can add a 4-digit PIN.</li>
+        <li><b>Direct:</b> files go straight from one device to the other. Nothing is uploaded or stored anywhere. The device sharing has to stay online with this screen open.</li>
+        <li>Both devices need internet to find each other. A free public service (PeerJS) only introduces them; it sees that two devices connected, never the files.</li>
+        <li>Some networks (school or office Wi-Fi) block direct connections. Try your phone's own data or hotspot instead.</li>
+      </ul>
+    </section>
 
-  <section>
-    <h2>Right-click "Send to", and starting with Windows</h2>
-    <p>Right-click the chip by the clock and tick <b>Add to "Send to" menu</b>. Then right-click any file in
-      Explorer and choose <b>Send to &gt; QSendr</b>. If QSendr is already open, the files join it.</p>
-    <p>Tick <b>Start with Windows</b> to keep QSendr one click away. It starts with the room closed, so nothing is open to the network until you open a room.</p>
-  </section>
+    <section class="guide" aria-labelledby="safe-h">
+      <h3 id="safe-h">Staying safe</h3>
+      <ul>
+        <li>Anyone who scans a shared file's QR gets that file, so show it only to the people you mean, and close it when they have it.</li>
+        <li>In a room, files other people send are held in this phone's memory. Nothing is saved unless you tap <b>Download</b>, and it all goes when the room closes.</li>
+        <li>Program files (.exe, .apk, .bat and similar) are flagged, and QSendr never opens anything by itself.</li>
+        <li>Another device can see the address your connection comes from, as with any direct connection.</li>
+      </ul>
+    </section>
 
-  <section>
-    <h2>If the phone can't connect</h2>
-    <ul>
-      <li>When Windows asks about the firewall the first time, click <b>Allow</b>.</li>
-      <li>Check both devices are on the same network. Public Wi-Fi often blocks devices from seeing each other, so use your phone's hotspot instead.</li>
-      <li>If the laptop has several networks, pick another under <b>Address</b> on the control page.</li>
-      <li>On the laptop, open <b>Phone can't connect?</b>: it checks the network and Windows Firewall and says what to change.</li>
-      <li>On iPhone, keep the screen on while sending: Safari pauses uploads when the screen locks or you switch apps. QSendr picks up where it stopped once the screen is back on.</li>
-      <li>Laptop running its own hotspot? Use <b>Wi-Fi QR for a phone</b> so the phone joins it in one scan.</li>
-    </ul>
-  </section>
+    <section class="guide" aria-labelledby="laptop-h">
+      <h3 id="laptop-h">QSendr for your laptop</h3>
+      <p class="muted">Sends from a laptop with no internet needed: same Wi-Fi or your phone's hotspot is enough, and it saves nothing on your laptop.</p>
+      <a class="btn primary" href="qsendr.py" download>Download qsendr.py</a>
+      <p class="muted">Runs on your laptop. Needs Python 3 and one small library, installed once:</p>
+      <div class="cmd"><code>py -m pip install segno</code><button type="button">Copy</button></div>
+      <p class="muted" style="margin-top: 12px">Then start it from the folder you saved it in:</p>
+      <div class="cmd"><code>py qsendr.py</code><button type="button">Copy</button></div>
+      <details style="margin-top: 14px">
+        <summary>Windows app (no Python needed)</summary>
+        <p class="muted">One file, nothing to install, with an icon by the clock. Download <b>QSendr.exe</b> from the
+          <a href="https://github.com/omnichips/CodeHub/releases" rel="noopener">releases page</a>. Windows 10 or 11.</p>
+        <p class="muted">The first time, Windows may say <b>"Windows protected your PC"</b> because the app isn't signed by a paid
+          certificate. Click <b>More info</b>, then <b>Run anyway</b>.</p>
+        <p class="muted">Check it wasn't changed: its SHA-256 fingerprint (<!--size-->22 MB<!--/size-->) is</p>
+        <p class="hash"><!--sha256-->05A6841A4577448E5E1AB1148ECD3B75500C6828812D0921A34F69B43E8DC06D<!--/sha256--></p>
+        <p class="muted">In PowerShell, in your Downloads folder, this must print the same:</p>
+        <div class="cmd"><code>(Get-FileHash QSendr.exe).Hash</code><button type="button">Copy</button></div>
+      </details>
+      <details>
+        <summary>Using the laptop app</summary>
+        <ol>
+          <li>Put the laptop and phone on the same Wi-Fi, or connect the laptop to the phone's hotspot.</li>
+          <li>Open QSendr. Its page opens in your browser, and its icon (the red chip) sits by the clock.</li>
+          <li>Click the box in the middle and choose a file (up to 100 MB). The phone scans the QR code, and the download starts by itself.</li>
+          <li>The people icon opens the Room, for phones sending to the laptop or to each other. Nothing a phone sends is saved on the laptop unless you click <b>Download</b>.</li>
+          <li>Right-click the chip by the clock to quit, to add QSendr to Explorer's <b>Send to</b> menu, or to start it with Windows (it starts with the room closed).</li>
+        </ol>
+      </details>
+      <details>
+        <summary>If a phone can't connect to the laptop</summary>
+        <ul>
+          <li>When Windows asks about the firewall the first time, click <b>Allow</b>.</li>
+          <li>Check both devices are on the same network. Public Wi-Fi often keeps devices apart, so use your phone's hotspot instead.</li>
+          <li>On the laptop, Settings has <b>Phone can't connect?</b>: it checks the network and Windows Firewall and says what to change.</li>
+          <li>On iPhone, keep the screen on while sending. QSendr picks up where it stopped once the screen is back on.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+</div>
 
-  <section>
-    <h2>Staying safe</h2>
-    <ul>
-      <li>Anyone who scans the main screen's QR gets that file, so show it only to the people you mean, and close it when they have it.</li>
-      <li>In the Room, only phones you let in can see or send anything. For more, turn on the 4-digit PIN; 5 wrong tries lock the room.</li>
-      <li>Program files (.exe, .bat, .msi and similar) are flagged, and QSendr never opens anything by itself.</li>
-      <li>On shared or public Wi-Fi others could watch the traffic, so prefer your own phone's hotspot.</li>
-    </ul>
-  </section>
-
-</main>
+<script>const ICON = 'icons/icon-192.png';</script>
+<script src="ui.js"></script>
+<script src="peerjs.min.js"></script>
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
 <script>
-  // Copy buttons. The hub is served over HTTPS, so the clipboard API is available.
+  // Copy buttons in the guide. The page is served over HTTPS, so the clipboard API is available.
   for (const b of document.querySelectorAll('.cmd button')) {
     b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(b.previousElementSibling.textContent); b.textContent = 'Copied'; }

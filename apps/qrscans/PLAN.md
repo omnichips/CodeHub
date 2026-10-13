@@ -50,3 +50,13 @@ Distribution (decided when first pushed): the exe is NOT committed or deployed. 
 guide page. Attach the exe to a GitHub Release at github.com/omnichips/CodeHub/releases (the page links there);
 push the page after each build so its fingerprint matches the release. The guide page is an installable PWA
 (manifest, icons, service worker, like Elevator Anomaly); the exe is separate from that install.
+
+Phone app (the /qsendr/ page, added after phase 5): the page is now an app, not just a guide. A phone shares a file by QR or
+hosts a room with no laptop: devices connect directly over WebRTC (PeerJS, `app.js`), nothing is uploaded or stored, and
+PeerJS's public server only introduces devices (so both need internet; school or office Wi-Fi may block direct
+connections). The host keeps the page open (it asks to keep the screen on); what guests send into a phone-hosted room
+sits in the host's memory (400 MB cap, 100 MB per file, 12 guests). The look and the room screens are shared with the
+laptop page: they live in qsendr.py (APP_CSS, APP_JS) and `py sync_ui.py` copies them into ui.css and ui.js; the
+Python check fails if those copies are stale. The laptop guide moved into the app's Settings.
+Browser tests for QSendr only: `npx playwright test` in this folder (laptop page in WebKit; phone app in Chromium,
+through the public PeerJS server, or a local one with PEER_SERVER=localhost:9000).

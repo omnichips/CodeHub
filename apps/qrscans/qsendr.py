@@ -1322,7 +1322,7 @@ function look(id) {
 }
 function shapeEl(id, px = 28) {
   const s = el('span', null, 'shape');
-  if (!id) { const img = el('img'); img.src = '/icon.png'; img.alt = ''; img.width = img.height = px; s.append(img); return s; } // the laptop
+  if (!id) { const img = el('img'); img.src = ICON; img.alt = ''; img.width = img.height = px; s.append(img); return s; } // the laptop
   const { shape, color } = look(id);
   s.innerHTML = `<svg viewBox="0 0 40 40" width="${px}" height="${px}" aria-hidden="true"><g fill="${color}" stroke="${color}" stroke-width="2.5" stroke-linejoin="round">${SHAPES[shape]}</g>` +
     `<ellipse cx="15" cy="13" rx="6" ry="3" fill="#fff" opacity=".35" transform="rotate(-25 15 13)"/></svg>`; // shapes and colours are this page's own
@@ -1345,29 +1345,10 @@ function itemRow(it, actions) {
 }
 """
 
-ROOM_ICON = ('<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-             'stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
-             '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>')
-GEAR = ('<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-        'stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 '
-        '2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 '
-        '1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 '
-        '1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 '
-        '1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 '
-        '0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>')
-UPLOAD = ('<svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
-          'stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/>'
-          '<line x1="12" y1="3" x2="12" y2="15"/></svg>')
-BACK = ('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
-        'stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>')
+# The icon's address on the laptop's own server; the phone app (a static page) points at its own file instead.
+ICON_DECL = "const ICON = '/icon.png';\n"
 
-CONTROL_HTML = r"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QSendr</title>
-<link rel="icon" href="/icon.png">
-<script>try { const t = localStorage.getItem('qsendr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
-<style>/*CSS*/
-header { max-width: 1180px; display: grid; grid-template-columns: 1fr auto 1fr; }
+APP_CSS = r"""header { max-width: 1180px; display: grid; grid-template-columns: 1fr auto 1fr; }
 header h1 { justify-self: center; } header .end { justify-self: end; display: flex; align-items: center; gap: 10px; }
 .iconbtn { position: relative; min-height: 46px; min-width: 46px; padding: 0; border-radius: 14px; }
 .dot { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; font-size: 11px;
@@ -1394,11 +1375,15 @@ body.paneled > header, body.paneled > #home { visibility: hidden; } /* the panel
 .pill.on { background: rgba(31, 157, 85, .16); color: var(--ok); }
 .wrap { max-width: 1180px; margin: 0 auto; }
 .roomgrid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; align-items: start; }
-@media (max-width: 900px) { .roomgrid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .roomgrid { grid-template-columns: 1fr; }
+  .roomgrid > div:last-child { order: -1; } /* on a phone: who's at the door and the QR to scan come first */
+  .roomgrid .qr { max-width: 280px; margin: 0 auto; }
+}
 .closed { max-width: 560px; margin: 8vh auto 16px; text-align: center; padding: 32px; }
 .closed svg { color: var(--accent); }
 .closed h3 { font-size: 22px; margin: 12px 0 6px; }
-.big { min-height: 54px; font-size: 17px; padding: 0 28px; }
+.cta { min-height: 54px; font-size: 17px; padding: 0 28px; }
 /* The lunch room, seen from above */
 .lunch { position: relative; aspect-ratio: 16 / 10; border-radius: 22px; overflow: hidden; border: 1px solid var(--glass-edge);
          background-color: var(--floor); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), var(--shadow);
@@ -1411,8 +1396,8 @@ body.paneled > header, body.paneled > #home { visibility: hidden; } /* the panel
 .table { position: absolute; top: 47%; height: 13%; width: 34%; border-radius: 12px; background: var(--table); border: 1px solid var(--line); }
 .bench { position: absolute; height: 3.5%; width: 30%; border-radius: 6px; background: var(--table); opacity: .7; }
 .plant { position: absolute; width: 5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7bd88f, #2f8f4e); opacity: .85; }
-.door { position: absolute; right: 2%; bottom: 0; width: 16%; height: 5%; border-radius: 10px 10px 0 0; background: var(--table);
-        font-size: 11px; color: var(--muted); text-align: center; line-height: 2; letter-spacing: .1em; text-transform: uppercase; }
+.door { position: absolute; right: 2%; bottom: 0; width: 16%; padding: 2px 0; border-radius: 10px 10px 0 0; background: var(--table);
+        font-size: 10px; color: var(--muted); text-align: center; line-height: 1.4; letter-spacing: .1em; text-transform: uppercase; }
 .seat { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 13%;
         transition: left .8s cubic-bezier(.4, 0, .2, 1), top .8s cubic-bezier(.4, 0, .2, 1); }
 .seat .label { font-size: 12px; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1455,26 +1440,46 @@ body.paneled > header, body.paneled > #home { visibility: hidden; } /* the panel
 #log li { font-size: 14px; padding: 4px 0; } #log time { color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
 details > summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 #wifiqr { max-width: 240px; margin-top: 12px; }
-</style></head>
-<body>
+"""
+
+APP_JS = r"""
+// ---- Shared by the laptop page and the phone app: the main screen, the room and their panels. ----
+// Before calling startApp(device), the page defines: act(action, body), refresh(), shareFile(file), roomAddFiles(files)
+// and itemActions(item). Everything below draws from one state object `s`, whoever made it (the laptop's server or this phone).
+const STATUS = { waiting: 'Open · waiting for phones', connected: 'Open', sending: 'Open · moving files', off: 'Closed' };
+let shown = {};
+const changed = (k, v) => { const s = JSON.stringify(v); if (shown[k] === s) return false; shown[k] = s; return true; };
+const ext = (name) => (name.includes('.') ? name.split('.').pop().slice(0, 4) : 'file').toUpperCase();
+
+const svgIcon = (size, w, d) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONS = {
+  room: (n = 24) => svgIcon(n, 2, '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  gear: () => svgIcon(24, 2, '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  upload: () => svgIcon(56, 1.6, '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'),
+  back: () => svgIcon(22, 2.2, '<path d="M15 18l-6-6 6-6"/>'),
+};
+
+// The page's fixed parts. `device` is "laptop" or "phone": whatever is hosting.
+function shellHTML(device) {
+  return `
 <header>
-  <span><button id="roombtn" class="iconbtn" type="button" aria-label="Room" aria-haspopup="dialog" aria-controls="room">/*ROOM*/<span id="roomdot" class="dot" hidden></span></button></span>
-  <h1><img src="/icon.png" alt="">Q<span>Sendr</span></h1>
+  <span><button id="roombtn" class="iconbtn" type="button" aria-label="Room" aria-haspopup="dialog" aria-controls="room">${ICONS.room()}<span id="roomdot" class="dot" hidden></span></button></span>
+  <h1><img src="${ICON}" alt="">Q<span>Sendr</span></h1>
   <span class="end"><span id="badge" class="badge" hidden></span>
-    <button id="gear" class="iconbtn" type="button" aria-label="Settings" aria-haspopup="dialog" aria-controls="settings">/*GEAR*/</button></span>
+    <button id="gear" class="iconbtn" type="button" aria-label="Settings" aria-haspopup="dialog" aria-controls="settings">${ICONS.gear()}</button></span>
 </header>
 
 <main id="home" class="home">
   <p id="notice" class="warn" role="status" hidden></p>
   <button id="drop" class="drop glass" type="button" aria-describedby="droplimit">
-    /*UPLOAD*/
+    ${ICONS.upload()}
     <span class="big">Click to choose a file</span>
     <span id="droplimit">or drop it here · up to 100 MB</span>
   </button>
   <input id="file" type="file" hidden>
   <div id="copying" class="drop busy glass" hidden>
     <p id="ctext" class="status" role="status"></p>
-    <div class="bar"><i id="cbar"></i></div>
+    <div id="cbarwrap" class="bar"><i id="cbar"></i></div>
   </div>
   <section id="sharing" class="sharecard" aria-labelledby="sname" hidden>
     <div id="sqr" class="qr"></div>
@@ -1489,27 +1494,28 @@ details > summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 
 <div id="room" class="panel" role="dialog" aria-modal="true" aria-labelledby="room-title" hidden>
   <div class="panelbar">
-    <button class="iconbtn" type="button" data-close aria-label="Back to the main screen">/*BACK*/</button>
+    <button class="iconbtn" type="button" data-close aria-label="Back to the main screen">${ICONS.back()}</button>
     <h2 id="room-title">Room</h2><span id="rstatus" class="pill"></span>
     <span class="end"><button id="rclose" type="button" hidden>Close room</button></span>
   </div>
   <div class="wrap">
     <section id="rclosed" class="closed">
-      /*ROOMBIG*/
+      <span style="color: var(--accent)">${ICONS.room(64)}</span>
       <h3>Phones send too</h3>
-      <p class="muted">Open the room when phones need to send files to this laptop or to each other. They scan a QR code, pick a seat, and
-        everyone shares across the tables. Nothing a phone sends is saved on this laptop unless you download it.</p>
+      <p class="muted">Open the room when phones need to send files to this ${device} or to each other. They scan a QR code, pick a seat, and
+        everyone shares across the tables. Nothing a phone sends is saved on this ${device} unless you download it.</p>
       <div class="row" style="justify-content: center"><label for="minutes">Open for</label>
         <select id="minutes"><option value="10">10 minutes</option><option value="30" selected>30 minutes</option>
           <option value="60">1 hour</option><option value="120">2 hours</option></select></div>
-      <div class="row" style="justify-content: center"><button id="ropen" class="primary big" type="button">Open room</button></div>
+      <p id="rerror" class="warn" role="alert" hidden></p>
+      <div class="row" style="justify-content: center"><button id="ropen" class="primary cta" type="button">Open room</button></div>
       <details style="text-align: left; margin-top: 20px"><summary>Room settings</summary><div class="rset"></div></details>
     </section>
     <div id="ropenview" class="roomgrid" hidden>
       <div>
         <div id="lunch" class="lunch" role="img" aria-label="The room from above">
           <div class="plant" style="left: 2%; top: 3%"></div><div class="plant" style="right: 2%; top: 3%"></div>
-          <div class="counter"><img src="/icon.png" alt="">This laptop</div>
+          <div class="counter"><img src="${ICON}" alt="">This ${device}</div>
           <div class="bench" style="left: 10%; top: 41%"></div><div class="bench" style="left: 10%; top: 62%"></div>
           <div class="bench" style="left: 60%; top: 41%"></div><div class="bench" style="left: 60%; top: 62%"></div>
           <div class="table" style="left: 8%"></div><div class="table" style="left: 58%"></div>
@@ -1545,64 +1551,7 @@ details > summary { cursor: pointer; font-weight: 600; min-height: 32px; }
   <label class="check"><input type="checkbox" data-setting="approve"><span>Ask me before a phone joins</span></label>
   <label class="check"><input type="checkbox" data-setting="use_pin"><span>Phones must type a 4-digit PIN</span></label>
   <label class="check"><input type="checkbox" data-setting="autodelete"><span>Take each file off the table once someone downloads it</span></label>
-</template>
-
-<div id="settings" class="panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
-  <div class="panelbar settings">
-    <button class="iconbtn" type="button" data-close aria-label="Back to the main screen">/*BACK*/</button>
-    <h2 id="settings-title">Settings</h2>
-  </div>
-  <div class="settings">
-    <section aria-labelledby="look-h">
-      <h3 id="look-h">Appearance</h3>
-      <div class="seg" role="radiogroup" aria-labelledby="look-h">
-        <label><input type="radio" name="theme" value="system"><span>System</span></label>
-        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
-        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
-      </div>
-    </section>
-    <section aria-labelledby="notif-h">
-      <h3 id="notif-h">Notifications</h3>
-      <p id="notifytray" class="muted" hidden>Shown by the chip next to the clock.</p>
-      <button id="notify" type="button" hidden>Notify me when something arrives</button>
-      <p id="notifyon" class="muted" hidden>On: you'll see a notification when a file arrives or a phone asks to join.</p>
-      <p id="notifyoff" class="muted" hidden>Blocked for this page in your browser's site settings.</p>
-    </section>
-    <section aria-labelledby="net-h">
-      <h3 id="net-h">Network</h3>
-      <div class="row" style="margin-top: 0"><label for="address">Address in the QR codes</label><select id="address"></select></div>
-      <details id="conn" style="margin-top: 12px"><summary>Phone can't connect?</summary>
-        <ul id="findings"></ul>
-        <div class="row"><button id="check" type="button">Check again</button></div>
-      </details>
-      <details style="margin-top: 8px"><summary>Wi-Fi QR for a phone</summary>
-        <p class="muted">A phone camera reading this joins the Wi-Fi in one tap. Handy when the laptop is the hotspot. Nothing is saved.</p>
-        <label class="muted" for="ssid">Network name</label><input id="ssid" type="text" autocomplete="off">
-        <label class="muted" for="wpass">Password</label><input id="wpass" type="password" autocomplete="off">
-        <div class="row"><button id="wifi" type="button">Show Wi-Fi QR</button></div>
-        <div id="wifiqr" class="qr" hidden></div>
-      </details>
-    </section>
-    <section aria-labelledby="log-h"><h3 id="log-h">Activity</h3><ol id="log"></ol></section>
-    <section aria-labelledby="app-h"><h3 id="app-h">QSendr</h3>
-      <p class="muted">Closing this browser tab leaves QSendr running by the clock. Quit stops sharing and the room.</p>
-      <button id="quit" type="button">Quit QSendr</button></section>
-  </div>
-</div>
-
-<script>/*JS*/
-const STATUS = { waiting: 'Open · waiting for phones', connected: 'Open', sending: 'Open · moving files', off: 'Closed' };
-let S = null, shown = {};
-const changed = (k, v) => { const s = JSON.stringify(v); if (shown[k] === s) return false; shown[k] = s; return true; };
-const act = async (action, body) => { await post(action, body); refresh(); };
-const ext = (name) => (name.includes('.') ? name.split('.').pop().slice(0, 4) : 'file').toUpperCase();
-
-async function refresh() {
-  let s;
-  try { s = await (await fetch('state')).json(); }
-  catch { $('notice').textContent = '✕ QSendr is closed. Start it again on this laptop.'; $('notice').hidden = false; return; }
-  S = s;
-  notify(s); home(s); header(s); room(s); settings(s);
+</template>`;
 }
 
 // ---- Header ----
@@ -1643,35 +1592,7 @@ function tick() {
   const left = Math.max(0, Math.round((shareEnd - Date.now()) / 1000));
   $('sleft').textContent = `closes in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
 }
-setInterval(tick, 1000);
 function showNotice(text) { $('notice').textContent = text; $('notice').hidden = !text; }
-
-function send(url, file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const x = new XMLHttpRequest();
-    x.open('POST', url + encodeURIComponent(file.name));
-    x.upload.onprogress = (e) => onProgress(e.loaded / (e.total || 1));
-    x.onload = () => (x.status === 200 ? resolve() : reject(new Error(x.status === 413 ? 'That file is over 100 MB.' : 'QSendr could not take that file.')));
-    x.onerror = () => reject(new Error('QSendr is not running.'));
-    x.send(file);
-  });
-}
-async function shareFile(file) {
-  if (!file) return;
-  showNotice('');
-  if (file.size > 100 * 1024 * 1024) return showNotice(`${file.name} is ${size(file.size)}. Files up to 100 MB can be shared.`);
-  copying = true; $('drop').hidden = true; $('copying').hidden = false;
-  $('ctext').replaceChildren(el('span', null, 'spin'), ` Getting ${file.name} ready…`);
-  $('cbar').style.width = '0%';
-  try { await send('share?name=', file, (f) => ($('cbar').style.width = 100 * f + '%')); } catch (err) { showNotice(err.message); }
-  copying = false;
-  refresh();
-}
-$('drop').onclick = () => $('file').click();
-$('file').onchange = () => { shareFile($('file').files[0]); $('file').value = ''; };
-$('unshare').onclick = async () => { hadShare = null; await post('unshare'); refresh(); $('drop').focus(); };
-$('another').onclick = async () => { hadShare = null; await post('unshare'); await refresh(); $('file').click(); };
-$('sqr').ondblclick = () => $('sqr').requestFullscreen?.(); // double-click: full screen, to scan from across a table
 
 // ---- Panels ----
 let opener = null;
@@ -1687,10 +1608,6 @@ function closePanels(refocus = true) {
   document.body.style.overflow = ''; document.body.classList.remove('paneled');
   if (was && refocus) opener?.focus?.();
 }
-$('roombtn').onclick = () => openPanel('room');
-$('gear').onclick = () => openPanel('settings');
-for (const b of document.querySelectorAll('[data-close]')) b.onclick = () => closePanels();
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanels(); });
 
 // ---- The room: a lunch room seen from above ----
 const COUNTER = ['50%', '20%']; // the counter's front edge, where files are handed over
@@ -1699,13 +1616,13 @@ for (const left of [8, 58]) for (const top of [37, 70]) for (const k of [1, 3, 5
 const DOOR = (i) => [`${86 - i * 11}%`, '88%'];
 const seatEls = new Map(), travelEls = new Map();
 let seatOf = new Map();
-function placeFor(d, i) { return d.in ? SEATS[i % SEATS.length].map((v) => v + '%') : null; }
 
 function room(s) {
   const open = s.status !== 'off';
   $('rclosed').hidden = open; $('ropenview').hidden = !open;
   $('rstatus').textContent = STATUS[s.status]; $('rstatus').className = 'pill' + (open ? ' on' : '');
   $('rclose').hidden = !open;
+  $('rerror').hidden = !s.room_error; $('rerror').textContent = s.room_error || '';
   for (const c of document.querySelectorAll('[data-setting]')) c.checked = s.settings[c.dataset.setting];
   if (!open) { for (const e of seatEls.values()) e.remove(); seatEls.clear(); seatOf.clear(); return; }
   if (changed('rqr', s.url)) { $('rqr').innerHTML = s.qr; $('rqr').title = s.url; $('rqr').classList.remove('pop'); void $('rqr').offsetWidth; $('rqr').classList.add('pop'); }
@@ -1751,7 +1668,7 @@ function put(d, [x, y], waiting) {
     e = el('div', null, 'seat pop');
     e.append(shapeEl(d.id, 40), el('span', d.name, 'label'),
       button('×', () => act('kick', { id: d.id }), 'kick', (waiting ? 'Deny ' : 'Remove ') + d.name));
-    e.title = `${d.name} (${d.ip})`;
+    e.title = d.ip ? `${d.name} (${d.ip})` : d.name;
     e.style.left = x; e.style.top = y;
     $('lunch').append(e); seatEls.set(d.id, e);
   }
@@ -1766,7 +1683,7 @@ function asks(s) {
   if (!changed('asks', waiting)) return;
   $('asklist').replaceChildren(...waiting.map((d) => {
     const li = el('li', null, 'enter'), name = el('span', null, 'name who');
-    name.append(shapeEl(d.id, 24), `${d.name}`, el('span', d.ip, 'muted'));
+    name.append(shapeEl(d.id, 24), `${d.name}`, ...(d.ip ? [el('span', d.ip, 'muted')] : []));
     li.append(name, button('Let in', () => act('let_in', { id: d.id }), 'primary', 'Let ' + d.name + ' in'),
       button('Deny', () => act('kick', { id: d.id }), 'quiet', 'Deny ' + d.name));
     return li;
@@ -1797,38 +1714,173 @@ function items(s) {
   if (!changed('items', s.items)) return;
   $('items').replaceChildren(...(s.items.length ? s.items.map((it) => {
     const li = el('li', null, 'item' + (seenItems.has(it.id) ? '' : ' enter')); seenItems.add(it.id);
-    if (it.preview) { const img = el('img', null, 'thumb'); img.src = 'p/' + it.id; img.alt = ''; img.loading = 'lazy'; img.onerror = () => img.replaceWith(el('span', ext(it.name), 'ftype')); li.append(img); }
+    if (it.preview) { const img = el('img', null, 'thumb'); img.src = it.thumb || 'p/' + it.id; img.alt = ''; img.loading = 'lazy'; img.onerror = () => img.replaceWith(el('span', ext(it.name), 'ftype')); li.append(img); }
     else li.append(el('span', it.kind === 'text' ? 'Aa' : ext(it.name), 'ftype' + (it.kind === 'text' ? ' text' : '')));
     const name = el('div', null, 'name'), who = el('span', null, 'who muted');
     who.append(shapeEl(it.from_id, 16), it.from);
     if (it.kind === 'text') name.append(who, el('p', it.text, 'text'));
     else name.append(el('div', it.name), who, el('span', ' · ' + size(it.size), 'muted'));
     if (it.risky) name.append(el('div', '⚠ Program file. Only open it if you trust who sent it.', 'warn'));
-    const actions = [];
-    if (it.kind === 'text') actions.push(copyButton(it.text));
-    else if (it.from === 'Laptop') actions.push(button('Show in folder', () => post('reveal', { id: it.id }), 'quiet', 'Show ' + it.name + ' in its folder'));
-    else { const a = el('a', 'Download', 'btn primary'); a.href = 'f/' + it.id; a.download = it.name; a.setAttribute('aria-label', 'Download ' + it.name + ' to this laptop'); actions.push(a); }
-    actions.push(button('×', () => act('remove', { id: it.id }), 'icon quiet', 'Take ' + it.name + ' off the table'));
-    li.append(name, ...actions);
+    li.append(name, ...itemActions(it), button('×', () => act('remove', { id: it.id }), 'icon quiet', 'Take ' + it.name + ' off the table'));
     return li;
   }) : [el('li', 'The tables are empty. Add a file, or wait for the phones.', 'muted')]));
 }
 
-for (const box of document.querySelectorAll('.rset')) box.append($('rsettings').content.cloneNode(true));
-document.addEventListener('change', (e) => { if (e.target.dataset.setting) act('settings', { [e.target.dataset.setting]: e.target.checked }); });
-$('ropen').onclick = async () => {
-  $('ropen').disabled = true; $('ropen').replaceChildren(el('span', null, 'spin'), ' Opening…');
-  try { await post('open', { minutes: +$('minutes').value }); await refresh(); } finally { $('ropen').disabled = false; $('ropen').textContent = 'Open room'; }
-};
-$('rclose').onclick = () => act('close');
-$('rfull').onclick = () => $('rqr').requestFullscreen?.();
+// Puts the fixed parts on the page and wires the buttons they hold.
+function startApp(device) {
+  $('shell').outerHTML = shellHTML(device);
+  for (const box of document.querySelectorAll('.rset')) box.append($('rsettings').content.cloneNode(true));
+  $('roombtn').onclick = () => openPanel('room');
+  $('gear').onclick = () => openPanel('settings');
+  for (const b of document.querySelectorAll('[data-close]')) b.onclick = () => closePanels();
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanels(); });
+
+  $('drop').onclick = () => $('file').click();
+  $('file').onchange = () => { shareFile($('file').files[0]); $('file').value = ''; };
+  $('unshare').onclick = async () => { hadShare = null; await act('unshare'); $('drop').focus(); };
+  $('another').onclick = async () => { hadShare = null; await act('unshare'); $('file').click(); };
+  $('sqr').ondblclick = () => $('sqr').requestFullscreen?.(); // double-click: full screen, to scan from across a table
+
+  document.addEventListener('change', (e) => { if (e.target.dataset.setting) act('settings', { [e.target.dataset.setting]: e.target.checked }); });
+  $('ropen').onclick = async () => {
+    $('ropen').disabled = true; $('ropen').replaceChildren(el('span', null, 'spin'), ' Opening…');
+    try { await act('open', { minutes: +$('minutes').value }); } finally { $('ropen').disabled = false; $('ropen').textContent = 'Open room'; }
+  };
+  $('rclose').onclick = () => act('close');
+  $('rfull').onclick = () => $('rqr').requestFullscreen?.();
+  const sendText = async () => { if ($('text').value.trim()) { const text = $('text').value; $('text').value = ''; await act('text', { text }); } };
+  $('sendtext').onclick = sendText;
+  $('text').onkeydown = (e) => { if (e.key === 'Enter') sendText(); };
+
+  // Appearance (the radios live in each page's Settings).
+  let theme = 'system'; try { theme = localStorage.getItem('qsendr-theme') || 'system'; } catch {}
+  for (const r of document.querySelectorAll('input[name=theme]')) {
+    r.checked = r.value === theme;
+    r.onchange = () => {
+      if (r.value === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = r.value;
+      try { localStorage.setItem('qsendr-theme', r.value); } catch {}
+    };
+  }
+
+  // Drag and drop: on the main screen a file is shared by QR; with the room open it goes on the tables.
+  document.addEventListener('dragover', (e) => { e.preventDefault(); $('drop').classList.add('over'); });
+  document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) $('drop').classList.remove('over'); });
+  document.addEventListener('drop', async (e) => {
+    e.preventDefault(); $('drop').classList.remove('over');
+    const entries = [...e.dataTransfer.items].map((i) => i.webkitGetAsEntry?.());
+    const files = [...e.dataTransfer.files].filter((f, i) => !entries[i]?.isDirectory);
+    if (files.length < e.dataTransfer.files.length) showNotice('Folders can’t be shared. Choose files instead.');
+    if (!$('room').hidden) return roomAddFiles(files);
+    if (!$('settings').hidden || !files.length) return;
+    await shareFile(files[0]);
+    if (files.length > 1) showNotice(`One file at a time: shared ${files[0].name}.`);
+  });
+  setInterval(tick, 1000);
+}
+"""
+
+CONTROL_HTML = r"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QSendr</title>
+<link rel="icon" href="/icon.png">
+<script>try { const t = localStorage.getItem('qsendr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+<style>/*CSS*//*APPCSS*/</style></head>
+</style></head>
+<body>
+<div id="shell"></div>
+
+<div id="settings" class="panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+  <div class="panelbar settings">
+    <button class="iconbtn" type="button" data-close aria-label="Back to the main screen">/*BACK*/</button>
+    <h2 id="settings-title">Settings</h2>
+  </div>
+  <div class="settings">
+    <section aria-labelledby="look-h">
+      <h3 id="look-h">Appearance</h3>
+      <div class="seg" role="radiogroup" aria-labelledby="look-h">
+        <label><input type="radio" name="theme" value="system"><span>System</span></label>
+        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+      </div>
+    </section>
+    <section aria-labelledby="notif-h">
+      <h3 id="notif-h">Notifications</h3>
+      <p id="notifytray" class="muted" hidden>Shown by the chip next to the clock.</p>
+      <button id="notify" type="button" hidden>Notify me when something arrives</button>
+      <p id="notifyon" class="muted" hidden>On: you'll see a notification when a file arrives or a phone asks to join.</p>
+      <p id="notifyoff" class="muted" hidden>Blocked for this page in your browser's site settings.</p>
+    </section>
+    <section aria-labelledby="net-h">
+      <h3 id="net-h">Network</h3>
+      <div class="row" style="margin-top: 0"><label for="address">Address in the QR codes</label><select id="address"></select></div>
+      <details id="conn" style="margin-top: 12px"><summary>Phone can't connect?</summary>
+        <ul id="findings"></ul>
+        <div class="row"><button id="check" type="button">Check again</button></div>
+      </details>
+      <details style="margin-top: 8px"><summary>Wi-Fi QR for a phone</summary>
+        <p class="muted">A phone camera reading this joins the Wi-Fi in one tap. Handy when the laptop is the hotspot. Nothing is saved.</p>
+        <label class="muted" for="ssid">Network name</label><input id="ssid" type="text" autocomplete="off">
+        <label class="muted" for="wpass">Password</label><input id="wpass" type="password" autocomplete="off">
+        <div class="row"><button id="wifi" type="button">Show Wi-Fi QR</button></div>
+        <div id="wifiqr" class="qr" hidden></div>
+      </details>
+    </section>
+    <section aria-labelledby="log-h"><h3 id="log-h">Activity</h3><ol id="log"></ol></section>
+    <section aria-labelledby="app-h"><h3 id="app-h">QSendr</h3>
+      <p class="muted">Closing this browser tab leaves QSendr running by the clock. Quit stops sharing and the room.</p>
+      <button id="quit" type="button">Quit QSendr</button></section>
+  </div>
+</div>
+
+<script>/*JS*/
+
+const act = async (action, body) => { await post(action, body); refresh(); };
+
+async function refresh() {
+  let s;
+  try { s = await (await fetch('state')).json(); }
+  catch { $('notice').textContent = '✕ QSendr is closed. Start it again on this laptop.'; $('notice').hidden = false; return; }
+  notify(s); home(s); header(s); room(s); settings(s);
+}
+
+// ---- What the shared screens ask of this page ----
+function send(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', url + encodeURIComponent(file.name));
+    x.upload.onprogress = (e) => onProgress(e.loaded / (e.total || 1));
+    x.onload = () => (x.status === 200 ? resolve() : reject(new Error(x.status === 413 ? 'That file is over 100 MB.' : 'QSendr could not take that file.')));
+    x.onerror = () => reject(new Error('QSendr is not running.'));
+    x.send(file);
+  });
+}
+async function shareFile(file) {
+  if (!file) return;
+  showNotice('');
+  if (file.size > 100 * 1024 * 1024) return showNotice(`${file.name} is ${size(file.size)}. Files up to 100 MB can be shared.`);
+  copying = true; $('drop').hidden = true; $('copying').hidden = false;
+  $('ctext').replaceChildren(el('span', null, 'spin'), ` Getting ${file.name} ready…`);
+  $('cbar').style.width = '0%';
+  try { await send('share?name=', file, (f) => ($('cbar').style.width = 100 * f + '%')); } catch (err) { showNotice(err.message); }
+  copying = false;
+  refresh();
+}
+async function roomAddFiles(files) {
+  for (const f of files) await fetch('drop?name=' + encodeURIComponent(f.name), { method: 'POST', body: f });
+  refresh();
+}
+function itemActions(it) {
+  if (it.kind === 'text') return [copyButton(it.text)];
+  if (it.from === 'Laptop') return [button('Show in folder', () => post('reveal', { id: it.id }), 'quiet', 'Show ' + it.name + ' in its folder')];
+  const a = el('a', 'Download', 'btn primary'); a.href = 'f/' + it.id; a.download = it.name; a.setAttribute('aria-label', 'Download ' + it.name + ' to this laptop');
+  return [a];
+}
+
+startApp('laptop');
 $('addfiles').onclick = async () => {
   const b = $('addfiles'); b.disabled = true; b.replaceChildren(el('span', null, 'spin'), ' Choose in the window that opened…');
   try { await post('pick', { kind: 'files' }); } finally { b.disabled = false; b.textContent = 'Add files'; refresh(); }
 };
-const sendText = async () => { if ($('text').value.trim()) { await post('text', { text: $('text').value }); $('text').value = ''; refresh(); } };
-$('sendtext').onclick = sendText;
-$('text').onkeydown = (e) => { if (e.key === 'Enter') sendText(); };
 
 // ---- Settings: the app's own ----
 const FIX = { firewall: 'Open allowed apps', network: 'Open network settings' };
@@ -1847,14 +1899,6 @@ function settings(s) {
   }
   if (changed('log', s.log)) $('log').replaceChildren(...s.log.map(([t, text]) => { const li = el('li'); li.append(el('time', t), text); return li; }));
   showNotify(s);
-}
-let theme = 'system'; try { theme = localStorage.getItem('qsendr-theme') || 'system'; } catch {}
-for (const r of document.querySelectorAll('input[name=theme]')) {
-  r.checked = r.value === theme;
-  r.onchange = () => {
-    if (r.value === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = r.value;
-    try { localStorage.setItem('qsendr-theme', r.value); } catch {}
-  };
 }
 $('address').onchange = () => act('address', { ip: $('address').value });
 $('check').onclick = async () => {
@@ -1899,26 +1943,12 @@ function notify(s) {
   knownItems = items; knownAsks = asks;
 }
 
-// ---- Drag and drop: on the main screen it is shared by QR; with the room open it goes on the tables ----
-document.addEventListener('dragover', (e) => { e.preventDefault(); $('drop').classList.add('over'); });
-document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) $('drop').classList.remove('over'); });
-document.addEventListener('drop', async (e) => {
-  e.preventDefault(); $('drop').classList.remove('over');
-  const entries = [...e.dataTransfer.items].map((i) => i.webkitGetAsEntry?.());
-  const files = [...e.dataTransfer.files].filter((f, i) => !entries[i]?.isDirectory);
-  if (files.length < e.dataTransfer.files.length) showNotice('Folders can’t be shared. Choose files instead.');
-  if (!$('room').hidden) { for (const f of files) await fetch('drop?name=' + encodeURIComponent(f.name), { method: 'POST', body: f }); return refresh(); }
-  if (!$('settings').hidden || !files.length) return;
-  await shareFile(files[0]);
-  if (files.length > 1) showNotice(`One file at a time: shared ${files[0].name}.`);
-});
 
 refresh();
 const timer = setInterval(refresh, 1500);
 </script>
 </body></html>
-""".replace("/*CSS*/", CSS).replace("/*JS*/", JS).replace("/*ROOM*/", ROOM_ICON).replace("/*GEAR*/", GEAR).replace(
-    "/*UPLOAD*/", UPLOAD).replace("/*BACK*/", BACK).replace("/*ROOMBIG*/", ROOM_ICON.replace('width="24" height="24"', 'width="64" height="64"'))
+""".replace("/*CSS*/", CSS).replace("/*APPCSS*/", APP_CSS).replace("/*JS*/", ICON_DECL + JS + APP_JS)
 
 PHONE_HTML = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -2117,7 +2147,7 @@ refresh();
 timer = setInterval(refresh, 2000);
 </script>
 </body></html>
-""".replace("/*CSS*/", CSS).replace("/*JS*/", JS)
+""".replace("/*CSS*/", CSS).replace("/*JS*/", ICON_DECL + JS)
 
 
 SHARE_HTML = """<!DOCTYPE html>
@@ -2154,7 +2184,7 @@ main p { margin: 0; }
 })();
 </script>
 </body></html>
-""".replace("/*CSS*/", CSS).replace("/*JS*/", JS)
+""".replace("/*CSS*/", CSS).replace("/*JS*/", ICON_DECL + JS)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "pulsing-dot",
+        "value": "*",
+        "files": [
+          "apps/qrscans/index.html"
+        ],
+        "createdAt": "2026-10-13T13:43:31.231Z",
+        "reason": "Claude: the only pulse is the Room button's count and the 'At the door' card, shown only while a phone is actually waiting to be let in (live state), per the rule's own exception"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "apps/qrscans/index.html"
+        ],
+        "createdAt": "2026-10-13T13:43:31.667Z",
+        "reason": "Claude: the moving stripes/slide are progress bars, animated only while a transfer is running or a size is unknown; no scrolling content, and reduced-motion turns them off"
+      }
+    ]
+  }
+}

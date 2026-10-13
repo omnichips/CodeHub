@@ -389,4 +389,9 @@ assert qsendr.assess({"rules": {"Enabled": "True", "Action": "Allow", "Profile":
 hotspot = {"addresses": [{"IPAddress": "192.168.137.1", "InterfaceAlias": "Local Area Connection* 10"}, {"IPAddress": "192.168.254.105", "InterfaceAlias": "Wi-Fi"}],
            "profiles": real["profiles"]}
 assert qsendr.addresses(hotspot, "192.168.254.105") == [("192.168.254.105", "Wi-Fi · GlobeAtHome_CE2E5_5"), ("192.168.137.1", "This laptop's hotspot")]
+# The phone app's copy of the shared look and room screens matches qsendr.py (py sync_ui.py rewrites it).
+import sync_ui
+for name, text in sync_ui.build().items():
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), name), encoding="utf-8") as f:
+        assert f.read() == text, f"{name} is out of date: run py sync_ui.py"
 print("ok")

@@ -64,11 +64,13 @@ test('works offline under /fairshare/ and does not take over the rest of the sit
   expect(failed).toEqual([]);
 });
 
-test('QSendr opens from the home screen, gives the laptop script, and keeps the exe out of the site', async ({ page, request }) => {
+test('QSendr opens from the home screen as the phone app, gives the laptop script, and keeps the exe out of the site', async ({ page, request }) => {
   await page.goto('/');
   await page.getByRole('main', { name: 'Apps' }).getByRole('link', { name: 'QSendr' }).click();
   await expect(page).toHaveURL('/qsendr/');
-  await expect(page.getByRole('link', { name: 'Download qsendr.py' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Click to choose a file/ })).toBeVisible(); // the phone app itself
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('link', { name: 'Download qsendr.py' })).toBeVisible(); // the laptop app, in Settings
   expect(await (await request.get('/qsendr/qsendr.py')).text()).toContain('def make_server');
   expect(await page.locator('.hash').textContent()).toMatch(/^[0-9A-F]{64}$/); // the exe's fingerprint, for the release it links to
   expect((await request.get('/qsendr/QSendr.exe')).status()).toBe(404); // the exe lives on a release, not on the site
@@ -95,5 +97,5 @@ test('QSendr works offline under /qsendr/ and does not take over the rest of the
   expect(await page.evaluate(() => navigator.serviceWorker.controller.scriptURL)).toBe(`${origin}/qsendr/sw.js`);
   await server.close();
   await page.reload();
-  await expect(page.getByRole('link', { name: 'Download qsendr.py' })).toBeVisible(); // served from the cache, server gone
+  await expect(page.getByRole('button', { name: /Click to choose a file/ })).toBeVisible(); // served from the cache, server gone
 });
