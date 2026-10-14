@@ -1,0 +1,15 @@
+{
+  "new-york": {
+    "gap": 6,
+    "waves": [
+      { "duration": 20, "spawn": { "normal": 20 } },
+      { "duration": 25, "spawn": { "normal": 30, "fast": 8 } },
+      { "duration": 30, "spawn": { "normal": 35, "fast": 10, "jumper": 4 } },
+      { "duration": 30, "spawn": { "normal": 40, "fast": 10, "screamer": 4, "bloater": 4 } },
+      { "duration": 35, "spawn": { "normal": 45, "fast": 12, "armored": 6, "intelligent": 4 } },
+      { "duration": 35, "spawn": { "normal": 50, "tanky": 6, "jumper": 6, "bloater": 6 } },
+      { "duration": 40, "spawn": { "normal": 60, "fast": 15, "armored": 8, "hordemother": 1 } },
+      { "duration": 40, "spawn": { "normal": 70, "tanky": 8, "screamer": 8, "intelligent": 4, "brute": 1 } }
+    ]
+  }
+}

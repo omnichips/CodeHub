@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#232526" />
+    <title>We Might As Well Die Trying</title>
+    <style>
+      :root {
+        --ink: #eadfae; --dim: #8c8466; --line: #141516; --panel: rgba(20, 21, 22, 0.84);
+        --olive: #48512f; --olive-lit: #65703f; --warn: #c97a6a;
+        --top: max(8px, env(safe-area-inset-top)); --left: max(8px, env(safe-area-inset-left));
+        --right: max(8px, env(safe-area-inset-right)); --bottom: max(8px, env(safe-area-inset-bottom));
+      }
+      html, body { margin: 0; height: 100%; background: #232526; overflow: hidden; touch-action: none; overscroll-behavior: none; }
+      body { font: 600 13px ui-monospace, Menlo, Consolas, monospace; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      #game { position: fixed; inset: 0; }
+      button {
+        font: inherit; color: var(--ink); background: var(--olive); border: 2px solid var(--line);
+        min-height: 40px; min-width: 44px; padding: 0 12px; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
+      }
+      button[aria-pressed="true"] { background: var(--olive-lit); box-shadow: inset 0 -3px 0 var(--ink); }
+      button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+      @media (hover: hover) { button:hover { background: var(--olive-lit); } }
+
+      #mode { position: fixed; top: var(--top); right: var(--right); }
+
+      #hud { position: fixed; inset: 0; pointer-events: none; }
+      #hud > * { position: absolute; pointer-events: auto; }
+      #hud .status { top: var(--top); left: var(--left); display: flex; gap: 6px; pointer-events: none; }
+      #hud .status span, #hud .actions .label { background: var(--panel); border: 2px solid var(--line); padding: 7px 10px; white-space: nowrap; }
+      #hud .status .warn { color: var(--warn); }
+      #hud .time { top: var(--top); right: var(--right); display: flex; gap: 6px; }
+      #hud .speeds { display: flex; gap: 6px; }
+      #hud .go { background: #7d3a33; padding: 0 22px; letter-spacing: 0.06em; text-transform: uppercase; }
+      @media (hover: hover) { #hud .go:hover { background: #9c4f44; } }
+      #hud .dock { bottom: var(--bottom); left: var(--left); display: flex; flex-direction: column; gap: 4px; max-width: min(62vw, calc(100vw - 260px)); }
+      #hud .tabs { display: flex; gap: 4px; }
+      #hud .tab { min-height: 30px; padding: 0 10px; font-size: 12px; background: var(--panel); }
+      #hud .bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain; }
+      #hud .bar::-webkit-scrollbar { display: none; }
+      #hud .item { position: relative; flex: none; width: 54px; height: 54px; padding: 0; background: var(--panel); touch-action: pan-x; }
+      #hud .item img { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; vertical-align: middle; }
+      #hud .item .count { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: var(--dim); }
+      #hud .item.empty { opacity: 0.4; }
+      #hud .item::after { content: ''; position: absolute; inset: 0; background: rgba(20, 21, 22, 0.7); transform-origin: bottom; transform: scaleY(var(--cool, 0)); pointer-events: none; }
+      #hud .actions { bottom: var(--bottom); right: var(--right); display: flex; gap: 6px; align-items: center; }
+      #hud .end {
+        inset: 0; margin: auto; width: min(340px, 80vw); height: fit-content; padding: 20px; text-align: center;
+        background: var(--panel); border: 2px solid var(--line);
+      }
+      #hud .end h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: 0.04em; }
+      #hud .end p { margin: 0 0 16px; color: var(--dim); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="hud"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

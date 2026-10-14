@@ -21,6 +21,12 @@
       "color": "#1b2a4a",
       "icon": "logo.png",
       "source": { "type": "static", "dir": "apps/qrscans" }
+    },
+    {
+      "id": "dietrying",
+      "name": "Die Trying",
+      "color": "#48512f",
+      "source": { "type": "vite", "dir": "apps/WeMightAsWellDieTrying" }
     }
   ]
 }
