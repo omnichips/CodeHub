@@ -1,5 +1,7 @@
-// Progress kept on the device. Every app on the hub shares one origin, so the key is this game's own. A save carries a
+// Progress kept on the device: up to SLOTS saves, each its own chips, skills, cities and statistics, plus one set of
+// settings shared by all. Every app on the hub shares one origin, so the keys are this game's own. A save carries a
 // version so an older one can be brought up to date; export and import guard against a wiped browser.
+import oldCosts from '../data/skilltree-v2-costs.json' with { type: 'json' };
 import { NODE, STARTING } from './progress.ts';
 
 export interface Settings {
@@ -9,81 +11,112 @@ export interface Settings {
   master: number; // 0 to 1
   sfx: number;
 }
+export interface Stats {
+  runs: number;
+  wins: number;
+  kills: number;
+  leaks: number;
+  chips: number; // earned, all told
+  time: number; // seconds of fighting
+}
 export interface Save {
-  version: 1;
+  version: 3;
+  name: string;
   chips: number;
-  owned: string[]; // skill web nodes
+  skills: Record<string, number>; // skill web node: levels bought
   cleared: Record<string, boolean>; // maps won
   tutorialDone: boolean;
-  settings: Settings;
+  stats: Stats;
+  played: number; // when it was last opened, ms since 1970
 }
 
-const KEY = 'dietrying.save';
-export const VERSION = 1;
+export const SLOTS = 3;
+export const VERSION = 3;
+const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.save'); // slot 1 keeps the key of the days before slots
+const SETTINGS = 'dietrying.settings';
 
-export const fresh = (): Save => ({
-  version: VERSION, chips: 0, owned: [...STARTING], cleared: {}, tutorialDone: false,
-  settings: { gore: 'normal', quality: 'high', lefty: false, master: 0.8, sfx: 0.8 },
-});
+export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
+export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), played: Date.now() });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, master: 0.8, sfx: 0.8 });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
+const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+const json = (text: string): unknown => { try { return JSON.parse(text); } catch { return undefined; } };
 
 /** Reads a save from untrusted JSON (storage or an imported file). Anything unusable is dropped or reset, never
  *  trusted: unknown nodes, negative or non-number chips. Returns undefined if it is not a save at all. */
 export function parse(text: string): Save | undefined {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return;
-  }
+  const raw = json(text);
   if (!raw || typeof raw !== 'object') return;
   const r = raw as Record<string, unknown>;
-  if (typeof r.version !== 'number' || r.version < 1 || r.version > VERSION || !Array.isArray(r.owned)) return;
-  // (Later versions migrate here, one step at a time: if (r.version === 1) { ...; r.version = 2 }.)
-  const base = fresh(), s = (r.settings ?? {}) as Record<string, unknown>;
-  const owned = new Set([...STARTING, ...r.owned.filter((id): id is string => typeof id === 'string' && NODE.has(id))]);
+  if (typeof r.version !== 'number' || r.version < 1 || r.version > VERSION) return;
+  // Version 1 had no name or statistics, and kept the settings inside the save; those now live apart (see settingsFrom).
+  // Versions 1 and 2 owned nodes of the old skill web, one buy each. The web was rebuilt with levels in version 3, so
+  // an older save starts the new web afresh and gets back every chip it spent on the old one.
+  let refund = 0;
+  const skills: Record<string, number> = { ...STARTING };
+  if (r.version < 3) {
+    if (!Array.isArray(r.owned)) return;
+    for (const id of new Set(r.owned)) if (typeof id === 'string') refund += (oldCosts as Record<string, number>)[id] ?? 0;
+  } else {
+    if (!r.skills || typeof r.skills !== 'object') return;
+    for (const [id, lv] of Object.entries(r.skills)) {
+      const n = NODE.get(id);
+      if (n && typeof lv === 'number' && lv > 0) skills[id] = Math.max(skills[id] ?? 0, Math.min(n.max, Math.floor(lv)));
+    }
+  }
   const cleared = r.cleared && typeof r.cleared === 'object' ? Object.fromEntries(Object.entries(r.cleared).filter(([, v]) => v === true)) : {};
+  const st = (r.stats ?? {}) as Record<string, unknown>;
   return {
     version: VERSION,
-    chips: typeof r.chips === 'number' && Number.isFinite(r.chips) ? Math.max(0, Math.floor(r.chips)) : 0,
-    owned: [...owned],
+    name: typeof r.name === 'string' && r.name.trim() ? r.name.trim().slice(0, 24) : 'Save',
+    chips: count(r.chips) + refund,
+    skills,
     cleared,
     tutorialDone: r.tutorialDone === true,
-    settings: {
-      gore: pick(s.gore, ['none', 'some', 'normal'] as const, base.settings.gore),
-      quality: pick(s.quality, ['low', 'medium', 'high'] as const, base.settings.quality),
-      lefty: s.lefty === true,
-      master: unit(s.master, base.settings.master),
-      sfx: unit(s.sfx, base.settings.sfx),
-    },
+    stats: { runs: count(st.runs), wins: count(st.wins), kills: count(st.kills), leaks: count(st.leaks), chips: count(st.chips), time: count(st.time) },
+    played: count(r.played) || Date.now(), // version 1 never said
   };
 }
 
-/** The save on this device, or a fresh one. Storage can be blocked (private mode): then progress lasts the session. */
-export function load(): Save {
-  try {
-    const text = localStorage.getItem(KEY);
-    return (text && parse(text)) || fresh();
-  } catch {
-    return fresh();
-  }
+/** Settings from untrusted JSON; anything unusable falls back to the default. */
+export function settingsFrom(raw: unknown): Settings {
+  const s = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>, base = defaults();
+  return {
+    gore: pick(s.gore, ['none', 'some', 'normal'] as const, base.gore),
+    quality: pick(s.quality, ['low', 'medium', 'high'] as const, base.quality),
+    lefty: s.lefty === true,
+    master: unit(s.master, base.master),
+    sfx: unit(s.sfx, base.sfx),
+  };
 }
 
-export function store(save: Save) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(save));
-  } catch {
-    // Full or blocked storage: the export button is the way to keep progress then.
-  }
+// Storage can be blocked (private mode) or full: then progress lasts the session, and export is the way to keep it.
+const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const write = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* see above */ } };
+
+/** The save in a slot, or undefined if the slot is empty. */
+export function load(slot: number): Save | undefined {
+  const text = read(key(slot)), save = text ? parse(text) : undefined;
+  if (save && !(json(text!) as { name?: unknown }).name) save.name = `Save ${slot + 1}`; // from before saves had names
+  return save;
 }
+export const store = (slot: number, save: Save) => write(key(slot), JSON.stringify(save));
+export const remove = (slot: number) => write(key(slot), null);
+
+/** The settings; before they had their own key, they lived in the (one) save. */
+export function loadSettings(): Settings {
+  const own = read(SETTINGS), old = read(key(0));
+  return settingsFrom(own ? json(own) : old ? (json(old) as { settings?: unknown } | undefined)?.settings : undefined);
+}
+export const storeSettings = (s: Settings) => write(SETTINGS, JSON.stringify(s));
 
 /** Offers the save as a file to keep. */
 export function exportSave(save: Save) {
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(new Blob([JSON.stringify(save, null, 1)], { type: 'application/json' })),
-    download: `die-trying-save-${new Date().toISOString().slice(0, 10)}.json`,
+    download: `die-trying-${save.name.replace(/[^\w-]+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`,
   });
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);

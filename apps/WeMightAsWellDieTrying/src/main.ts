@@ -16,5 +16,6 @@ new Phaser.Game({
   backgroundColor: palette.asphalt0,
   scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
   input: { activePointers: 2 },
+  audio: { noAudio: true }, // the game makes its own sound (game/sound.ts)
   scene: q.has('art') ? View : q.has('play') ? [Game, Menu] : [Menu, Game], // the first one starts
 });

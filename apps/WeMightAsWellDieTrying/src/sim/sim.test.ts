@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { World, ZOMBIE_KINDS } from './world.ts';
+import { World, ZOMBIE_KINDS, baseStats } from './world.ts';
 
 const noWaves = { gap: 0, waves: [] };
 const world = (rows: string[]) => new World({ name: 'test', tile: 16, par: 60, rows }, noWaves);
@@ -27,7 +27,7 @@ test('a crowd packs without overlapping', () => {
   run(w, 2);
   let closest = Infinity;
   for (let i = 0; i < 40; i++) for (let j = i + 1; j < 40; j++) closest = Math.min(closest, Math.hypot(w.zx[i] - w.zx[j], w.zy[i] - w.zy[j]));
-  assert.ok(closest > 9, `two zombies ${closest.toFixed(1)}px apart (radius 6 each)`);
+  assert.ok(closest > 13, `two zombies ${closest.toFixed(1)}px apart: they must touch, not stack (radius 6 each, kept 15 apart)`);
 });
 
 test('a roadblock across the only street holds the horde until it is broken', () => {
@@ -244,4 +244,130 @@ test('a car already in the street only moves when a soldier is there to move it'
   assert.ok(w.haulProp(car, 5, 6));
   assert.equal(car.ty, 6);
   assert.equal(w.used.car, undefined, 'props are not taken from what you own');
+});
+
+test('shots and explosions are reported as sounds for the screen to play', () => {
+  const w = world(Array(20).fill('.'.repeat(19) + 'E'));
+  const s = w.placeSoldier('bazooka', 100, 80)!;
+  w.aim(s, 400, 80);
+  w.spawn(0, 200, 80);
+  w.start();
+  run(w, 3);
+  const kinds = new Set(w.sounds.map((n) => n.kind));
+  assert.ok(kinds.has('bazooka'), 'the launch');
+  assert.ok(kinds.has('boom') && w.sounds.find((n) => n.kind === 'boom')!.size > 0, 'the explosion, with its size');
+});
+
+test('soldiers aim at a zombie anywhere in their cone, not just down the middle', () => {
+  const w = world(Array(20).fill('.'.repeat(19) + 'E'));
+  const s = w.placeSoldier('rifleman', 100, 160)!;
+  w.aim(s, 130, 160); // handle close in: the widest cone, pointing east
+  w.spawn(0, 200, 125); // about 20 degrees off the middle
+  w.start();
+  run(w, 1.5);
+  assert.equal(w.alive[0], 0);
+  assert.ok(Math.abs(s.shot) > 0.1, 'he turned to his mark');
+});
+
+test('Main Street: undefended, the first wave walks the whole street into the safe zone', async () => {
+  const map = (await import('../data/maps/main-street.json', { with: { type: 'json' } })).default;
+  const plan = (await import('../data/waves.json', { with: { type: 'json' } })).default['main-street'];
+  const w = new World(map, { gap: plan.gap, waves: plan.waves.slice(0, 1) });
+  w.start();
+  run(w, 120);
+  assert.equal(w.phase, 'lost', 'overrun: the whole first wave walked the street into the safe zone');
+});
+
+test('a soldier in a window can shoot down the street, almost along the front of his building', () => {
+  // Row 1 is the building with a window at tile (2, 1); the street runs east below it.
+  const rows = ['##########################', '##########################', ...Array(6).fill('.........................E')];
+  const w = new World({ name: 'test', tile: 16, par: 60, rows, slots: [[2, 1]] }, noWaves);
+  const s = w.placeSoldier('rifleman', 40, 24)!;
+  assert.ok(s.indoor, 'he is in the window');
+  w.aim(s, 400, 40);
+  w.spawn(0, 150, 40); // down the street, about 8 degrees off the building front
+  w.start();
+  run(w, 2);
+  assert.equal(w.alive[0], 0, 'the building he is in does not stop his shots');
+});
+
+test('a soldier in a window still cannot shoot through his building to the street behind it', () => {
+  // A street above (row 0) and below (rows 4+) a building three tiles deep; his window opens onto the lower street.
+  const rows = ['.........................E', '##########################', '##########################', '##########################', ...Array(4).fill('.........................E')];
+  const w = new World({ name: 'test', tile: 16, par: 60, rows, slots: [[4, 3]] }, noWaves);
+  const s = w.placeSoldier('rifleman', 72, 56)!;
+  w.aim(s, 72, -200); // pointing up, back through the building
+  w.spawn(0, 72, 8);
+  w.start();
+  run(w, 1);
+  assert.ok(s.firedAt > 0, 'he did fire');
+  assert.equal(w.zhp[0], 100, 'untouched: the walls stopped every shot');
+});
+
+test('a zombie keeps to its lane until a roadblock is close, then goes round it', () => {
+  // A street 10 wide; a barricade blocks the left side far down it, the right side is open.
+  const w = world(['SSSSSSSSSS', ...Array(28).fill('..........'), 'EEEEEEEEEE']);
+  w.placeBlock('wood', 2, 22, false); // tiles 1 to 3 of row 22
+  w.spawn(0, 40, 8); // above the barricade, column 2
+  w.start();
+  let atHalfway = -1;
+  run(w, 60, () => { if (atHalfway < 0 && w.zy[0] > 14 * 16) atHalfway = w.zx[0]; });
+  assert.ok(Math.abs(atHalfway - 40) < 8, `still in its lane 8 tiles before the barricade (x ${atHalfway.toFixed(0)}, started at 40)`);
+  assert.equal(w.leaks, 1, 'and it still got round');
+});
+
+test('a car covers 2 by 3 tiles and a bus 2 by 5, and a placed car turns', () => {
+  const w = open();
+  const car = w.placeBlock('car', 8, 8, false)!;
+  assert.equal(w.blockTiles('car', 8, 8, false)!.length, 6);
+  assert.equal(w.blockTiles('bus', 8, 8, false)!.length, 10);
+  assert.deepEqual(w.blockCentre(car), [8.5 * 16, 9 * 16], 'drawn at the middle of its two rows');
+  assert.ok(w.moveBlock(car, car.tx, car.ty, true), 'turned');
+  assert.equal(car.vertical, true);
+});
+
+test('every map: each car, bus and barricade already in the street fits, and no tree stands in the road', async () => {
+  for (const name of ['main-street', 'brooklyn', 'new-york']) {
+    const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default;
+    const w = new World(map, noWaves);
+    assert.equal(w.roadblocks.length, (map.props ?? []).length, `${name}: every prop placed`);
+    const roadside = (x: number, y: number) => [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => w.grid.wall[(y + dy) * w.grid.w + x + dx]));
+    for (const d of map.decor ?? []) {
+      if (d.kind !== 'tree') continue;
+      const tx = Math.floor(d.x / 16), ty = Math.floor(d.y / 16), c = map.rows[ty][tx];
+      assert.ok(c !== '.' || roadside(tx, ty), `${name}: tree at ${tx},${ty} is in the road`);
+    }
+  }
+});
+
+test('a big mob pouring in from a narrow street never ends up inside the buildings', () => {
+  const rows = ['###SSSSSS###', ...Array(20).fill('###......###'), '###EEEEEE###'];
+  const w = new World({ name: 'test', tile: 16, par: 60, rows }, { gap: 0, waves: [{ duration: 1, spawn: { normal: 60 } }] });
+  w.start();
+  let bad = 0;
+  run(w, 8, () => {
+    for (let i = 0; i < w.n; i++) {
+      const t = w.grid.at(w.zx[i], w.zy[i]);
+      if (w.alive[i] && (t < 0 || w.grid.wall[t])) bad++;
+    }
+  });
+  assert.equal(bad, 0, 'zombie-steps spent inside a wall or off the map');
+});
+
+test('every zombie of every wave comes, even when the street is too full to let them in on time', () => {
+  const rows = ['###SS###', ...Array(10).fill('###..###'), '###EE###'];
+  const w = new World({ name: 'test', tile: 16, par: 60, rows }, { gap: 0, waves: [{ duration: 1, spawn: { normal: 80 } }, { duration: 1, spawn: { fast: 20 } }] }, 1, { ...baseStats(), leakLimit: 1000 });
+  w.start();
+  run(w, 200);
+  assert.equal(w.phase, 'won');
+  assert.equal(w.leaks, 100);
+});
+
+test('every map: a street only runs off the edge where the horde comes in (or into the safe zone)', async () => {
+  for (const name of ['main-street', 'brooklyn', 'new-york']) {
+    const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default, h = map.rows.length, w = map.rows[0].length;
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++)
+        if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && '.,'.includes(map.rows[y][x])) assert.fail(`${name}: a street leaves the map at ${x},${y} but nothing comes from there`);
+  }
 });

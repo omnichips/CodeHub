@@ -22,7 +22,8 @@
       "name": "Abandoned car",
       "hp": 1400,
       "length": 3,
-      "detour": 60
+      "detour": 60,
+      "width": 2
     },
     "cement": {
       "name": "Cement barrier",
@@ -35,13 +36,15 @@
       "name": "Abandoned taxi",
       "hp": 1200,
       "length": 3,
-      "detour": 60
+      "detour": 60,
+      "width": 2
     },
     "bus": {
       "name": "Bus",
       "hp": 3000,
       "length": 5,
-      "detour": 90
+      "detour": 90,
+      "width": 2
     },
     "police": {
       "name": "Police barricade",
@@ -62,7 +65,10 @@
     "incendiary": {
       "name": "Incendiary ammo",
       "radius": 56,
-      "burn": { "dps": 12, "time": 2 }
+      "burn": {
+        "dps": 12,
+        "time": 2
+      }
     },
     "ammo": {
       "name": "Extra ammo",
@@ -144,7 +150,10 @@
       "delay": 1,
       "radius": 44,
       "time": 6,
-      "burn": { "dps": 20, "time": 2 }
+      "burn": {
+        "dps": 20,
+        "time": 2
+      }
     },
     "smoke": {
       "name": "Smoke/flash",

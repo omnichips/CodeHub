@@ -9,6 +9,12 @@ import { Grid, distanceField, downhill, type MapData } from './grid.ts';
 export const STEP = 1 / 60;
 export const DIRS = 8; // soldier sprites face 8 ways: 0 = east, then clockwise
 const CAP = 4096; // most zombies alive at once
+const BLOCK_LOOK = 2.5; // tiles ahead a zombie sees a roadblock and turns to go round it
+const SPACE = 1.25; // zombies keep apart by their drawn size, a bit more than the body they are hit by: they touch, never stack
+/** How many cells out a zombie looks for neighbours to keep apart from: a cell is a tile, and two of the common ones
+ *  (radius 6) need 15 px, inside one cell; anything bigger looks two out. */
+const reachOf = (r: number) => (r * SPACE > 7.5 ? 2 : 1);
+const MOB = 50; // a wave comes as mobs of about this many, each pouring in at one place
 const SHOT_LIFE = 0.06; // seconds a tracer stays on screen
 const BLAST_LIFE = 0.35;
 const FIRING_LOOK = 0.3; // seconds a soldier holds the shooting pose after a shot
@@ -54,7 +60,7 @@ export interface UsableStats {
   name: string; charges: number; cooldown: number; delay: number; blast?: number; damage?: number; length?: number; width?: number;
   speed?: number; radius?: number; time?: number; burn?: { dps: number; time: number }; slow?: number; shells?: number; spread?: number;
 }
-export const ROADBLOCKS = structures.roadblocks as Record<BlockKind, { name: string; hp: number; length: number; detour: number; fixed?: boolean }>;
+export const ROADBLOCKS = structures.roadblocks as Record<BlockKind, { name: string; hp: number; length: number; width?: number; detour: number; fixed?: boolean }>;
 export const STRUCTS = structures.structures as Record<StructKind, StructStats>;
 export const USABLES = structures.usables as Record<UsableKind, UsableStats>;
 const FAST = ZOMBIE_KINDS.indexOf('fast');
@@ -84,6 +90,7 @@ export interface Soldier {
   reach: number; // how far out its handle sits: farther is narrower (for mortars: where the shells land)
   cooldown: number;
   firedAt: number;
+  shot: number; // the way he last fired: at his mark, somewhere inside the cone
   walking: boolean;
   heading: number;
   facing: number; // which of the 8 drawn directions
@@ -146,7 +153,7 @@ export class World {
   leaks = 0;
   wave = 0;
   flow!: Float32Array;
-  private readonly flowFree: Float32Array; // ignores roadblocks: the way a jumper sees the city
+  private readonly flowFree: Float32Array; // ignores roadblocks: the way a zombie goes until one is close ahead
 
   // Zombies live in parallel arrays, one slot each; a dead zombie's slot is reused, so a big fight makes no garbage.
   n = 0;
@@ -184,12 +191,18 @@ export class World {
   readyAt: Record<UsableKind, number>;
   /** Zombies killed since the screen last looked, for corpses and blood. */
   deaths: { x: number; y: number; kind: number; angle: number }[] = [];
+  /** What made a noise since the screen last looked: a soldier's kind when he fires, 'boom' (size = blast radius),
+   *  'napalm' or 'a10'. The screen turns these into sound and empties the list. */
+  sounds: { kind: string; x: number; y: number; size: number }[] = [];
+  private noise(kind: string, x: number, y: number, size = 0) { if (this.sounds.length < 512) this.sounds.push({ kind, x, y, size }); }
   private byId = new Map<number, Roadblock>();
   private structById = new Map<number, Structure>();
   private structAt: Int32Array; // structure id on each tile, 0 for none
   private nextBlock = 1;
 
   private waveClock = 0;
+  private mobAt = 0; // the spawn tile the current mob pours in at
+  private mob = -1; // which mob of the wave that is
   private queue: number[] = [];
   private spawned = 0;
   private readonly plan: WavePlan;
@@ -287,7 +300,7 @@ export class World {
     const u = this.stats.units[kind], c = coneOf(u), north = -Math.PI / 2;
     const reach = indirect(u) ? (u.minRange! + u.range) / 2 : (c.handleMin + c.handleMax) / 2;
     const s: Soldier = {
-      kind, x, y, hp: u.hp, dead: false, angle: north, reach, cooldown: 0, firedAt: -1, walking: false, heading: north,
+      kind, x, y, hp: u.hp, dead: false, angle: north, reach, cooldown: 0, firedAt: -1, shot: north, walking: false, heading: north,
       facing: facingOf(north), priority: 'nearest', turrets: u.turrets ?? 0, owner, rangeBy: 1, rateBy: 1, incendiary: false, cover: 1,
       indoor: spot.indoor,
     };
@@ -368,7 +381,17 @@ export class World {
     return tiles;
   }
 
-  blockTiles(kind: BlockKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(this.stats.roadblocks[kind].length, tx, ty, vertical); }
+  /** A roadblock's tiles: `length` along it, centred on (tx, ty), and `width` across (a car is 2 by 3, a bus 2 by 5);
+   *  a wide one reaches below (or right of) its centre line. Undefined if it runs off the map. */
+  blockTiles(kind: BlockKind, tx: number, ty: number, vertical: boolean) {
+    const { length, width = 1 } = this.stats.roadblocks[kind], tiles: number[] = [];
+    for (let across = 0; across < width; across++) {
+      const line = this.lineTiles(length, vertical ? tx + across : tx, vertical ? ty : ty + across, vertical);
+      if (!line) return;
+      tiles.push(...line);
+    }
+    return tiles;
+  }
   structTiles(kind: StructKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(this.stats.structs[kind].length ?? 1, tx, ty, vertical); }
 
   blockFits(kind: BlockKind, tx: number, ty: number, vertical: boolean, self?: Roadblock) {
@@ -450,7 +473,10 @@ export class World {
   }
 
   /** The world point a roadblock is centred on. */
-  blockCentre(rb: Roadblock): [number, number] { return [(rb.tx + 0.5) * this.grid.tile, (rb.ty + 0.5) * this.grid.tile]; }
+  blockCentre(rb: Roadblock): [number, number] {
+    const half = ((this.stats.roadblocks[rb.kind].width ?? 1) - 1) / 2;
+    return [(rb.tx + 0.5 + (rb.vertical ? half : 0)) * this.grid.tile, (rb.ty + 0.5 + (rb.vertical ? 0 : half)) * this.grid.tile];
+  }
 
   private mark(rb: Roadblock, id: number) {
     for (const i of this.blockTiles(rb.kind, rb.tx, rb.ty, rb.vertical)!) this.grid.block[i] = id;
@@ -594,24 +620,41 @@ export class World {
   }
 
   private startWave() {
+    const late = this.queue.slice(this.spawned); // the last wave's stragglers, still to pour in: they come first
     this.waveClock = 0;
     this.spawned = 0;
-    const def = this.plan.waves[this.wave];
-    this.queue = def ? Object.entries(def.spawn).flatMap(([k, n]) => Array<number>(n ?? 0).fill(ZOMBIE_KINDS.indexOf(k))) : [];
-    for (let i = this.queue.length - 1; i > 0; i--) {
+    this.mob = -1;
+    const def = this.plan.waves[this.wave], fresh = def ? Object.entries(def.spawn).flatMap(([k, n]) => Array<number>(n ?? 0).fill(ZOMBIE_KINDS.indexOf(k))) : [];
+    for (let i = fresh.length - 1; i > 0; i--) {
       const j = (this.random() * (i + 1)) | 0;
-      [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
+      [fresh[i], fresh[j]] = [fresh[j], fresh[i]];
     }
+    this.queue = [...late, ...fresh];
   }
 
   private spawnWaves(dt: number) {
     const def = this.plan.waves[this.wave], { spawns, w, tile } = this.grid;
     if (!def) return;
     this.waveClock += dt;
-    const due = Math.min(this.queue.length, Math.ceil((this.queue.length * this.waveClock) / def.duration));
-    while (this.spawned < due && spawns.length) {
-      const s = spawns[(this.random() * spawns.length) | 0], tx = s % w, ty = (s - tx) / w;
-      this.spawn(this.queue[this.spawned++], (tx + 0.2 + this.random() * 0.6) * tile, (ty + 0.2 + this.random() * 0.6) * tile);
+    // The wave comes as a few mobs spread over its duration; each mob arrives at once, packed, at one place.
+    const mobs = Math.max(1, Math.round(this.queue.length / MOB)), size = Math.ceil(this.queue.length / mobs);
+    const due = Math.min(this.queue.length, size * Math.min(mobs, Math.floor((this.waveClock * mobs) / def.duration) + 1));
+    // A mob pours in as fast as there is room at its spawn point: never on top of the ones already there, or a crowd
+    // with nowhere to go gets shoved into the buildings beside the street.
+    spawning: while (this.spawned < due && spawns.length) {
+      if (Math.floor(this.spawned / size) !== this.mob) {
+        this.mob = Math.floor(this.spawned / size);
+        this.mobAt = spawns[(this.random() * spawns.length) | 0];
+      }
+      const ax = this.mobAt % w, ay = (this.mobAt - ax) / w, close = spawns.filter((s) => Math.abs((s % w) - ax) <= 2 && Math.abs(Math.floor(s / w) - ay) <= 2);
+      for (let tries = 0; tries < 6; tries++) {
+        const s = close[(this.random() * close.length) | 0], tx = s % w, ty = (s - tx) / w;
+        const x = (tx + 0.2 + this.random() * 0.6) * tile, y = (ty + 0.2 + this.random() * 0.6) * tile;
+        if (this.within(x, y, 3).length) continue; // someone is standing there
+        this.spawn(this.queue[this.spawned++], x, y);
+        continue spawning;
+      }
+      break; // full up: the rest of the mob comes in as the front moves off
     }
     if (this.wave < this.plan.waves.length - 1 && this.waveClock >= def.duration + this.plan.gap) {
       this.wave++;
@@ -736,7 +779,12 @@ export class World {
         dx = (lure.x - x) / d;
         dy = (lure.y - y) / d;
       } else {
-        if (downhill(this.grid, z.jumps ? this.flowFree : this.flow, x, y, this.dir)) {
+        // The way the street goes, as if no roadblock stood in it; only when one is close ahead does a zombie take the
+        // way round it (or through it). A jumper never turns: it goes over.
+        if (downhill(this.grid, this.flowFree, x, y, this.dir) && (z.jumps || !this.blockAhead(x, y, this.dir.x, this.dir.y))) {
+          dx = this.dir.x;
+          dy = this.dir.y;
+        } else if (downhill(this.grid, this.flow, x, y, this.dir)) {
           dx = this.dir.x;
           dy = this.dir.y;
         }
@@ -782,24 +830,35 @@ export class World {
     }
   }
 
-  /** Zombies never overlap: each overlapping pair is pushed apart equally, so a crowd packs and shoves. */
+  /** A roadblock on the line ahead within BLOCK_LOOK, or on the tile underfoot. */
+  private blockAhead(x: number, y: number, dx: number, dy: number) {
+    const T = this.grid.tile;
+    for (let t = 0; t <= BLOCK_LOOK * T; t += T / 2) {
+      const i = this.grid.at(x + dx * t, y + dy * t);
+      if (i >= 0 && this.grid.block[i]) return true;
+    }
+    return false;
+  }
+
+  /** Zombies never overlap: each pair closer than their drawn size (SPACE) is pushed apart, so a crowd packs shoulder to
+   *  shoulder into a carpet that fills the street. */
   private separate() {
     const { w, h } = this.grid, { zx, zy, cellStart: start, cellItems: items } = this;
     for (let i = 0; i < this.n; i++) {
       const c = this.cell[i];
       if (c < 0 || !this.alive[i]) continue;
-      const cx = c % w, cy = (c - cx) / w, ri = ZOMBIES[this.zkind[i]].radius, reach = ri > 8 ? 2 : 1; // big ones reach past the next cell
+      const cx = c % w, cy = (c - cx) / w, ri = ZOMBIES[this.zkind[i]].radius, reach = reachOf(ri);
       for (let ty = Math.max(0, cy - reach); ty <= Math.min(h - 1, cy + reach); ty++)
         for (let tx = Math.max(0, cx - reach); tx <= Math.min(w - 1, cx + reach); tx++)
           for (let k = start[ty * w + tx], end = start[ty * w + tx + 1]; k < end; k++) {
-            const j = items[k], rj = ZOMBIES[this.zkind[j]].radius > 8 ? 2 : 1;
+            const j = items[k], rj = reachOf(ZOMBIES[this.zkind[j]].radius);
             if (j === i || !this.alive[j] || rj > reach || (rj === reach && j < i)) continue; // each pair once, by the one that looks farther
             let dx = zx[j] - zx[i], dy = zy[j] - zy[i];
-            const min = ri + ZOMBIES[this.zkind[j]].radius, d2 = dx * dx + dy * dy;
+            const min = (ri + ZOMBIES[this.zkind[j]].radius) * SPACE, d2 = dx * dx + dy * dy;
             if (d2 >= min * min) continue;
             if (d2 < 1e-6) { dx = this.random() - 0.5; dy = this.random() - 0.5; }
             // The bigger one gives way less.
-            const d = Math.hypot(dx, dy), mi = ri * ri, mj = ZOMBIES[this.zkind[j]].radius ** 2, over = (min - d) / d;
+            const d = Math.hypot(dx, dy) || 1e-3, mi = ri * ri, mj = ZOMBIES[this.zkind[j]].radius ** 2, over = (min - d) / d;
             const pi = (over * mj) / (mi + mj), pj = (over * mi) / (mi + mj);
             zx[i] -= dx * pi;
             zy[i] -= dy * pi;
@@ -817,6 +876,8 @@ export class World {
       const z = ZOMBIES[this.zkind[i]];
       this.pushOut(this.zx[i], this.zy[i], z.radius, !z.jumps);
       let x = this.px, y = this.py;
+      const at = g.at(x, y);
+      if (at < 0 || g.wall[at]) [x, y] = this.nearestOpen(x, y);
       if (this.touch && -(this.tnx * this.zdx[i] + this.tny * this.zdy[i]) > 0.5) this.damageBlock(this.touch, z.dps * (z.smash ?? 1) * dt);
       for (const s of this.soldiers) {
         if (s.dead || s.indoor) continue;
@@ -834,6 +895,21 @@ export class World {
         this.leaks += z.leak;
       }
     }
+  }
+
+  /** The middle of the open tile nearest (x, y), for a zombie that has been shoved into a building or off the map. */
+  private nearestOpen(x: number, y: number): [number, number] {
+    const { w, h, tile: T, wall } = this.grid, tx = Math.floor(x / T), ty = Math.floor(y / T);
+    let best: [number, number] = [x, y], bestD = Infinity;
+    for (let r = 1; r <= 6 && bestD === Infinity; r++)
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          const nx = tx + dx, ny = ty + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h || wall[ny * w + nx]) continue;
+          const cx = (nx + 0.5) * T, cy = (ny + 0.5) * T, d = (cx - x) ** 2 + (cy - y) ** 2;
+          if (d < bestD) { bestD = d; best = [cx, cy]; }
+        }
+    return best;
   }
 
   /** Moves a circle out of every solid tile it overlaps; the result goes in px, py, and any roadblock touched in touch. */
@@ -961,6 +1037,7 @@ export class World {
       if (done && s.kind === 'missile') this.explode(s.x, s.y, u.blast!, u.damage!);
       else if (done && s.kind === 'napalm') {
         this.blasts.push({ x: s.x, y: s.y, r: u.radius!, age: 0, bile: false });
+        this.noise('napalm', s.x, s.y, u.radius!);
         this.zones.push({ kind: 'fire', x: s.x, y: s.y, r: u.radius!, t: u.time! });
       } else if (done && s.kind === 'smoke') this.zones.push({ kind: 'smoke', x: s.x, y: s.y, r: u.radius!, t: u.time! });
       else if (done && s.kind === 'flare') this.zones.push({ kind: 'lure', x: s.x, y: s.y, r: u.radius!, t: u.time! });
@@ -976,6 +1053,7 @@ export class World {
             this.damage(j, u.damage!, 'splash');
           }
         const a = this.random() * Math.PI * 2, r = this.random() * u.width!;
+        this.noise('a10', px, py);
         this.shots.push({ x1: px - Math.cos(s.angle) * 40, y1: py - Math.sin(s.angle) * 40, x2: px + Math.cos(a) * r, y2: py + Math.sin(a) * r, age: 0, heavy: true });
         done = (s.t - u.delay) * u.speed! > u.length!;
       }
@@ -1033,7 +1111,7 @@ export class World {
           if (s.indoor && !this.grid.wall[this.grid.at(s.x, s.y)]) s.indoor = false; // out in the street now
         }
       }
-      s.facing = facingOf(firing || !s.walking ? s.angle : s.heading);
+      s.facing = facingOf(firing ? s.shot : !s.walking ? s.angle : s.heading);
     }
   }
 
@@ -1066,24 +1144,32 @@ export class World {
     return this.inCone(s, this.rangeOf(s)).length > 0;
   }
 
+  /** The way to his mark: inside his cone, a soldier picks the zombie his priority says (the nearest, unless told). */
+  private markAngle(s: Soldier) {
+    const marks = this.inCone(s, this.rangeOf(s));
+    if (!marks.length) return s.angle;
+    const score = (j: number) => {
+      const d = Math.hypot(this.zx[j] - s.x, this.zy[j] - s.y), z = ZOMBIES[this.zkind[j]];
+      return s.priority === 'nearest' ? -d : s.priority === 'farthest' ? d : s.priority === 'highest HP' ? this.zhp[j] : s.priority === 'fastest' ? z.speed : -z.speed;
+    };
+    const j = marks.reduce((a, b) => (score(b) > score(a) ? b : a));
+    // Aimed from where the shot leaves (a window is a little off where he stands), so it flies true.
+    const [ox, oy] = this.muzzleOf(s, Math.atan2(this.zy[j] - s.y, this.zx[j] - s.x));
+    return Math.atan2(this.zy[j] - oy, this.zx[j] - ox);
+  }
+
+  /** Direct fire goes at his mark, a little off (pellets spread wider); mortars and grenadiers drop on the aim point. */
   private fire(s: Soldier, u: UnitStats) {
-    const rand = () => (this.random() * 2 - 1) * this.spread(s);
+    const aim = (s.shot = indirect(u) || u.weapon === 'flame' ? s.angle : this.markAngle(s)), off = (by: number) => (this.random() * 2 - 1) * this.spread(s) * by;
+    this.noise(s.kind, s.x, s.y);
     switch (u.weapon) {
       case 'bullet':
-        return this.bullet(s, s.angle + rand(), this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
+        return this.bullet(s, aim + off(0.15), this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
       case 'pellets':
-        for (let k = 0; k < u.pellets!; k++) this.bullet(s, s.angle + rand(), this.rangeOf(s), this.damageOf(s), 1, u.knockback ?? 0);
+        for (let k = 0; k < u.pellets!; k++) this.bullet(s, aim + off(0.6), this.rangeOf(s), this.damageOf(s), 1, u.knockback ?? 0);
         return;
-      case 'sniper': {
-        // The one exception to "no auto-aim": inside his cone, a sniper picks his mark.
-        const marks = this.inCone(s, this.rangeOf(s));
-        const score = (j: number) => {
-          const d = Math.hypot(this.zx[j] - s.x, this.zy[j] - s.y), z = ZOMBIES[this.zkind[j]];
-          return s.priority === 'nearest' ? -d : s.priority === 'farthest' ? d : s.priority === 'highest HP' ? this.zhp[j] : s.priority === 'fastest' ? z.speed : -z.speed;
-        };
-        const j = marks.reduce((a, b) => (score(b) > score(a) ? b : a));
-        return this.bullet(s, Math.atan2(this.zy[j] - s.y, this.zx[j] - s.x), this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
-      }
+      case 'sniper':
+        return this.bullet(s, aim, this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
       case 'flame':
         for (const j of this.inCone(s, this.rangeOf(s))) {
           this.ignite(j, u.burn!);
@@ -1091,8 +1177,8 @@ export class World {
         }
         return;
       case 'rocket': {
-        const a = s.angle + rand(), v = u.projectileSpeed!;
-        this.projectiles.push({ grace: s.indoor ? this.grid.tile * 1.5 : 0, arc: false, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: s.x, y1: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, flight: this.rangeOf(s) / v, blast: u.blast!, damage: this.damageOf(s) });
+        const a = aim + off(0.1), v = u.projectileSpeed!, [ox, oy] = this.muzzleOf(s, a);
+        this.projectiles.push({ grace: s.indoor ? this.grid.tile * 1.5 : 0, arc: false, x: ox, y: oy, x0: ox, y0: oy, x1: ox, y1: oy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, flight: this.rangeOf(s) / v, blast: u.blast!, damage: this.damageOf(s) });
         return;
       }
       case 'shell': {
@@ -1102,18 +1188,35 @@ export class World {
     }
   }
 
+  /** Where a shot starts. An indoor soldier fires out of his window (or off the roof edge): from the side of his tile
+   *  that opens onto the street most in line with the shot, so the building he is in never stops it, even when he
+   *  shoots down the street almost along its front. With no open side (the middle of a roof), from where he stands. */
+  private muzzleOf(s: Soldier, a: number): [number, number] {
+    if (!s.indoor) return [s.x, s.y];
+    const { w, h, tile: T, wall } = this.grid, tx = Math.floor(s.x / T), ty = Math.floor(s.y / T);
+    let best = -Infinity, out: [number, number] = [s.x, s.y];
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const x = tx + dx, y = ty + dy;
+        if ((!dx && !dy) || x < 0 || y < 0 || x >= w || y >= h || wall[y * w + x]) continue;
+        const facing = (dx * Math.cos(a) + dy * Math.sin(a)) / Math.hypot(dx, dy);
+        if (facing > best) { best = facing; out = [(tx + 0.5 + dx / 2) * T, (ty + 0.5 + dy / 2) * T]; }
+      }
+    return out;
+  }
+
   /** A bullet along a line: buildings stop it, roadblocks do not. It hits the first zombies on it, up to `pierce`. */
   private bullet(s: Soldier, a: number, range: number, dmg: number, pierce: number, knockback: number) {
-    const T = this.grid.tile, cx = Math.cos(a), cy = Math.sin(a);
+    const T = this.grid.tile, cx = Math.cos(a), cy = Math.sin(a), [ox, oy] = this.muzzleOf(s, a);
     let reach = range, grace = s.indoor ? this.grid.tile : 0;
     for (let t = 4; t < reach; t += 4) {
-      const i = this.grid.at(s.x + cx * t, s.y + cy * t);
+      const i = this.grid.at(ox + cx * t, oy + cy * t);
       if (i < 0 || (this.grid.wall[i] && t > grace)) { reach = t; break; }
       if (!this.grid.wall[i]) grace = 0; // out of the window: from here on walls stop it
     }
-    const ex = s.x + cx * reach, ey = s.y + cy * reach, hits: [number, number][] = [];
-    for (const j of this.near(Math.min(s.x, ex) - T, Math.min(s.y, ey) - T, Math.max(s.x, ex) + T, Math.max(s.y, ey) + T)) {
-      const px = this.zx[j] - s.x, py = this.zy[j] - s.y, along = px * cx + py * cy, r = ZOMBIES[this.zkind[j]].radius, side2 = px * px + py * py - along * along;
+    const ex = ox + cx * reach, ey = oy + cy * reach, hits: [number, number][] = [];
+    for (const j of this.near(Math.min(ox, ex) - T, Math.min(oy, ey) - T, Math.max(ox, ex) + T, Math.max(oy, ey) + T)) {
+      const px = this.zx[j] - ox, py = this.zy[j] - oy, along = px * cx + py * cy, r = ZOMBIES[this.zkind[j]].radius, side2 = px * px + py * py - along * along;
       if (along < 0 || side2 > r * r) continue;
       const t = along - Math.sqrt(r * r - side2);
       if (t <= reach) hits.push([t, j]);
@@ -1129,8 +1232,8 @@ export class World {
       this.damage(j, dmg, pierce > 1 ? 'pierce' : 'bullet');
       if (s.incendiary && this.alive[j]) this.ignite(j, this.stats.structs.incendiary.burn!);
     }
-    const muzzle = Math.min(10, end);
-    this.shots.push({ x1: s.x + cx * muzzle, y1: s.y + cy * muzzle, x2: s.x + cx * end, y2: s.y + cy * end, age: 0, heavy: pierce > 1 });
+    const muzzle = s.indoor ? 0 : Math.min(10, end); // from a window the tracer starts at the window
+    this.shots.push({ x1: ox + cx * muzzle, y1: oy + cy * muzzle, x2: ox + cx * end, y2: oy + cy * end, age: 0, heavy: pierce > 1 });
   }
 
   private flyProjectiles(dt: number) {
@@ -1158,6 +1261,7 @@ export class World {
   /** Splash: every zombie in the blast takes the full hit. Soldiers are hurt only by mines and explosives (`friendly`). */
   private explode(x: number, y: number, r: number, dmg: number, friendly = false) {
     this.blasts.push({ x, y, r, age: 0, bile: false });
+    this.noise('boom', x, y, r);
     for (const j of this.within(x, y, r)) if (this.alive[j]) this.damage(j, dmg, 'splash');
     if (friendly)
       for (const s of this.soldiers)

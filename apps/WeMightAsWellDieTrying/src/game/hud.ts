@@ -2,7 +2,7 @@
 // soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start tip,
 // and the end-of-run panel with the chips the run paid.
 export type Group = 'units' | 'build' | 'strikes';
-export interface BarItem { id: string; name: string; group: Group; icon: string }
+export interface BarItem { id: string; name: string; group: Group; icon: string; desc: string }
 export interface HudState {
   status: string[];
   warn: boolean; // leaks close to the limit
@@ -49,6 +49,8 @@ export class Hud {
   private readonly tipText: HTMLElement;
   private readonly confirm: HTMLElement;
   private readonly end: HTMLElement;
+  private readonly hint: HTMLElement;
+  private readonly banners: HTMLElement;
   private readonly on: Handlers;
   private group: Group = 'units';
   private shown = '';
@@ -67,19 +69,28 @@ export class Hud {
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
     this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => el('button', { type: 'button', className: 'tab', textContent: label, onclick: () => { this.group = group; bar.scrollLeft = 0; } }));
-    for (const { id, name, group, icon } of items) {
+    this.hint = el('div', { className: 'hint', hidden: true });
+    for (const { id, name, group, icon, desc } of items) {
       const count = el('span', { className: 'count' });
-      const button = el('button', { type: 'button', className: 'item', title: `${name}: drag onto the map`, ariaLabel: name }, el('img', { src: icon, alt: '' }), count);
+      const button = el('button', { type: 'button', className: 'item', ariaLabel: `${name}: ${desc}` }, el('img', { src: icon, alt: '' }), count);
+      const explain = () => this.explain(name, desc, button.getBoundingClientRect());
+      // A mouse hovering, or a finger held still, shows who this is.
+      button.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') explain(); });
+      button.addEventListener('pointerleave', () => this.unexplain());
       // Sideways scrolls the bar; dragging up out of it picks the item up (a mouse can drag straight away).
       button.addEventListener('pointerdown', (down) => {
-        if (button.classList.contains('empty')) return;
-        if (down.pointerType === 'mouse') { down.preventDefault(); on.drag(id, down); return; }
+        if (down.pointerType === 'mouse') {
+          this.unexplain();
+          if (!button.classList.contains('empty')) { down.preventDefault(); on.drag(id, down); }
+          return;
+        }
+        const hold = setTimeout(explain, 350);
         const move = (e: PointerEvent) => {
           const dx = e.clientX - down.clientX, dy = e.clientY - down.clientY;
-          if (-dy > 10 && -dy * 2 > Math.abs(dx)) { stop(); on.drag(id, e); } // up, or up and to the side
+          if (-dy > 10 && -dy * 2 > Math.abs(dx) && !button.classList.contains('empty')) { stop(); on.drag(id, e); } // up, or up and to the side
           else if (Math.abs(dx) > 12) stop();
         };
-        const stop = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', stop); removeEventListener('pointercancel', stop); };
+        const stop = () => { clearTimeout(hold); this.unexplain(); removeEventListener('pointermove', move); removeEventListener('pointerup', stop); removeEventListener('pointercancel', stop); };
         addEventListener('pointermove', move);
         addEventListener('pointerup', stop);
         addEventListener('pointercancel', stop);
@@ -94,13 +105,29 @@ export class Hud {
       el('h2', {}, 'Retreat?'), el('p', {}, 'It counts as a loss: you keep half the chips from your kills.'),
       el('div', { className: 'row' }, el('button', { type: 'button', textContent: 'Keep fighting', onclick: () => (this.confirm.hidden = true) }), el('button', { type: 'button', className: 'go', textContent: 'Retreat', onclick: () => on.retreat() })));
     this.end = el('div', { className: 'end', hidden: true });
+    this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
       el('div', { className: 'status' }, menu, ...this.status), el('div', { className: 'time' }, this.start, this.speeds),
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.confirm, this.end,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.confirm, this.end, this.hint, this.banners,
     );
   }
 
   destroy() { this.root.replaceChildren(); }
+
+  /** A big title across the screen that fades in and out by itself: the city at the start, each wave as it comes. */
+  banner(title: string, sub: string) {
+    this.banners.replaceChildren(el('div', {}, el('h2', {}, title), el('p', {}, sub))); // a new child restarts the animation
+  }
+
+  /** Who something is, in a box beside it (`at` is where it is on screen), until unexplain(). */
+  explain(name: string, desc: string, at: { left: number; top: number; width: number; bottom: number }) {
+    this.hint.replaceChildren(el('b', {}, name), el('p', {}, desc));
+    this.hint.hidden = false;
+    const w = this.hint.offsetWidth, h = this.hint.offsetHeight;
+    this.hint.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, at.left + at.width / 2 - w / 2))}px`;
+    this.hint.style.top = `${at.top - h - 8 < 8 ? at.bottom + 8 : at.top - h - 8}px`;
+  }
+  unexplain() { this.hint.hidden = true; }
 
   update(s: HudState) {
     this.planning = s.planning;

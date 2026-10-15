@@ -3,8 +3,9 @@
 // the same way and no finished sprite is ever rotated (which is what makes rotated pixel art look rough).
 
 export type Vec = readonly [number, number];
-/** A capsule from a to b (a circle when b is left out). z is its height; dome makes it rounder in the shading. */
-export interface Part { mat: string; a: Vec; b?: Vec; r: number; z: number; dome?: number }
+/** A capsule from a to b (a circle when b is left out). z is its height; dome makes it rounder in the shading.
+ *  A `square` part has flat ends: a box from a to b, r either side of the line (car bodies, bus roofs). */
+export interface Part { mat: string; a: Vec; b?: Vec; r: number; z: number; dome?: number; square?: boolean }
 /** Three palette colors, dark to light. A glowing material (muzzle flash) ignores the light and gets no outline. */
 export interface Material { ramp: readonly [string, string, string]; glow?: boolean }
 export interface Grid { size: number; mat: (string | undefined)[]; h: Float32Array }
@@ -14,9 +15,10 @@ const SLOPE = 0.6; // how steep a height step looks to the light
 const SHADOW_ALPHA = 90;
 const EDGE = 1.5; // a part this much taller than its neighbour draws a dark line along its edge
 
-function segmentDistance2(x: number, y: number, [ax, ay]: Vec, [bx, by]: Vec) {
-  const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
-  const t = len ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len)) : 0;
+function segmentDistance2(x: number, y: number, [ax, ay]: Vec, [bx, by]: Vec, square = false) {
+  const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy, along = len ? ((x - ax) * dx + (y - ay) * dy) / len : 0;
+  if (square && (along < 0 || along > 1)) return Infinity; // past a flat end
+  const t = Math.max(0, Math.min(1, along));
   const ex = x - ax - t * dx, ey = y - ay - t * dy;
   return ex * ex + ey * ey;
 }
@@ -37,7 +39,7 @@ export function rasterize(parts: readonly Part[], size: number, angle: number): 
       for (let k = 0; k < parts.length; k++) {
         const p = parts[k], box = boxes[k];
         if (lx < box[0] || lx > box[1] || ly < box[2] || ly > box[3]) continue;
-        const d2 = segmentDistance2(lx, ly, p.a, p.b ?? p.a);
+        const d2 = segmentDistance2(lx, ly, p.a, p.b ?? p.a, p.square);
         if (d2 >= p.r * p.r) continue;
         const top = p.z + (p.dome ?? 0) * Math.sqrt(1 - d2 / (p.r * p.r));
         if (top > best) { best = top; m = p.mat; }

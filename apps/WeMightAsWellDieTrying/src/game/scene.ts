@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
-import { payout, build, type Build, type Payout } from '../meta/progress.ts';
+import { NODE, payout, build, type Build, type Payout } from '../meta/progress.ts';
 import { MAPS, persist, profile } from '../meta/profile.ts';
 import type { MapData } from '../sim/grid.ts';
 import { paintMap } from './mapart.ts';
@@ -11,6 +11,7 @@ import {
   type BlockKind, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
 import { Hud, type Group } from './hud.ts';
+import { play } from './sound.ts';
 
 /** The order things appear in the bar. Only what the skill web has unlocked is shown. */
 const ORDER = [...Object.keys(UNITS).filter((k) => k !== 'turret'), 'plastic', 'wood', 'sandbags', 'car', 'cement', ...Object.keys(STRUCTS), ...Object.keys(USABLES)];
@@ -19,12 +20,12 @@ const CORPSE_LIFE = { none: 0, some: 12, normal: 30 }; // seconds of fight befor
 const TUTORIAL = [
   'Drag a Rifleman up from the bar onto a street.',
   'Tap him, then drag the round handle to aim his cone. Pull it farther out for a narrower, longer cone.',
-  'Press Start when you are ready. The horde comes from the north.',
+  'Press Start when you are ready. They come from the far end of the street.',
   'Pause any time: you can still give orders while paused.',
   'To fall back, drag a soldier to where he should go. He walks there.',
   'Hold the line. Good luck.',
 ];
-const MAX_STEPS = 8; // per frame: a very slow frame loses time rather than spiralling
+const MAX_STEPS = 24; // per frame (10x needs 10 at 60 fps, 20 at 30): a very slow frame loses time rather than spiralling
 const MAX_ZOOM = 4;
 const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
 const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'police', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
@@ -37,6 +38,8 @@ const isSoldier = (o?: Thing): o is Soldier => !!o && o.kind in UNITS;
 const isBlock = (o?: Thing): o is Roadblock => !!o && o.kind in ROADBLOCKS;
 const nameOf = (id: string) => (isUnit(id) ? UNITS[id] : isUsable(id) ? USABLES[id] : isBlockKind(id) ? ROADBLOCKS[id] : STRUCTS[id as StructKind]).name;
 const hex = (c: string) => Phaser.Display.Color.HexStringToColor(c).color;
+/** What the bar and hovering say about something: the line from its skill web node. */
+const describe = (id: string) => NODE.get(id)?.desc ?? (id === 'generator' ? 'Powers electric puddles nearby. Goes inside a building.' : '');
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 type Drag =
@@ -61,6 +64,8 @@ export class Game extends Phaser.Scene {
   blocks = new Map<Roadblock | Structure, Phaser.GameObjects.Sprite[]>();
   planes: Phaser.GameObjects.Sprite[] = [];
   floor!: Phaser.GameObjects.Graphics;
+  /** Where the horde comes in: each run of spawn tiles at the map edge, and the way in from it. */
+  entries: { tiles: number[]; x: number; y: number; dx: number; dy: number; label: Phaser.GameObjects.Text }[] = [];
   top!: Phaser.GameObjects.Graphics;
   pending?: Soldier; // a sentry operator waiting for a tap to set his turret down
   mapId = MAPS[0].id;
@@ -71,6 +76,10 @@ export class Game extends Phaser.Scene {
   paid?: Payout; // the chips this run paid, once it is over
   corpses: { body: Phaser.GameObjects.Image; splat?: Phaser.GameObjects.Image; born: number }[] = [];
   tutorial = -1; // step of the guided start, or -1
+  turned = false; // roadblocks and structures dragged from the bar go down turned (R turns them)
+  canTurn = false; // the selection can be turned now
+  shownWave = -1; // the last wave the banner announced
+  hovered?: Soldier; // under the mouse, explained in a box
 
   constructor() { super('game'); }
 
@@ -82,19 +91,20 @@ export class Game extends Phaser.Scene {
     bake(this);
     const m = MAPS.find((x) => x.id === this.mapId) ?? MAPS[0], save = profile.save;
     this.mapData = m.data;
-    this.build = build(new Set(save.owned));
+    this.build = build(save.skills);
     this.loadout = this.build.loadout;
     this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
-    Object.assign(this, { speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), planes: [], paid: undefined, corpses: [] });
+    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), planes: [], paid: undefined, corpses: [] });
     this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
     if (horde > 0) this.world.horde(Math.min(horde, 4000));
     if (import.meta.env.DEV) Object.assign(window, { game: this }); // for poking at it from the console or a test
-    const blood = save.settings.gore !== 'none';
+    const blood = profile.settings.gore !== 'none';
     this.add.image(0, 0, paintMap(this, m.data, this.world.grid, `map-${m.id}-${blood}`, blood)).setOrigin(0);
     this.floor = this.add.graphics().setDepth(1);
     this.top = this.add.graphics().setDepth(10);
+    this.entries = this.findEntries();
     this.setupCamera();
     this.setupInput();
     const items = this.ids.map((id) => ({
@@ -102,8 +112,9 @@ export class Game extends Phaser.Scene {
       name: nameOf(id),
       group: (isUnit(id) ? 'units' : isUsable(id) ? 'strikes' : 'build') as Group,
       icon: icon(this, isUnit(id) ? `${id}-idle-6/0` : `${id}/0`),
+      desc: describe(id),
     }));
-    this.hud = new Hud(document.getElementById('hud')!, items, this.build.speeds, save.settings.lefty, {
+    this.hud = new Hud(document.getElementById('hud')!, items, this.build.speeds, profile.settings.lefty, {
       drag: (id, e) => this.beginPlace(id, e),
       start: () => this.world.start(),
       speed: (n) => (this.speed = n),
@@ -114,12 +125,40 @@ export class Game extends Phaser.Scene {
       skip: () => this.endTutorial(),
     });
     this.events.once('shutdown', () => this.hud.destroy());
+    this.input.keyboard?.on('keydown-R', () => {
+      if (this.drag?.kind === 'place') this.turned = !this.turned;
+      else if (this.canTurn) this.act('Turn');
+    });
+    this.cameras.main.fadeIn(500);
+    this.hud.banner(m.name, this.tutorial >= 0 ? 'Learn the ropes here' : 'Plan your defence');
+  }
+
+  /** The spawn tiles in runs along the map edge, each with its middle and the way into the map. */
+  findEntries() {
+    const g = this.world.grid, T = g.tile, left = new Set(g.spawns), out: Game['entries'] = [];
+    for (const first of g.spawns) {
+      if (!left.has(first)) continue;
+      const tiles: number[] = [];
+      for (const stack = [first]; stack.length; ) {
+        const i = stack.pop()!;
+        if (!left.delete(i)) continue;
+        tiles.push(i);
+        for (const n of [i - 1, i + 1, i - g.w, i + g.w]) if (left.has(n)) stack.push(n);
+      }
+      const xs = tiles.map((i) => i % g.w), ys = tiles.map((i) => Math.floor(i / g.w));
+      const x = ((Math.min(...xs) + Math.max(...xs) + 1) / 2) * T, y = ((Math.min(...ys) + Math.max(...ys) + 1) / 2) * T;
+      const [dx, dy] = Math.min(...ys) === 0 ? [0, 1] : Math.max(...ys) === g.h - 1 ? [0, -1] : Math.min(...xs) === 0 ? [1, 0] : [-1, 0];
+      const label = this.add.text(x + dx * T * 6.5, y + dy * T * 6.5, 'THEY COME\nFROM HERE', { fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: '9px', color: palette.flash1, align: 'center', stroke: palette.outline, strokeThickness: 3 })
+        .setOrigin(0.5).setDepth(10).setResolution(4);
+      out.push({ tiles, x, y, dx, dy, label });
+    }
+    return out;
   }
 
   /** Back to the menu (or straight to the skill web). Leaving mid-fight is a retreat, paid as a loss. */
   leave(to: 'menu' | 'tree') {
     if (this.world.phase === 'wave') return this.retreat(to);
-    this.scene.start('menu', { open: to });
+    this.fadeTo(to);
   }
 
   retreat(to: 'menu' | 'tree' = 'menu') {
@@ -127,7 +166,14 @@ export class Game extends Phaser.Scene {
       this.world.phase = 'lost';
       this.settle();
     }
-    this.scene.start('menu', { open: to });
+    this.fadeTo(to);
+  }
+
+  /** Fades out to the save's screen (its cities) or its skill web. */
+  fadeTo(to: 'menu' | 'tree') {
+    this.hud.destroy();
+    this.cameras.main.fadeOut(300);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('menu', { open: to === 'menu' ? 'save' : 'tree' }));
   }
 
   /** Pays the run out once, and saves. */
@@ -138,6 +184,8 @@ export class Game extends Phaser.Scene {
     this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain });
     save.chips += this.paid.total;
     if (won) save.cleared[this.mapId] = true;
+    const st = save.stats;
+    Object.assign(st, { runs: st.runs + 1, wins: st.wins + (won ? 1 : 0), kills: st.kills + w.kills, leaks: st.leaks + w.leaks, chips: st.chips + this.paid.total, time: st.time + Math.round(w.time) });
     persist();
   }
 
@@ -174,7 +222,10 @@ export class Game extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.mapW, this.mapH);
     cam.setZoom(this.clampZoom(this.scale.height / 320));
-    cam.centerOn(this.mapW / 2, this.mapH - 230); // the plaza and the streets leading to it
+    // Halfway between the middle of the map and the safe zone: where the line will be held.
+    const g = this.world.grid.goals, T = this.world.grid.tile, w = this.world.grid.w;
+    const gx = (g.reduce((n, i) => n + (i % w), 0) / g.length + 0.5) * T, gy = (g.reduce((n, i) => n + Math.floor(i / w), 0) / g.length + 0.5) * T;
+    cam.centerOn((gx + this.mapW / 2) / 2, (gy + this.mapH / 2) / 2);
   }
 
   clampZoom(z: number) {
@@ -254,6 +305,7 @@ export class Game extends Phaser.Scene {
 
   onMove(p: Phaser.Input.Pointer) {
     const d = this.drag, cam = this.cameras.main;
+    if (!d && p.wasTouch === false) this.hover(p);
     if (!d || d.kind === 'place') return;
     if (d.kind === 'pinch') {
       const down = this.downPointers();
@@ -319,7 +371,7 @@ export class Game extends Phaser.Scene {
       if (ev.type !== 'pointerup' || document.elementFromPoint(ev.clientX, ev.clientY) !== this.game.canvas) return;
       const { x, y } = this.toCanvas(ev), [wx, wy] = this.toWorld(x, y), [tx, ty] = this.tileOf(wx, wy), w = this.world;
       if (isUsable(id)) w.callStrike(id, wx, wy, this.dragAngle);
-      else this.selected = isUnit(id) ? w.placeSoldier(id, wx, wy) : isBlockKind(id) ? w.placeBlock(id, tx, ty, false) : w.placeStructure(id as StructKind, tx, ty);
+      else this.selected = isUnit(id) ? w.placeSoldier(id, wx, wy) : isBlockKind(id) ? w.placeBlock(id, tx, ty, this.turned) : w.placeStructure(id as StructKind, tx, ty, this.turned);
     };
     move(e);
     addEventListener('pointermove', move);
@@ -330,6 +382,17 @@ export class Game extends Phaser.Scene {
   toCanvas(ev: PointerEvent) {
     const r = this.game.canvas.getBoundingClientRect();
     return { x: ((ev.clientX - r.left) * this.scale.width) / r.width, y: ((ev.clientY - r.top) * this.scale.height) / r.height };
+  }
+
+  /** A mouse resting on a soldier gets a box saying who he is. */
+  hover(p: Phaser.Input.Pointer) {
+    const [wx, wy] = this.toWorld(p.x, p.y), cam = this.cameras.main, r = this.game.canvas.getBoundingClientRect();
+    const s = this.world.soldiers.find((o) => !o.dead && Math.hypot(o.x - wx, o.y - wy) < 9);
+    if (s === this.hovered) return;
+    this.hovered = s;
+    if (!s) return this.hud.unexplain();
+    const sx = r.left + (s.x - cam.worldView.x) * cam.zoom, sy = r.top + (s.y - cam.worldView.y) * cam.zoom, half = 10 * cam.zoom;
+    this.hud.explain(this.world.stats.units[s.kind].name, describe(s.kind), { left: sx - half, top: sy - half, width: half * 2, bottom: sy + half });
   }
 
   act(action: string) {
@@ -387,6 +450,7 @@ export class Game extends Phaser.Scene {
     this.anims.globalTimeScale = w.phase === 'wave' ? this.speed : 1;
     this.settle();
     this.spill();
+    this.listen();
     if (this.tutorial >= 0) this.stepTutorial();
     const sel = this.selected;
     if (sel && (isSoldier(sel) ? sel.dead || !w.soldiers.includes(sel) : isBlock(sel) ? !w.roadblocks.includes(sel) : !w.structures.includes(sel))) this.selected = undefined;
@@ -397,9 +461,16 @@ export class Game extends Phaser.Scene {
     this.updateHud();
   }
 
+  /** Plays what the world heard this frame. Off screen is quieter the farther away it is. */
+  listen() {
+    const w = this.world, v = this.cameras.main.worldView;
+    for (const s of w.sounds) play(s.kind, 1 / (1 + Math.hypot(Math.max(v.x - s.x, 0, s.x - v.right), Math.max(v.y - s.y, 0, s.y - v.bottom)) / 200), s.size);
+    w.sounds.length = 0;
+  }
+
   /** Corpses and blood where zombies fell, as the gore setting asks; the oldest fade out, and there is a cap. */
   spill() {
-    const w = this.world, { gore, quality } = profile.save.settings, cap = QUALITY[quality].corpses, life = CORPSE_LIFE[gore];
+    const w = this.world, { gore, quality } = profile.settings, cap = QUALITY[quality].corpses, life = CORPSE_LIFE[gore];
     if (gore !== 'none')
       for (const d of w.deaths) {
         if (this.corpses.length >= cap) {
@@ -471,12 +542,12 @@ export class Game extends Phaser.Scene {
       const pieced = PIECES.has(o.kind);
       let sprites = this.blocks.get(o);
       if (!sprites) {
-        const frames = pieced ? tiles.map((_, k) => (o.kind === 'plastic' ? `plastic/${k % 2}` : `${o.kind}/0`)) : [`${o.kind}/0`];
+        const frames = pieced ? tiles.map((_, k) => (o.kind === 'plastic' ? `plastic/${k % 2}` : `${o.kind}/0`)) : [o.kind === 'car' ? `car/${o.id % 3}` : `${o.kind}/0`]; // three wrecks to tell apart
         this.blocks.set(o, (sprites = frames.map((f) => this.add.sprite(0, 0, 'sprites', f).setDepth(o.kind === 'watchtower' || o.kind === 'nest' ? 2.9 : 1.5))));
       }
       const turn = o.vertical ? Math.PI / 2 : 0;
       if (pieced) tiles.forEach((i, k) => sprites[k].setPosition(((i % gw) + 0.5) * T, (Math.floor(i / gw) + 0.5) * T).setRotation(turn));
-      else if (block) sprites[0].setPosition((o.tx + 0.5) * T, (o.ty + 0.5) * T).setRotation(turn);
+      else if (block) sprites[0].setPosition(...w.blockCentre(o)).setRotation(turn);
       else sprites[0].setPosition((o as Structure).x, (o as Structure).y).setRotation(o.kind === 'rigged' ? (o as Structure).angle : 0);
       if (block) {
         const c = Math.round(255 * (0.5 + (0.5 * o.hp) / this.world.stats.roadblocks[o.kind].hp)); // darker as it breaks
@@ -489,6 +560,19 @@ export class Game extends Phaser.Scene {
   drawOverlay() {
     const w = this.world, z = this.cameras.main.zoom, sel = this.selected, d = this.drag, T = w.grid.tile, t = w.time;
     const floor = this.floor.clear(), top = this.top.clear();
+    // Where the horde comes in: the edge glows red, arrows run inward. Brighter while planning.
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 250), planning = w.phase === 'plan', red = hex(palette.red1);
+    for (const e of this.entries) {
+      floor.fillStyle(red, (planning ? 0.28 : 0.14) + 0.12 * pulse);
+      for (const i of e.tiles) floor.fillRect((i % w.grid.w) * T, Math.floor(i / w.grid.w) * T, T, T);
+      for (let k = 0; k < 3; k++) {
+        const along = (1.4 + k * 1.1 + ((this.time.now / 600) % 1.1)) * T, cx = e.x + e.dx * along, cy = e.y + e.dy * along, s = T * 0.9;
+        const nx = -e.dy, ny = e.dx; // across the way in
+        floor.lineStyle(3, red, (planning ? 0.85 : 0.45) * (1 - k / 3.2));
+        floor.lineBetween(cx - e.dx * s * 0.6 + nx * s, cy - e.dy * s * 0.6 + ny * s, cx, cy).lineBetween(cx, cy, cx - e.dx * s * 0.6 - nx * s, cy - e.dy * s * 0.6 - ny * s);
+      }
+      e.label.setVisible(planning);
+    }
     const paint = hex(palette.paint), light = hex(palette.flash1), bad = hex(palette.blood1), dark = hex(palette.outline);
     const flame = hex(palette.flash0), metal = hex(palette.metal2), smoke = hex(palette.metal2), water = hex(palette.cloth1);
     const tileRect = (g: Phaser.GameObjects.Graphics, i: number) => g.strokeRect((i % w.grid.w) * T, Math.floor(i / w.grid.w) * T, T, T);
@@ -503,7 +587,7 @@ export class Game extends Phaser.Scene {
     // Fire, smoke and lures on the ground.
     for (const zn of w.zones) {
       if (zn.kind === 'fire')
-        for (let k = 0; k < 16 * QUALITY[profile.save.settings.quality].particles; k++) {
+        for (let k = 0; k < 16 * QUALITY[profile.settings.quality].particles; k++) {
           const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * zn.r;
           floor.fillStyle(k % 4 ? flame : bad, 0.7).fillCircle(zn.x + Math.cos(a) * r, zn.y + Math.sin(a) * r, 2 + Math.random() * 3);
         }
@@ -546,7 +630,7 @@ export class Game extends Phaser.Scene {
     for (const s of w.soldiers) {
       const u = this.world.stats.units[s.kind];
       if (s.dead || u.weapon !== 'flame' || !w.firing(s)) continue;
-      for (let k = 0; k < 12 * QUALITY[profile.save.settings.quality].particles; k++) {
+      for (let k = 0; k < 12 * QUALITY[profile.settings.quality].particles; k++) {
         const a = s.angle + (Math.random() * 2 - 1) * w.spread(s), r = 10 + Math.random() * (w.rangeOf(s) - 10);
         top.fillStyle(k % 3 ? flame : light, 0.8).fillCircle(s.x + Math.cos(a) * r, s.y + Math.sin(a) * r, 1.5 + Math.random() * 2.5);
       }
@@ -625,14 +709,14 @@ export class Game extends Phaser.Scene {
     } else if (d.kind === 'place') {
       const id = d.id;
       if (isUnit(id)) top.lineStyle(1.5 / z, w.spotFor(id, wx, wy) ? light : bad, 0.9).strokeCircle(wx, wy, 7);
-      else if (isBlockKind(id)) ghost(w.blockFits(id, tx, ty, false), w.blockTiles(id, tx, ty, false));
+      else if (isBlockKind(id)) ghost(w.blockFits(id, tx, ty, this.turned), w.blockTiles(id, tx, ty, this.turned));
       else if (isUsable(id)) {
         const u = this.world.stats.usables[id];
         if (id === 'a10') {
           const cx = (Math.cos(this.dragAngle) * u.length!) / 2, cy = (Math.sin(this.dragAngle) * u.length!) / 2;
           top.lineStyle(u.width!, bad, 0.25).lineBetween(wx - cx, wy - cy, wx + cx, wy + cy);
         } else top.lineStyle(1.5 / z, bad, 0.9).strokeCircle(wx, wy, u.blast ?? u.radius!);
-      } else ghost(w.structFits(id as StructKind, tx, ty, false), w.structTiles(id as StructKind, tx, ty, false));
+      } else ghost(w.structFits(id as StructKind, tx, ty, this.turned), w.structTiles(id as StructKind, tx, ty, this.turned));
     }
   }
 
@@ -645,7 +729,12 @@ export class Game extends Phaser.Scene {
     else if (isSoldier(sel)) selection = `${this.world.stats.units[sel.kind].name} · ${sel.indoor ? 'indoors' : `${Math.ceil(sel.hp)} HP`}`;
     else if (isBlock(sel)) selection = `${this.world.stats.roadblocks[sel.kind].name} · ${sel.prop ? (sel.haul ? 'a soldier is on his way' : 'drag it: a soldier moves it') : `${Math.ceil(sel.hp)} HP`}`;
     else if (sel) selection = this.world.stats.structs[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
+    if (waving && w.wave !== this.shownWave) {
+      this.shownWave = w.wave;
+      this.hud.banner(`Wave ${w.wave + 1} of ${w.waves}`, w.wave ? 'More of them' : 'Here they come');
+    }
     const turnable = (isBlock(sel) && !sel.prop && !this.world.stats.roadblocks[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
+    this.canTurn = (planning && turnable) || (isBlock(sel) && !!sel.prop);
     this.hud.update({
       status: [planning ? 'Plan your defence' : `Wave ${Math.min(w.wave + 1, w.waves)}/${w.waves}`, `Leaks ${w.leaks}/${w.leakLimit}`, `${w.kills} kills`],
       warn: w.leaks >= w.leakLimit * 0.7,

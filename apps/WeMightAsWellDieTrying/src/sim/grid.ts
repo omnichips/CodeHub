@@ -1,7 +1,8 @@
 // The map as a grid of tiles, and distance fields over it. One shared field tells every zombie the way to the safe
 // zone (no route finding per zombie); a soldier ordered across the map gets a small field of their own.
 
-/** `rows` of tiles: a building (`#`, or by kind: `b` brownstone, `o` office, `g` garage, `h` shops), `.` street, `,` paved plaza (a street to walk on),
+/** `rows` of tiles: a building (`#`, or by kind: `b` brownstone, `a` apartments, `o` office, `g` parking deck, `h` shops,
+ *  `m` hospital, `w` warehouse), `.` street, `,` paved plaza (a street to walk on), `t` a tree on grass,
  *  `p` park, `S` where the horde enters, `E` the safe zone. `slots` are building tiles a soldier can man (windows,
  *  roofs); `props` are roadblocks already standing in the street; `decor` is only drawn. */
 export interface MapData {
@@ -13,7 +14,7 @@ export interface MapData {
   props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
   decor?: { kind: string; x: number; y: number }[];
 }
-export const BUILDING = '#bogh';
+export const BUILDING = '#boghmwa';
 
 export class Grid {
   readonly w: number;

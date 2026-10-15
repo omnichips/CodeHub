@@ -1,13 +1,14 @@
 // The skill web: every node on one big plane, one category at a time, with lines from each node to its parent.
-// Drag to look around, pinch or scroll to zoom, tap a node to see it and buy it.
+// Drag to look around, pinch or scroll to zoom, tap a node to see it and buy its next level (most take up to 3).
 import type Phaser from 'phaser';
 import { icon } from '../art/atlas.ts';
 import { persist, profile } from '../meta/profile.ts';
-import { NODE, NODES, state, type Category, type Node } from '../meta/progress.ts';
+import { NODE, NODES, level, nextCost, state, type Category, type Node } from '../meta/progress.ts';
 import { el } from './hud.ts';
 
 const CATS: [Category, string][] = [['soldiers', 'Soldiers'], ['structures', 'Build'], ['usables', 'Strikes'], ['base', 'Base']];
-const PAD = 1200; // the plane's (0, 0) sits this far in, so every node has positive coordinates on it
+/** The plane's (0, 0) sits this far in, so every node has positive coordinates on it. */
+const PAD = Math.ceil(Math.max(...NODES.flatMap((n) => [Math.abs(n.x), Math.abs(n.y)]))) + 120;
 const ROOT = 'command'; // every category hangs off it, so it shows in all of them
 const TAP = 8; // px a pointer may wander and still count as a tap
 const TOP = 60, BOTTOM = 76; // px the bar and the card cover
@@ -33,27 +34,29 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       lines.set(n.id, line);
     }
     const big = n.id === ROOT || n.effects.some((e) => e.unlock);
-    const b = el('button', { type: 'button', className: `node${big ? ' big' : ''}`, ariaLabel: n.name, title: n.name }, el('img', { src: pic(n.icon), alt: '' }), el('small'));
+    const b = el('button', { type: 'button', className: `node${big ? ' big' : ''}`, ariaLabel: n.name, title: n.name }, el('img', { src: pic(n.icon), alt: '' }), el('i', { className: 'lv' }), el('small'));
     b.style.left = `${n.x + PAD}px`;
     b.style.top = `${n.y + PAD}px`;
     b.onclick = (e) => { if (e.detail === 0 || travel <= TAP) { selected = n; refresh(); } };
     buttons.set(n.id, b);
   }
   const plane = el('div', { className: 'plane' }, svg, ...buttons.values());
+  plane.style.width = plane.style.height = `${2 * PAD}px`;
   const view = el('div', { className: 'view' }, plane);
   const info = el('div', { className: 'info' });
   root.replaceChildren(el('div', { className: 'web' },
     el('div', { className: 'top' }, el('button', { type: 'button', textContent: 'Back', onclick: back }), chips, el('div', { className: 'tabs' }, ...tabs)), view, info));
 
   function refresh() {
-    const owned = new Set(save.owned);
+    const owned = save.skills;
     chips.textContent = `${save.chips} chips`;
     tabs.forEach((t, k) => t.setAttribute('aria-pressed', String(CATS[k][0] === cat)));
     for (const n of NODES) {
-      const s = state(owned, n.id), shown = n.cat === cat || n.id === ROOT, b = buttons.get(n.id)!;
+      const s = state(owned, n.id), lv = level(owned, n.id), cost = nextCost(owned, n.id), shown = n.cat === cat || n.id === ROOT, b = buttons.get(n.id)!;
       b.hidden = !shown;
-      b.className = `node ${s}${b.classList.contains('big') ? ' big' : ''}${s === 'open' && save.chips >= n.cost ? ' afford' : ''}${n === selected ? ' picked' : ''}`;
-      b.lastElementChild!.textContent = s === 'owned' ? '' : String(n.cost);
+      b.className = `node ${s}${b.classList.contains('big') ? ' big' : ''}${lv > 0 && lv < n.max ? ' part' : ''}${s === 'open' && save.chips >= cost ? ' afford' : ''}${n === selected ? ' picked' : ''}`;
+      b.querySelector('.lv')!.textContent = n.max > 1 ? `${lv}/${n.max}` : '';
+      b.lastElementChild!.textContent = s === 'owned' ? '' : String(cost);
       const line = lines.get(n.id);
       if (line) {
         line.style.display = shown ? '' : 'none';
@@ -62,19 +65,20 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
     }
     const n = selected;
     if (!n) return info.replaceChildren(el('p', {}, 'Tap a skill to see it. Drag to look around; pinch or scroll to zoom.'));
-    const s = state(owned, n.id), short = n.cost - save.chips;
-    const buy = el('button', { type: 'button', className: 'go' });
-    if (s === 'owned') Object.assign(buy, { textContent: 'Owned', disabled: true });
+    const s = state(owned, n.id), lv = level(owned, n.id), cost = nextCost(owned, n.id), short = cost - save.chips;
+    const buy = el('button', { type: 'button', className: 'go' }), next = n.max > 1 ? `level ${lv + 1}` : 'it';
+    if (s === 'owned') Object.assign(buy, { textContent: n.max > 1 ? 'All levels owned' : 'Owned', disabled: true });
     else if (s === 'locked') Object.assign(buy, { textContent: `Needs ${NODE.get(n.parent!)!.name}`, disabled: true });
-    else if (short > 0) Object.assign(buy, { textContent: `${n.cost} chips (${short} short)`, disabled: true });
-    else Object.assign(buy, { textContent: `Buy: ${n.cost} chips`, onclick: () => {
-      if (state(new Set(save.owned), n.id) !== 'open' || save.chips < n.cost) return;
-      save.chips -= n.cost;
-      save.owned.push(n.id);
+    else if (short > 0) Object.assign(buy, { textContent: `${cost} chips (${short} short)`, disabled: true });
+    else Object.assign(buy, { textContent: `Buy ${next}: ${cost} chips`, onclick: () => {
+      if (state(save.skills, n.id) !== 'open' || save.chips < cost) return;
+      save.chips -= cost;
+      save.skills[n.id] = lv + 1;
       persist();
       refresh();
     } });
-    info.replaceChildren(el('img', { src: pic(n.icon), alt: '' }), el('div', {}, el('b', {}, n.name), el('p', {}, n.desc)), buy);
+    const levels = n.max > 1 ? ` Level ${lv} of ${n.max}.` : '';
+    info.replaceChildren(el('img', { src: pic(n.icon), alt: '' }), el('div', {}, el('b', {}, n.name), el('p', {}, n.desc + levels)), buy);
   }
 
   // ---- Pan and zoom: the plane is moved with one CSS transform ----
@@ -90,7 +94,7 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
   /** Frames the nodes of the current tab; if they only fit too small to read, frames the ones you can buy next. */
   function fit() {
     const box = (ns: Node[]) => [Math.min(...ns.map((n) => n.x)), Math.max(...ns.map((n) => n.x)), Math.min(...ns.map((n) => n.y)), Math.max(...ns.map((n) => n.y))].map((c) => c + PAD);
-    const shown = NODES.filter((n) => n.cat === cat || n.id === ROOT), owned = new Set(save.owned), w = view.clientWidth, h = view.clientHeight - TOP - BOTTOM;
+    const shown = NODES.filter((n) => n.cat === cat || n.id === ROOT), owned = save.skills, w = view.clientWidth, h = view.clientHeight - TOP - BOTTOM;
     let [x0, x1, y0, y1] = box(shown);
     const z = Math.min(w / (x1 - x0 + 90), h / (y1 - y0 + 90)), open = shown.filter((n) => state(owned, n.id) === 'open');
     if (z < 0.6 && open.length) [x0, x1, y0, y1] = box(open);

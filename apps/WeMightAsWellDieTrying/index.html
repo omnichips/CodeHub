@@ -26,6 +26,8 @@
         font: inherit; color: var(--ink); background: var(--olive); border: 2px solid var(--line);
         min-height: 40px; min-width: 44px; padding: 0 12px; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
       }
+      button { transition: transform 0.08s ease-out, background-color 0.15s, filter 0.15s; }
+      button:active:not(:disabled) { transform: translateY(1px) scale(0.96); filter: brightness(1.15); }
       button[aria-pressed="true"] { background: var(--olive-lit); box-shadow: inset 0 -3px 0 var(--ink); }
       button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
       @media (hover: hover) { button:hover { background: var(--olive-lit); } }
@@ -38,7 +40,8 @@
       #hud .status span, #hud .actions .label { background: var(--panel); border: 2px solid var(--line); padding: 7px 10px; white-space: nowrap; }
       #hud .status .warn { color: var(--warn); }
       #hud .time { top: var(--top); right: var(--right); display: flex; gap: 6px; }
-      #hud .speeds { display: flex; gap: 6px; }
+      #hud .speeds { display: flex; gap: 4px; }
+      #hud .speeds button { min-width: 40px; padding: 0 8px; }
       #hud .go { background: #7d3a33; padding: 0 22px; letter-spacing: 0.06em; text-transform: uppercase; }
       @media (hover: hover) { #hud .go:hover { background: #9c4f44; } }
       #hud .dock { bottom: var(--bottom); left: var(--left); display: flex; flex-direction: column; gap: 4px; max-width: min(62vw, calc(100vw - 260px)); }
@@ -100,7 +103,7 @@
       #menu .web .top .chips { margin: 0; background: var(--panel); border: 2px solid var(--line); padding: 9px 10px; }
       #menu .web .tabs { display: flex; gap: 4px; margin-left: auto; }
       #menu .view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
-      #menu .plane { position: absolute; left: 0; top: 0; width: 2400px; height: 2400px; transform-origin: 0 0; }
+      #menu .plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; } /* sized to the web in tree.ts */
       #menu .plane svg { position: absolute; inset: 0; pointer-events: none; }
       #menu .plane line { stroke: #3a3b3c; stroke-width: 3; }
       #menu .plane line.open { stroke: var(--dim); }
@@ -113,6 +116,9 @@
       #menu .node.owned { background: var(--olive); border-color: var(--ink); }
       #menu .node.open { border-color: var(--dim); }
       #menu .node.afford { border-color: #c4a058; }
+      #menu .node.part { background: #2c3220; }
+      #menu .node .lv { position: absolute; right: -6px; top: -8px; font: 700 9px/1 ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: var(--ink); background: var(--line); padding: 2px 3px; pointer-events: none; }
+      #menu .node .lv:empty { display: none; }
       #menu .node.afford small { color: #c4a058; }
       #menu .node.locked img { opacity: 0.35; filter: grayscale(1); }
       #menu .node.picked { outline: 3px solid #c9473a; outline-offset: 2px; }
@@ -128,6 +134,38 @@
       @keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
       @media (prefers-reduced-motion: reduce) { #turn .phone { animation: none; transform: rotate(-90deg); } }
       @media (orientation: portrait) and (pointer: coarse) { #turn { display: flex; } }
+      /* Who something is: a box over a bar item or a soldier. */
+      #hud .hint { position: fixed; z-index: 5; max-width: 240px; padding: 8px 10px; background: #141516; border: 2px solid #c4a058; pointer-events: none; animation: pop 0.12s ease-out; }
+      #hud .hint p { margin: 3px 0 0; color: var(--dim); line-height: 1.35; font-weight: 500; }
+      /* The city's name at the start, each wave as it comes: in, a moment, out. */
+      #hud .banner { inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+      #hud .banner > div { text-align: center; animation: banner 2.4s ease-out both; text-shadow: 3px 3px 0 var(--line); }
+      #hud .banner h2 { margin: 0; font-size: clamp(26px, 6vw, 48px); letter-spacing: 0.08em; text-transform: uppercase; color: #c9473a; }
+      #hud .banner p { margin: 4px 0 0; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; }
+      @keyframes banner { 0% { opacity: 0; transform: scale(1.25); } 14% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+      @keyframes pop { from { opacity: 0; transform: translateY(4px); } }
+      /* Menu screens slide in; starting a game fades the menu away. */
+      #menu .panel, #menu .web { animation: panel-in 0.22s ease-out; }
+      @keyframes panel-in { from { opacity: 0; transform: translateX(-18px); } }
+      #menu { transition: opacity 0.35s; }
+      #menu.leaving { opacity: 0; pointer-events: none; }
+      #menu .node:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.92); }
+      #menu .slots { width: min(520px, 100%); }
+      #menu .slotrow { display: flex; gap: 6px; }
+      #menu .slotrow .slot { flex: 1; }
+      #menu .slot { display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 6px 12px; min-height: 52px; }
+      #menu .slot small { color: var(--dim); font-size: 11px; }
+      #menu .stats { width: min(560px, 100%); }
+      #menu table { border-collapse: collapse; background: var(--panel); border: 2px solid var(--line); }
+      #menu th, #menu td { padding: 6px 10px; text-align: right; white-space: nowrap; }
+      #menu tr > th:first-child { text-align: left; color: var(--dim); }
+      #menu tr:first-child th { color: var(--ink); border-bottom: 2px solid var(--line); }
+      #menu .note { margin: 4px 0 0; color: #c4a058; min-height: 1em; }
+      #menu .settings > button { text-align: left; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        #hud .banner > div { animation: none; opacity: 0; }
+      }
       [hidden] { display: none !important; }
     </style>
   </head>

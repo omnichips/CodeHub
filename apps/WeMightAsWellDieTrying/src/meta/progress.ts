@@ -1,28 +1,38 @@
-// The skill web: which nodes can be bought, and what the ones you own add up to for a run.
+// The skill web: which nodes can be bought, and what the ones you own add up to for a run. A node can be bought up to
+// `max` times (levels); what you own is { node: level }, and a node's effects count once for each level.
 import economy from '../data/economy.json' with { type: 'json' };
 import tree from '../data/skilltree.json' with { type: 'json' };
 import { USABLES, baseStats, type StructStats, type UsableStats, type Stats, type UnitKind, type StructKind, type UsableKind, type BlockKind } from '../sim/world.ts';
 
 export type Category = 'soldiers' | 'structures' | 'usables' | 'base';
 /** What owning a node does. `unlock`/`add` give items (for strikes, uses per run); `stat` raises one item's stat. */
-export interface Effect { unlock?: string; add?: string; count?: number; stat?: string; of?: string; by?: number; leakLimit?: number; chipGain?: number; speed?: number }
-export interface Node { id: string; name: string; cat: Category; cost: number; parent: string | null; start?: boolean; x: number; y: number; icon: string; desc: string; effects: Effect[] }
+export interface Effect { unlock?: string; add?: string; count?: number; stat?: string; of?: string; by?: number; leakLimit?: number; chipGain?: number }
+/** `cost[k]` is the price of level k + 1; `max` levels in all. */
+export interface Node { id: string; name: string; cat: Category; cost: number[]; max: number; parent: string | null; start?: boolean; x: number; y: number; icon: string; desc: string; effects: Effect[] }
+export type Levels = Readonly<Record<string, number>>;
 
 export const NODES = tree.nodes as Node[];
 export const NODE = new Map(NODES.map((n) => [n.id, n]));
-export const STARTING = NODES.filter((n) => n.start).map((n) => n.id);
+/** What every save owns from the start. */
+export const STARTING: Levels = Object.fromEntries(NODES.filter((n) => n.start).map((n) => [n.id, n.max]));
 
-/** Owned, buyable (its parent is owned) or locked. */
-export function state(owned: ReadonlySet<string>, id: string): 'owned' | 'open' | 'locked' {
+export const level = (owned: Levels, id: string) => owned[id] ?? 0;
+/** Fully bought, buyable (its parent has at least one level, and it has levels left) or locked. */
+export function state(owned: Levels, id: string): 'owned' | 'open' | 'locked' {
   const n = NODE.get(id)!;
-  return owned.has(id) ? 'owned' : !n.parent || owned.has(n.parent) ? 'open' : 'locked';
+  return level(owned, id) >= n.max ? 'owned' : !n.parent || level(owned, n.parent) > 0 ? 'open' : 'locked';
 }
+/** What the next level of a node costs (undefined once it is fully bought). */
+export const nextCost = (owned: Levels, id: string) => NODE.get(id)!.cost[level(owned, id)];
+
+/** Every game speed, from the start. */
+export const SPEEDS = [1, 2, 4, 5, 10];
 
 export interface Build {
   stats: Stats;
   /** How many of each soldier, roadblock and structure you can put down per run. Strikes are in stats.usables[k].charges. */
   loadout: Record<string, number>;
-  speeds: number[]; // 1 always; 2 and 3 once bought
+  speeds: number[]; // the game speeds offered (pause is always there too)
   chipGain: number; // multiplier on chips earned
 }
 
@@ -41,19 +51,20 @@ function powerUp(k: StructStats | UsableStats, by: number) {
   if ('cover' in k && k.cover) k.cover = more(k.cover, by);
 }
 
-export function build(owned: ReadonlySet<string>): Build {
-  const stats = baseStats(), loadout: Record<string, number> = {}, speeds = [1];
+export function build(owned: Levels): Build {
+  const stats = baseStats(), loadout: Record<string, number> = {};
   let chipGain = 1;
   const mods: Record<string, Record<string, number>> = {};
-  for (const id of owned) {
-    for (const e of NODE.get(id)?.effects ?? []) {
-      const item = e.unlock ?? e.add;
-      if (item) loadout[item] = (loadout[item] ?? 0) + (e.count ?? 1);
-      if (e.stat && e.of) (mods[e.of] ??= {})[e.stat] = (mods[e.of]?.[e.stat] ?? 0) + e.by!;
-      if (e.leakLimit) stats.leakLimit += e.leakLimit;
-      if (e.chipGain) chipGain += e.chipGain;
-      if (e.speed) speeds.push(e.speed);
-    }
+  for (const [id, lv] of Object.entries(owned)) {
+    const n = NODE.get(id);
+    for (let k = 0; n && k < Math.min(lv, n.max); k++)
+      for (const e of n.effects) {
+        const item = e.unlock ?? e.add;
+        if (item) loadout[item] = (loadout[item] ?? 0) + (e.count ?? 1);
+        if (e.stat && e.of) (mods[e.of] ??= {})[e.stat] = (mods[e.of]?.[e.stat] ?? 0) + e.by!;
+        if (e.leakLimit) stats.leakLimit += e.leakLimit;
+        if (e.chipGain) chipGain += e.chipGain;
+      }
   }
   for (const [item, m] of Object.entries(mods)) {
     const u = stats.units[item as UnitKind], rb = stats.roadblocks[item as BlockKind], st = stats.structs[item as StructKind], us = stats.usables[item as UsableKind];
@@ -71,7 +82,7 @@ export function build(owned: ReadonlySet<string>): Build {
     stats.usables[k].charges = loadout[k] ?? 0;
     delete loadout[k];
   }
-  return { stats, loadout, speeds: [...new Set(speeds)].sort(), chipGain };
+  return { stats, loadout, speeds: SPEEDS, chipGain };
 }
 
 export interface RunResult { kills: number; leaks: number; leakLimit: number; time: number; par: number; won: boolean; firstClear: boolean; chipGain: number }
