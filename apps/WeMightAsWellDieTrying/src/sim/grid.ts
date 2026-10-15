@@ -114,7 +114,9 @@ export function distanceField(g: Grid, goals: Iterable<number>, cost: (i: number
       if (c === Infinity) continue;
       if (dx && dy && (cost(y * w + nx) === Infinity || cost(ny * w + x) === Infinity)) continue;
       const nd = d + c * (dx && dy ? Math.SQRT2 : 1);
-      if (nd < dist[n]) { dist[n] = nd; heap.push(n, nd); }
+      // Queued at the value as stored (32-bit): queued at the exact sum, a tile whose stored value rounded down
+      // would look stale when popped and never be expanded, cutting off everything behind it.
+      if (nd < dist[n]) { dist[n] = nd; heap.push(n, dist[n]); }
     }
   }
   return dist;

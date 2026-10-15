@@ -56,4 +56,5 @@ self.addEventListener('fetch', (e) => {
   },
 });
 
-export default defineConfig({ plugins: [atlas(), serviceWorker()] });
+// When the game was built, for crash reports.
+export default defineConfig({ plugins: [atlas(), serviceWorker()], define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) } });

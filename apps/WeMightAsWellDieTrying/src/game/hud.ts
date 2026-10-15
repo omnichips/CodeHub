@@ -1,6 +1,6 @@
-// The controls over the map, in HTML so they stay sharp: status, Start and the time controls, the bar you drag
-// soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start tip,
-// and the end-of-run panel with the chips the run paid.
+// The controls over the map, in HTML so they stay sharp: status, Start (and Last setup) and the time controls, the bar
+// you drag soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start
+// tip, notices when a soldier falls, and the end-of-run panel with the chips the run paid and who made the kills.
 export type Group = 'units' | 'build' | 'strikes';
 export interface BarItem { id: string; name: string; group: Group; icon: string; desc: string }
 export interface HudState {
@@ -10,15 +10,17 @@ export interface HudState {
   ready: Record<string, boolean>; // can be dragged out now
   cool: Record<string, number>; // a strike's cooldown still to go, 1 to 0
   planning: boolean;
+  restore: boolean; // a setup kept from last time can be put down
   speed: number;
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
-  end?: { title: string; detail: string; chips: string[]; total: number };
+  end?: { title: string; detail: string; chips: string[]; total: number; killers: string[] };
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
   start(): void;
+  setup(): void; // puts down the setup kept from last time
   speed(n: number): void;
   action(name: string): void;
   again(): void;
@@ -40,6 +42,8 @@ export class Hud {
   private readonly root: HTMLElement;
   private readonly status: HTMLElement[];
   private readonly start: HTMLButtonElement;
+  private readonly restore: HTMLButtonElement;
+  private readonly notices: HTMLElement;
   private readonly speeds: HTMLElement;
   private readonly speedList: number[];
   private readonly tabs: HTMLButtonElement[];
@@ -65,6 +69,8 @@ export class Hud {
     this.status = [el('span'), el('span'), el('span')];
     const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : (this.confirm.hidden = false)) });
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
+    this.restore = el('button', { type: 'button', textContent: 'Last setup', title: 'Put everything back where it was last time', onclick: () => on.setup() });
+    this.notices = el('div', { className: 'notices' });
     this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
@@ -107,7 +113,7 @@ export class Hud {
     this.end = el('div', { className: 'end', hidden: true });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
-      el('div', { className: 'status' }, menu, ...this.status), el('div', { className: 'time' }, this.start, this.speeds),
+      el('div', { className: 'status' }, menu, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
       el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.confirm, this.end, this.hint, this.banners,
     );
   }
@@ -117,6 +123,14 @@ export class Hud {
   /** A big title across the screen that fades in and out by itself: the city at the start, each wave as it comes. */
   banner(title: string, sub: string) {
     this.banners.replaceChildren(el('div', {}, el('h2', {}, title), el('p', {}, sub))); // a new child restarts the animation
+  }
+
+  /** A short line under the status, gone after a few seconds; tapping it calls `tap` (look at where it happened). */
+  notice(line: string, tap: () => void) {
+    const n = el('button', { type: 'button', textContent: line, onclick: () => { tap(); n.remove(); } });
+    this.notices.prepend(n);
+    while (this.notices.childElementCount > 4) this.notices.lastElementChild!.remove();
+    setTimeout(() => n.remove(), 5000);
   }
 
   /** Who something is, in a box beside it (`at` is where it is on screen), until unexplain(). */
@@ -134,6 +148,7 @@ export class Hud {
     s.status.forEach((t, i) => text(this.status[i], t));
     this.status[1].classList.toggle('warn', s.warn);
     this.start.hidden = !s.planning;
+    this.restore.hidden = !s.planning || !s.restore;
     this.speeds.hidden = s.planning;
     [...this.speeds.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i] === s.speed)));
     this.tabs.forEach((t) => t.setAttribute('aria-pressed', String(TABS.find(([, l]) => l === t.textContent)?.[0] === this.group)));
@@ -158,7 +173,10 @@ export class Hud {
       this.confirm.hidden = true;
       this.end.append(
         el('h2', {}, s.end.title), el('p', {}, s.end.detail),
-        el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`),
+        // What the run paid, and beside it who made the kills.
+        el('div', { className: 'cols' },
+          el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),
+          ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : [])),
         el('div', { className: 'row' },
           el('button', { type: 'button', textContent: 'Menu', onclick: () => this.on.menu('menu') }),
           el('button', { type: 'button', textContent: 'Skill web', onclick: () => this.on.menu('tree') }),

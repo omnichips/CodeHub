@@ -63,7 +63,16 @@ test('a save from a file is never trusted: junk is dropped, bad numbers reset', 
   assert.ok(!('made-up' in s.skills) && !('sniper' in s.skills));
   assert.ok(Object.keys(STARTING).every((id) => s.skills[id] === STARTING[id]));
   assert.deepEqual([s.stats.kills, s.stats.runs], [0, 0]);
-  const set = settingsFrom({ gore: 'lots', master: 9 });
+  const kept = parse(JSON.stringify({ ...fresh(), setups: { 'main-street': {
+    soldiers: [{ kind: 'rifleman', x: 10, y: 20, angle: 1, reach: 50, priority: 'loudest', turrets: [{ x: 'a' }] }, { kind: 'dragon', x: 1, y: 1, angle: 0, reach: 1 }, { kind: 'sniper', x: null }],
+    blocks: [{ kind: 'wood', tx: 3, ty: 4, vertical: 'yes' }, { kind: 'wall', tx: 1, ty: 1 }], structures: 'junk',
+  } } }))!.setups['main-street'];
+  assert.deepEqual(kept, {
+    soldiers: [{ kind: 'rifleman', x: 10, y: 20, angle: 1, reach: 50, priority: 'nearest', turrets: [] }],
+    blocks: [{ kind: 'wood', tx: 3, ty: 4, vertical: false }], props: [], structures: [],
+  }, 'unknown kinds and bad numbers dropped');
+  assert.deepEqual(parse(JSON.stringify({ ...fresh(), setups: undefined }))!.setups, {}, 'a save from before setups were kept');
+  const set =settingsFrom({ gore: 'lots', master: 9 });
   assert.equal(set.gore, 'normal');
   assert.equal(set.master, 1);
 });

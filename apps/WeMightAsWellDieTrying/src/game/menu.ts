@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
 import { NODES } from '../meta/progress.ts';
-import { exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
+import { BODIES, exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
 import { play } from './sound.ts';
 import { skillWeb } from './tree.ts';
@@ -139,11 +139,11 @@ export class Menu extends Phaser.Scene {
     return el('div', { className: 'panel maps' },
       this.head(s.name, 'menu'),
       el('p', { className: 'chips' }, `${s.chips} chips`),
+      button('Skill web', () => this.show('tree')),
       ...MAPS.map((m, k) => unlocked(k)
         ? el('button', { type: 'button', className: 'map', onclick: () => this.play(m.id) }, m.name, el('small', {}, `${s.cleared[m.id] ? 'Cleared' : 'Not cleared yet'} · about ${perSoldier(k)} zombies per soldier`))
         : el('button', { type: 'button', className: 'map', disabled: true }, m.name, el('small', {}, `Clear ${MAPS[k - 1].name} to unlock · about ${perSoldier(k)} per soldier`))),
       ...COMING.map((name) => el('button', { type: 'button', className: 'map', disabled: true }, name, el('small', {}, 'Coming later'))),
-      button('Skill web', () => this.show('tree')),
     );
   }
 
@@ -172,6 +172,9 @@ export class Menu extends Phaser.Scene {
       this.head('Settings', 'menu'),
       choice('Gore', 'gore', ['none', 'some', 'normal']),
       choice('Quality', 'quality', ['low', 'medium', 'high']),
+      // Fewer bodies lying about is lighter on a slow device.
+      el('div', { className: 'row' }, el('span', {}, 'Dead bodies'), el('div', { className: 'seg' },
+        ...BODIES.map((n) => el('button', { type: 'button', textContent: n ? String(n) : 'None', ariaPressed: String(s.bodies === n), onclick: () => set('bodies', n) })))),
       el('div', { className: 'row' }, el('span', {}, 'Left-handed'), el('div', { className: 'seg' },
         el('button', { type: 'button', textContent: 'Off', ariaPressed: String(!s.lefty), onclick: () => set('lefty', false) }),
         el('button', { type: 'button', textContent: 'On', ariaPressed: String(s.lefty), onclick: () => set('lefty', true) }))),

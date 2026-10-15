@@ -7,3 +7,6 @@ declare module 'virtual:atlas' {
   };
   export default atlas;
 }
+
+/** When the game was built (see vite.config.ts). */
+declare const __BUILD__: string;

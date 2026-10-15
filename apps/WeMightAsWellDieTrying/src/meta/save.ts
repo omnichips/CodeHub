@@ -2,12 +2,14 @@
 // settings shared by all. Every app on the hub shares one origin, so the keys are this game's own. A save carries a
 // version so an older one can be brought up to date; export and import guard against a wiped browser.
 import oldCosts from '../data/skilltree-v2-costs.json' with { type: 'json' };
+import { PRIORITIES, ROADBLOCKS, STRUCTS, UNITS, type Setup } from '../sim/world.ts';
 import { NODE, STARTING } from './progress.ts';
 
 export interface Settings {
   gore: 'none' | 'some' | 'normal';
   quality: 'low' | 'medium' | 'high';
   lefty: boolean;
+  bodies: number; // most dead bodies left lying at once (fewer is lighter on a slow device); 0 for none
   master: number; // 0 to 1
   sfx: number;
 }
@@ -27,21 +29,40 @@ export interface Save {
   cleared: Record<string, boolean>; // maps won
   tutorialDone: boolean;
   stats: Stats;
+  setups: Record<string, Setup>; // each city's defence as it was last started, to put down again
   played: number; // when it was last opened, ms since 1970
 }
 
 export const SLOTS = 3;
+/** The choices for how many dead bodies may lie about at once. */
+export const BODIES = [0, 50, 150, 300];
 export const VERSION = 3;
 const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.save'); // slot 1 keeps the key of the days before slots
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), played: Date.now() });
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, master: 0.8, sfx: 0.8 });
+export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now() });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8 });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
 const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+const list = (v: unknown) => (Array.isArray(v) ? v.slice(0, 500) : []).filter((o): o is Record<string, unknown> => !!o && typeof o === 'object');
+const finite = (o: Record<string, unknown>, ...keys: string[]) => keys.every((k) => typeof o[k] === 'number' && Number.isFinite(o[k]));
+/** A kept setup from untrusted JSON: only known kinds and finite numbers; the world checks where things fit. */
+function setupFrom(raw: unknown): Setup {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  return {
+    soldiers: list(r.soldiers).filter((o) => (o.kind as string) in UNITS && o.kind !== 'turret' && finite(o, 'x', 'y', 'angle', 'reach')).map((o) => ({
+      kind: o.kind as Setup['soldiers'][number]['kind'], x: o.x as number, y: o.y as number, angle: o.angle as number, reach: o.reach as number,
+      priority: pick(o.priority, PRIORITIES, 'nearest'),
+      turrets: list(o.turrets).filter((t) => finite(t, 'x', 'y', 'angle', 'reach')).map((t) => ({ x: t.x as number, y: t.y as number, angle: t.angle as number, reach: t.reach as number })),
+    })),
+    blocks: list(r.blocks).filter((o) => (o.kind as string) in ROADBLOCKS && finite(o, 'tx', 'ty')).map((o) => ({ kind: o.kind as Setup['blocks'][number]['kind'], tx: o.tx as number, ty: o.ty as number, vertical: o.vertical === true })),
+    props: list(r.props).filter((o) => finite(o, 'tx', 'ty')).map((o) => ({ tx: o.tx as number, ty: o.ty as number, vertical: o.vertical === true })),
+    structures: list(r.structures).filter((o) => (o.kind as string) in STRUCTS && finite(o, 'tx', 'ty', 'angle')).map((o) => ({ kind: o.kind as Setup['structures'][number]['kind'], tx: o.tx as number, ty: o.ty as number, vertical: o.vertical === true, angle: o.angle as number })),
+  };
+}
 const json = (text: string): unknown => { try { return JSON.parse(text); } catch { return undefined; } };
 
 /** Reads a save from untrusted JSON (storage or an imported file). Anything unusable is dropped or reset, never
@@ -75,6 +96,7 @@ export function parse(text: string): Save | undefined {
     skills,
     cleared,
     tutorialDone: r.tutorialDone === true,
+    setups: Object.fromEntries(Object.entries(r.setups && typeof r.setups === 'object' ? r.setups : {}).slice(0, 50).map(([id, v]) => [id, setupFrom(v)])),
     stats: { runs: count(st.runs), wins: count(st.wins), kills: count(st.kills), leaks: count(st.leaks), chips: count(st.chips), time: count(st.time) },
     played: count(r.played) || Date.now(), // version 1 never said
   };
@@ -87,6 +109,7 @@ export function settingsFrom(raw: unknown): Settings {
     gore: pick(s.gore, ['none', 'some', 'normal'] as const, base.gore),
     quality: pick(s.quality, ['low', 'medium', 'high'] as const, base.quality),
     lefty: s.lefty === true,
+    bodies: BODIES.includes(s.bodies as number) ? (s.bodies as number) : base.bodies,
     master: unit(s.master, base.master),
     sfx: unit(s.sfx, base.sfx),
   };

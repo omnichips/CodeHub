@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readdirSync } from 'node:fs';
 import { World, ZOMBIE_KINDS, baseStats } from './world.ts';
 
 const noWaves = { gap: 0, waves: [] };
+const MAP_NAMES = readdirSync(new URL('../data/maps/', import.meta.url)).map((f) => f.replace('.json', ''));
 const world = (rows: string[]) => new World({ name: 'test', tile: 16, par: 60, rows }, noWaves);
 const run = (w: World, seconds: number, each?: () => void) => {
   for (let k = 0; k < seconds * 60 && w.phase === 'wave'; k++) { w.step(); each?.(); }
@@ -327,7 +329,7 @@ test('a car covers 2 by 3 tiles and a bus 2 by 5, and a placed car turns', () =>
 });
 
 test('every map: each car, bus and barricade already in the street fits, and no tree stands in the road', async () => {
-  for (const name of ['main-street', 'brooklyn', 'new-york']) {
+  for (const name of MAP_NAMES) {
     const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default;
     const w = new World(map, noWaves);
     assert.equal(w.roadblocks.length, (map.props ?? []).length, `${name}: every prop placed`);
@@ -364,10 +366,112 @@ test('every zombie of every wave comes, even when the street is too full to let 
 });
 
 test('every map: a street only runs off the edge where the horde comes in (or into the safe zone)', async () => {
-  for (const name of ['main-street', 'brooklyn', 'new-york']) {
+  for (const name of MAP_NAMES) {
     const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default, h = map.rows.length, w = map.rows[0].length;
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++)
         if ((x === 0 || y === 0 || x === w - 1 || y === h - 1) && '.,'.includes(map.rows[y][x])) assert.fail(`${name}: a street leaves the map at ${x},${y} but nothing comes from there`);
+  }
+});
+
+// ---- Kept setups and who made the kills ----
+
+test('each kill counts for whoever made it: a soldier class, a strike, or the one who lit the fire', () => {
+  const w = open();
+  const s = w.placeSoldier('rifleman', 160, 280)!;
+  w.aim(s, 160, 0);
+  w.start();
+  w.spawn(kind('normal'), 160, 180);
+  w.zhp[w.spawn(kind('brute'), 20, 20)] = 1e6; // keeps the run going
+  run(w, 3);
+  w.callStrike('missile', 280, 100);
+  w.spawn(kind('normal'), 280, 100);
+  w.callStrike('napalm', 60, 200);
+  w.zhp[w.spawn(kind('normal'), 60, 200)] = 30; // dies burning
+  run(w, 6);
+  assert.deepEqual(w.killsBy, { rifleman: 1, missile: 1, napalm: 1 });
+  assert.equal(w.kills, 3);
+});
+
+test('a kept setup is laid out again as it was, as far as what you own allows', () => {
+  const rows = ['............', '#####.......', ...Array(8).fill('.'.repeat(12)), 'E'.repeat(12)];
+  const map = { name: 't', tile: 16, par: 60, rows, slots: [[2, 1]], props: [{ kind: 'car', tx: 8, ty: 4, vertical: false }] };
+  const a = new World(map, noWaves);
+  const r = a.placeSoldier('rifleman', 100, 120)!;
+  a.aim(r, 180, 40);
+  a.placeSoldier('marksman', 40, 24); // in the window
+  const op = a.placeSoldier('operator', 60, 140)!;
+  a.deployTurret(op, 30, 100);
+  a.placeBlock('wood', 5, 8, false);
+  a.placeStructure('wire', 9, 9, true);
+  assert.ok(a.haulProp(a.roadblocks[0], 2, 5, true));
+  const kept = JSON.parse(JSON.stringify(a.setup()));
+
+  const b = new World(map, noWaves);
+  b.placeSoldier('rifleman', 20, 150); // something already down: it is cleared first
+  b.useSetup(kept, { rifleman: 1, marksman: 1, operator: 1, wood: 1, wire: 1 });
+  assert.deepEqual(b.setup(), kept, 'everything back where it was');
+  assert.ok(b.soldiers.find((s) => s.kind === 'marksman')!.indoor);
+  assert.deepEqual(b.used, a.used);
+
+  const c = new World(map, noWaves);
+  c.useSetup(kept, { rifleman: 1 });
+  assert.deepEqual(c.soldiers.map((s) => s.kind), ['rifleman'], 'only what you own');
+  assert.equal(c.roadblocks.length, 1, 'just the car, moved');
+});
+
+test('the way to the safe zone is found past any roadblocks, however they sit (distances kept as 32-bit floats)', () => {
+  // Two cars side by side across a wide avenue.
+  const rows = ['####SSSSSS####', ...Array(30).fill('####......####'), '####EEEEEE####'];
+  const w = new World({ name: 't', tile: 16, par: 0, rows }, noWaves);
+  w.placeBlock('car', 4, 20, true, false);
+  w.placeBlock('car', 6, 19, true, false);
+  for (const i of w.grid.spawns) assert.ok(Number.isFinite(w.flow[i]), `entry ${i} still leads somewhere`);
+  // Random roadblocks on open ground: nothing is walled off, so every tile must have a way. Before the field queued
+  // tiles at their stored 32-bit value, some layouts cut whole stretches off.
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let k = 0; k < 20; k++) {
+    const r = new World({ name: 't', tile: 16, par: 0, rows: ['S'.repeat(16), ...Array(20).fill('.'.repeat(16)), 'E'.repeat(16)] }, noWaves);
+    for (let n = 0; n < 12; n++) r.placeBlock(['car', 'bus', 'wood', 'sandbags'][n % 4] as 'car', (rnd() * 16) | 0, 2 + ((rnd() * 18) | 0), rnd() < 0.5, false);
+    assert.ok(r.flow.every(Number.isFinite), `random layout ${k}: no tile cut off`);
+  }
+});
+
+test('every map: each way in leads to the safe zone, and every wave only sends zombies that exist', async () => {
+  const plans = (await import('../data/waves.json', { with: { type: 'json' } })).default as unknown as Record<string, { waves: { spawn: Record<string, number> }[] }>;
+  for (const name of MAP_NAMES) {
+    const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default, w = new World(map, noWaves);
+    assert.ok(w.grid.spawns.length && w.grid.goals.length, `${name}: has a way in and a safe zone`);
+    for (const i of w.grid.spawns) assert.ok(Number.isFinite(w.flow[i]), `${name}: the way in at ${i % w.grid.w},${Math.floor(i / w.grid.w)} leads nowhere`);
+    assert.ok(plans[name]?.waves.length, `${name}: has waves`);
+    for (const wave of plans[name].waves) for (const [k, n] of Object.entries(wave.spawn)) assert.ok(ZOMBIE_KINDS.includes(k) && n >= 0, `${name}: ${k} ${n}`);
+  }
+});
+
+test('a big zombie shoved into a building comes back out onto the street (it once hung the game)', () => {
+  // Wider than half a tile: pushed out of one wall tile it landed in the next, on and on past the map edge. If this
+  // breaks again the test does not fail, it hangs.
+  const rows = ['................', '################', '################', '................', 'EEEEEEEEEEEEEEEE'];
+  for (const name of ['tanky', 'hordemother', 'brute']) {
+    const w = world(rows);
+    w.spawn(kind(name), 8 * 16 + 9, 16 + 8); // its middle inside the building
+    w.start();
+    w.step();
+    const t = w.grid.at(w.zx[0], w.zy[0]);
+    assert.ok(t >= 0 && !w.grid.wall[t], `${name} is on open ground (${w.zx[0].toFixed(0)}, ${w.zy[0].toFixed(0)})`);
+  }
+});
+
+test('a mob whose way in stays full goes in at another, so every zombie of the wave still comes', () => {
+  // The left way in is one tile walled in on every side, soon full; the right one runs to the safe zone.
+  const rows = ['S#######SS', '########..', ...Array(6).fill('########..'), '########EE'];
+  for (const seed of [1, 2, 3, 4, 5, 6]) {
+    const w = new World({ name: 't', tile: 16, par: 0, rows }, { gap: 0, waves: [{ duration: 1, spawn: { normal: 60 } }] }, seed, { ...baseStats(), leakLimit: 1000 });
+    w.start();
+    run(w, 120);
+    const pocket = (w as unknown as { spawned: number; queue: number[] });
+    assert.equal(pocket.spawned, pocket.queue.length, `seed ${seed}: all 60 came in`);
+    assert.ok(w.leaks >= 50, `seed ${seed}: and most of them reached the safe zone (${w.leaks})`);
   }
 });

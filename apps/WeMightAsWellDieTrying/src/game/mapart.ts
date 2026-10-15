@@ -9,6 +9,8 @@ import palette from '../data/palette.json' with { type: 'json' };
 import { BUILDING, type Grid, type MapData } from '../sim/grid.ts';
 
 const P = palette;
+const LANES = 10; // the most lanes a road can have; wider than that both ways is a crossing
+const SHADE = { rgb: [0, 0, 0], most: 0.55, over: 4 }; // roofs deep inside a block darken: to black, at most 55%, over 4 tiles
 type Front = 'brick' | 'glass' | 'shop' | 'deck' | 'clinic' | 'metal';
 interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' }
 /** Each kind of building: its roof and the wall it shows the street. */
@@ -60,7 +62,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const isGreen = (x: number, y: number) => ch(x, y) === 'p' || ch(x, y) === 't';
   const runX = (x: number, y: number) => { let a = x, b = x; while (isRoad(a - 1, y)) a--; while (isRoad(b + 1, y)) b++; return [a, b]; };
   const runY = (x: number, y: number) => { let a = y, b = y; while (isRoad(x, a - 1)) a--; while (isRoad(x, b + 1)) b++; return [a, b]; };
-  const crossing = (x: number, y: number) => { if (!isRoad(x, y)) return false; const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y); return b1 - a1 >= 7 && b2 - a2 >= 3; };
+  /** Where two roads cross: the road runs on a long way both across and down. */
+  const crossing = (x: number, y: number) => { if (!isRoad(x, y)) return false; const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y); return b1 - a1 >= LANES && b2 - a2 >= LANES; };
 
   // ---- Buildings: each connected block, and brownstones and shops cut into lots a few tiles wide ----
   const region = new Int32Array(w * h).fill(-1);
@@ -192,14 +195,24 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       else if (side[i]) { paveSlabs(px, py, r, false); curbs(x, y, px, py); }
       else {
         asphalt(px, py, r);
-        const [ax, bx] = runX(x, y), [ay, by] = runY(x, y), wideX = bx - ax >= 7, wideY = by - ay >= 5;
-        // Lane lines down the middle of a road, broken at the crossings.
-        if (!wideX && bx - ax >= 1 && y % 3 !== 2 && x === Math.floor((ax + bx) / 2)) rect(P.paint, px + T - 1, py + 2, 2, T - 4);
-        if (!wideY && by - ay >= 1 && x % 3 !== 2 && y === Math.floor((ay + by) / 2)) rect(P.paint, px + 2, py + T - 1, T - 4, 2);
-        // Crosswalks where a road meets a crossing.
-        if (!(wideX && wideY) && !crossing(x, y)) {
-          if (!wideX && (crossing(x, y - 1) || crossing(x, y + 1))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 1, py + 2 + k * 5, T - 2, 2);
-          else if (!wideY && (crossing(x - 1, y) || crossing(x + 1, y))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 2 + k * 5, py + 1, 2, T - 2);
+        // A stretch of road is a tile per lane across. It shows them all: a solid line down the middle, dashes between
+        // the rest; the tiles next to a crossing get a crosswalk instead, and a crossing has no lanes.
+        const [ax, bx] = runX(x, y), [ay, by] = runY(x, y), across = bx - ax + 1, down = by - ay + 1;
+        const vertical = across <= LANES && down > across, flat = down <= LANES && across > down;
+        if (vertical && (crossing(x, y - 1) || crossing(x, y + 1))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 1, py + 2 + k * 5, T - 2, 2);
+        else if (flat && (crossing(x - 1, y) || crossing(x + 1, y))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 2 + k * 5, py + 1, 2, T - 2);
+        else if (vertical || flat) {
+          const [a, b, k, along] = vertical ? [ax, bx, x, y] : [ay, by, y, x], n = b - a + 1, middle = n % 2 ? -1 : a + n / 2;
+          // The line between lane `edge - 1` and lane `edge`, on this tile's near (0) or far (1) side.
+          const line = (edge: number, far: number) => {
+            const solid = edge === middle;
+            if (!solid && along % 2) return; // dashes: one tile on, one off
+            const col = solid ? P.paint : P.pave1, at = far ? T - 1 : 0, from = solid ? 0 : 4, len = solid ? T : 8;
+            if (vertical) rect(col, px + at, py + from, 1, len);
+            else rect(col, px + from, py + at, len, 1);
+          };
+          if (k > a) line(k, 0);
+          if (k < b) line(k + 1, 1);
         }
         if (r() < 0.12) { // a crack, kept inside the tile
           c.strokeStyle = 'rgba(15,16,17,0.75)';
@@ -244,7 +257,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) if (!built(x, y) || lot(x, y) !== l) return false;
     return true;
   };
-  const seen = new Set<number>();
+  const seen = new Set<number>(), landmarks: (() => void)[] = [];
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       if (!wall[y * w + x] || seen.has(lot(x, y))) continue;
@@ -254,10 +267,12 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       for (let yy = y; yy < Math.min(h, y + 40); yy++) for (let xx = Math.max(0, x - 40); xx < Math.min(w, x + 40); xx++) if (built(xx, yy) && lot(xx, yy) === l) tiles.push([xx, yy]);
       const mid = [Math.round(tiles.reduce((n, p) => n + p[0], 0) / tiles.length), Math.round(tiles.reduce((n, p) => n + p[1], 0) / tiles.length)];
       if (t === 'm' && inside(mid[0] - 1, mid[1] - 1, mid[0] + 1, mid[1] + 1, l)) {
-        // The hospital's roof: a big red cross on a white square.
+        // The hospital's roof: a big red cross on a white square. A landmark: painted after the fade, so it stays.
         const cx = (mid[0] + 0.5) * T, cy = (mid[1] + 0.5) * T;
-        rect(P.snow1, cx - 22, cy - 22, 44, 44); rect(P.snow2, cx - 22, cy - 22, 44, 2);
-        rect(P.red1, cx - 6, cy - 18, 12, 36); rect(P.red1, cx - 18, cy - 6, 36, 12); rect(P.red2, cx - 6, cy - 18, 12, 2); rect(P.red2, cx - 18, cy - 6, 2, 12);
+        landmarks.push(() => {
+          rect(P.snow1, cx - 22, cy - 22, 44, 44); rect(P.snow2, cx - 22, cy - 22, 44, 2);
+          rect(P.red1, cx - 6, cy - 18, 12, 36); rect(P.red1, cx - 18, cy - 6, 36, 12); rect(P.red2, cx - 6, cy - 18, 12, 2); rect(P.red2, cx - 18, cy - 6, 2, 12);
+        });
       } else if (t === 'a') {
         // A water tower on its legs, somewhere well inside the roof.
         const spot = tiles.find(([xx, yy]) => inside(xx, yy, xx, yy, l) && r() < 0.3);
@@ -273,6 +288,41 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         for (const [xx, yy] of tiles) if (xx % 2 === 1 && yy % 4 === 1 && deck(xx, yy) && r() < 0.7) stamp(`car/${(xx + yy) % 3}`, (xx + 1) * T, (yy + 1.5) * T, Math.PI / 2, r() < 0.25 ? 0.6 : 0.12);
       }
     }
+
+  // ---- Deep inside a block, the roofs fade into shadow ----
+  // Only the edge that faces a street keeps its detail, which keeps a big map calm. Distance is counted in tiles from
+  // the ground anyone can walk to (reached from the safe zone; a walled-in courtyard fades too). It is smoothed in 4 px
+  // steps between tile centres, so it reads as a gradient, not as blocks.
+  const reach = new Uint8Array(w * h), dist = new Float32Array(w * h).fill(Infinity), queue: number[] = [];
+  for (const i of grid.goals) { reach[i] = 1; queue.push(i); }
+  for (let k = 0; k < queue.length; k++) {
+    const i = queue[k], x = i % w, y = (i - x) / w;
+    for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !reach[j] && !wall[j]) { reach[j] = 1; queue.push(j); }
+  }
+  const near: number[] = [];
+  for (let i = 0; i < w * h; i++) if (reach[i]) { dist[i] = 0; near.push(i); }
+  for (let k = 0; k < near.length; k++) {
+    const i = near[k], x = i % w, y = (i - x) / w;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy, j = ny * w + nx;
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h || dist[j] <= dist[i] + 1) continue;
+      dist[j] = dist[i] + 1;
+      near.push(j);
+    }
+  }
+  const fade = (x: number, y: number) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); return Math.max(0, Math.min(1, (dist[y * w + x] - 1) / SHADE.over)) * SHADE.most; };
+  const fadeAt = (wx: number, wy: number) => fade(Math.floor(wx / T), Math.floor(wy / T));
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (fade(x, y) === 0 && fade(x - 1, y) === 0 && fade(x + 1, y) === 0 && fade(x, y - 1) === 0 && fade(x, y + 1) === 0) continue;
+      for (let by = 0; by < 4; by++)
+        for (let bx = 0; bx < 4; bx++) {
+          const gx = x + (bx + 0.5) / 4 - 0.5, gy = y + (by + 0.5) / 4 - 0.5, x0 = Math.floor(gx), y0 = Math.floor(gy), u = gx - x0, v = gy - y0;
+          const f = (fade(x0, y0) * (1 - u) + fade(x0 + 1, y0) * u) * (1 - v) + (fade(x0, y0 + 1) * (1 - u) + fade(x0 + 1, y0 + 1) * u) * v;
+          if (f > 0.01) rect(`rgba(${SHADE.rgb.join(",")},${f.toFixed(3)})`, x * T + bx * 4, y * T + by * 4, 4, 4);
+        }
+    }
+  for (const draw of landmarks) draw();
 
   // ---- Decor from the map, each only where it belongs: nothing stands in the road but manholes ----
   const kindAt = (x: number, y: number) => {
@@ -293,7 +343,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   };
   for (const d of map.decor ?? []) {
     const { x, y } = d, r = rng(seedOf(x, y, 3));
-    if (!WHERE[d.kind]?.includes(kindAt(x, y))) continue;
+    if (!WHERE[d.kind]?.includes(kindAt(x, y)) || fadeAt(x, y) > 0.4) continue; // nothing deep in the shadow
     if (d.kind === 'tree') {
       // A street tree in its own square of soil, its crown inside the tile.
       const px = Math.floor(x / T) * T, py = Math.floor(y / T) * T;
