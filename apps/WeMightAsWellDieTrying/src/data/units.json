@@ -4,7 +4,7 @@
   "machinegunner": { "name": "Machine gunner", "hp": 120, "radius": 6, "speed": 50, "aimSpeed": 25, "weapon": "bullet", "range": 125, "damage": 14, "fireRate": 10, "pierce": 1 },
   "flamethrower": { "name": "Flamethrower", "hp": 120, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "flame", "range": 56, "damage": 5, "fireRate": 8, "burn": { "dps": 16, "time": 3 }, "cone": { "widest": 35, "narrowest": 10, "handleMin": 24, "handleMax": 80 } },
   "bazooka": { "name": "Bazooka", "hp": 100, "radius": 6, "speed": 50, "aimSpeed": 30, "weapon": "rocket", "range": 170, "damage": 110, "fireRate": 0.6, "blast": 30, "projectileSpeed": 240 },
-  "shield": { "name": "Shield", "hp": 450, "radius": 9, "speed": 45, "aimSpeed": 35, "weapon": "bullet", "range": 50, "damage": 15, "fireRate": 2, "pierce": 1, "taunt": 40 },
+  "shield": { "name": "Shield", "hp": 450, "radius": 9, "speed": 45, "aimSpeed": 35, "weapon": "bullet", "range": 50, "damage": 15, "fireRate": 2, "pierce": 1, "taunt": 40, "outdoor": true },
   "mortar": { "name": "Mortar", "hp": 90, "radius": 6, "speed": 40, "aimSpeed": 0, "weapon": "shell", "range": 320, "minRange": 80, "damage": 110, "fireRate": 0.4, "blast": 40, "scatter": 24, "flight": 1.6 },
   "medic": { "name": "Medic", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 60, "weapon": "heal", "range": 70, "heal": 12 },
   "marksman": { "name": "Marksman", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "bullet", "range": 220, "damage": 75, "fireRate": 1.5, "pierce": 1 },
@@ -12,5 +12,5 @@
   "engineer": { "name": "Engineer", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 60, "weapon": "repair", "range": 64, "repair": 25, "harden": 0.6 },
   "grenadier": { "name": "Grenadier", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 30, "weapon": "shell", "range": 160, "minRange": 40, "damage": 70, "fireRate": 0.7, "blast": 28, "scatter": 16, "flight": 0.9 },
   "operator": { "name": "Sentry operator", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "bullet", "range": 110, "damage": 18, "fireRate": 2, "pierce": 1, "turrets": 1 },
-  "turret": { "name": "Sentry turret", "hp": 160, "radius": 7, "speed": 0, "aimSpeed": 0, "weapon": "bullet", "range": 150, "damage": 18, "fireRate": 4, "pierce": 1, "fixed": true }
+  "turret": { "name": "Sentry turret", "hp": 160, "radius": 7, "speed": 0, "aimSpeed": 0, "weapon": "bullet", "range": 150, "damage": 18, "fireRate": 4, "pierce": 1, "fixed": true, "outdoor": true }
 }

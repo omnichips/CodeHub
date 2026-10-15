@@ -262,6 +262,21 @@ Build in seven phases, each ending with something playable or viewable.
 **Open questions**
 
 - [ ] Soldier and zombie HP and damage: placeholders now, tuned by playing.
-- [ ] Starting unlocks: is 4 Riflemen, plastic and wood roadblocks and 1 Missile right?
+- [x] Starting unlocks: 4 Riflemen, plastic and wood roadblocks and 1 Missile (decided, see below).
 - [ ] Cone trade-off: revisit after playtesting if narrow lines dominate.
 - [ ] How many waves and how many zombies in total on New York?
+
+## Decisions
+
+Settled while building; not to be reopened without playtesting a reason.
+
+- **Starting loadout:** 4 Riflemen, 3 plastic and 2 wooden roadblocks, 1 Missile.
+- **Time controls:** Pause and 1x always; 2x and 3x are Base unlocks in the skill web.
+- **Skill web:** costs scaled to 0.6x, so buying everything costs 6,365 chips. One category is shown at a time (Soldiers, Build, Strikes, Base), each hanging off the Command node.
+- **Chips:** kills/10. The time bonus reaches its full +30% at 75% of par (par 420). Leak bonus +25% at zero leaks, falling to 0 at the limit. First clear +200. A loss, retreat included, keeps half the kill chips.
+- **Aiming:** Mortar and Grenadier aim at a point; the Sniper picks a target inside its cone by priority. The A-10 flies the way your finger was moving when you let go. The rigged car's direction is chosen while planning.
+- **Generator:** powers puddles within 220 px.
+- **Friendly fire:** mines and explosives are the only things that hurt your own soldiers.
+- **Buildings:** Shield and turret are outdoor-only; one soldier per window or roof spot; mid-wave a soldier can leave a building but not enter one.
+- **Map dressing:** decor (trees, lamps, wrecks) is only drawn and never collides, so it stays off the streets; New York's burned wrecks sit on the parking garage roof. The plaza in front of the safe zone is its own tile (`,`), walked like a street and paved.
+- **Install:** the game is a PWA scoped to its own folder; a cache-first service worker, renamed on every build, keeps it playable offline. Landscape only: a phone held upright is asked to turn sideways.

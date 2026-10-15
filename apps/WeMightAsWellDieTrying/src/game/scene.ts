@@ -1,27 +1,33 @@
 // The game screen: draws the World and turns touches and clicks into orders. All rules live in sim/.
 import Phaser from 'phaser';
-import map from '../data/maps/new-york.json' with { type: 'json' };
 import palette from '../data/palette.json' with { type: 'json' };
-import waves from '../data/waves.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
+import { payout, build, type Build, type Payout } from '../meta/progress.ts';
+import { MAPS, persist, profile } from '../meta/profile.ts';
+import type { MapData } from '../sim/grid.ts';
+import { paintMap } from './mapart.ts';
 import {
   PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
   type BlockKind, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
 import { Hud, type Group } from './hud.ts';
 
-// ponytail: what you own is fixed here until the skill tree (Phase 5) decides it.
-// For now some of everything, so each can be tried out. Usables come with the charges in structures.json.
-const LOADOUT: Record<string, number> = {
-  rifleman: 4, sniper: 1, machinegunner: 1, flamethrower: 1, bazooka: 1, shield: 1, mortar: 1, medic: 1, marksman: 1, shotgunner: 1,
-  engineer: 1, grenadier: 1, operator: 1,
-  plastic: 3, wood: 2, sandbags: 2, car: 1, cement: 1,
-  watchtower: 1, nest: 2, incendiary: 1, ammo: 1, mine: 4, wire: 2, explosives: 1, rigged: 1, puddle: 2, generator: 1, spikes: 2, noise: 1,
-};
+/** The order things appear in the bar. Only what the skill web has unlocked is shown. */
+const ORDER = [...Object.keys(UNITS).filter((k) => k !== 'turret'), 'plastic', 'wood', 'sandbags', 'car', 'cement', ...Object.keys(STRUCTS), ...Object.keys(USABLES)];
+const QUALITY = { low: { corpses: 40, particles: 0.35 }, medium: { corpses: 120, particles: 0.7 }, high: { corpses: 300, particles: 1 } };
+const CORPSE_LIFE = { none: 0, some: 12, normal: 30 }; // seconds of fight before a corpse fades
+const TUTORIAL = [
+  'Drag a Rifleman up from the bar onto a street.',
+  'Tap him, then drag the round handle to aim his cone. Pull it farther out for a narrower, longer cone.',
+  'Press Start when you are ready. The horde comes from the north.',
+  'Pause any time: you can still give orders while paused.',
+  'To fall back, drag a soldier to where he should go. He walks there.',
+  'Hold the line. Good luck.',
+];
 const MAX_STEPS = 8; // per frame: a very slow frame loses time rather than spiralling
 const MAX_ZOOM = 4;
 const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
-const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
+const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'police', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
 
 type Thing = Soldier | Roadblock | Structure;
 const isUnit = (id: string): id is UnitKind => id in UNITS;
@@ -57,38 +63,107 @@ export class Game extends Phaser.Scene {
   floor!: Phaser.GameObjects.Graphics;
   top!: Phaser.GameObjects.Graphics;
   pending?: Soldier; // a sentry operator waiting for a tap to set his turret down
+  mapId = MAPS[0].id;
+  mapData!: MapData;
+  build!: Build;
+  loadout: Record<string, number> = {};
+  ids: string[] = [];
+  paid?: Payout; // the chips this run paid, once it is over
+  corpses: { body: Phaser.GameObjects.Image; splat?: Phaser.GameObjects.Image; born: number }[] = [];
+  tutorial = -1; // step of the guided start, or -1
 
   constructor() { super('game'); }
+
+  init(data: { map?: string }) { this.mapId = data.map ?? this.mapId; }
 
   preload() { load(this); }
 
   create() {
     bake(this);
-    this.world = new World(map, waves['new-york']);
-    Object.assign(this, { speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), planes: [] });
+    const m = MAPS.find((x) => x.id === this.mapId) ?? MAPS[0], save = profile.save;
+    this.mapData = m.data;
+    this.build = build(new Set(save.owned));
+    this.loadout = this.build.loadout;
+    this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
+    Object.assign(this, { speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), planes: [], paid: undefined, corpses: [] });
+    this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
+    this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
     if (horde > 0) this.world.horde(Math.min(horde, 4000));
     if (import.meta.env.DEV) Object.assign(window, { game: this }); // for poking at it from the console or a test
-    this.drawMap();
+    const blood = save.settings.gore !== 'none';
+    this.add.image(0, 0, paintMap(this, m.data, this.world.grid, `map-${m.id}-${blood}`, blood)).setOrigin(0);
     this.floor = this.add.graphics().setDepth(1);
     this.top = this.add.graphics().setDepth(10);
     this.setupCamera();
     this.setupInput();
-    const ids = [...Object.keys(LOADOUT), ...Object.keys(USABLES)];
-    const items = ids.map((id) => ({
+    const items = this.ids.map((id) => ({
       id,
       name: nameOf(id),
       group: (isUnit(id) ? 'units' : isUsable(id) ? 'strikes' : 'build') as Group,
       icon: icon(this, isUnit(id) ? `${id}-idle-6/0` : `${id}/0`),
     }));
-    this.hud = new Hud(document.getElementById('hud')!, items, {
+    this.hud = new Hud(document.getElementById('hud')!, items, this.build.speeds, save.settings.lefty, {
       drag: (id, e) => this.beginPlace(id, e),
       start: () => this.world.start(),
       speed: (n) => (this.speed = n),
       action: (a) => this.act(a),
       again: () => this.scene.restart(),
+      menu: (to) => this.leave(to),
+      retreat: () => this.retreat(),
+      skip: () => this.endTutorial(),
     });
+    this.events.once('shutdown', () => this.hud.destroy());
   }
+
+  /** Back to the menu (or straight to the skill web). Leaving mid-fight is a retreat, paid as a loss. */
+  leave(to: 'menu' | 'tree') {
+    if (this.world.phase === 'wave') return this.retreat(to);
+    this.scene.start('menu', { open: to });
+  }
+
+  retreat(to: 'menu' | 'tree' = 'menu') {
+    if (this.world.phase === 'wave') {
+      this.world.phase = 'lost';
+      this.settle();
+    }
+    this.scene.start('menu', { open: to });
+  }
+
+  /** Pays the run out once, and saves. */
+  settle() {
+    const w = this.world, save = profile.save;
+    if (this.paid || (w.phase !== 'won' && w.phase !== 'lost')) return;
+    const won = w.phase === 'won';
+    this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain });
+    save.chips += this.paid.total;
+    if (won) save.cleared[this.mapId] = true;
+    persist();
+  }
+
+  endTutorial() {
+    this.tutorial = -1;
+    profile.save.tutorialDone = true;
+    persist();
+  }
+
+  /** The guided start: each step waits until you have done it. */
+  stepTutorial() {
+    const w = this.world, s = w.soldiers[0];
+    const done = [
+      () => w.soldiers.length > 0,
+      () => !!s && (Math.abs(s.angle + Math.PI / 2) > 0.05 || Math.abs(s.reach - (s.kind === 'rifleman' ? 72 : s.reach)) > 4),
+      () => w.phase !== 'plan',
+      () => this.speed === 0,
+      () => w.soldiers.some((o) => o.dest),
+      () => w.time > (this.tutorialAt ??= w.time) + 5,
+    ][this.tutorial];
+    if (done?.()) {
+      this.tutorial++;
+      if (this.tutorial >= TUTORIAL.length) this.endTutorial();
+    }
+  }
+  tutorialAt?: number;
 
   // ---- Camera: pinch or wheel to zoom, drag empty ground (or two fingers, or right-drag) to pan ----
 
@@ -154,7 +229,7 @@ export class Game extends Phaser.Scene {
       this.pending = undefined;
       if (turret) { this.selected = turret; return; }
     }
-    if (isSoldier(sel) && !sel.dead && !UNITS[sel.kind].fixed && !support(UNITS[sel.kind])) {
+    if (isSoldier(sel) && !sel.dead && !this.world.stats.units[sel.kind].fixed && !support(this.world.stats.units[sel.kind])) {
       const [hx, hy] = this.handle(sel);
       if (Math.hypot(hx - wx, hy - wy) < grab) { this.drag = { kind: 'aim', s: sel }; return; }
     }
@@ -215,7 +290,10 @@ export class Game extends Phaser.Scene {
     if (d.kind === 'pan' && d.travel < 8) this.selected = undefined; // a tap on empty ground
     if (d.kind === 'move' && d.moved) this.world.moveSoldier(d.s, wx, wy);
     if (d.kind === 'shift' && d.moved) {
-      if (isBlock(d.o)) this.world.moveBlock(d.o, tx, ty);
+      if (isBlock(d.o)) {
+        if (d.o.prop) this.world.haulProp(d.o, tx, ty);
+        else this.world.moveBlock(d.o, tx, ty);
+      }
       else this.world.moveStructure(d.o, tx, ty);
     }
   }
@@ -262,7 +340,10 @@ export class Game extends Phaser.Scene {
     if (!sel || isSoldier(sel)) {
       if (action === 'Remove' && isSoldier(sel)) w.removeSoldier(sel);
     } else if (isBlock(sel)) {
-      if (action === 'Turn') w.moveBlock(sel, sel.tx, sel.ty, !sel.vertical);
+      if (action === 'Turn') {
+        if (sel.prop) w.haulProp(sel, sel.tx, sel.ty, !sel.vertical);
+        else w.moveBlock(sel, sel.tx, sel.ty, !sel.vertical);
+      }
       if (action === 'Remove' && w.phase === 'plan') w.removeBlock(sel, true);
     } else {
       if (action === 'Turn') w.turnStructure(sel);
@@ -275,7 +356,7 @@ export class Game extends Phaser.Scene {
 
   available(id: string) {
     if (isUsable(id)) return this.world.charges[id];
-    return LOADOUT[id] - (this.world.used[id] ?? 0);
+    return (this.loadout[id] ?? 0) - (this.world.used[id] ?? 0);
   }
 
   tileOf(x: number, y: number): [number, number] {
@@ -304,6 +385,9 @@ export class Game extends Phaser.Scene {
       if (n > MAX_STEPS) this.acc = 0;
     }
     this.anims.globalTimeScale = w.phase === 'wave' ? this.speed : 1;
+    this.settle();
+    this.spill();
+    if (this.tutorial >= 0) this.stepTutorial();
     const sel = this.selected;
     if (sel && (isSoldier(sel) ? sel.dead || !w.soldiers.includes(sel) : isBlock(sel) ? !w.roadblocks.includes(sel) : !w.structures.includes(sel))) this.selected = undefined;
     this.drawZombies();
@@ -311,6 +395,38 @@ export class Game extends Phaser.Scene {
     this.drawBuilt();
     this.drawOverlay();
     this.updateHud();
+  }
+
+  /** Corpses and blood where zombies fell, as the gore setting asks; the oldest fade out, and there is a cap. */
+  spill() {
+    const w = this.world, { gore, quality } = profile.save.settings, cap = QUALITY[quality].corpses, life = CORPSE_LIFE[gore];
+    if (gore !== 'none')
+      for (const d of w.deaths) {
+        if (this.corpses.length >= cap) {
+          const old = this.corpses.shift()!;
+          old.body.destroy();
+          old.splat?.destroy();
+        }
+        const splat = gore === 'normal' ? this.add.image(d.x, d.y, 'sprites', `splat/${(Math.random() * 3) | 0}`).setRotation(Math.random() * 6.3).setDepth(1.2).setAlpha(0.85) : undefined;
+        const body = this.add.image(d.x, d.y, 'sprites', `${ZOMBIE_KINDS[d.kind]}-walk/0`).setRotation(d.angle).setTint(0x7a5a52).setDepth(1.3);
+        this.corpses.push({ body, splat, born: w.time });
+      }
+    w.deaths.length = 0;
+    let n = 0;
+    for (const c of this.corpses) {
+      const fade = 1 - (w.time - c.born - life) / 3;
+      if (fade <= 0) {
+        c.body.destroy();
+        c.splat?.destroy();
+        continue;
+      }
+      if (fade < 1) {
+        c.body.setAlpha(fade);
+        c.splat?.setAlpha(0.85 * fade);
+      }
+      this.corpses[n++] = c;
+    }
+    this.corpses.length = n;
   }
 
   drawZombies() {
@@ -363,7 +479,7 @@ export class Game extends Phaser.Scene {
       else if (block) sprites[0].setPosition((o.tx + 0.5) * T, (o.ty + 0.5) * T).setRotation(turn);
       else sprites[0].setPosition((o as Structure).x, (o as Structure).y).setRotation(o.kind === 'rigged' ? (o as Structure).angle : 0);
       if (block) {
-        const c = Math.round(255 * (0.5 + (0.5 * o.hp) / ROADBLOCKS[o.kind].hp)); // darker as it breaks
+        const c = Math.round(255 * (0.5 + (0.5 * o.hp) / this.world.stats.roadblocks[o.kind].hp)); // darker as it breaks
         for (const sp of sprites) sp.setTint(Phaser.Display.Color.GetColor(c, c, c));
       }
     }
@@ -380,14 +496,14 @@ export class Game extends Phaser.Scene {
     // Electric puddles: they spark while a generator powers them.
     for (const st of w.structures) {
       if (st.kind !== 'puddle') continue;
-      const r = STRUCTS.puddle.radius!, live = w.powered(st);
+      const r = this.world.stats.structs.puddle.radius!, live = w.powered(st);
       floor.fillStyle(water, 0.75).fillCircle(st.x, st.y, r * 0.8).fillCircle(st.x + r * 0.35, st.y + r * 0.2, r * 0.55).fillCircle(st.x - r * 0.3, st.y - r * 0.25, r * 0.5);
       if (live) for (let k = 0; k < 4; k++) floor.fillStyle(light, 0.9).fillRect(st.x + (Math.random() - 0.5) * r * 1.4, st.y + (Math.random() - 0.5) * r * 1.4, 1.5, 1.5);
     }
     // Fire, smoke and lures on the ground.
     for (const zn of w.zones) {
       if (zn.kind === 'fire')
-        for (let k = 0; k < 16; k++) {
+        for (let k = 0; k < 16 * QUALITY[profile.save.settings.quality].particles; k++) {
           const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * zn.r;
           floor.fillStyle(k % 4 ? flame : bad, 0.7).fillCircle(zn.x + Math.cos(a) * r, zn.y + Math.sin(a) * r, 2 + Math.random() * 3);
         }
@@ -398,14 +514,14 @@ export class Game extends Phaser.Scene {
     // On the ground: each soldier's cone, a mortar's landing zone, a medic's or engineer's reach. The selected one brighter.
     for (const s of w.soldiers) {
       if (s.dead) continue;
-      const u = UNITS[s.kind], alpha = s === sel ? 0.18 : 0.07;
+      const u = this.world.stats.units[s.kind], alpha = s === sel ? 0.18 : 0.07;
       if (support(u)) {
         if (s === sel) floor.fillStyle(hex(palette.rot2), 0.12).fillCircle(s.x, s.y, u.range);
       } else if (indirect(u)) floor.fillStyle(paint, alpha).fillCircle(...w.aimPoint(s), u.scatter! + u.blast!);
       else floor.fillStyle(paint, alpha).slice(s.x, s.y, w.rangeOf(s), s.angle - w.spread(s), s.angle + w.spread(s), false).fillPath();
     }
     if (isSoldier(sel)) {
-      const u = UNITS[sel.kind];
+      const u = this.world.stats.units[sel.kind];
       top.lineStyle(1.5 / z, light, 0.9).strokeCircle(sel.x, sel.y, u.radius + 4);
       if (indirect(u)) top.lineStyle(1 / z, paint, 0.5).strokeCircle(sel.x, sel.y, u.minRange!).strokeCircle(sel.x, sel.y, u.range);
       if (!u.fixed && !support(u)) {
@@ -417,20 +533,20 @@ export class Game extends Phaser.Scene {
       top.lineStyle(1.5 / z, light, 0.9);
       for (const i of w.blockTiles(sel.kind, sel.tx, sel.ty, sel.vertical)!) tileRect(top, i);
     } else if (sel) {
-      const k = STRUCTS[sel.kind];
+      const k = this.world.stats.structs[sel.kind];
       top.lineStyle(1.5 / z, light, 0.9);
       for (const i of w.structTiles(sel.kind, sel.tx, sel.ty, sel.vertical)!) tileRect(top, i);
       if (k.radius) top.lineStyle(1 / z, paint, 0.6).strokeCircle(sel.x, sel.y, k.radius);
-      if (sel.kind === 'puddle' || sel.kind === 'generator') top.lineStyle(1 / z, paint, 0.4).strokeCircle(sel.x, sel.y, STRUCTS.puddle.power!);
+      if (sel.kind === 'puddle' || sel.kind === 'generator') top.lineStyle(1 / z, paint, 0.4).strokeCircle(sel.x, sel.y, this.world.stats.structs.puddle.power!);
       if (sel.kind === 'rigged') top.lineStyle(1.5 / z, bad, 0.7).lineBetween(sel.x, sel.y, sel.x + Math.cos(sel.angle) * k.distance!, sel.y + Math.sin(sel.angle) * k.distance!);
       if (sel.kind === 'explosives') top.lineStyle(1 / z, bad, 0.6).strokeCircle(sel.x, sel.y, k.blast!);
     }
 
     // Flames from a flamethrower that just fired.
     for (const s of w.soldiers) {
-      const u = UNITS[s.kind];
+      const u = this.world.stats.units[s.kind];
       if (s.dead || u.weapon !== 'flame' || !w.firing(s)) continue;
-      for (let k = 0; k < 12; k++) {
+      for (let k = 0; k < 12 * QUALITY[profile.save.settings.quality].particles; k++) {
         const a = s.angle + (Math.random() * 2 - 1) * w.spread(s), r = 10 + Math.random() * (w.rangeOf(s) - 10);
         top.fillStyle(k % 3 ? flame : light, 0.8).fillCircle(s.x + Math.cos(a) * r, s.y + Math.sin(a) * r, 1.5 + Math.random() * 2.5);
       }
@@ -451,7 +567,7 @@ export class Game extends Phaser.Scene {
     const mark = (x: number, y: number, r: number) => top.lineStyle(1.5 / z, bad, 0.8).strokeCircle(x, y, r).lineBetween(x - r - 4, y, x + r + 4, y).lineBetween(x, y - r - 4, x, y + r + 4);
     let planes = 0;
     for (const s of w.strikes) {
-      const u = USABLES[s.kind];
+      const u = this.world.stats.usables[s.kind];
       if (s.kind === 'artillery') for (const sh of s.shells) if (sh.at > s.t) mark(sh.x, sh.y, 6);
       if (s.kind === 'missile' || s.kind === 'napalm') {
         mark(s.x, s.y, u.blast ?? u.radius!);
@@ -480,12 +596,12 @@ export class Game extends Phaser.Scene {
       top.fillStyle(dark, 1).fillRect(x - 8, y, 16, 3);
       top.fillStyle(frac > 0.5 ? hex(palette.rot2) : bad, 1).fillRect(x - 8, y, 16 * frac, 3);
     };
-    for (const s of w.soldiers) if (!s.dead && s.hp < UNITS[s.kind].hp) bar(s.x, s.y - 14, s.hp / UNITS[s.kind].hp);
+    for (const s of w.soldiers) if (!s.dead && s.hp < this.world.stats.units[s.kind].hp) bar(s.x, s.y - 14, s.hp / this.world.stats.units[s.kind].hp);
     for (const rb of w.roadblocks) {
-      const max = ROADBLOCKS[rb.kind].hp;
+      const max = this.world.stats.roadblocks[rb.kind].hp;
       if (rb.hp < max) bar((rb.tx + 0.5) * T, rb.ty * T - (rb.vertical ? T + 5 : 5), rb.hp / max);
     }
-    for (const st of w.structures) if (st.kind === 'spikes' && st.hp < STRUCTS.spikes.hp!) bar(st.x, st.y - 10, st.hp / STRUCTS.spikes.hp!);
+    for (const st of w.structures) if (st.kind === 'spikes' && st.hp < this.world.stats.structs.spikes.hp!) bar(st.x, st.y - 10, st.hp / this.world.stats.structs.spikes.hp!);
 
     // Where a drag would put things: pale if it fits, red if not.
     if (!d || this.pointer.x < 0) return;
@@ -494,17 +610,24 @@ export class Game extends Phaser.Scene {
       top.lineStyle(1.5 / z, fits ? light : bad, 0.9);
       for (const i of tiles ?? []) tileRect(top, i);
     };
+    // While a soldier is being dragged, the free windows and roofs light up.
+    if ((d.kind === 'move' && d.moved && (w.phase === 'plan' || !d.s.indoor)) || (d.kind === 'place' && isUnit(d.id)))
+      for (const [sx, sy] of this.mapData.slots ?? []) {
+        const kind = d.kind === 'move' ? d.s.kind : (d.id as UnitKind);
+        if (w.spotFor(kind, (sx + 0.5) * T, (sy + 0.5) * T, d.kind === 'move' ? d.s : undefined)?.indoor && (d.kind === 'place' || w.phase === 'plan'))
+          top.lineStyle(1.5 / z, light, 0.7).strokeRect(sx * T + 2, sy * T + 2, T - 4, T - 4);
+      }
     if (d.kind === 'move' && d.moved) {
-      top.lineStyle(1.5 / z, w.canStand(wx, wy) ? light : bad, 0.9).lineBetween(d.s.x, d.s.y, wx, wy).strokeCircle(wx, wy, 6);
+      top.lineStyle(1.5 / z, w.spotFor(d.s.kind, wx, wy, d.s) ? light : bad, 0.9).lineBetween(d.s.x, d.s.y, wx, wy).strokeCircle(wx, wy, 6);
     } else if (d.kind === 'shift' && d.moved) {
       if (isBlock(d.o)) ghost(w.blockFits(d.o.kind, tx, ty, d.o.vertical, d.o), w.blockTiles(d.o.kind, tx, ty, d.o.vertical));
       else ghost(w.structFits(d.o.kind, tx, ty, d.o.vertical, d.o), w.structTiles(d.o.kind, tx, ty, d.o.vertical));
     } else if (d.kind === 'place') {
       const id = d.id;
-      if (isUnit(id)) top.lineStyle(1.5 / z, w.canStand(wx, wy) ? light : bad, 0.9).strokeCircle(wx, wy, 7);
+      if (isUnit(id)) top.lineStyle(1.5 / z, w.spotFor(id, wx, wy) ? light : bad, 0.9).strokeCircle(wx, wy, 7);
       else if (isBlockKind(id)) ghost(w.blockFits(id, tx, ty, false), w.blockTiles(id, tx, ty, false));
       else if (isUsable(id)) {
-        const u = USABLES[id];
+        const u = this.world.stats.usables[id];
         if (id === 'a10') {
           const cx = (Math.cos(this.dragAngle) * u.length!) / 2, cy = (Math.sin(this.dragAngle) * u.length!) / 2;
           top.lineStyle(u.width!, bad, 0.25).lineBetween(wx - cx, wy - cy, wx + cx, wy + cy);
@@ -516,99 +639,45 @@ export class Game extends Phaser.Scene {
   updateHud() {
     const w = this.world, sel = this.selected, planning = w.phase === 'plan', waving = w.phase === 'wave';
     const summary = `${w.kills} kills · ${w.leaks} leaks · ${clock(w.time)}`;
-    const ids = [...Object.keys(LOADOUT), ...Object.keys(USABLES)];
+    const ids = this.ids;
     let selection = '';
     if (this.pending) selection = 'Tap where the turret goes';
-    else if (isSoldier(sel)) selection = `${UNITS[sel.kind].name} · ${Math.ceil(sel.hp)} HP`;
-    else if (isBlock(sel)) selection = `${ROADBLOCKS[sel.kind].name} · ${Math.ceil(sel.hp)} HP`;
-    else if (sel) selection = STRUCTS[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
-    const turnable = (isBlock(sel) && !ROADBLOCKS[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
+    else if (isSoldier(sel)) selection = `${this.world.stats.units[sel.kind].name} · ${sel.indoor ? 'indoors' : `${Math.ceil(sel.hp)} HP`}`;
+    else if (isBlock(sel)) selection = `${this.world.stats.roadblocks[sel.kind].name} · ${sel.prop ? (sel.haul ? 'a soldier is on his way' : 'drag it: a soldier moves it') : `${Math.ceil(sel.hp)} HP`}`;
+    else if (sel) selection = this.world.stats.structs[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
+    const turnable = (isBlock(sel) && !sel.prop && !this.world.stats.roadblocks[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
     this.hud.update({
       status: [planning ? 'Plan your defence' : `Wave ${Math.min(w.wave + 1, w.waves)}/${w.waves}`, `Leaks ${w.leaks}/${w.leakLimit}`, `${w.kills} kills`],
       warn: w.leaks >= w.leakLimit * 0.7,
       counts: Object.fromEntries(ids.map((id) => [id, this.available(id)])),
       // A strike can only be called in once the wave is on, and not again until it has cooled down.
       ready: Object.fromEntries(ids.map((id) => [id, isUsable(id) ? w.strikeReady(id) : this.available(id) > 0])),
-      cool: Object.fromEntries(Object.keys(USABLES).map((id) => [id, waving ? Math.max(0, w.readyAt[id as UsableKind] - w.time) / USABLES[id as UsableKind].cooldown : 0])),
+      cool: Object.fromEntries(Object.keys(USABLES).map((id) => [id, waving ? Math.max(0, w.readyAt[id as UsableKind] - w.time) / this.world.stats.usables[id as UsableKind].cooldown : 0])),
       planning,
       speed: this.speed,
       selection,
       actions: [
-        ...(isSoldier(sel) && UNITS[sel.kind].weapon === 'sniper' ? [`Target: ${sel.priority}`] : []),
+        ...(isSoldier(sel) && this.world.stats.units[sel.kind].weapon === 'sniper' ? [`Target: ${sel.priority}`] : []),
         ...(isSoldier(sel) && sel.turrets > 0 ? [this.pending ? 'Cancel' : 'Deploy turret'] : []),
         ...(waving && sel?.kind === 'explosives' ? ['Detonate'] : []),
         ...(waving && sel?.kind === 'noise' ? ['Sound off'] : []),
         ...(planning && turnable ? ['Turn'] : []),
-        ...(planning && sel ? ['Remove'] : []),
+        ...(isBlock(sel) && sel.prop ? ['Turn'] : []),
+        ...(planning && sel && !(isBlock(sel) && sel.prop) ? ['Remove'] : []),
       ],
-      end: w.phase === 'won' ? { title: 'You held the line', detail: summary } : w.phase === 'lost' ? { title: 'Overrun', detail: summary } : undefined,
+      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, chips: this.chipLines(this.paid), total: this.paid.total },
+      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : '',
     });
   }
 
-  // ---- The map, drawn once into one texture ----
-
-  drawMap() {
-    if (!this.textures.exists('map')) {
-      const { w, h, tile: T, wall, goal } = this.world.grid, W = w * T, H = h * T;
-      const tex = this.textures.createCanvas('map', W, H)!, c = tex.context;
-      const isWall = (x: number, y: number) => x < 0 || y < 0 || x >= w || y >= h || wall[y * w + x] === 1;
-      c.fillStyle = palette.asphalt1;
-      c.fillRect(0, 0, W, H);
-      for (let k = 0; k < w * h * 6; k++) {
-        c.fillStyle = k % 2 ? palette.asphalt0 : palette.asphalt2;
-        c.fillRect((Math.random() * W) | 0, (Math.random() * H) | 0, 1, 1);
-      }
-      // One roof colour per city block.
-      const roofs = [palette.cloth1, palette.blood0, palette.khaki0, palette.metal1, palette.rot0], blockOf = new Int32Array(w * h).fill(-1);
-      for (let i = 0, id = 0; i < w * h; i++) {
-        if (!wall[i] || blockOf[i] >= 0) continue;
-        for (const stack = [i]; stack.length; ) {
-          const j = stack.pop()!, x = j % w, y = (j - x) / w;
-          if (blockOf[j] >= 0 || !wall[j]) continue;
-          blockOf[j] = id;
-          if (x > 0) stack.push(j - 1);
-          if (x < w - 1) stack.push(j + 1);
-          if (y > 0) stack.push(j - w);
-          if (y < h - 1) stack.push(j + w);
-        }
-        id++;
-      }
-      for (let y = 0; y < h; y++)
-        for (let x = 0; x < w; x++) {
-          const i = y * w + x, px = x * T, py = y * T;
-          if (goal[i]) {
-            // The evacuation point: paving.
-            c.fillStyle = palette.khaki0;
-            c.fillRect(px, py, T, T);
-            c.fillStyle = palette.asphalt2;
-            c.fillRect(px, py, T, 1);
-            c.fillRect(px, py, 1, T);
-          } else if (!wall[i]) {
-            // Buildings cast shadows down and to the right, like the sprites.
-            c.fillStyle = 'rgba(0,0,0,0.28)';
-            if (isWall(x - 1, y)) c.fillRect(px, py, 4, T);
-            if (isWall(x, y - 1)) c.fillRect(px, py, T, 4);
-          } else {
-            c.fillStyle = roofs[blockOf[i] % roofs.length];
-            c.fillRect(px, py, T, T);
-            c.fillStyle = palette.outline;
-            if (!isWall(x + 1, y)) c.fillRect(px + T - 1, py, 1, T);
-            if (!isWall(x, y + 1)) c.fillRect(px, py + T - 1, T, 1);
-            if (!isWall(x - 1, y)) c.fillRect(px, py, 1, T);
-            if (!isWall(x, y - 1)) c.fillRect(px, py, T, 1);
-            c.fillStyle = 'rgba(255,255,255,0.12)'; // the parapet catches the light
-            if (!isWall(x - 1, y)) c.fillRect(px + 1, py, 1, T);
-            if (!isWall(x, y - 1)) c.fillRect(px, py + 1, T, 1);
-            if (Math.random() < 0.05 && isWall(x - 1, y) && isWall(x + 1, y) && isWall(x, y - 1) && isWall(x, y + 1)) {
-              c.fillStyle = palette.outline; // a vent or AC unit on the roof
-              c.fillRect(px + 4, py + 4, 7, 6);
-              c.fillStyle = palette.metal2;
-              c.fillRect(px + 4, py + 4, 6, 5);
-            }
-          }
-        }
-      tex.refresh();
-    }
-    this.add.image(0, 0, 'map').setOrigin(0);
+  chipLines(p: Payout) {
+    const pc = (v: number) => `+${Math.round(v * 100)}%`;
+    return [
+      `Kills: ${p.base} chips${this.world.phase === 'lost' ? ', half kept' : ''}`,
+      ...(p.timeBonus ? [`Time bonus ${pc(p.timeBonus)}`] : []),
+      ...(p.leakBonus ? [`Few leaks ${pc(p.leakBonus)}`] : []),
+      ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
+      ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
+    ];
   }
 }

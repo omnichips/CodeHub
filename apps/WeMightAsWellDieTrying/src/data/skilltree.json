@@ -1,0 +1,3484 @@
+{
+ "nodes": [
+  {
+   "id": "command",
+   "name": "Command",
+   "cat": "base",
+   "cost": 0,
+   "parent": null,
+   "start": true,
+   "x": 0,
+   "y": 0,
+   "icon": "police/0",
+   "desc": "Where it all starts.",
+   "effects": []
+  },
+  {
+   "id": "shield",
+   "name": "Shield",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": -333,
+   "y": -192,
+   "icon": "shield-idle-6/0",
+   "desc": "Frontline blocker. High HP, holds zombies and draws them onto himself.",
+   "effects": [
+    {
+     "unlock": "shield",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shield.more1",
+   "name": "+1 Shield",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "shield",
+   "x": -394,
+   "y": -228,
+   "icon": "shield-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "shield",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shield.damage",
+   "name": "Shield: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "shield.more1",
+   "x": -456,
+   "y": -263,
+   "icon": "shield-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "shield",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "shield.range",
+   "name": "Shield: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "shield.damage",
+   "x": -518,
+   "y": -299,
+   "icon": "shield-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "shield",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "shield.rate",
+   "name": "Shield: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "shield.range",
+   "x": -580,
+   "y": -335,
+   "icon": "shield-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "shield",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "shield.hp",
+   "name": "Shield: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "shield.rate",
+   "x": -642,
+   "y": -370,
+   "icon": "shield-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "shield",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "shield.more2",
+   "name": "+1 Shield",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "shield.hp",
+   "x": -704,
+   "y": -406,
+   "icon": "shield-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "shield",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shield.perk",
+   "name": "Shield: taunt +50%",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "shield.more2",
+   "x": -765,
+   "y": -442,
+   "icon": "shield-idle-6/0",
+   "desc": "Draws zombies from farther away.",
+   "effects": [
+    {
+     "stat": "taunt",
+     "of": "shield",
+     "by": 0.5
+    }
+   ]
+  },
+  {
+   "id": "shotgunner",
+   "name": "Shotgunner",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": -299,
+   "y": -240,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Close defence. Wide spread of pellets that knock zombies back.",
+   "effects": [
+    {
+     "unlock": "shotgunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.more1",
+   "name": "+1 Shotgunner",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "shotgunner",
+   "x": -355,
+   "y": -285,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "shotgunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.damage",
+   "name": "Shotgunner: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "shotgunner.more1",
+   "x": -411,
+   "y": -330,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "shotgunner",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.range",
+   "name": "Shotgunner: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "shotgunner.damage",
+   "x": -467,
+   "y": -374,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "shotgunner",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.rate",
+   "name": "Shotgunner: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "shotgunner.range",
+   "x": -522,
+   "y": -419,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "shotgunner",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.hp",
+   "name": "Shotgunner: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "shotgunner.rate",
+   "x": -578,
+   "y": -464,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "shotgunner",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.more2",
+   "name": "+1 Shotgunner",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "shotgunner.hp",
+   "x": -634,
+   "y": -509,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "shotgunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "shotgunner.perk",
+   "name": "Shotgunner: +2 pellets",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "shotgunner.more2",
+   "x": -689,
+   "y": -553,
+   "icon": "shotgunner-idle-6/0",
+   "desc": "More pellets per shot.",
+   "effects": [
+    {
+     "stat": "pellets",
+     "of": "shotgunner",
+     "by": 2
+    }
+   ]
+  },
+  {
+   "id": "flamethrower",
+   "name": "Flamethrower",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "shotgunner",
+   "x": -316,
+   "y": -345,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Close crowd control. Sets zombies on fire.",
+   "effects": [
+    {
+     "unlock": "flamethrower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.more1",
+   "name": "+1 Flamethrower",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "flamethrower",
+   "x": -364,
+   "y": -398,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "flamethrower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.damage",
+   "name": "Flamethrower: damage +20%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "flamethrower.more1",
+   "x": -413,
+   "y": -450,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "flamethrower",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.range",
+   "name": "Flamethrower: range +10%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "flamethrower.damage",
+   "x": -461,
+   "y": -503,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "flamethrower",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.rate",
+   "name": "Flamethrower: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "flamethrower.range",
+   "x": -509,
+   "y": -556,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "flamethrower",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.hp",
+   "name": "Flamethrower: HP +30%",
+   "cat": "soldiers",
+   "cost": 40,
+   "parent": "flamethrower.rate",
+   "x": -557,
+   "y": -608,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "flamethrower",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.more2",
+   "name": "+1 Flamethrower",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "flamethrower.hp",
+   "x": -606,
+   "y": -661,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "flamethrower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flamethrower.perk",
+   "name": "Flamethrower: burn +50%",
+   "cat": "soldiers",
+   "cost": 65,
+   "parent": "flamethrower.more2",
+   "x": -654,
+   "y": -714,
+   "icon": "flamethrower-idle-6/0",
+   "desc": "Fire burns longer and hotter.",
+   "effects": [
+    {
+     "stat": "burn",
+     "of": "flamethrower",
+     "by": 0.5
+    }
+   ]
+  },
+  {
+   "id": "machinegunner",
+   "name": "Machine gunner",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": -213,
+   "y": -319,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Crowd shredder. Very high fire rate, short range.",
+   "effects": [
+    {
+     "unlock": "machinegunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.more1",
+   "name": "+1 Machine gunner",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "machinegunner",
+   "x": -253,
+   "y": -379,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "machinegunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.damage",
+   "name": "Machine gunner: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "machinegunner.more1",
+   "x": -293,
+   "y": -438,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "machinegunner",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.range",
+   "name": "Machine gunner: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "machinegunner.damage",
+   "x": -332,
+   "y": -497,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "machinegunner",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.rate",
+   "name": "Machine gunner: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "machinegunner.range",
+   "x": -372,
+   "y": -557,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "machinegunner",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.hp",
+   "name": "Machine gunner: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "machinegunner.rate",
+   "x": -412,
+   "y": -616,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "machinegunner",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "machinegunner.more2",
+   "name": "+1 Machine gunner",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "machinegunner.hp",
+   "x": -451,
+   "y": -675,
+   "icon": "machinegunner-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "machinegunner",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "rifleman",
+   "name": "Rifleman",
+   "cat": "soldiers",
+   "cost": 0,
+   "parent": "command",
+   "start": true,
+   "x": -127,
+   "y": -272,
+   "icon": "rifleman-idle-6/0",
+   "desc": "The all-rounder. Your first soldiers.",
+   "effects": [
+    {
+     "unlock": "rifleman",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "rifleman.more1",
+   "name": "+1 Rifleman",
+   "cat": "soldiers",
+   "cost": 5,
+   "parent": "rifleman",
+   "x": -157,
+   "y": -337,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Deploy two more.",
+   "effects": [
+    {
+     "add": "rifleman",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "rifleman.damage",
+   "name": "Rifleman: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "rifleman.more1",
+   "x": -187,
+   "y": -401,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "rifleman",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "rifleman.range",
+   "name": "Rifleman: range +10%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "rifleman.damage",
+   "x": -217,
+   "y": -466,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "rifleman",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "rifleman.rate",
+   "name": "Rifleman: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "rifleman.range",
+   "x": -247,
+   "y": -531,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "rifleman",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "rifleman.hp",
+   "name": "Rifleman: HP +30%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman.rate",
+   "x": -278,
+   "y": -595,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "rifleman",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "rifleman.more2",
+   "name": "+1 Rifleman",
+   "cat": "soldiers",
+   "cost": 35,
+   "parent": "rifleman.hp",
+   "x": -308,
+   "y": -660,
+   "icon": "rifleman-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "rifleman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "marksman",
+   "name": "Marksman",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": -107,
+   "y": -369,
+   "icon": "marksman-idle-6/0",
+   "desc": "Mid-range precision. Fills the gap between Rifleman and Sniper.",
+   "effects": [
+    {
+     "unlock": "marksman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "marksman.more1",
+   "name": "+1 Marksman",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "marksman",
+   "x": -127,
+   "y": -437,
+   "icon": "marksman-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "marksman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "marksman.damage",
+   "name": "Marksman: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "marksman.more1",
+   "x": -147,
+   "y": -506,
+   "icon": "marksman-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "marksman",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "marksman.range",
+   "name": "Marksman: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "marksman.damage",
+   "x": -167,
+   "y": -574,
+   "icon": "marksman-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "marksman",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "marksman.rate",
+   "name": "Marksman: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "marksman.range",
+   "x": -187,
+   "y": -643,
+   "icon": "marksman-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "marksman",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "marksman.hp",
+   "name": "Marksman: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "marksman.rate",
+   "x": -207,
+   "y": -711,
+   "icon": "marksman-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "marksman",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "marksman.more2",
+   "name": "+1 Marksman",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "marksman.hp",
+   "x": -227,
+   "y": -780,
+   "icon": "marksman-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "marksman",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sniper",
+   "name": "Sniper",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "marksman",
+   "x": -61,
+   "y": -464,
+   "icon": "sniper-idle-6/0",
+   "desc": "Long-range picker. Bullets pierce; picks targets by the priority you set.",
+   "effects": [
+    {
+     "unlock": "sniper",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sniper.more1",
+   "name": "+1 Sniper",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "sniper",
+   "x": -70,
+   "y": -535,
+   "icon": "sniper-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "sniper",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sniper.damage",
+   "name": "Sniper: damage +20%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "sniper.more1",
+   "x": -80,
+   "y": -606,
+   "icon": "sniper-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "sniper",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "sniper.range",
+   "name": "Sniper: range +10%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "sniper.damage",
+   "x": -89,
+   "y": -676,
+   "icon": "sniper-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "sniper",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "sniper.rate",
+   "name": "Sniper: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "sniper.range",
+   "x": -98,
+   "y": -747,
+   "icon": "sniper-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "sniper",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "sniper.hp",
+   "name": "Sniper: HP +30%",
+   "cat": "soldiers",
+   "cost": 40,
+   "parent": "sniper.rate",
+   "x": -108,
+   "y": -818,
+   "icon": "sniper-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "sniper",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "sniper.more2",
+   "name": "+1 Sniper",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "sniper.hp",
+   "x": -117,
+   "y": -889,
+   "icon": "sniper-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "sniper",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sniper.perk",
+   "name": "Sniper: pierce +2",
+   "cat": "soldiers",
+   "cost": 65,
+   "parent": "sniper.more2",
+   "x": -126,
+   "y": -960,
+   "icon": "sniper-idle-6/0",
+   "desc": "Each bullet goes through two more zombies.",
+   "effects": [
+    {
+     "stat": "pierce",
+     "of": "sniper",
+     "by": 2
+    }
+   ]
+  },
+  {
+   "id": "grenadier",
+   "name": "Grenadier",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": 8,
+   "y": -384,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Light indirect fire. Throws grenades over walls.",
+   "effects": [
+    {
+     "unlock": "grenadier",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "grenadier.more1",
+   "name": "+1 Grenadier",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "grenadier",
+   "x": 10,
+   "y": -455,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "grenadier",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "grenadier.damage",
+   "name": "Grenadier: damage +20%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "grenadier.more1",
+   "x": 11,
+   "y": -527,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "grenadier",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "grenadier.range",
+   "name": "Grenadier: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "grenadier.damage",
+   "x": 13,
+   "y": -598,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "grenadier",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "grenadier.rate",
+   "name": "Grenadier: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "grenadier.range",
+   "x": 15,
+   "y": -669,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "grenadier",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "grenadier.hp",
+   "name": "Grenadier: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "grenadier.rate",
+   "x": 16,
+   "y": -741,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "grenadier",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "grenadier.more2",
+   "name": "+1 Grenadier",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "grenadier.hp",
+   "x": 18,
+   "y": -812,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "grenadier",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "grenadier.perk",
+   "name": "Grenadier: blast +25%",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "grenadier.more2",
+   "x": 19,
+   "y": -884,
+   "icon": "grenadier-idle-6/0",
+   "desc": "Bigger explosions.",
+   "effects": [
+    {
+     "stat": "blast",
+     "of": "grenadier",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "bazooka",
+   "name": "Bazooka",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "grenadier",
+   "x": 81,
+   "y": -461,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Splash damage. Rockets burst on impact.",
+   "effects": [
+    {
+     "unlock": "bazooka",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "bazooka.more1",
+   "name": "+1 Bazooka",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "bazooka",
+   "x": 94,
+   "y": -531,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "bazooka",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "bazooka.damage",
+   "name": "Bazooka: damage +20%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "bazooka.more1",
+   "x": 106,
+   "y": -602,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "bazooka",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "bazooka.range",
+   "name": "Bazooka: range +10%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "bazooka.damage",
+   "x": 118,
+   "y": -672,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "bazooka",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "bazooka.rate",
+   "name": "Bazooka: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "bazooka.range",
+   "x": 131,
+   "y": -742,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "bazooka",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "bazooka.hp",
+   "name": "Bazooka: HP +30%",
+   "cat": "soldiers",
+   "cost": 40,
+   "parent": "bazooka.rate",
+   "x": 143,
+   "y": -812,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "bazooka",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "bazooka.more2",
+   "name": "+1 Bazooka",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "bazooka.hp",
+   "x": 156,
+   "y": -883,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "bazooka",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "bazooka.perk",
+   "name": "Bazooka: blast +25%",
+   "cat": "soldiers",
+   "cost": 65,
+   "parent": "bazooka.more2",
+   "x": 168,
+   "y": -953,
+   "icon": "bazooka-idle-6/0",
+   "desc": "Bigger explosions.",
+   "effects": [
+    {
+     "stat": "blast",
+     "of": "bazooka",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "mortar",
+   "name": "Mortar",
+   "cat": "soldiers",
+   "cost": 70,
+   "parent": "bazooka",
+   "x": 177,
+   "y": -523,
+   "icon": "mortar-idle-6/0",
+   "desc": "Indirect fire over buildings. Drag the handle to where the shells land.",
+   "effects": [
+    {
+     "unlock": "mortar",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "mortar.more1",
+   "name": "+1 Mortar",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "mortar",
+   "x": 200,
+   "y": -590,
+   "icon": "mortar-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "mortar",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "mortar.damage",
+   "name": "Mortar: damage +20%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "mortar.more1",
+   "x": 223,
+   "y": -658,
+   "icon": "mortar-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "mortar",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "mortar.range",
+   "name": "Mortar: range +10%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "mortar.damage",
+   "x": 246,
+   "y": -726,
+   "icon": "mortar-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "mortar",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "mortar.rate",
+   "name": "Mortar: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 35,
+   "parent": "mortar.range",
+   "x": 269,
+   "y": -793,
+   "icon": "mortar-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "mortar",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "mortar.hp",
+   "name": "Mortar: HP +30%",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "mortar.rate",
+   "x": 292,
+   "y": -861,
+   "icon": "mortar-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "mortar",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "mortar.more2",
+   "name": "+1 Mortar",
+   "cat": "soldiers",
+   "cost": 65,
+   "parent": "mortar.hp",
+   "x": 315,
+   "y": -928,
+   "icon": "mortar-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "mortar",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "mortar.perk",
+   "name": "Mortar: blast +25%",
+   "cat": "soldiers",
+   "cost": 85,
+   "parent": "mortar.more2",
+   "x": 338,
+   "y": -996,
+   "icon": "mortar-idle-6/0",
+   "desc": "Bigger explosions.",
+   "effects": [
+    {
+     "stat": "blast",
+     "of": "mortar",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "medic",
+   "name": "Medic",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "rifleman",
+   "x": 177,
+   "y": -341,
+   "icon": "medic-idle-6/0",
+   "desc": "Support. Heals soldiers out in the street around him.",
+   "effects": [
+    {
+     "unlock": "medic",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "medic.more1",
+   "name": "+1 Medic",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "medic",
+   "x": 210,
+   "y": -404,
+   "icon": "medic-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "medic",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "medic.work",
+   "name": "Medic: heal +30%",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "medic.more1",
+   "x": 243,
+   "y": -467,
+   "icon": "medic-idle-6/0",
+   "desc": "Heals faster.",
+   "effects": [
+    {
+     "stat": "heal",
+     "of": "medic",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "medic.range",
+   "name": "Medic: range +10%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "medic.work",
+   "x": 276,
+   "y": -531,
+   "icon": "medic-idle-6/0",
+   "desc": "Reaches farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "medic",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "medic.hp",
+   "name": "Medic: HP +30%",
+   "cat": "soldiers",
+   "cost": 30,
+   "parent": "medic.range",
+   "x": 309,
+   "y": -594,
+   "icon": "medic-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "medic",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "medic.more2",
+   "name": "+1 Medic",
+   "cat": "soldiers",
+   "cost": 45,
+   "parent": "medic.hp",
+   "x": 342,
+   "y": -657,
+   "icon": "medic-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "medic",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "engineer",
+   "name": "Engineer",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "medic",
+   "x": 277,
+   "y": -377,
+   "icon": "engineer-idle-6/0",
+   "desc": "Support. Repairs roadblocks near him and makes them tougher.",
+   "effects": [
+    {
+     "unlock": "engineer",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "engineer.more1",
+   "name": "+1 Engineer",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "engineer",
+   "x": 319,
+   "y": -435,
+   "icon": "engineer-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "engineer",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "engineer.work",
+   "name": "Engineer: repair +30%",
+   "cat": "soldiers",
+   "cost": 15,
+   "parent": "engineer.more1",
+   "x": 361,
+   "y": -493,
+   "icon": "engineer-idle-6/0",
+   "desc": "Repairs faster.",
+   "effects": [
+    {
+     "stat": "repair",
+     "of": "engineer",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "engineer.range",
+   "name": "Engineer: range +10%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "engineer.work",
+   "x": 403,
+   "y": -550,
+   "icon": "engineer-idle-6/0",
+   "desc": "Reaches farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "engineer",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "engineer.hp",
+   "name": "Engineer: HP +30%",
+   "cat": "soldiers",
+   "cost": 40,
+   "parent": "engineer.range",
+   "x": 446,
+   "y": -608,
+   "icon": "engineer-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "engineer",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "engineer.more2",
+   "name": "+1 Engineer",
+   "cat": "soldiers",
+   "cost": 55,
+   "parent": "engineer.hp",
+   "x": 488,
+   "y": -665,
+   "icon": "engineer-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "engineer",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "operator",
+   "name": "Sentry operator",
+   "cat": "soldiers",
+   "cost": 70,
+   "parent": "engineer",
+   "x": 390,
+   "y": -390,
+   "icon": "operator-idle-6/0",
+   "desc": "Deploys a turret anywhere that keeps the cone he had.",
+   "effects": [
+    {
+     "unlock": "operator",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "operator.more1",
+   "name": "+1 Sentry operator",
+   "cat": "soldiers",
+   "cost": 10,
+   "parent": "operator",
+   "x": 441,
+   "y": -441,
+   "icon": "operator-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "operator",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "operator.damage",
+   "name": "Sentry operator: damage +20%",
+   "cat": "soldiers",
+   "cost": 20,
+   "parent": "operator.more1",
+   "x": 491,
+   "y": -491,
+   "icon": "operator-idle-6/0",
+   "desc": "Every hit does more.",
+   "effects": [
+    {
+     "stat": "damage",
+     "of": "operator",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "operator.range",
+   "name": "Sentry operator: range +10%",
+   "cat": "soldiers",
+   "cost": 25,
+   "parent": "operator.damage",
+   "x": 542,
+   "y": -542,
+   "icon": "operator-idle-6/0",
+   "desc": "Shoots farther.",
+   "effects": [
+    {
+     "stat": "range",
+     "of": "operator",
+     "by": 0.1
+    }
+   ]
+  },
+  {
+   "id": "operator.rate",
+   "name": "Sentry operator: fire rate +20%",
+   "cat": "soldiers",
+   "cost": 35,
+   "parent": "operator.range",
+   "x": 592,
+   "y": -592,
+   "icon": "operator-idle-6/0",
+   "desc": "Fires faster.",
+   "effects": [
+    {
+     "stat": "fireRate",
+     "of": "operator",
+     "by": 0.2
+    }
+   ]
+  },
+  {
+   "id": "operator.hp",
+   "name": "Sentry operator: HP +30%",
+   "cat": "soldiers",
+   "cost": 50,
+   "parent": "operator.rate",
+   "x": 643,
+   "y": -643,
+   "icon": "operator-idle-6/0",
+   "desc": "Lasts longer in the street.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "operator",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "operator.more2",
+   "name": "+1 Sentry operator",
+   "cat": "soldiers",
+   "cost": 65,
+   "parent": "operator.hp",
+   "x": 693,
+   "y": -693,
+   "icon": "operator-idle-6/0",
+   "desc": "Deploy one more.",
+   "effects": [
+    {
+     "add": "operator",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "operator.perk",
+   "name": "Sentry operator: +1 turret",
+   "cat": "soldiers",
+   "cost": 85,
+   "parent": "operator.more2",
+   "x": 744,
+   "y": -744,
+   "icon": "operator-idle-6/0",
+   "desc": "One more turret to deploy.",
+   "effects": [
+    {
+     "stat": "turrets",
+     "of": "operator",
+     "by": 1
+    }
+   ]
+  },
+  {
+   "id": "cement",
+   "name": "Cement barrier",
+   "cat": "structures",
+   "cost": 60,
+   "parent": "car",
+   "x": 621,
+   "y": -359,
+   "icon": "cement/0",
+   "desc": "Very strong, very limited, and never moves once placed.",
+   "effects": [
+    {
+     "unlock": "cement",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "cement.more1",
+   "name": "+1 Cement barrier",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "cement",
+   "x": 702,
+   "y": -406,
+   "icon": "cement/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "cement",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "cement.hp1",
+   "name": "Cement barrier: HP +30%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "cement.more1",
+   "x": 783,
+   "y": -451,
+   "icon": "cement/0",
+   "desc": "Takes longer to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "cement",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "cement.more2",
+   "name": "+1 Cement barrier",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "cement.hp1",
+   "x": 863,
+   "y": -498,
+   "icon": "cement/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "cement",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "cement.hp2",
+   "name": "Cement barrier: HP +30%",
+   "cat": "structures",
+   "cost": 70,
+   "parent": "cement.more2",
+   "x": 943,
+   "y": -545,
+   "icon": "cement/0",
+   "desc": "Takes longer still to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "cement",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "car",
+   "name": "Wrecked car",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "sandbags",
+   "x": 560,
+   "y": -238,
+   "icon": "car/0",
+   "desc": "A heavy roadblock.",
+   "effects": [
+    {
+     "unlock": "car",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "car.more1",
+   "name": "+1 Wrecked car",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "car",
+   "x": 646,
+   "y": -274,
+   "icon": "car/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "car",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "car.hp1",
+   "name": "Wrecked car: HP +30%",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "car.more1",
+   "x": 731,
+   "y": -311,
+   "icon": "car/0",
+   "desc": "Takes longer to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "car",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "car.more2",
+   "name": "+1 Wrecked car",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "car.hp1",
+   "x": 816,
+   "y": -347,
+   "icon": "car/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "car",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "car.hp2",
+   "name": "Wrecked car: HP +30%",
+   "cat": "structures",
+   "cost": 55,
+   "parent": "car.more2",
+   "x": 902,
+   "y": -382,
+   "icon": "car/0",
+   "desc": "Takes longer still to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "car",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "sandbags",
+   "name": "Sandbag wall",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "wood",
+   "x": 480,
+   "y": -138,
+   "icon": "sandbags/0",
+   "desc": "A tough roadblock.",
+   "effects": [
+    {
+     "unlock": "sandbags",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "sandbags.more1",
+   "name": "+1 Sandbag wall",
+   "cat": "structures",
+   "cost": 10,
+   "parent": "sandbags",
+   "x": 569,
+   "y": -164,
+   "icon": "sandbags/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "sandbags",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sandbags.hp1",
+   "name": "Sandbag wall: HP +30%",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "sandbags.more1",
+   "x": 658,
+   "y": -188,
+   "icon": "sandbags/0",
+   "desc": "Takes longer to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "sandbags",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "sandbags.more2",
+   "name": "+1 Sandbag wall",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "sandbags.hp1",
+   "x": 748,
+   "y": -214,
+   "icon": "sandbags/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "sandbags",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "sandbags.hp2",
+   "name": "Sandbag wall: HP +30%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "sandbags.more2",
+   "x": 837,
+   "y": -240,
+   "icon": "sandbags/0",
+   "desc": "Takes longer still to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "sandbags",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "wood",
+   "name": "Wooden barricade",
+   "cat": "structures",
+   "cost": 0,
+   "parent": "plastic",
+   "start": true,
+   "x": 493,
+   "y": -78,
+   "icon": "wood/0",
+   "desc": "A sturdier roadblock.",
+   "effects": [
+    {
+     "unlock": "wood",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "wood.more1",
+   "name": "+1 Wooden barricade",
+   "cat": "structures",
+   "cost": 10,
+   "parent": "wood",
+   "x": 585,
+   "y": -92,
+   "icon": "wood/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "wood",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "wood.hp1",
+   "name": "Wooden barricade: HP +30%",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "wood.more1",
+   "x": 676,
+   "y": -107,
+   "icon": "wood/0",
+   "desc": "Takes longer to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "wood",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "wood.more2",
+   "name": "+1 Wooden barricade",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "wood.hp1",
+   "x": 768,
+   "y": -122,
+   "icon": "wood/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "wood",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "wood.hp2",
+   "name": "Wooden barricade: HP +30%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "wood.more2",
+   "x": 859,
+   "y": -136,
+   "icon": "wood/0",
+   "desc": "Takes longer still to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "wood",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "plastic",
+   "name": "Plastic barrier",
+   "cat": "structures",
+   "cost": 0,
+   "parent": "command",
+   "start": true,
+   "x": 390,
+   "y": -13,
+   "icon": "plastic/0",
+   "desc": "A light roadblock. Zombies go round it if they can.",
+   "effects": [
+    {
+     "unlock": "plastic",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "plastic.more1",
+   "name": "+1 Plastic barrier",
+   "cat": "structures",
+   "cost": 5,
+   "parent": "plastic",
+   "x": 482,
+   "y": -17,
+   "icon": "plastic/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "plastic",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "plastic.hp1",
+   "name": "Plastic barrier: HP +30%",
+   "cat": "structures",
+   "cost": 10,
+   "parent": "plastic.more1",
+   "x": 576,
+   "y": -19,
+   "icon": "plastic/0",
+   "desc": "Takes longer to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "plastic",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "plastic.more2",
+   "name": "+1 Plastic barrier",
+   "cat": "structures",
+   "cost": 10,
+   "parent": "plastic.hp1",
+   "x": 668,
+   "y": -23,
+   "icon": "plastic/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "plastic",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "plastic.hp2",
+   "name": "Plastic barrier: HP +30%",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "plastic.more2",
+   "x": 761,
+   "y": -26,
+   "icon": "plastic/0",
+   "desc": "Takes longer still to break.",
+   "effects": [
+    {
+     "stat": "hp",
+     "of": "plastic",
+     "by": 0.3
+    }
+   ]
+  },
+  {
+   "id": "nest",
+   "name": "Sandbag nest",
+   "cat": "structures",
+   "cost": 15,
+   "parent": "wood",
+   "x": 498,
+   "y": 43,
+   "icon": "nest/0",
+   "desc": "Cover: the soldier in it takes half damage.",
+   "effects": [
+    {
+     "unlock": "nest",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "nest.more1",
+   "name": "+1 Sandbag nest",
+   "cat": "structures",
+   "cost": 15,
+   "parent": "nest",
+   "x": 590,
+   "y": 52,
+   "icon": "nest/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "nest",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "nest.power",
+   "name": "Sandbag nest: power +25%",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "nest.more1",
+   "x": 683,
+   "y": 60,
+   "icon": "nest/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "nest",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "nest.more2",
+   "name": "+1 Sandbag nest",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "nest.power",
+   "x": 775,
+   "y": 68,
+   "icon": "nest/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "nest",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "watchtower",
+   "name": "Watchtower",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "nest",
+   "x": 595,
+   "y": 126,
+   "icon": "watchtower/0",
+   "desc": "The soldier in it reaches 40% farther.",
+   "effects": [
+    {
+     "unlock": "watchtower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "watchtower.more1",
+   "name": "+1 Watchtower",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "watchtower",
+   "x": 686,
+   "y": 146,
+   "icon": "watchtower/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "watchtower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "watchtower.power",
+   "name": "Watchtower: power +25%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "watchtower.more1",
+   "x": 776,
+   "y": 165,
+   "icon": "watchtower/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "watchtower",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "watchtower.more2",
+   "name": "+1 Watchtower",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "watchtower.power",
+   "x": 867,
+   "y": 185,
+   "icon": "watchtower/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "watchtower",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "ammo",
+   "name": "Extra ammo",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "sandbags",
+   "x": 576,
+   "y": 198,
+   "icon": "ammo/0",
+   "desc": "Soldiers near it fire 40% faster.",
+   "effects": [
+    {
+     "unlock": "ammo",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "ammo.more1",
+   "name": "+1 Extra ammo",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "ammo",
+   "x": 663,
+   "y": 229,
+   "icon": "ammo/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "ammo",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "ammo.power",
+   "name": "Extra ammo: power +25%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "ammo.more1",
+   "x": 751,
+   "y": 259,
+   "icon": "ammo/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "ammo",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "ammo.more2",
+   "name": "+1 Extra ammo",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "ammo.power",
+   "x": 839,
+   "y": 289,
+   "icon": "ammo/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "ammo",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "incendiary",
+   "name": "Incendiary ammo",
+   "cat": "structures",
+   "cost": 40,
+   "parent": "ammo",
+   "x": 645,
+   "y": 315,
+   "icon": "incendiary/0",
+   "desc": "Soldiers near it fire burning rounds.",
+   "effects": [
+    {
+     "unlock": "incendiary",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "incendiary.more1",
+   "name": "+1 Incendiary ammo",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "incendiary",
+   "x": 728,
+   "y": 355,
+   "icon": "incendiary/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "incendiary",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "incendiary.power",
+   "name": "Incendiary ammo: power +25%",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "incendiary.more1",
+   "x": 811,
+   "y": 397,
+   "icon": "incendiary/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "incendiary",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "incendiary.more2",
+   "name": "+1 Incendiary ammo",
+   "cat": "structures",
+   "cost": 65,
+   "parent": "incendiary.power",
+   "x": 896,
+   "y": 437,
+   "icon": "incendiary/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "incendiary",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "wire",
+   "name": "Barbed wire",
+   "cat": "structures",
+   "cost": 10,
+   "parent": "plastic",
+   "x": 419,
+   "y": 272,
+   "icon": "wire/0",
+   "desc": "Slows zombies crossing it. Jumpers leap it.",
+   "effects": [
+    {
+     "unlock": "wire",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "wire.more1",
+   "name": "+1 Barbed wire",
+   "cat": "structures",
+   "cost": 15,
+   "parent": "wire",
+   "x": 497,
+   "y": 322,
+   "icon": "wire/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "wire",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "wire.power",
+   "name": "Barbed wire: power +25%",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "wire.more1",
+   "x": 575,
+   "y": 373,
+   "icon": "wire/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "wire",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "wire.more2",
+   "name": "+1 Barbed wire",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "wire.power",
+   "x": 653,
+   "y": 424,
+   "icon": "wire/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "wire",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "spikes",
+   "name": "Spike strip",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "wire",
+   "x": 467,
+   "y": 391,
+   "icon": "spikes/0",
+   "desc": "Short-lived. Strong against Fast zombies.",
+   "effects": [
+    {
+     "unlock": "spikes",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "spikes.more1",
+   "name": "+1 Spike strip",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "spikes",
+   "x": 537,
+   "y": 451,
+   "icon": "spikes/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "spikes",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "spikes.power",
+   "name": "Spike strip: power +25%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "spikes.more1",
+   "x": 608,
+   "y": 511,
+   "icon": "spikes/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "spikes",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "spikes.more2",
+   "name": "+1 Spike strip",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "spikes.power",
+   "x": 680,
+   "y": 571,
+   "icon": "spikes/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "spikes",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "noise",
+   "name": "Noise maker",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "spikes",
+   "x": 489,
+   "y": 525,
+   "icon": "noise/0",
+   "desc": "Pulls zombies toward it for a few seconds.",
+   "effects": [
+    {
+     "unlock": "noise",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "noise.more1",
+   "name": "+1 Noise maker",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "noise",
+   "x": 553,
+   "y": 593,
+   "icon": "noise/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "noise",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "noise.power",
+   "name": "Noise maker: power +25%",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "noise.more1",
+   "x": 616,
+   "y": 660,
+   "icon": "noise/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "noise",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "noise.more2",
+   "name": "+1 Noise maker",
+   "cat": "structures",
+   "cost": 65,
+   "parent": "noise.power",
+   "x": 680,
+   "y": 728,
+   "icon": "noise/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "noise",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "mine",
+   "name": "Mine",
+   "cat": "structures",
+   "cost": 25,
+   "parent": "wire",
+   "x": 358,
+   "y": 493,
+   "icon": "mine/0",
+   "desc": "Explodes on contact. Can hurt your soldiers.",
+   "effects": [
+    {
+     "unlock": "mine",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "mine.more1",
+   "name": "+1 Mine",
+   "cat": "structures",
+   "cost": 20,
+   "parent": "mine",
+   "x": 412,
+   "y": 567,
+   "icon": "mine/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "mine",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "mine.power",
+   "name": "Mine: power +25%",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "mine.more1",
+   "x": 467,
+   "y": 642,
+   "icon": "mine/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "mine",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "mine.more2",
+   "name": "+1 Mine",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "mine.power",
+   "x": 521,
+   "y": 718,
+   "icon": "mine/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "mine",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "explosives",
+   "name": "Explosives",
+   "cat": "structures",
+   "cost": 40,
+   "parent": "mine",
+   "x": 348,
+   "y": 628,
+   "icon": "explosives/0",
+   "desc": "You set them off. Can hurt your soldiers.",
+   "effects": [
+    {
+     "unlock": "explosives",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "explosives.more1",
+   "name": "+1 Explosives",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "explosives",
+   "x": 393,
+   "y": 709,
+   "icon": "explosives/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "explosives",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "explosives.power",
+   "name": "Explosives: power +25%",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "explosives.more1",
+   "x": 438,
+   "y": 790,
+   "icon": "explosives/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "explosives",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "explosives.more2",
+   "name": "+1 Explosives",
+   "cat": "structures",
+   "cost": 65,
+   "parent": "explosives.power",
+   "x": 482,
+   "y": 871,
+   "icon": "explosives/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "explosives",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "rigged",
+   "name": "Rigged car",
+   "cat": "structures",
+   "cost": 65,
+   "parent": "explosives",
+   "x": 309,
+   "y": 767,
+   "icon": "rigged/0",
+   "desc": "Rams the zombies ahead of it, then stays as a roadblock.",
+   "effects": [
+    {
+     "unlock": "rigged",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "rigged.more1",
+   "name": "+1 Rigged car",
+   "cat": "structures",
+   "cost": 35,
+   "parent": "rigged",
+   "x": 345,
+   "y": 853,
+   "icon": "rigged/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "rigged",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "rigged.power",
+   "name": "Rigged car: power +25%",
+   "cat": "structures",
+   "cost": 60,
+   "parent": "rigged.more1",
+   "x": 380,
+   "y": 939,
+   "icon": "rigged/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "rigged",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "rigged.more2",
+   "name": "+1 Rigged car",
+   "cat": "structures",
+   "cost": 85,
+   "parent": "rigged.power",
+   "x": 413,
+   "y": 1024,
+   "icon": "rigged/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "rigged",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "puddle",
+   "name": "Electric puddle",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "mine",
+   "x": 186,
+   "y": 693,
+   "icon": "puddle/0",
+   "desc": "Shocks and slows zombies. Comes with a generator to put inside a building.",
+   "effects": [
+    {
+     "unlock": "puddle",
+     "count": 2
+    },
+    {
+     "unlock": "generator",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "puddle.more1",
+   "name": "+1 Electric puddle",
+   "cat": "structures",
+   "cost": 30,
+   "parent": "puddle",
+   "x": 209,
+   "y": 783,
+   "icon": "puddle/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "puddle",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "puddle.power",
+   "name": "Electric puddle: power +25%",
+   "cat": "structures",
+   "cost": 50,
+   "parent": "puddle.more1",
+   "x": 234,
+   "y": 872,
+   "icon": "puddle/0",
+   "desc": "Works harder: more damage, a stronger effect, or longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "puddle",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "puddle.more2",
+   "name": "+1 Electric puddle",
+   "cat": "structures",
+   "cost": 65,
+   "parent": "puddle.power",
+   "x": 257,
+   "y": 962,
+   "icon": "puddle/0",
+   "desc": "Place one more.",
+   "effects": [
+    {
+     "add": "puddle",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "smoke",
+   "name": "Smoke/flash",
+   "cat": "usables",
+   "cost": 25,
+   "parent": "missile",
+   "x": 0,
+   "y": 384,
+   "icon": "smoke/0",
+   "desc": "Stalls zombies in an area for a few seconds.",
+   "effects": [
+    {
+     "unlock": "smoke",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "smoke.charge1",
+   "name": "Smoke/flash: +1 use",
+   "cat": "usables",
+   "cost": 20,
+   "parent": "smoke",
+   "x": 0,
+   "y": 455,
+   "icon": "smoke/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "smoke",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "smoke.power",
+   "name": "Smoke/flash: power +25%",
+   "cat": "usables",
+   "cost": 30,
+   "parent": "smoke.charge1",
+   "x": 0,
+   "y": 527,
+   "icon": "smoke/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "smoke",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "smoke.charge2",
+   "name": "Smoke/flash: +1 use",
+   "cat": "usables",
+   "cost": 40,
+   "parent": "smoke.power",
+   "x": 0,
+   "y": 598,
+   "icon": "smoke/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "smoke",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flare",
+   "name": "Decoy flare",
+   "cat": "usables",
+   "cost": 35,
+   "parent": "smoke",
+   "x": -81,
+   "y": 461,
+   "icon": "flare/0",
+   "desc": "Draws zombies away from your lines.",
+   "effects": [
+    {
+     "unlock": "flare",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flare.charge1",
+   "name": "Decoy flare: +1 use",
+   "cat": "usables",
+   "cost": 25,
+   "parent": "flare",
+   "x": -94,
+   "y": 531,
+   "icon": "flare/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "flare",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "flare.power",
+   "name": "Decoy flare: power +25%",
+   "cat": "usables",
+   "cost": 45,
+   "parent": "flare.charge1",
+   "x": -106,
+   "y": 602,
+   "icon": "flare/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "flare",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "flare.charge2",
+   "name": "Decoy flare: +1 use",
+   "cat": "usables",
+   "cost": 65,
+   "parent": "flare.power",
+   "x": -118,
+   "y": 672,
+   "icon": "flare/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "flare",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "missile",
+   "name": "Missile",
+   "cat": "usables",
+   "cost": 0,
+   "parent": "command",
+   "start": true,
+   "x": -103,
+   "y": 282,
+   "icon": "missile/0",
+   "desc": "A single heavy hit where you drop it.",
+   "effects": [
+    {
+     "unlock": "missile",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "missile.charge1",
+   "name": "Missile: +1 use",
+   "cat": "usables",
+   "cost": 10,
+   "parent": "missile",
+   "x": -127,
+   "y": 349,
+   "icon": "missile/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "missile",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "missile.power",
+   "name": "Missile: power +25%",
+   "cat": "usables",
+   "cost": 15,
+   "parent": "missile.charge1",
+   "x": -151,
+   "y": 416,
+   "icon": "missile/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "missile",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "missile.charge2",
+   "name": "Missile: +1 use",
+   "cat": "usables",
+   "cost": 20,
+   "parent": "missile.power",
+   "x": -176,
+   "y": 483,
+   "icon": "missile/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "missile",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "a10",
+   "name": "A-10 run",
+   "cat": "usables",
+   "cost": 35,
+   "parent": "missile",
+   "x": -192,
+   "y": 333,
+   "icon": "a10/0",
+   "desc": "Strafes a line along the direction you drag.",
+   "effects": [
+    {
+     "unlock": "a10",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "a10.charge1",
+   "name": "A-10 run: +1 use",
+   "cat": "usables",
+   "cost": 20,
+   "parent": "a10",
+   "x": -228,
+   "y": 394,
+   "icon": "a10/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "a10",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "a10.power",
+   "name": "A-10 run: power +25%",
+   "cat": "usables",
+   "cost": 30,
+   "parent": "a10.charge1",
+   "x": -263,
+   "y": 456,
+   "icon": "a10/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "a10",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "a10.charge2",
+   "name": "A-10 run: +1 use",
+   "cat": "usables",
+   "cost": 40,
+   "parent": "a10.power",
+   "x": -299,
+   "y": 518,
+   "icon": "a10/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "a10",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "napalm",
+   "name": "Napalm",
+   "cat": "usables",
+   "cost": 55,
+   "parent": "a10",
+   "x": -301,
+   "y": 359,
+   "icon": "napalm/0",
+   "desc": "Area fire that lingers.",
+   "effects": [
+    {
+     "unlock": "napalm",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "napalm.charge1",
+   "name": "Napalm: +1 use",
+   "cat": "usables",
+   "cost": 25,
+   "parent": "napalm",
+   "x": -347,
+   "y": 413,
+   "icon": "napalm/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "napalm",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "napalm.power",
+   "name": "Napalm: power +25%",
+   "cat": "usables",
+   "cost": 45,
+   "parent": "napalm.charge1",
+   "x": -393,
+   "y": 468,
+   "icon": "napalm/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "napalm",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "napalm.charge2",
+   "name": "Napalm: +1 use",
+   "cat": "usables",
+   "cost": 65,
+   "parent": "napalm.power",
+   "x": -439,
+   "y": 523,
+   "icon": "napalm/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "napalm",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "artillery",
+   "name": "Artillery barrage",
+   "cat": "usables",
+   "cost": 60,
+   "parent": "missile",
+   "x": -294,
+   "y": 247,
+   "icon": "artillery/0",
+   "desc": "A wide area, hit after a short delay.",
+   "effects": [
+    {
+     "unlock": "artillery",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "artillery.charge1",
+   "name": "Artillery barrage: +1 use",
+   "cat": "usables",
+   "cost": 20,
+   "parent": "artillery",
+   "x": -349,
+   "y": 293,
+   "icon": "artillery/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "artillery",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "artillery.power",
+   "name": "Artillery barrage: power +25%",
+   "cat": "usables",
+   "cost": 30,
+   "parent": "artillery.charge1",
+   "x": -404,
+   "y": 339,
+   "icon": "artillery/0",
+   "desc": "Hits harder, or lasts longer.",
+   "effects": [
+    {
+     "stat": "power",
+     "of": "artillery",
+     "by": 0.25
+    }
+   ]
+  },
+  {
+   "id": "artillery.charge2",
+   "name": "Artillery barrage: +1 use",
+   "cat": "usables",
+   "cost": 40,
+   "parent": "artillery.power",
+   "x": -458,
+   "y": 385,
+   "icon": "artillery/0",
+   "desc": "One more use per run.",
+   "effects": [
+    {
+     "add": "artillery",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "id": "leak1",
+   "name": "Leak limit +5",
+   "cat": "base",
+   "cost": 15,
+   "parent": "command",
+   "x": -274,
+   "y": 111,
+   "icon": "sandbags/0",
+   "desc": "5 more leak points before a run is lost.",
+   "effects": [
+    {
+     "leakLimit": 5
+    }
+   ]
+  },
+  {
+   "id": "leak2",
+   "name": "Leak limit +5",
+   "cat": "base",
+   "cost": 25,
+   "parent": "leak1",
+   "x": -348,
+   "y": 141,
+   "icon": "sandbags/0",
+   "desc": "5 more leak points before a run is lost.",
+   "effects": [
+    {
+     "leakLimit": 5
+    }
+   ]
+  },
+  {
+   "id": "leak3",
+   "name": "Leak limit +5",
+   "cat": "base",
+   "cost": 35,
+   "parent": "leak2",
+   "x": -422,
+   "y": 171,
+   "icon": "sandbags/0",
+   "desc": "5 more leak points before a run is lost.",
+   "effects": [
+    {
+     "leakLimit": 5
+    }
+   ]
+  },
+  {
+   "id": "leak4",
+   "name": "Leak limit +5",
+   "cat": "base",
+   "cost": 50,
+   "parent": "leak3",
+   "x": -496,
+   "y": 200,
+   "icon": "sandbags/0",
+   "desc": "5 more leak points before a run is lost.",
+   "effects": [
+    {
+     "leakLimit": 5
+    }
+   ]
+  },
+  {
+   "id": "chips1",
+   "name": "Chip gain +10%",
+   "cat": "base",
+   "cost": 30,
+   "parent": "command",
+   "x": -296,
+   "y": 0,
+   "icon": "ammo/0",
+   "desc": "Every run pays 10% more chips.",
+   "effects": [
+    {
+     "chipGain": 0.1
+    }
+   ]
+  },
+  {
+   "id": "chips2",
+   "name": "Chip gain +10%",
+   "cat": "base",
+   "cost": 50,
+   "parent": "chips1",
+   "x": -376,
+   "y": 0,
+   "icon": "ammo/0",
+   "desc": "Every run pays 10% more chips.",
+   "effects": [
+    {
+     "chipGain": 0.1
+    }
+   ]
+  },
+  {
+   "id": "chips3",
+   "name": "Chip gain +10%",
+   "cat": "base",
+   "cost": 70,
+   "parent": "chips2",
+   "x": -455,
+   "y": 0,
+   "icon": "ammo/0",
+   "desc": "Every run pays 10% more chips.",
+   "effects": [
+    {
+     "chipGain": 0.1
+    }
+   ]
+  },
+  {
+   "id": "speed1",
+   "name": "2× speed",
+   "cat": "base",
+   "cost": 10,
+   "parent": "command",
+   "x": -274,
+   "y": -111,
+   "icon": "noise/0",
+   "desc": "Run the fight at double speed.",
+   "effects": [
+    {
+     "speed": 2
+    }
+   ]
+  },
+  {
+   "id": "speed2",
+   "name": "3× speed",
+   "cat": "base",
+   "cost": 25,
+   "parent": "speed1",
+   "x": -348,
+   "y": -141,
+   "icon": "noise/0",
+   "desc": "Run the fight at triple speed.",
+   "effects": [
+    {
+     "speed": 3
+    }
+   ]
+  }
+ ]
+}

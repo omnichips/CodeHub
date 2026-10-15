@@ -1,8 +1,19 @@
 // The map as a grid of tiles, and distance fields over it. One shared field tells every zombie the way to the safe
 // zone (no route finding per zombie); a soldier ordered across the map gets a small field of their own.
 
-/** `rows` of tiles: `#` building, `.` street, `S` where the horde enters, `E` the safe zone. */
-export interface MapData { name: string; tile: number; par: number; rows: string[] }
+/** `rows` of tiles: a building (`#`, or by kind: `b` brownstone, `o` office, `g` garage, `h` shops), `.` street, `,` paved plaza (a street to walk on),
+ *  `p` park, `S` where the horde enters, `E` the safe zone. `slots` are building tiles a soldier can man (windows,
+ *  roofs); `props` are roadblocks already standing in the street; `decor` is only drawn. */
+export interface MapData {
+  name: string;
+  tile: number;
+  par: number;
+  rows: string[];
+  slots?: number[][];
+  props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
+  decor?: { kind: string; x: number; y: number }[];
+}
+export const BUILDING = '#bogh';
 
 export class Grid {
   readonly w: number;
@@ -10,6 +21,7 @@ export class Grid {
   readonly tile: number;
   readonly wall: Uint8Array;
   readonly goal: Uint8Array;
+  readonly slot: Uint8Array; // a window or roof a soldier can man
   readonly block: Int32Array; // id of the roadblock on the tile, 0 for none
   readonly goals: number[] = [];
   readonly spawns: number[] = [];
@@ -20,15 +32,17 @@ export class Grid {
     this.tile = map.tile;
     this.wall = new Uint8Array(this.w * this.h);
     this.goal = new Uint8Array(this.w * this.h);
+    this.slot = new Uint8Array(this.w * this.h);
     this.block = new Int32Array(this.w * this.h);
     map.rows.forEach((row, y) =>
       [...row].forEach((c, x) => {
         const i = y * this.w + x;
-        if (c === '#') this.wall[i] = 1;
+        if (BUILDING.includes(c)) this.wall[i] = 1;
         if (c === 'E') { this.goal[i] = 1; this.goals.push(i); }
         if (c === 'S') this.spawns.push(i);
       }),
     );
+    for (const [x, y] of map.slots ?? []) this.slot[y * this.w + x] = 1;
   }
 
   /** The tile under a world point, or -1 off the map. */

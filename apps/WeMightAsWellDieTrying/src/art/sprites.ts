@@ -6,7 +6,8 @@ import zombieData from '../data/zombies.json' with { type: 'json' };
 import { rasterize, shade, type Material, type Part, type Vec } from './pixels.ts';
 
 export const SIZE = 32;
-export const BIG = 48; // bosses
+export const BIG = 48; // bosses, cars
+export const BUS = 80;
 export const DIRS = 8; // soldiers are drawn per facing: 0 = east, then clockwise in 45° steps
 
 const ramp = (a: string, b: string, c: string): Material => ({ ramp: [a, b, c] });
@@ -54,8 +55,11 @@ export const MATERIALS: Record<string, Material> = {
   // structures and strikes
   sandbag: ramp('khaki0', 'khaki1', 'khaki2'),
   concrete: ramp('metal1', 'metal2', 'khaki2'),
-  wreck: ramp('blood0', 'skin0', 'khaki0'),
-  wreckRoof: ramp('outline', 'blood0', 'skin0'),
+  wreck: ramp('blood0', 'rust', 'skin2'), // rusted paint
+  wreckRoof: ramp('khaki0', 'khaki1', 'cream'), // a dusty roof
+  taxi: ramp('skin0', 'flash0', 'cream'),
+  cream: ramp('khaki1', 'cream', 'pave1'),
+  police: ramp('cloth0', 'cloth1', 'cloth2'),
   plane: ramp('metal1', 'metal2', 'cloth2'),
   smoke: ramp('metal1', 'metal2', 'khaki2'),
 };
@@ -218,8 +222,9 @@ const ZOMBIE_LOOKS: Record<ZombieKind, (s: number) => Part[]> = {
 };
 
 /** One tile of a roadblock, drawn across (east-west); a roadblock is a row of these. */
-export function roadblockPiece(kind: 'plastic' | 'wood' | 'sandbags' | 'cement', n: number): Part[] {
+export function roadblockPiece(kind: 'plastic' | 'wood' | 'sandbags' | 'cement' | 'police', n: number): Part[] {
   if (kind === 'plastic') return [c(n % 2 ? 'barrierLight' : 'barrierRed', [-4, 0], 3.8, 3, 2, [4, 0])]; // jersey barriers, red and white
+  if (kind === 'police') return [c('metal', [-6, 2.5], 0.8, 2, 0, [-6, -2.5]), c('metal', [6, 2.5], 0.8, 2, 0, [6, -2.5]), c(n % 2 ? 'barrierLight' : 'police', [-8, 0], 1.6, 3.5, 1, [8, 0])];
   if (kind === 'sandbags')
     return [c('sandbag', [-5.5, -2.4], 2.4, 3, 2, [-1.5, -2.4]), c('sandbag', [2, -2.4], 2.4, 3, 2, [6, -2.4]), c('sandbag', [-2, 2.4], 2.4, 3.2, 2, [2.5, 2.4]), c('sandbag', [5.5, 2.4], 2.4, 3.2, 2, [8, 2.4]), c('sandbag', [-8.5, 2.4], 2.4, 3.2, 2, [-6, 2.4])];
   if (kind === 'cement') return [c('concrete', [-6.5, 0], 4.4, 3, 2.5, [6.5, 0])];
@@ -236,7 +241,14 @@ const box = (mat: string, w = 4, h = 2.5): Part[] => [c(mat, [-w, -h], 2.6, 2, 1
 
 /** Structures, strike icons and the A-10, each one still frame facing east. Size 48 for the big ones. */
 const PROPS: Record<string, [number, Part[]]> = {
-  car: [BIG, car('wreck', 'wreckRoof', [c('hole', [2, 3], 1.4, 5, 0, [9, 6])])],
+  car: [BIG, car('wreck', 'wreckRoof', [c('hole', [2, 3], 1.4, 5, 0, [9, 6]), c('blood', [-12, 5], 1.5, 4.2)])],
+  taxi: [BIG, car('taxi', 'taxi', [c('lens', [-1, 0], 1.3, 6.4, 0.5, [1, 0])])], // the roof sign
+  bus: [BUS, [
+    c('shoe', [-22, -8.5], 2.3, 1), c('shoe', [22, -8.5], 2.3, 1), c('shoe', [-22, 8.5], 2.3, 1), c('shoe', [22, 8.5], 2.3, 1),
+    c('cream', [-32, 0], 8.5, 2, 1.5, [32, 0]),
+    ...[-26, -18, -10, -2, 6, 14, 22].flatMap((x) => [c('lens', [x, -7.5], 1, 3.6, 0, [x + 5, -7.5]), c('lens', [x, 7.5], 1, 3.6, 0, [x + 5, 7.5])]),
+    c('lens', [38.5, -5], 1.1, 3.6, 0, [38.5, 5]), c('metal', [-12, 0], 2.2, 3.7, 1), c('metal', [8, 0], 2.2, 3.7, 1), c('blood', [16, -3], 1.6, 3.7),
+  ]],
   rigged: [BIG, car('tube', 'helmet', [c('tank', [-3, -2.4], 1.1, 7, 0.5, [2, -2.4]), c('tank', [-3, 0], 1.1, 7, 0.5, [2, 0]), c('tank', [-3, 2.4], 1.1, 7, 0.5, [2, 2.4]), c('brass', [2, 0], 0.4, 7.6, 0, [9, 4])])],
   watchtower: [SIZE, [
     c('wood', [-7, -7], 1.3, 1), c('wood', [7, -7], 1.3, 1), c('wood', [-7, 7], 1.3, 1), c('wood', [7, 7], 1.3, 1),
@@ -291,6 +303,14 @@ export function frames() {
   }
   for (const n of [0, 1]) out.push({ anim: 'plastic', fps: 0, size: SIZE, rgba: draw(roadblockPiece('plastic', n), SIZE, 0, true) });
   for (const kind of ['wood', 'sandbags', 'cement'] as const) out.push({ anim: kind, fps: 0, size: SIZE, rgba: draw(roadblockPiece(kind, 0), SIZE, 0, true) });
+  for (const n of [0, 1]) out.push({ anim: 'police', fps: 0, size: SIZE, rgba: draw(roadblockPiece('police', n), SIZE, 0, true) });
+  // Blood splats for the gore setting: a few shapes, drawn flat with no outline shadow.
+  const splats: Part[][] = [
+    [c('blood', [0, 0], 4, 0.2), c('blood', [5, 2], 2, 0.2), c('blood', [-4, 4], 1.5, 0.2), c('blood', [2, -5], 1.2, 0.2)],
+    [c('blood', [-3, 0], 3, 0.2, 0, [3, 1]), c('blood', [7, -2], 1.6, 0.2), c('blood', [-7, 3], 1.2, 0.2)],
+    [c('blood', [0, 0], 3, 0.2), c('blood', [3, 3], 2.5, 0.2), c('blood', [-5, -2], 1.8, 0.2), c('blood', [6, -4], 1, 0.2)],
+  ];
+  for (const parts of splats) out.push({ anim: 'splat', fps: 0, size: SIZE, rgba: draw(parts, SIZE, 0, false) });
   for (const [name, [size, parts]] of Object.entries(PROPS)) out.push({ anim: name, fps: 0, size, rgba: draw(parts, size, 0, true) });
   return out;
 }

@@ -1,26 +1,10 @@
-import { crc32, deflateSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
+import { png } from './src/art/png.ts';
 import { frames } from './src/art/sprites.ts';
 
 const WIDTH = 1024;
-
-/** A plain RGBA PNG. */
-function png(width: number, height: number, rgba: Uint8Array) {
-  const raw = Buffer.alloc((width * 4 + 1) * height); // each row starts with filter type 0
-  for (let y = 0; y < height; y++) raw.set(rgba.subarray(y * width * 4, (y + 1) * width * 4), y * (width * 4 + 1) + 1);
-  const chunk = (type: string, data: Buffer) => {
-    const head = Buffer.alloc(8), body = Buffer.concat([Buffer.from(type), data]), crc = Buffer.alloc(4);
-    head.writeUInt32BE(data.length);
-    crc.writeUInt32BE(crc32(body));
-    return Buffer.concat([head.subarray(0, 4), body, crc]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // bits per channel
-  ihdr[9] = 6; // RGBA
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
-}
 
 /** Draws every sprite frame once, when the game is built, into one PNG atlas: `import atlas from 'virtual:atlas'`.
  *  The dev server restarts (and redraws) whenever a file under src/art changes. */
@@ -47,4 +31,29 @@ const atlas = (): Plugin => ({
   },
 });
 
-export default defineConfig({ plugins: [atlas()] });
+/** Writes sw.js into the build: it keeps the whole game (the bundle and the public files) in a cache, so it starts and
+ *  plays offline once installed. Cache first; the cache is named after a hash of every file, so any change makes a new
+ *  one and the old one is dropped. Every app on the hub shares the origin, so it only ever touches its own caches. */
+const serviceWorker = (): Plugin => ({
+  name: 'service-worker',
+  apply: 'build',
+  enforce: 'post',
+  generateBundle(_, bundle) {
+    const hash = createHash('sha256'), pub = readdirSync('public');
+    for (const f of Object.values(bundle)) hash.update(f.type === 'chunk' ? f.code : f.source);
+    for (const f of pub) hash.update(f).update(readFileSync(`public/${f}`));
+    const files = ['./', ...Object.keys(bundle).filter((f) => f !== 'index.html'), ...pub];
+    this.emitFile({ type: 'asset', fileName: 'sw.js', source: `const CACHE = 'dietrying-${hash.digest('hex').slice(0, 12)}', FILES = ${JSON.stringify(files)};
+self.addEventListener('install', (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())));
+self.addEventListener('activate', (e) => e.waitUntil(caches.keys()
+  .then((keys) => Promise.all(keys.filter((k) => k.startsWith('dietrying-') && k !== CACHE).map((k) => caches.delete(k))))
+  .then(() => self.clients.claim())));
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(caches.open(CACHE).then((c) => c.match(e.request, { ignoreSearch: true })).then((hit) => hit || fetch(e.request)));
+});
+` });
+  },
+});
+
+export default defineConfig({ plugins: [atlas(), serviceWorker()] });

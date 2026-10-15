@@ -26,6 +26,7 @@
       "id": "dietrying",
       "name": "Die Trying",
       "color": "#48512f",
+      "icon": "public/icon-192.png",
       "source": { "type": "vite", "dir": "apps/WeMightAsWellDieTrying" }
     }
   ]

@@ -213,3 +213,35 @@ test('strikes: one missile at a time, each charge used once; a flare pulls zombi
   run(f, 3);
   assert.ok(f.zy[lured] < y0, 'walked north, toward the flare, not south to the safe zone');
 });
+
+// ---- Phase 6: indoor soldiers and props ----
+
+test('a soldier at a window is never attacked, cannot die, and shoots out into the street', () => {
+  const rows = ['S'.repeat(12), ...Array(6).fill('.'.repeat(12)), '#'.repeat(5) + '.'.repeat(7), ...Array(4).fill('.'.repeat(12)), 'E'.repeat(12)];
+  const w = new World({ name: 't', tile: 16, par: 60, rows, slots: [[2, 7]] }, { gap: 0, waves: [] });
+  const s = w.placeSoldier('rifleman', 2 * 16 + 8, 7 * 16 + 8)!;
+  assert.ok(s?.indoor, 'manned the window');
+  assert.equal(w.placeSoldier('shield', 2 * 16 + 8, 7 * 16 + 8), undefined, 'one soldier per window, and no shields indoors');
+  w.aim(s, s.x, 0);
+  const z = w.spawn(ZOMBIE_KINDS.indexOf('normal'), s.x, 16);
+  w.zhp[z] = 60;
+  w.start();
+  run(w, 4);
+  assert.equal(w.alive[z], 0, 'shot through the window');
+  assert.equal(s.hp, 100);
+  assert.ok(!w.moveSoldier(s, s.x, s.y), 'mid-wave a soldier can leave a building but not go into one');
+  assert.ok(w.moveSoldier(s, 9 * 16, 3 * 16));
+});
+
+test('a car already in the street only moves when a soldier is there to move it', () => {
+  const rows = [...Array(10).fill('.'.repeat(12)), 'E'.repeat(12)];
+  const w = new World({ name: 't', tile: 16, par: 60, rows, props: [{ kind: 'car', tx: 5, ty: 3, vertical: false }] }, { gap: 0, waves: [] });
+  const car = w.roadblocks[0];
+  assert.ok(car.prop);
+  assert.ok(!w.moveBlock(car, 5, 6), 'not by hand');
+  assert.ok(!w.haulProp(car, 5, 6), 'no soldier yet');
+  w.placeSoldier('rifleman', 40, 40);
+  assert.ok(w.haulProp(car, 5, 6));
+  assert.equal(car.ty, 6);
+  assert.equal(w.used.car, undefined, 'props are not taken from what you own');
+});

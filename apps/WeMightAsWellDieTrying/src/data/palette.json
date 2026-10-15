@@ -25,5 +25,9 @@
   "blood0": "#4a2321",
   "blood1": "#6e332d",
   "flash0": "#c4a058",
-  "flash1": "#eadfae"
+  "flash1": "#eadfae",
+  "rust": "#8a5236",
+  "pave0": "#5e5a52",
+  "pave1": "#77736a",
+  "cream": "#b0a68a"
 }

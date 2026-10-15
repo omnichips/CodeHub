@@ -25,7 +25,7 @@ export interface UnitStats {
   name: string; hp: number; radius: number; speed: number; aimSpeed: number; weapon: Weapon; range: number;
   damage?: number; fireRate?: number; pierce?: number; pellets?: number; knockback?: number; burn?: { dps: number; time: number };
   blast?: number; projectileSpeed?: number; minRange?: number; scatter?: number; flight?: number;
-  heal?: number; repair?: number; harden?: number; taunt?: number; turrets?: number; fixed?: boolean;
+  heal?: number; repair?: number; harden?: number; taunt?: number; turrets?: number; fixed?: boolean; outdoor?: boolean;
   cone?: typeof DEFAULT_CONE;
 }
 /** A zombie class, as in zombies.json. */
@@ -59,6 +59,19 @@ export const STRUCTS = structures.structures as Record<StructKind, StructStats>;
 export const USABLES = structures.usables as Record<UsableKind, UsableStats>;
 const FAST = ZOMBIE_KINDS.indexOf('fast');
 
+/** Everything a run's balance comes from: the data files with the skill tree's upgrades applied. */
+export interface Stats {
+  units: Record<UnitKind, UnitStats>;
+  roadblocks: typeof ROADBLOCKS;
+  structs: Record<StructKind, StructStats>;
+  usables: Record<UsableKind, UsableStats>;
+  leakLimit: number;
+  indoor: { rangeBy: number; damageBy: number };
+}
+/** The data files as they are, a fresh copy to change. */
+export const baseStats = (): Stats =>
+  structuredClone({ units: UNITS, roadblocks: ROADBLOCKS, structs: STRUCTS, usables: USABLES, leakLimit: economy.leakLimit, indoor: economy.indoor });
+
 export interface WavePlan { gap: number; waves: { duration: number; spawn: Partial<Record<string, number>> }[] }
 
 export interface Soldier {
@@ -83,6 +96,7 @@ export interface Soldier {
   rateBy: number; // extra ammo
   incendiary: boolean;
   cover: number; // sandbag nest: share of damage he still takes
+  indoor: boolean; // at a window or on a roof: cannot die, never targeted, longer range, less damage
 }
 /** Anything built that is not a roadblock: towers, ammo, mines, wire, puddles and the rest. Sits on whole tiles. */
 export interface Structure {
@@ -104,12 +118,16 @@ export interface Zone { kind: 'fire' | 'smoke' | 'lure' | 'shock'; x: number; y:
 /** A strike on its way in. */
 export interface Strike { kind: UsableKind; x: number; y: number; angle: number; t: number; hit: Set<number>; shells: { x: number; y: number; at: number }[] }
 /** `tx, ty` is the middle tile; it covers `length` tiles across (or down, when vertical). */
-export interface Roadblock { id: number; kind: BlockKind; tx: number; ty: number; vertical: boolean; hp: number }
+export interface Roadblock {
+  id: number; kind: BlockKind; tx: number; ty: number; vertical: boolean; hp: number;
+  prop?: boolean; // already in the street when the run starts: only a soldier can move it
+  haul?: { s: Soldier; tx: number; ty: number; vertical: boolean }; // a soldier on his way to move it
+}
 export interface Shot { x1: number; y1: number; x2: number; y2: number; age: number; heavy: boolean }
 export interface Blast { x: number; y: number; r: number; age: number; bile: boolean }
 export interface Scream { x: number; y: number; r: number; age: number }
 /** A rocket flies straight until it hits; a shell or grenade arcs to its landing point over anything. */
-export interface Projectile { arc: boolean; x: number; y: number; x0: number; y0: number; x1: number; y1: number; vx: number; vy: number; t: number; flight: number; blast: number; damage: number }
+export interface Projectile { grace: number; arc: boolean; x: number; y: number; x0: number; y0: number; x1: number; y1: number; vx: number; vy: number; t: number; flight: number; blast: number; damage: number }
 
 export const facingOf = (angle: number) => ((Math.round(angle / ((2 * Math.PI) / DIRS)) % DIRS) + DIRS) % DIRS;
 export const coneOf = (u: UnitStats) => u.cone ?? DEFAULT_CONE;
@@ -120,7 +138,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 export class World {
   readonly grid: Grid;
-  readonly leakLimit = economy.leakLimit;
+  readonly stats: Stats;
+  readonly leakLimit: number;
   phase: 'plan' | 'wave' | 'won' | 'lost' = 'plan';
   time = 0;
   kills = 0;
@@ -161,8 +180,10 @@ export class World {
   strikes: Strike[] = [];
   /** How many of each soldier, roadblock and structure have been put down this run (dead and used-up ones count). */
   used: Record<string, number> = {};
-  charges = Object.fromEntries(Object.entries(USABLES).map(([k, u]) => [k, u.charges])) as Record<UsableKind, number>;
-  readyAt = Object.fromEntries(Object.keys(USABLES).map((k) => [k, 0])) as Record<UsableKind, number>;
+  charges: Record<UsableKind, number>;
+  readyAt: Record<UsableKind, number>;
+  /** Zombies killed since the screen last looked, for corpses and blood. */
+  deaths: { x: number; y: number; kind: number; angle: number }[] = [];
   private byId = new Map<number, Roadblock>();
   private structById = new Map<number, Structure>();
   private structAt: Int32Array; // structure id on each tile, 0 for none
@@ -187,9 +208,13 @@ export class World {
   private tnx = 0;
   private tny = 0;
 
-  constructor(map: MapData, plan: WavePlan, seed = 1) {
+  constructor(map: MapData, plan: WavePlan, seed = 1, stats = baseStats()) {
     this.plan = plan;
     this.seed = seed;
+    this.stats = stats;
+    this.leakLimit = stats.leakLimit;
+    this.charges = Object.fromEntries(Object.entries(stats.usables).map(([k, u]) => [k, u.charges])) as Record<UsableKind, number>;
+    this.readyAt = Object.fromEntries(Object.keys(stats.usables).map((k) => [k, 0])) as Record<UsableKind, number>;
     this.grid = new Grid(map);
     this.cellStart = new Int32Array(this.grid.w * this.grid.h + 1);
     this.cellFill = new Int32Array(this.grid.w * this.grid.h);
@@ -197,6 +222,11 @@ export class World {
     const { wall } = this.grid;
     this.flowFree = distanceField(this.grid, this.grid.goals, (i) => (wall[i] ? Infinity : 1));
     this.reflow();
+    // Cars, a bus and barricades already in the street: roadblocks you do not own, that a soldier can move.
+    for (const pr of map.props ?? []) {
+      const rb = this.placeBlock(pr.kind as BlockKind, pr.tx, pr.ty, pr.vertical, false);
+      if (rb) rb.prop = true;
+    }
   }
 
   /** mulberry32: the same seed plays out the same fight. */
@@ -231,14 +261,35 @@ export class World {
     return [x, y];
   }
 
+  /** A free window or roof under (x, y), if this class can go indoors. */
+  private freeSlot(kind: UnitKind, x: number, y: number, self?: Soldier) {
+    const i = this.grid.at(x, y);
+    if (i < 0 || !this.grid.slot[i] || this.stats.units[kind].outdoor) return;
+    if (this.soldiers.some((o) => o !== self && !o.dead && o.indoor && this.grid.at(o.x, o.y) === i)) return;
+    const T = this.grid.tile, tx = i % this.grid.w;
+    return [(tx + 0.5) * T, ((i - tx) / this.grid.w + 0.5) * T] as [number, number];
+  }
+
+  /** Where a soldier let go at (x, y) would end up: a street, a free window or roof, or nowhere. */
+  spotFor(kind: UnitKind, x: number, y: number, self?: Soldier): { x: number; y: number; indoor: boolean } | undefined {
+    if (this.canStand(x, y)) {
+      [x, y] = this.snap(x, y);
+      return { x, y, indoor: false };
+    }
+    const slot = this.freeSlot(kind, x, y, self);
+    return slot && { x: slot[0], y: slot[1], indoor: true };
+  }
+
   placeSoldier(kind: UnitKind, x: number, y: number, owner?: Soldier): Soldier | undefined {
-    if (!this.canStand(x, y)) return;
-    [x, y] = this.snap(x, y);
-    const u = UNITS[kind], c = coneOf(u), north = -Math.PI / 2;
+    const spot = this.spotFor(kind, x, y);
+    if (!spot) return;
+    ({ x, y } = spot);
+    const u = this.stats.units[kind], c = coneOf(u), north = -Math.PI / 2;
     const reach = indirect(u) ? (u.minRange! + u.range) / 2 : (c.handleMin + c.handleMax) / 2;
     const s: Soldier = {
       kind, x, y, hp: u.hp, dead: false, angle: north, reach, cooldown: 0, firedAt: -1, walking: false, heading: north,
       facing: facingOf(north), priority: 'nearest', turrets: u.turrets ?? 0, owner, rangeBy: 1, rateBy: 1, incendiary: false, cover: 1,
+      indoor: spot.indoor,
     };
     this.soldiers.push(s);
     if (!owner) this.count(kind, 1);
@@ -257,13 +308,17 @@ export class World {
     return t;
   }
 
-  /** While planning the soldier is simply put there; during a wave he walks, around buildings if he has to. */
+  /** While planning the soldier is simply put there (a window or roof too); during a wave he walks, around buildings
+   *  if he has to. Mid-wave a soldier can come out of a building but not go into one. */
   moveSoldier(s: Soldier, x: number, y: number) {
-    if (s.dead || UNITS[s.kind].fixed || !this.canStand(x, y)) return false;
-    [x, y] = this.snap(x, y);
+    if (s.dead || this.stats.units[s.kind].fixed) return false;
+    const spot = this.spotFor(s.kind, x, y, s);
+    if (!spot || (spot.indoor && this.phase !== 'plan')) return false;
+    ({ x, y } = spot);
     if (this.phase === 'plan') {
       s.x = x;
       s.y = y;
+      s.indoor = spot.indoor;
       return true;
     }
     const { wall, block } = this.grid;
@@ -281,7 +336,7 @@ export class World {
 
   /** Points the cone at (x, y); the farther out, the narrower. Mortars and grenadiers aim at the spot itself. */
   aim(s: Soldier, x: number, y: number) {
-    const u = UNITS[s.kind], c = coneOf(u);
+    const u = this.stats.units[s.kind], c = coneOf(u);
     if (u.fixed || support(u)) return;
     s.angle = Math.atan2(y - s.y, x - s.x);
     s.reach = indirect(u) ? clamp(Math.hypot(x - s.x, y - s.y), u.minRange!, u.range) : clamp(Math.hypot(x - s.x, y - s.y), c.handleMin, c.handleMax);
@@ -290,12 +345,15 @@ export class World {
 
   /** Half the cone's width, in radians. */
   spread(s: Soldier) {
-    const c = coneOf(UNITS[s.kind]), t = (s.reach - c.handleMin) / (c.handleMax - c.handleMin);
+    const c = coneOf(this.stats.units[s.kind]), t = (s.reach - c.handleMin) / (c.handleMax - c.handleMin);
     return ((c.widest + (c.narrowest - c.widest) * t) * Math.PI) / 180;
   }
 
-  /** How far a soldier reaches, a watchtower included. */
-  rangeOf(s: Soldier) { return UNITS[s.kind].range * s.rangeBy; }
+  /** How far a soldier reaches, a watchtower or a window included. */
+  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * (s.indoor ? this.stats.indoor.rangeBy : 1); }
+
+  /** What one hit of his does: less from indoors. */
+  private damageOf(s: Soldier) { return this.stats.units[s.kind].damage! * (s.indoor ? this.stats.indoor.damageBy : 1); }
 
   firing(s: Soldier) { return this.phase !== 'plan' && this.time - s.firedAt < FIRING_LOOK; }
 
@@ -310,8 +368,8 @@ export class World {
     return tiles;
   }
 
-  blockTiles(kind: BlockKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(ROADBLOCKS[kind].length, tx, ty, vertical); }
-  structTiles(kind: StructKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(STRUCTS[kind].length ?? 1, tx, ty, vertical); }
+  blockTiles(kind: BlockKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(this.stats.roadblocks[kind].length, tx, ty, vertical); }
+  structTiles(kind: StructKind, tx: number, ty: number, vertical: boolean) { return this.lineTiles(this.stats.structs[kind].length ?? 1, tx, ty, vertical); }
 
   blockFits(kind: BlockKind, tx: number, ty: number, vertical: boolean, self?: Roadblock) {
     const { wall, goal, block } = this.grid, tiles = this.blockTiles(kind, tx, ty, vertical);
@@ -322,7 +380,7 @@ export class World {
   /** `counted` is false for a roadblock that was not taken from what you own (a rigged car that came to rest). */
   placeBlock(kind: BlockKind, tx: number, ty: number, vertical: boolean, counted = true): Roadblock | undefined {
     if (!this.blockFits(kind, tx, ty, vertical)) return;
-    const rb: Roadblock = { id: this.nextBlock++, kind, tx, ty, vertical, hp: ROADBLOCKS[kind].hp };
+    const rb: Roadblock = { id: this.nextBlock++, kind, tx, ty, vertical, hp: this.stats.roadblocks[kind].hp };
     this.roadblocks.push(rb);
     this.byId.set(rb.id, rb);
     this.mark(rb, rb.id);
@@ -331,14 +389,55 @@ export class World {
     return rb;
   }
 
-  /** Only while planning: once the horde is in, a roadblock stays where it is. Cement never moves. */
+  /** Only while planning: once the horde is in, a roadblock stays where it is. Cement never moves; a prop needs haulProp. */
   moveBlock(rb: Roadblock, tx: number, ty: number, vertical = rb.vertical) {
-    if (this.phase !== 'plan' || ROADBLOCKS[rb.kind].fixed || !this.blockFits(rb.kind, tx, ty, vertical, rb)) return false;
+    if (this.phase !== 'plan' || rb.prop || this.stats.roadblocks[rb.kind].fixed || !this.blockFits(rb.kind, tx, ty, vertical, rb)) return false;
+    this.relocate(rb, tx, ty, vertical);
+    return true;
+  }
+
+  private relocate(rb: Roadblock, tx: number, ty: number, vertical: boolean) {
     this.mark(rb, 0);
     Object.assign(rb, { tx, ty, vertical });
     this.mark(rb, rb.id);
     this.reflow();
+  }
+
+  /** A car, bus or barricade already in the street is moved by a soldier: while planning, any soldier out in the
+   *  street does it at once; during a wave the nearest one walks over first. False if no one can, or it will not fit. */
+  haulProp(rb: Roadblock, tx: number, ty: number, vertical = rb.vertical) {
+    if (!rb.prop || !this.blockFits(rb.kind, tx, ty, vertical, rb)) return false;
+    const T = this.grid.tile, [cx, cy] = this.blockCentre(rb);
+    const crew = this.soldiers.filter((o) => !o.dead && !o.indoor && !this.stats.units[o.kind].fixed);
+    if (!crew.length) return false;
+    if (this.phase === 'plan') {
+      this.relocate(rb, tx, ty, vertical);
+      return true;
+    }
+    const s = crew.reduce((a, b) => (Math.hypot(b.x - cx, b.y - cy) < Math.hypot(a.x - cx, a.y - cy) ? b : a));
+    // He goes to the open tile beside it that is nearest him.
+    let best: [number, number] | undefined, bd = Infinity;
+    for (const i of this.blockTiles(rb.kind, rb.tx, rb.ty, rb.vertical)!)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = ((i % this.grid.w) + dx + 0.5) * T, y = (Math.floor(i / this.grid.w) + dy + 0.5) * T, d = Math.hypot(x - s.x, y - s.y);
+        if (this.canStand(x, y) && d < bd) { bd = d; best = [x, y]; }
+      }
+    if (!best || !this.moveSoldier(s, ...best)) return false;
+    rb.haul = { s, tx, ty, vertical };
     return true;
+  }
+
+  private hauls() {
+    const T = this.grid.tile;
+    for (const rb of this.roadblocks) {
+      const h = rb.haul;
+      if (!h) continue;
+      if (h.s.dead) { rb.haul = undefined; continue; }
+      const near = this.blockTiles(rb.kind, rb.tx, rb.ty, rb.vertical)!.some((i) => Math.hypot(((i % this.grid.w) + 0.5) * T - h.s.x, (Math.floor(i / this.grid.w) + 0.5) * T - h.s.y) < T * 1.3);
+      if (!near) continue;
+      rb.haul = undefined;
+      if (this.blockFits(rb.kind, h.tx, h.ty, h.vertical, rb)) this.relocate(rb, h.tx, h.ty, h.vertical);
+    }
   }
 
   /** `refund` when the player takes it back while planning; a broken one stays used up. */
@@ -367,7 +466,7 @@ export class World {
 
   placeStructure(kind: StructKind, tx: number, ty: number, vertical = false): Structure | undefined {
     if (!this.structFits(kind, tx, ty, vertical)) return;
-    const T = this.grid.tile, k = STRUCTS[kind];
+    const T = this.grid.tile, k = this.stats.structs[kind];
     const st: Structure = { id: this.nextBlock++, kind, tx, ty, vertical, angle: -Math.PI / 2, hp: k.hp ?? 0, x: (tx + 0.5) * T, y: (ty + 0.5) * T, driving: false, kills: k.kills ?? 0, travelled: 0 };
     this.structures.push(st);
     this.structById.set(st.id, st);
@@ -410,7 +509,7 @@ export class World {
 
   /** A puddle is live while a generator is close enough. */
   powered(st: Structure) {
-    const r = STRUCTS.puddle.power!;
+    const r = this.stats.structs.puddle.power!;
     return this.structures.some((g) => g.kind === 'generator' && Math.hypot(g.x - st.x, g.y - st.y) <= r);
   }
 
@@ -418,14 +517,14 @@ export class World {
   detonate(st: Structure) {
     if (this.phase !== 'wave' || st.kind !== 'explosives') return;
     this.removeStructure(st);
-    this.explode(st.x, st.y, STRUCTS.explosives.blast!, STRUCTS.explosives.damage!, true);
+    this.explode(st.x, st.y, this.stats.structs.explosives.blast!, this.stats.structs.explosives.damage!, true);
   }
 
   /** A noise maker draws the zombies near it for a few seconds, then it is spent. */
   soundOff(st: Structure) {
     if (this.phase !== 'wave' || st.kind !== 'noise') return;
     this.removeStructure(st);
-    this.zones.push({ kind: 'lure', x: st.x, y: st.y, r: STRUCTS.noise.radius!, t: STRUCTS.noise.time! });
+    this.zones.push({ kind: 'lure', x: st.x, y: st.y, r: this.stats.structs.noise.radius!, t: this.stats.structs.noise.time! });
   }
 
   // ---- Strikes ----
@@ -435,7 +534,7 @@ export class World {
   /** Calls a strike on (x, y). An A-10 flies through (x, y) along `angle`. */
   callStrike(kind: UsableKind, x: number, y: number, angle = 0) {
     if (!this.strikeReady(kind)) return false;
-    const u = USABLES[kind], shells: Strike['shells'] = [];
+    const u = this.stats.usables[kind], shells: Strike['shells'] = [];
     this.charges[kind]--;
     this.readyAt[kind] = this.time + u.cooldown;
     for (let k = 0; k < (u.shells ?? 0); k++) {
@@ -448,14 +547,14 @@ export class World {
 
   /** Where an A-10 is over the ground right now. */
   planeAt(s: Strike): [number, number] {
-    const u = USABLES.a10, d = (s.t - u.delay) * u.speed! - u.length! / 2;
+    const u = this.stats.usables.a10, d = (s.t - u.delay) * u.speed! - u.length! / 2;
     return [s.x + Math.cos(s.angle) * d, s.y + Math.sin(s.angle) * d];
   }
 
   /** Zombies go round a roadblock unless the way round is longer than its `detour`; then they go through it. */
   private reflow() {
     const { wall, block } = this.grid;
-    this.flow = distanceField(this.grid, this.grid.goals, (i) => (wall[i] ? Infinity : block[i] ? 1 + structures.roadblocks[this.byId.get(block[i])!.kind].detour : 1));
+    this.flow = distanceField(this.grid, this.grid.goals, (i) => (wall[i] ? Infinity : block[i] ? 1 + this.stats.roadblocks[this.byId.get(block[i])!.kind].detour : 1));
   }
 
   // ---- Zombies coming in ----
@@ -527,11 +626,12 @@ export class World {
     this.time += dt;
     this.spawnWaves(dt);
     this.buildCells();
-    this.effects = [...this.zones, ...this.structures.filter((st) => st.kind === 'puddle' && this.powered(st)).map((st): Zone => ({ kind: 'shock', x: st.x, y: st.y, r: STRUCTS.puddle.radius!, t: 1 }))];
+    this.effects = [...this.zones, ...this.structures.filter((st) => st.kind === 'puddle' && this.powered(st)).map((st): Zone => ({ kind: 'shock', x: st.x, y: st.y, r: this.stats.structs.puddle.radius!, t: 1 }))];
     this.steerZombies(dt);
     this.separate();
     this.collide(dt);
     this.updateSoldiers(dt);
+    this.hauls();
     this.updateStructures(dt);
     this.updateStrikes(dt);
     this.flyProjectiles(dt);
@@ -584,7 +684,7 @@ export class World {
   }
 
   private steerZombies(dt: number) {
-    const live = this.soldiers.filter((s) => !s.dead), ease = Math.min(1, dt * 8);
+    const live = this.soldiers.filter((s) => !s.dead && !s.indoor), ease = Math.min(1, dt * 8);
     const leaders: number[] = []; // intelligent zombies, pulling others in front of themselves
     for (let i = 0; i < this.n; i++) if (this.alive[i] && ZOMBIES[this.zkind[i]].shield) leaders.push(i);
     for (let i = 0; i < this.n; i++) {
@@ -599,9 +699,9 @@ export class World {
       // What the ground does to it: wire and spikes underfoot, fire, smoke, a live puddle, a lure.
       let slow = 1, lure: Zone | undefined, lureD = Infinity;
       const tile = this.grid.at(x, y), st = tile >= 0 ? this.structById.get(this.structAt[tile]) : undefined;
-      if (st && !z.jumps && st.kind === 'wire') slow *= STRUCTS.wire.slow!;
+      if (st && !z.jumps && st.kind === 'wire') slow *= this.stats.structs.wire.slow!;
       if (st && !z.jumps && st.kind === 'spikes') {
-        const sp = STRUCTS.spikes;
+        const sp = this.stats.structs.spikes;
         this.damage(i, sp.dps! * (this.zkind[i] === FAST ? sp.fastBy! : 1) * dt, 'dot');
         st.hp -= sp.wear! * dt;
         slow *= sp.slow!;
@@ -609,25 +709,25 @@ export class World {
       for (const e of this.effects) {
         const d2 = (e.x - x) ** 2 + (e.y - y) ** 2;
         if (d2 > e.r * e.r) continue;
-        if (e.kind === 'fire') this.ignite(i, USABLES.napalm.burn!);
-        else if (e.kind === 'smoke') slow *= USABLES.smoke.slow!;
+        if (e.kind === 'fire') this.ignite(i, this.stats.usables.napalm.burn!);
+        else if (e.kind === 'smoke') slow *= this.stats.usables.smoke.slow!;
         else if (e.kind === 'shock') {
-          this.damage(i, STRUCTS.puddle.dps! * dt, 'dot');
-          slow *= STRUCTS.puddle.slow!;
+          this.damage(i, this.stats.structs.puddle.dps! * dt, 'dot');
+          slow *= this.stats.structs.puddle.slow!;
         } else if (d2 < lureD) { lureD = d2; lure = e; }
       }
       if (!this.alive[i]) continue;
       // An outdoor soldier in sight is the target (a shield draws them); otherwise follow the flow to the safe zone.
       let target: Soldier | undefined, best = z.sight, dx = this.zdx[i], dy = this.zdy[i];
       for (const s of live) {
-        const d = Math.hypot(s.x - x, s.y - y) - (UNITS[s.kind].taunt ?? 0);
+        const d = Math.hypot(s.x - x, s.y - y) - (this.stats.units[s.kind].taunt ?? 0);
         if (d < best) { best = d; target = s; }
       }
       if (target) {
         const d = Math.hypot(target.x - x, target.y - y) || 1;
         dx = (target.x - x) / d;
         dy = (target.y - y) / d;
-        if (!target.dead && d < z.radius + UNITS[target.kind].radius + 1.5 && (target.hp -= z.dps * target.cover * dt) <= 0) {
+        if (!target.dead && d < z.radius + this.stats.units[target.kind].radius + 1.5 && (target.hp -= z.dps * target.cover * dt) <= 0) {
           target.hp = 0;
           target.dead = true;
         }
@@ -719,8 +819,8 @@ export class World {
       let x = this.px, y = this.py;
       if (this.touch && -(this.tnx * this.zdx[i] + this.tny * this.zdy[i]) > 0.5) this.damageBlock(this.touch, z.dps * (z.smash ?? 1) * dt);
       for (const s of this.soldiers) {
-        if (s.dead) continue;
-        const ox = x - s.x, oy = y - s.y, min = z.radius + UNITS[s.kind].radius, d2 = ox * ox + oy * oy;
+        if (s.dead || s.indoor) continue;
+        const ox = x - s.x, oy = y - s.y, min = z.radius + this.stats.units[s.kind].radius, d2 = ox * ox + oy * oy;
         if (d2 >= min * min) continue;
         const d = Math.sqrt(d2) || 0.01;
         x += (ox / d) * (min - d);
@@ -771,8 +871,8 @@ export class World {
     if (!rb) return;
     // An engineer close by makes it tougher.
     const [x, y] = this.blockCentre(rb);
-    const eng = this.soldiers.find((s) => !s.dead && UNITS[s.kind].harden && Math.hypot(s.x - x, s.y - y) <= UNITS[s.kind].range);
-    if ((rb.hp -= amount * (eng ? UNITS[eng.kind].harden! : 1)) <= 0) {
+    const eng = this.soldiers.find((s) => !s.dead && this.stats.units[s.kind].harden && Math.hypot(s.x - x, s.y - y) <= this.stats.units[s.kind].range);
+    if ((rb.hp -= amount * (eng ? this.stats.units[eng.kind].harden! : 1)) <= 0) {
       this.removeBlock(rb);
     }
   }
@@ -786,6 +886,7 @@ export class World {
     if ((this.zhp[j] -= amount) > 0) return;
     this.kill(j);
     this.kills++;
+    if (this.deaths.length < 512) this.deaths.push({ x: this.zx[j], y: this.zy[j], kind: this.zkind[j], angle: Math.atan2(this.zvy[j], this.zvx[j]) });
     if (z.burst) {
       // A bloater bursts: it hurts the zombies round it, and the ones that live through it lurch forward.
       const { radius, damage, boost, time } = z.burst;
@@ -806,7 +907,7 @@ export class World {
 
   private updateStructures(dt: number) {
     for (const st of [...this.structures]) {
-      const k = STRUCTS[st.kind];
+      const k = this.stats.structs[st.kind];
       if (st.kind === 'mine' && this.within(st.x, st.y, k.trigger!).length) {
         this.removeStructure(st);
         this.explode(st.x, st.y, k.blast!, k.damage!, true);
@@ -854,7 +955,7 @@ export class World {
   private updateStrikes(dt: number) {
     let n = 0;
     for (const s of this.strikes) {
-      const u = USABLES[s.kind], was = s.t;
+      const u = this.stats.usables[s.kind], was = s.t;
       s.t += dt;
       let done = s.t >= u.delay;
       if (done && s.kind === 'missile') this.explode(s.x, s.y, u.blast!, u.damage!);
@@ -888,11 +989,11 @@ export class World {
   private updateSoldiers(dt: number) {
     for (const s of this.soldiers) {
       if (s.dead) continue;
-      const u = UNITS[s.kind];
+      const u = this.stats.units[s.kind];
       s.rangeBy = s.rateBy = s.cover = 1;
       s.incendiary = false;
       for (const st of this.structures) {
-        const k = STRUCTS[st.kind], d = Math.hypot(st.x - s.x, st.y - s.y);
+        const k = this.stats.structs[st.kind], d = Math.hypot(st.x - s.x, st.y - s.y);
         if (d < 6 && k.rangeBy) s.rangeBy = k.rangeBy;
         if (d < 6 && k.cover) s.cover = k.cover;
         if (k.rateBy && d <= k.radius!) s.rateBy = k.rateBy;
@@ -900,11 +1001,11 @@ export class World {
       }
       if (u.weapon === 'heal') {
         for (const o of this.soldiers)
-          if (!o.dead && Math.hypot(o.x - s.x, o.y - s.y) <= u.range) o.hp = Math.min(UNITS[o.kind].hp, o.hp + u.heal! * dt);
+          if (!o.dead && Math.hypot(o.x - s.x, o.y - s.y) <= u.range) o.hp = Math.min(this.stats.units[o.kind].hp, o.hp + u.heal! * dt);
       } else if (u.weapon === 'repair') {
         for (const rb of this.roadblocks) {
           const [x, y] = this.blockCentre(rb);
-          if (Math.hypot(x - s.x, y - s.y) <= u.range) rb.hp = Math.min(structures.roadblocks[rb.kind].hp, rb.hp + u.repair! * dt);
+          if (Math.hypot(x - s.x, y - s.y) <= u.range) rb.hp = Math.min(this.stats.roadblocks[rb.kind].hp, rb.hp + u.repair! * dt);
         }
       } else {
         s.cooldown = Math.max(0, s.cooldown - dt);
@@ -929,6 +1030,7 @@ export class World {
           s.y = this.py;
           s.walking = true;
           s.heading = Math.atan2(dy, dx);
+          if (s.indoor && !this.grid.wall[this.grid.at(s.x, s.y)]) s.indoor = false; // out in the street now
         }
       }
       s.facing = facingOf(firing || !s.walking ? s.angle : s.heading);
@@ -968,9 +1070,9 @@ export class World {
     const rand = () => (this.random() * 2 - 1) * this.spread(s);
     switch (u.weapon) {
       case 'bullet':
-        return this.bullet(s, s.angle + rand(), this.rangeOf(s), u.damage!, u.pierce ?? 1, 0);
+        return this.bullet(s, s.angle + rand(), this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
       case 'pellets':
-        for (let k = 0; k < u.pellets!; k++) this.bullet(s, s.angle + rand(), this.rangeOf(s), u.damage!, 1, u.knockback ?? 0);
+        for (let k = 0; k < u.pellets!; k++) this.bullet(s, s.angle + rand(), this.rangeOf(s), this.damageOf(s), 1, u.knockback ?? 0);
         return;
       case 'sniper': {
         // The one exception to "no auto-aim": inside his cone, a sniper picks his mark.
@@ -980,22 +1082,22 @@ export class World {
           return s.priority === 'nearest' ? -d : s.priority === 'farthest' ? d : s.priority === 'highest HP' ? this.zhp[j] : s.priority === 'fastest' ? z.speed : -z.speed;
         };
         const j = marks.reduce((a, b) => (score(b) > score(a) ? b : a));
-        return this.bullet(s, Math.atan2(this.zy[j] - s.y, this.zx[j] - s.x), this.rangeOf(s), u.damage!, u.pierce ?? 1, 0);
+        return this.bullet(s, Math.atan2(this.zy[j] - s.y, this.zx[j] - s.x), this.rangeOf(s), this.damageOf(s), u.pierce ?? 1, 0);
       }
       case 'flame':
         for (const j of this.inCone(s, this.rangeOf(s))) {
           this.ignite(j, u.burn!);
-          this.damage(j, u.damage!, 'fire');
+          this.damage(j, this.damageOf(s), 'fire');
         }
         return;
       case 'rocket': {
         const a = s.angle + rand(), v = u.projectileSpeed!;
-        this.projectiles.push({ arc: false, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: s.x, y1: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, flight: this.rangeOf(s) / v, blast: u.blast!, damage: u.damage! });
+        this.projectiles.push({ grace: s.indoor ? this.grid.tile * 1.5 : 0, arc: false, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: s.x, y1: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, flight: this.rangeOf(s) / v, blast: u.blast!, damage: this.damageOf(s) });
         return;
       }
       case 'shell': {
         const [ax, ay] = this.aimPoint(s), a = this.random() * Math.PI * 2, r = Math.sqrt(this.random()) * u.scatter!;
-        this.projectiles.push({ arc: true, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: ax + Math.cos(a) * r, y1: ay + Math.sin(a) * r, vx: 0, vy: 0, t: 0, flight: u.flight!, blast: u.blast!, damage: u.damage! });
+        this.projectiles.push({ grace: 0, arc: true, x: s.x, y: s.y, x0: s.x, y0: s.y, x1: ax + Math.cos(a) * r, y1: ay + Math.sin(a) * r, vx: 0, vy: 0, t: 0, flight: u.flight!, blast: u.blast!, damage: this.damageOf(s) });
       }
     }
   }
@@ -1003,10 +1105,11 @@ export class World {
   /** A bullet along a line: buildings stop it, roadblocks do not. It hits the first zombies on it, up to `pierce`. */
   private bullet(s: Soldier, a: number, range: number, dmg: number, pierce: number, knockback: number) {
     const T = this.grid.tile, cx = Math.cos(a), cy = Math.sin(a);
-    let reach = range;
+    let reach = range, grace = s.indoor ? this.grid.tile : 0;
     for (let t = 4; t < reach; t += 4) {
       const i = this.grid.at(s.x + cx * t, s.y + cy * t);
-      if (i < 0 || this.grid.wall[i]) { reach = t; break; }
+      if (i < 0 || (this.grid.wall[i] && t > grace)) { reach = t; break; }
+      if (!this.grid.wall[i]) grace = 0; // out of the window: from here on walls stop it
     }
     const ex = s.x + cx * reach, ey = s.y + cy * reach, hits: [number, number][] = [];
     for (const j of this.near(Math.min(s.x, ex) - T, Math.min(s.y, ey) - T, Math.max(s.x, ex) + T, Math.max(s.y, ey) + T)) {
@@ -1024,7 +1127,7 @@ export class World {
         this.zy[j] += cy * knockback;
       }
       this.damage(j, dmg, pierce > 1 ? 'pierce' : 'bullet');
-      if (s.incendiary && this.alive[j]) this.ignite(j, STRUCTS.incendiary.burn!);
+      if (s.incendiary && this.alive[j]) this.ignite(j, this.stats.structs.incendiary.burn!);
     }
     const muzzle = Math.min(10, end);
     this.shots.push({ x1: s.x + cx * muzzle, y1: s.y + cy * muzzle, x2: s.x + cx * end, y2: s.y + cy * end, age: 0, heavy: pierce > 1 });
@@ -1043,7 +1146,8 @@ export class World {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         const i = this.grid.at(p.x, p.y);
-        boom ||= i < 0 || this.grid.wall[i] === 1 || this.within(p.x, p.y, 2).length > 0;
+        const flown = Math.hypot(p.x - p.x0, p.y - p.y0);
+        boom ||= i < 0 || (this.grid.wall[i] === 1 && flown > p.grace) || this.within(p.x, p.y, 2).length > 0;
       }
       if (boom) this.explode(p.x, p.y, p.blast, p.damage);
       else this.projectiles[k++] = p;
@@ -1057,7 +1161,7 @@ export class World {
     for (const j of this.within(x, y, r)) if (this.alive[j]) this.damage(j, dmg, 'splash');
     if (friendly)
       for (const s of this.soldiers)
-        if (!s.dead && Math.hypot(s.x - x, s.y - y) <= r + UNITS[s.kind].radius && (s.hp -= dmg * s.cover) <= 0) {
+        if (!s.dead && !s.indoor && Math.hypot(s.x - x, s.y - y) <= r + this.stats.units[s.kind].radius && (s.hp -= dmg * s.cover) <= 0) {
           s.hp = 0;
           s.dead = true;
         }

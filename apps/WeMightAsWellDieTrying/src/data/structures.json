@@ -1,31 +1,178 @@
 {
   "roadblocks": {
-    "plastic": { "name": "Plastic barrier", "hp": 150, "length": 3, "detour": 30 },
-    "wood": { "name": "Wooden barricade", "hp": 400, "length": 3, "detour": 40 },
-    "sandbags": { "name": "Sandbag wall", "hp": 800, "length": 3, "detour": 50 },
-    "car": { "name": "Wrecked car", "hp": 1400, "length": 3, "detour": 60 },
-    "cement": { "name": "Cement barrier", "hp": 4000, "length": 3, "detour": 80, "fixed": true }
+    "plastic": {
+      "name": "Plastic barrier",
+      "hp": 150,
+      "length": 3,
+      "detour": 30
+    },
+    "wood": {
+      "name": "Wooden barricade",
+      "hp": 400,
+      "length": 3,
+      "detour": 40
+    },
+    "sandbags": {
+      "name": "Sandbag wall",
+      "hp": 800,
+      "length": 3,
+      "detour": 50
+    },
+    "car": {
+      "name": "Abandoned car",
+      "hp": 1400,
+      "length": 3,
+      "detour": 60
+    },
+    "cement": {
+      "name": "Cement barrier",
+      "hp": 4000,
+      "length": 3,
+      "detour": 80,
+      "fixed": true
+    },
+    "taxi": {
+      "name": "Abandoned taxi",
+      "hp": 1200,
+      "length": 3,
+      "detour": 60
+    },
+    "bus": {
+      "name": "Bus",
+      "hp": 3000,
+      "length": 5,
+      "detour": 90
+    },
+    "police": {
+      "name": "Police barricade",
+      "hp": 300,
+      "length": 3,
+      "detour": 35
+    }
   },
   "structures": {
-    "watchtower": { "name": "Watchtower", "rangeBy": 1.4 },
-    "nest": { "name": "Sandbag nest", "cover": 0.5 },
-    "incendiary": { "name": "Incendiary ammo", "radius": 56, "burn": { "dps": 12, "time": 2 } },
-    "ammo": { "name": "Extra ammo", "radius": 56, "rateBy": 1.4 },
-    "mine": { "name": "Mine", "trigger": 8, "blast": 30, "damage": 180 },
-    "wire": { "name": "Barbed wire", "length": 3, "slow": 0.45 },
-    "explosives": { "name": "Explosives", "blast": 48, "damage": 260 },
-    "rigged": { "name": "Rigged car", "trigger": 96, "speed": 130, "kills": 12, "distance": 240, "damage": 400 },
-    "puddle": { "name": "Electric puddle", "radius": 24, "dps": 25, "slow": 0.5, "power": 220 },
-    "generator": { "name": "Generator" },
-    "spikes": { "name": "Spike strip", "length": 3, "dps": 20, "fastBy": 4, "slow": 0.7, "hp": 100, "wear": 6 },
-    "noise": { "name": "Noise maker", "radius": 260, "time": 6 }
+    "watchtower": {
+      "name": "Watchtower",
+      "rangeBy": 1.4
+    },
+    "nest": {
+      "name": "Sandbag nest",
+      "cover": 0.5
+    },
+    "incendiary": {
+      "name": "Incendiary ammo",
+      "radius": 56,
+      "burn": { "dps": 12, "time": 2 }
+    },
+    "ammo": {
+      "name": "Extra ammo",
+      "radius": 56,
+      "rateBy": 1.4
+    },
+    "mine": {
+      "name": "Mine",
+      "trigger": 8,
+      "blast": 30,
+      "damage": 180
+    },
+    "wire": {
+      "name": "Barbed wire",
+      "length": 3,
+      "slow": 0.45
+    },
+    "explosives": {
+      "name": "Explosives",
+      "blast": 48,
+      "damage": 260
+    },
+    "rigged": {
+      "name": "Rigged car",
+      "trigger": 96,
+      "speed": 130,
+      "kills": 12,
+      "distance": 240,
+      "damage": 400
+    },
+    "puddle": {
+      "name": "Electric puddle",
+      "radius": 24,
+      "dps": 25,
+      "slow": 0.5,
+      "power": 220
+    },
+    "generator": {
+      "name": "Generator"
+    },
+    "spikes": {
+      "name": "Spike strip",
+      "length": 3,
+      "dps": 20,
+      "fastBy": 4,
+      "slow": 0.7,
+      "hp": 100,
+      "wear": 6
+    },
+    "noise": {
+      "name": "Noise maker",
+      "radius": 260,
+      "time": 6
+    }
   },
   "usables": {
-    "missile": { "name": "Missile", "charges": 2, "cooldown": 15, "delay": 1, "blast": 36, "damage": 500 },
-    "a10": { "name": "A-10 run", "charges": 1, "cooldown": 40, "delay": 1.5, "length": 360, "width": 24, "damage": 220, "speed": 420 },
-    "napalm": { "name": "Napalm", "charges": 1, "cooldown": 30, "delay": 1, "radius": 44, "time": 6, "burn": { "dps": 20, "time": 2 } },
-    "smoke": { "name": "Smoke/flash", "charges": 2, "cooldown": 20, "delay": 0, "radius": 52, "time": 4, "slow": 0.15 },
-    "artillery": { "name": "Artillery barrage", "charges": 1, "cooldown": 45, "delay": 3, "radius": 90, "shells": 10, "spread": 2, "blast": 30, "damage": 160 },
-    "flare": { "name": "Decoy flare", "charges": 2, "cooldown": 20, "delay": 0, "radius": 240, "time": 8 }
+    "missile": {
+      "name": "Missile",
+      "charges": 2,
+      "cooldown": 15,
+      "delay": 1,
+      "blast": 36,
+      "damage": 500
+    },
+    "a10": {
+      "name": "A-10 run",
+      "charges": 1,
+      "cooldown": 40,
+      "delay": 1.5,
+      "length": 360,
+      "width": 24,
+      "damage": 220,
+      "speed": 420
+    },
+    "napalm": {
+      "name": "Napalm",
+      "charges": 1,
+      "cooldown": 30,
+      "delay": 1,
+      "radius": 44,
+      "time": 6,
+      "burn": { "dps": 20, "time": 2 }
+    },
+    "smoke": {
+      "name": "Smoke/flash",
+      "charges": 2,
+      "cooldown": 20,
+      "delay": 0,
+      "radius": 52,
+      "time": 4,
+      "slow": 0.15
+    },
+    "artillery": {
+      "name": "Artillery barrage",
+      "charges": 1,
+      "cooldown": 45,
+      "delay": 3,
+      "radius": 90,
+      "shells": 10,
+      "spread": 2,
+      "blast": 30,
+      "damage": 160
+    },
+    "flare": {
+      "name": "Decoy flare",
+      "charges": 2,
+      "cooldown": 20,
+      "delay": 0,
+      "radius": 240,
+      "time": 8
+    }
   }
 }
