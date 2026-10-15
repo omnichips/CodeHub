@@ -17,6 +17,18 @@ interface Plan {
   plazas?: Rect[]; // paving, walked on
   safe: Rect;
   zones?: [...Rect, string][]; // buildings of one kind (they go over parks: a boathouse, a museum)
+  water?: Rect[]; // a river, under everything else (a bridge is a road over it)
+  paths?: [points: [number, number][], width: number, tile?: string][]; // roads (or a tile given) that bend and run on the slant, through these points
+  ovals?: [cx: number, cy: number, rx: number, ry: number, tile: string][]; // laid after the plazas, in order
+  edge?: string; // what open ground turns into at the map's edge where the horde does not come in (default buildings)
+  lawn?: boolean; // the parks are mown lawn (striped), not rough grass
+  trees?: number; // share of park tiles with a tree (default 0.22)
+  groves?: Rect[]; // thick with trees, whatever `trees` says
+  benches?: number; // share of plaza and park tiles with a bench (default 0.02)
+  props?: [kind: BlockKind, tx: number, ty: number, vertical: boolean][]; // roadblocks put just here, before the random ones
+  decor?: [kind: string, tx: number, ty: number][]; // things put just here: landmarks drawn whole over their tiles, fountains, flower beds
+  helipad?: false; // no helipad on the safe zone (it has a landmark)
+  billboards?: number; // video screens on the building fronts nearest the safe zone
   kinds: string; // building kinds to fill blocks with, more of a letter for more of that kind
   zombies: number;
   waves: number;
@@ -37,36 +49,52 @@ const PLANS: Plan[] = [
     zombies: 4500, waves: 10,
   },
   {
-    // Brownstone rows on a tight grid; two ways in from the top and one from each side.
-    id: 'harlem', name: 'Harlem', w: 64, h: 72, kinds: 'bbbbaahh',
-    roads: [[5, 0, 6, 60], [27, 0, 6, 60], [49, 0, 6, 60], [0, 10, 64, 4], [0, 24, 64, 4], [0, 38, 64, 4], [0, 52, 64, 4]],
-    parks: [[33, 28, 16, 10]],
-    plazas: [[3, 60, 58, 4], [39, 28, 2, 10]],
-    zones: [[11, 42, 16, 10, 'm']],
-    entries: [[5, 0, 6, 1], [49, 0, 6, 1], [0, 24, 1, 4], [63, 38, 1, 4]],
-    safe: [3, 64, 58, 8],
-    zombies: 5000, waves: 10, mix: { fast: 1.2, screamer: 1.3 },
+    // A bridge over the Thames and nothing else: one long road end to end, walkways either side, two piers that
+    // widen it. No windows: everyone fights in the open. Fast ones and jumpers.
+    id: 'london', name: 'London', w: 40, h: 96, kinds: 'o', edge: '~',
+    water: [[0, 0, 40, 96]],
+    roads: [[16, 0, 8, 96]],
+    plazas: [[14, 0, 2, 96], [24, 0, 2, 96], [11, 30, 18, 6], [11, 62, 18, 6]],
+    entries: [[14, 0, 12, 1]],
+    safe: [14, 88, 12, 8],
+    zombies: 5000, waves: 10, mix: { fast: 1.3, jumper: 1.4 },
   },
   {
-    // Warehouses and container yards: wide roads, open ground, few windows. Armoured and heavy ones.
-    id: 'red-hook', name: 'Red Hook Docks', w: 64, h: 72, kinds: 'wwwwwgo',
-    roads: [[12, 0, 10, 64], [22, 6, 42, 10], [22, 36, 42, 6]],
-    plazas: [[26, 16, 18, 20], [44, 42, 18, 16], [2, 60, 34, 4]],
-    zones: [[46, 18, 16, 16, 'g']],
-    entries: [[12, 0, 10, 1], [63, 6, 1, 10], [63, 36, 1, 6]],
-    safe: [2, 64, 34, 8],
-    zombies: 5600, waves: 11, mix: { armored: 1.6, tanky: 1.4, bloater: 1.3, fast: 0.8 }, yards: true,
+    // The White House on the far side of one wide mown lawn: the horde comes in off Pennsylvania Avenue, along the
+    // whole north side, past the fountains, the walks, the gardens and the barricades left standing. Groves of trees
+    // and the hedges down the sides; the drive curves up to the north portico. Armoured and heavy ones.
+    id: 'white-house', name: 'White House', w: 64, h: 64, kinds: 'o', edge: 'f', lawn: true, trees: 0, benches: 0,
+    roads: [[0, 0, 64, 4]], // Pennsylvania Avenue
+    parks: [[0, 6, 64, 58]],
+    groves: [[1, 7, 7, 38], [56, 7, 7, 38], [1, 45, 13, 12], [50, 45, 13, 12]],
+    plazas: [[0, 4, 64, 2], [31, 6, 2, 24], [31, 36, 2, 12]], // the sidewalk; the walk down the middle
+    ovals: [[32, 30, 15, 9, ','], [32, 30, 12.5, 6.5, 'l'], [32, 30, 3, 3, ','], [32, 54, 13, 6, ','], [32, 54, 10.5, 3.5, 'l']], // a ring of path round the fountain; the drive
+    entries: [[0, 0, 64, 1]],
+    safe: [20, 52, 24, 12],
+    props: [['police', 10, 12, false], ['police', 22, 13, false], ['police', 40, 13, false], ['police', 52, 12, false], ['sandbags', 12, 44, false], ['sandbags', 49, 44, false]],
+    decor: [
+      ['whitehouse', 32, 57], ['fountain', 32, 30], ['helipad', 48, 21],
+      ['flowers', 16, 59], ['flowers', 47, 59], ['flowers', 24, 47], ['flowers', 40, 47], // the Rose Garden, the East Garden, beds by the drive
+      ...Array.from({ length: 10 }, (_, k): [string, number, number] => ['lamp', 3 + Math.round(k * 6.4), 4]),
+      ['lamp', 31, 10], ['lamp', 32, 17], ['lamp', 31, 24], ['lamp', 32, 40], ['lamp', 31, 46],
+      ['bench', 18, 30], ['bench', 46, 30], ['bench', 32, 22], ['bench', 32, 38],
+    ],
+    helipad: false,
+    zombies: 5600, waves: 11, mix: { armored: 1.5, tanky: 1.4, brute: 1.4, bloater: 1.2 },
   },
   {
-    // Narrow canyons between towers, alleys between them; Battery Park in front of the safe zone. Fast ones.
-    id: 'wall-street', name: 'Wall Street', w: 64, h: 72, kinds: 'oooooohb',
-    roads: [[6, 0, 4, 58], [20, 8, 3, 50], [34, 8, 4, 50], [50, 0, 4, 58], [0, 8, 64, 3], [6, 22, 48, 4], [0, 36, 40, 3], [20, 48, 34, 4],
-      [27, 11, 2, 11], [43, 26, 2, 22], [12, 39, 2, 9], [56, 11, 2, 15]],
-    parks: [[2, 58, 60, 4]],
-    plazas: [[2, 62, 60, 2], [8, 58, 2, 4], [26, 58, 2, 4], [50, 58, 2, 4]],
-    entries: [[6, 0, 4, 1], [50, 0, 4, 1], [0, 36, 1, 3], [63, 8, 1, 3]],
-    safe: [2, 64, 60, 8],
-    zombies: 6200, waves: 11, mix: { fast: 1.4, jumper: 1.6, intelligent: 1.3 },
+    // Via Labicana bent into an M: up from both feet at the bottom, over the two peaks and down into the safe zone
+    // where they meet in the middle. The Colosseum and its pines sit between the peaks. Jumpers and clever ones.
+    id: 'rome', name: 'Rome', w: 72, h: 64, kinds: 'bbaahh', trees: 0.3,
+    paths: [[[[10, 64], [16, 9], [36, 38], [56, 9], [62, 64]], 7]],
+    parks: [[22, 0, 28, 24]],
+    roads: [[15, 46, 8, 3], [49, 46, 8, 3]],
+    plazas: [[23, 44, 6, 7], [43, 44, 6, 7]],
+    ovals: [[36, 14, 8, 6, 'r']],
+    entries: [[0, 63, 72, 1]],
+    safe: [32, 37, 8, 8],
+    decor: [['colosseum', 36, 14]], helipad: false,
+    zombies: 6200, waves: 11, mix: { jumper: 1.5, intelligent: 1.3, fast: 1.2 },
   },
   {
     // Two highways meet and run south as one wide boulevard, past car parks and a mall. Wide open; bosses.
@@ -79,12 +107,22 @@ const PLANS: Plan[] = [
     zombies: 7000, waves: 12, mix: { brute: 1.5, tanky: 1.3, fast: 1.2 },
   },
   {
-    // The last stand: the safe zone in the middle of the square, the horde from every side.
-    id: 'times-square', name: 'Times Square', w: 64, h: 64, kinds: 'hhhooa',
-    roads: [[10, 0, 6, 64], [48, 0, 6, 64], [0, 8, 64, 4], [0, 52, 64, 4], [29, 0, 6, 22], [29, 42, 6, 22], [0, 29, 22, 6], [42, 29, 22, 6]],
-    plazas: [[22, 22, 20, 20]],
-    entries: [[10, 0, 6, 1], [48, 0, 6, 1], [29, 63, 6, 1], [0, 29, 1, 6], [63, 29, 1, 6]],
-    safe: [27, 27, 10, 10],
+    // The last stand, Shibuya: the safe zone in the middle of the scramble crossing, every road in Shibuya running
+    // into it: Inokashira-dori from the north, Center Gai (on foot) and Meiji-dori on the slant, Bunkamura-dori from
+    // the west, Dogenzaka up from the south-west, Miyamasuzaka from the east. Hachiko Square and the station, its
+    // tracks on the roof, south of the crossing; video screens on the fronts round it. The horde from every side,
+    // a long way out. Screamers and horde mothers.
+    id: 'tokyo', name: 'Tokyo', w: 96, h: 96, kinds: 'hhhhoooa',
+    roads: [[38, 38, 20, 20], // the scramble crossing
+      [44, 0, 8, 38], [0, 44, 38, 8], [58, 44, 38, 7], [44, 68, 8, 28], // Inokashira-dori, Bunkamura-dori, Miyamasuzaka, south to Route 246
+      [26, 26, 18, 3], [20, 52, 3, 18], [64, 33, 3, 11], [80, 51, 4, 45]], // back streets
+    paths: [[[[38, 38], [22, 22], [16, 0]], 5, ','], [[[38, 57], [20, 70], [0, 84]], 6], [[[57, 38], [72, 26], [96, 20]], 6]], // Center Gai, Dogenzaka, Meiji-dori
+    plazas: [[38, 58, 20, 10]], // Hachiko Square
+    zones: [[60, 54, 18, 34, 's']], // Shibuya Station
+    entries: [[0, 0, 96, 1], [0, 95, 96, 1], [0, 0, 1, 96], [95, 0, 1, 96]],
+    safe: [44, 44, 8, 8],
+    decor: [['scramble', 48, 48], ['rails', 68, 70], ['hachiko', 41, 63], ['tree', 39, 59], ['tree', 39, 66], ['tree', 56, 59], ['tree', 56, 66], ['tree', 47, 66]],
+    billboards: 9,
     zombies: 8000, waves: 12, mix: { screamer: 1.5, hordemother: 1.5, armored: 1.2, intelligent: 1.2 },
   },
 ];
@@ -97,8 +135,9 @@ const rng = (seed: number) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 const seedOf = (id: string) => [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) | 0, 7);
-const WALK = '.,ptSE';
-const BUILDINGS = 'boghmwa';
+const WALK = '.,ptlSE';
+const GROUND = '.,ptl'; // open ground: road, plaza, park, tree, lawn
+const BUILDINGS = 'boghmwars';
 
 function draw(p: Plan) {
   const r = rng(seedOf(p.id)), T = 16;
@@ -106,14 +145,27 @@ function draw(p: Plan) {
   const fill = ([x, y, w, h]: Rect, f: (x: number, y: number) => string) => {
     for (let ty = y; ty < y + h; ty++) for (let tx = x; tx < x + w; tx++) if (tx >= 0 && ty >= 0 && tx < p.w && ty < p.h) g[ty][tx] = f(tx, ty);
   };
-  for (const pk of p.parks ?? []) fill(pk, () => (r() < 0.22 ? 't' : 'p'));
+  for (const wa of p.water ?? []) fill(wa, () => '~');
+  const green = p.lawn ? 'l' : 'p';
+  for (const pk of p.parks ?? []) fill(pk, () => (r() < (p.trees ?? 0.22) ? 't' : green));
+  for (const gr of p.groves ?? []) fill(gr, () => (r() < 0.35 ? 't' : green));
   for (const rd of p.roads) fill(rd, () => '.');
+  // A bent road: every tile whose middle is within half its width of the line through its points.
+  const gap = (x: number, y: number, [ax, ay]: number[], [bx, by]: number[]) => {
+    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
+    return Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay));
+  };
+  for (const [pts, width, tile = '.'] of p.paths ?? [])
+    for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (pts.slice(1).some((b, k) => gap(x + 0.5, y + 0.5, pts[k], b) <= width / 2)) g[y][x] = tile;
   for (const pl of p.plazas ?? []) fill(pl, () => ',');
+  for (const [cx, cy, rx, ry, tile] of p.ovals ?? [])
+    for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1) g[y][x] = tile;
   for (const [x, y, w, h, kind] of p.zones ?? []) fill([x, y, w, h], () => kind);
   fill(p.safe, () => 'E');
   // Closed at the edges: ground walked on runs off the map only where the horde comes in (or into the safe zone).
-  for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if ((!x || !y || x === p.w - 1 || y === p.h - 1) && '.,pt'.includes(g[y][x])) g[y][x] = '?';
-  for (const en of p.entries) fill(en, () => 'S');
+  const before = g.map((row) => [...row]);
+  for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if ((!x || !y || x === p.w - 1 || y === p.h - 1) && GROUND.includes(g[y][x])) g[y][x] = p.edge ?? '?';
+  for (const en of p.entries) fill(en, (x, y) => (GROUND.includes(before[y][x]) ? 'S' : g[y][x])); // only the ground in it
 
   // Each block of buildings is cut into lots of 6 to 12 tiles a side, each lot one kind.
   const seen = new Set<number>();
@@ -154,6 +206,10 @@ function draw(p: Plan) {
   const world = new World(map, { gap: 0, waves: [] });
   const spawns = world.grid.spawns.map((i) => [i % p.w, Math.floor(i / p.w)]);
   const run = (x: number, y: number, dx: number, dy: number) => { let n = 0; while (at(x + dx * n, y + dy * n) === '.') n++; return n; };
+  for (const [kind, tx, ty, vertical] of p.props ?? []) {
+    if (!world.placeBlock(kind, tx, ty, vertical, false)) throw new Error(`${p.id}: no room for the ${kind} at ${tx},${ty}`);
+    map.props.push({ kind, tx, ty, vertical });
+  }
   const KINDS: BlockKind[] = ['car', 'car', 'car', 'car', 'taxi', 'taxi', 'taxi', 'bus', 'police', 'sandbags'];
   for (let tries = 0; tries < 2000 && map.props.length < Math.round((p.w * p.h) / 200); tries++) {
     const tx = Math.floor(r() * p.w), ty = Math.floor(r() * p.h), kind = KINDS[Math.floor(r() * KINDS.length)];
@@ -184,14 +240,20 @@ function draw(p: Plan) {
         if (q < 0.01) put('manhole', x, y, 6);
         else if (q < 0.016) put('cone', x, y, 8);
         else if (q < 0.022) put('rubble', x, y, 8);
-      } else if (c === 'p' && q < 0.1) put('tree', x, y, 0);
-      else if ((c === ',' || c === 'p') && q < 0.02) put('bench', x, y, 2);
+      } else if (c === 'p' && q < (0.1 * (p.trees ?? 0.22)) / 0.22) put('tree', x, y, 0);
+      else if (c === ',' && y % 5 === 0 && n4(x, y).some(([a, b]) => at(a, b) === '~')) put('lamp', x, y, 0); // along a bridge
+      else if ((c === ',' || c === 'p') && q < (p.benches ?? 0.02)) put('bench', x, y, 2);
       else if (c === ',' && p.yards && y < p.safe[1] - 5 && q < 0.09) put(q < 0.05 ? 'crate' : 'barrel', x, y, 6);
       else if (c === ',' && q < 0.03) put('bin', x, y);
       else if (c === 'g' && q < 0.03) put('wreck', x, y, 0);
       else if (BUILDINGS.includes(c) && n4(x, y).some(([a, b]) => open(a, b)) && q < 0.012) put(q < 0.006 ? 'barrel' : 'crate', x, y);
     }
-  put('helipad', p.safe[0] + p.safe[2] / 2 - 0.5, p.safe[1] + p.safe[3] / 2 - 0.5, 0);
+  for (const [kind, x, y] of p.decor ?? []) put(kind, x, y, 0);
+  if (p.helipad !== false) put('helipad', p.safe[0] + p.safe[2] / 2 - 0.5, p.safe[1] + p.safe[3] / 2 - 0.5, 0);
+  // Video screens on the fronts nearest the safe zone, a few tiles apart.
+  const mid = [p.safe[0] + p.safe[2] / 2, p.safe[1] + p.safe[3] / 2], screens: number[][] = [];
+  for (const [x, y] of [...fronts].sort((a, b) => Math.hypot(a[0] - mid[0], a[1] - mid[1]) - Math.hypot(b[0] - mid[0], b[1] - mid[1])))
+    if (screens.length < (p.billboards ?? 0) && !screens.some(([a, b]) => Math.hypot(a - x, b - y) < 5)) { screens.push([x, y]); put('billboard', x, y, 0); }
 
   // Checks: every way in leads to the safe zone, and every prop went down.
   for (const i of world.grid.spawns) if (!Number.isFinite(world.flow[i])) throw new Error(`${p.id}: no way from ${i % p.w},${Math.floor(i / p.w)} to the safe zone`);

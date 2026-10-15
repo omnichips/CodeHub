@@ -10,7 +10,7 @@ import { BUILDING, type Grid, type MapData } from '../sim/grid.ts';
 
 const P = palette;
 const LANES = 10; // the most lanes a road can have; wider than that both ways is a crossing
-const SHADE = { rgb: [0, 0, 0], most: 0.55, over: 4 }; // roofs deep inside a block darken: to black, at most 55%, over 4 tiles
+const SHADE = { rgb: [0, 0, 0], most: 0.35, over: 5 }; // roofs deep inside a block darken: to black, at most 35%, over 5 tiles
 type Front = 'brick' | 'glass' | 'shop' | 'deck' | 'clinic' | 'metal';
 interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' }
 /** Each kind of building: its roof and the wall it shows the street. */
@@ -22,6 +22,8 @@ const ROOFS: Record<string, Roof> = {
   g: { base: '#4a4843', dark: '#3a3935', light: '#5a5852', front: 'deck', texture: 'deck' }, // a parking deck
   m: { base: '#7a776e', dark: '#68655d', light: '#8d897f', front: 'clinic', texture: 'clean' }, // the hospital
   w: { base: '#474c4c', dark: '#373b3b', light: '#5d6363', front: 'metal', texture: 'ribs' }, // warehouses
+  r: { base: '#7d725d', dark: '#685f4d', light: '#948870', front: 'brick', texture: 'gravel' }, // old Roman stone
+  s: { base: '#55585a', dark: '#45484a', light: '#6a6e70', front: 'glass', texture: 'panels' }, // a railway station
   '#': { base: '#3b3d3f', dark: '#2c2e30', light: '#4c4e50', front: 'brick', texture: 'gravel' },
 };
 
@@ -59,7 +61,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       (near ? side : road)[y * w + x] = 1;
     }
   const isRoad = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && road[y * w + x] === 1;
-  const isGreen = (x: number, y: number) => ch(x, y) === 'p' || ch(x, y) === 't';
+  const isGreen = (x: number, y: number) => 'ptl'.includes(ch(x, y));
   const runX = (x: number, y: number) => { let a = x, b = x; while (isRoad(a - 1, y)) a--; while (isRoad(b + 1, y)) b++; return [a, b]; };
   const runY = (x: number, y: number) => { let a = y, b = y; while (isRoad(x, a - 1)) a--; while (isRoad(x, b + 1)) b++; return [a, b]; };
   /** Where two roads cross: the road runs on a long way both across and down. */
@@ -122,6 +124,22 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     disc(P.rot0, cx + size * 0.35, cy + size * 0.3, size * 0.35);
     for (let k = 0; k < 5; k++) dot(P.rot2, cx - size * 0.6 + r() * size, cy - size * 0.6 + r() * size);
   };
+  /** A river: dark water with ripples drifting the same way, in the shadow of whatever stands beside it. */
+  const water = (x: number, y: number, px: number, py: number, r: () => number) => {
+    rect(P.teal0, px, py, T, T);
+    for (let k = 0; k < 3; k++) if (r() < 0.6) rect(r() < 0.7 ? P.teal1 : P.teal2, px + ((r() * 10) | 0), py + ((r() * 15) | 0), 3 + ((r() * 4) | 0), 1);
+    if (r() < 0.25) dot(P.navy0, px + r() * T, py + r() * T, 2);
+    if (ch(x - 1, y) !== '~') rect('rgba(0,0,0,0.35)', px, py, 5, T);
+    if (ch(x, y - 1) !== '~') rect('rgba(0,0,0,0.3)', px, py, T, 4);
+  };
+  /** A clipped hedge on a lawn's edge, one tile of it: rounded, lit from the top-left. */
+  const hedge = (x: number, y: number, px: number, py: number, r: () => number) => {
+    const h = (a: number, b: number) => ch(a, b) === 'f';
+    rect('rgba(0,0,0,0.35)', px + 2, py + 2, T - 1, T - 1);
+    rect(P.olive0, px + (h(x - 1, y) ? 0 : 2), py + (h(x, y - 1) ? 0 : 2), T - (h(x - 1, y) ? 0 : 2) - (h(x + 1, y) ? 0 : 2), T - (h(x, y - 1) ? 0 : 2) - (h(x, y + 1) ? 0 : 2));
+    for (let k = 0; k < 14; k++) dot(r() < 0.5 ? P.olive1 : P.rot0, px + 2 + r() * (T - 4), py + 2 + r() * (T - 4), r() < 0.3 ? 2 : 1);
+    for (let k = 0; k < 3; k++) dot(P.olive2, px + 2 + r() * (T - 4), py + 2 + r() * 5);
+  };
   const roofTile = (x: number, y: number, px: number, py: number, r: () => number) => {
     const t = ch(x, y), roof = ROOFS[t] ?? ROOFS['#'];
     rect(roof.base, px, py, T, T);
@@ -183,13 +201,16 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       c.beginPath();
       c.rect(px, py, T, T);
       c.clip(); // this tile only
-      if (wall[i]) roofTile(x, y, px, py, r);
+      if (t === '~') water(x, y, px, py, r);
+      else if (t === 'f') { grass(x, y, px, py, r); hedge(x, y, px, py, r); }
+      else if (wall[i]) roofTile(x, y, px, py, r);
       else if (goal[i]) {
         rect(P.pave0, px, py, T, T);
         rect('#545049', px + 1, py + 1, T - 2, T - 2);
         if ((x + y) % 2) dot(P.pave1, px + 4 + r() * 8, py + 4 + r() * 8);
         if (!goal[i - w]) for (let k = 0; k < 4; k++) rect(k % 2 ? P.outline : P.flash0, px + k * 4, py, 4, 3); // hazard edge
       } else if (t === 'p') grass(x, y, px, py, r);
+      else if (t === 'l') { grass(x, y, px, py, r); rect(Math.floor(x / 2) % 2 ? 'rgba(234,223,174,0.05)' : 'rgba(0,0,0,0.08)', px, py, T, T); } // mown in stripes
       else if (t === 't') { grass(x, y, px, py, r); tree(px + T / 2, py + T / 2, 7, r); }
       else if (t === ',') { paveSlabs(px, py, r, true); curbs(x, y, px, py); }
       else if (side[i]) { paveSlabs(px, py, r, false); curbs(x, y, px, py); }
@@ -222,6 +243,13 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           for (let s = 0, a = r() * 6.3; s < 5; s++) { a += (r() - 0.5) * 1.6; cx += Math.cos(a) * 2.5; cy += Math.sin(a) * 2.5; c.lineTo(Math.round(cx) + 0.5, Math.round(cy) + 0.5); }
           c.stroke();
         }
+      }
+      // A stone parapet where a bridge or a quay meets the water.
+      if (!wall[i]) {
+        if (ch(x - 1, y) === '~') { rect(P.outline, px, py, 3, T); rect(P.cream, px, py, 2, T); }
+        if (ch(x + 1, y) === '~') { rect(P.outline, px + T - 3, py, 3, T); rect(P.pave1, px + T - 2, py, 2, T); }
+        if (ch(x, y - 1) === '~') { rect(P.outline, px, py, T, 3); rect(P.cream, px, py, T, 2); }
+        if (ch(x, y + 1) === '~') { rect(P.outline, px, py + T - 3, T, 3); rect(P.pave1, px, py + T - 2, T, 2); }
       }
       // Buildings and trees throw shade down and to the right, onto the tile beside them.
       if (!wall[i]) {
@@ -260,7 +288,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const seen = new Set<number>(), landmarks: (() => void)[] = [];
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      if (!wall[y * w + x] || seen.has(lot(x, y))) continue;
+      if (!built(x, y) || seen.has(lot(x, y))) continue;
       const l = lot(x, y), t = ch(x, y), r = rng(seedOf(x, y, 7));
       seen.add(l);
       const tiles: [number, number][] = [];
@@ -331,7 +359,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   };
   const WHERE: Record<string, string[]> = {
     tree: ['grass', 'sidewalk', 'plaza'], lamp: ['sidewalk', 'plaza'], manhole: ['road'], rubble: ['road', 'sidewalk', 'plaza'], wreck: ['roof'],
-    sandbag: ['plaza', 'safe', 'sidewalk'], helipad: ['plaza', 'safe'], barrel: ['sidewalk', 'plaza', 'roof', 'safe'], crate: ['sidewalk', 'plaza', 'roof', 'safe'],
+    sandbag: ['plaza', 'safe', 'sidewalk'], helipad: ['plaza', 'safe', 'grass'], fountain: ['plaza', 'grass'], flowers: ['grass'], hachiko: ['plaza'], billboard: ['roof'], barrel: ['sidewalk', 'plaza', 'roof', 'safe'], crate: ['sidewalk', 'plaza', 'roof', 'safe'],
     trash: ['sidewalk'], dumpster: ['sidewalk'], hydrant: ['sidewalk'], cone: ['road'], bench: ['plaza', 'grass'], bin: ['sidewalk', 'plaza'],
   };
   /** A small box from above: outline, body, a lit top edge. */
@@ -341,8 +369,107 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     rect(body, x, y, ww, hh);
     rect(lit, x, y, ww, 1);
   };
+  /** The tiles around (x, y) that `fits`, joined up: a landmark's box. */
+  const extent = (x: number, y: number, fits: (i: number) => boolean) => {
+    const box = [w, h, -1, -1], seen = new Set<number>();
+    for (const stack = [Math.floor(y / T) * w + Math.floor(x / T)]; stack.length; ) {
+      const i = stack.pop()!, tx = i % w, ty = (i - tx) / w;
+      if (seen.has(i) || !fits(i)) continue;
+      seen.add(i);
+      box[0] = Math.min(box[0], tx); box[1] = Math.min(box[1], ty); box[2] = Math.max(box[2], tx); box[3] = Math.max(box[3], ty);
+      if (tx > 0) stack.push(i - 1);
+      if (tx < w - 1) stack.push(i + 1);
+      if (ty > 0) stack.push(i - w);
+      if (ty < h - 1) stack.push(i + w);
+    }
+    return box;
+  };
+  const oval = (col: string, cx: number, cy: number, rx: number, ry: number) => { c.fillStyle = col; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.fill(); };
+  /** The White House on the safe zone, seen from above: the residence, its two porticoes and the long low wings. */
+  const whiteHouse = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = extent(x, y, (i) => goal[i] === 1), L = x0 * T, R = (x1 + 1) * T, top = (y0 + 1) * T, bottom = (y1 + 1) * T - 4;
+    const cx = (L + R) / 2, W = R - L, Hh = bottom - top, bw = W * 0.46, bh = Hh * 0.52, by = top + Hh * 0.22;
+    rect('rgba(0,0,0,0.35)', L + 6 + 3, by + bh * 0.3 + 3, W - 12, bh * 0.42); // wings' shadow
+    rect(P.outline, L + 5, by + bh * 0.3 - 1, W - 10, bh * 0.42 + 2);
+    rect(P.snow1, L + 6, by + bh * 0.3, W - 12, bh * 0.42);
+    rect(P.snow2, L + 6, by + bh * 0.3, W - 12, 2);
+    for (let k = L + 10; k < R - 10; k += 6) if (Math.abs(k - cx) > bw / 2 + 4) rect(P.snow0, k, by + bh * 0.3 + bh * 0.42 - 3, 2, 2); // colonnade
+    rect('rgba(0,0,0,0.4)', cx - bw / 2 + 4, by + 4, bw, bh); // the residence
+    rect(P.outline, cx - bw / 2 - 1, by - 1, bw + 2, bh + 2);
+    rect(P.snow2, cx - bw / 2, by, bw, bh);
+    rect(P.snow1, cx - bw / 2 + 4, by + 4, bw - 8, bh - 8); // the roof inside its balustrade
+    rect(P.metal2, cx - bw / 2 + 8, by + bh / 2 - 1, bw - 16, 2); // the ridge
+    for (let k = 0; k < 4; k++) rect(P.snow0, cx - bw / 2 + 10 + k * ((bw - 24) / 3), by + 6, 4, 3); // chimneys
+    rect(P.outline, cx - 13, by - 9, 26, 10); rect(P.snow2, cx - 12, by - 8, 24, 9); // the north portico
+    for (let k = 0; k < 4; k++) rect(P.snow0, cx - 10 + k * 6, by - 7, 2, 2);
+    disc(P.outline, cx, by + bh, 15); disc(P.snow2, cx, by + bh, 14); disc(P.snow1, cx, by + bh, 10); // the south portico
+    rect(P.snow2, cx - 15, by + bh - 15, 30, 14);
+    for (let k = 0; k < 7; k++) { const a = Math.PI * (k / 6); dot(P.snow0, cx + Math.cos(a) * 12 - 1, by + bh + Math.sin(a) * 12 - 1, 2); }
+    rect(P.metal1, cx, by - 2, 1, 10); rect(P.red1, cx + 1, by - 2, 6, 2); rect(P.snow2, cx + 1, by, 6, 1); rect(P.navy2, cx + 1, by - 2, 3, 2); // the flag
+  };
+  /** The Colosseum over its block of old stone: the outer ring of arches, the tiers of seats, the arena floor gone,
+   *  so the passages under it show. */
+  const colosseum = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = extent(x, y, (i) => map.rows[Math.floor(i / w)][i % w] === 'r'), cx = ((x0 + x1 + 1) / 2) * T, cy = ((y0 + y1 + 1) / 2) * T;
+    const rx = ((x1 - x0 + 1) / 2) * T - 2, ry = ((y1 - y0 + 1) / 2) * T - 2;
+    oval('rgba(0,0,0,0.4)', cx + 4, cy + 4, rx, ry);
+    oval(P.outline, cx, cy, rx + 1, ry + 1);
+    oval(P.cream, cx, cy, rx, ry);
+    for (let k = 0; k < 80; k++) { const a = (k / 80) * Math.PI * 2; rect(P.khaki0, cx + Math.cos(a) * rx * 0.94 - 1, cy + Math.sin(a) * ry * 0.94 - 1, 2, 2); } // the arches
+    oval(P.khaki2, cx, cy, rx * 0.86, ry * 0.86);
+    for (const f of [0.8, 0.74, 0.68, 0.62]) { c.strokeStyle = P.khaki1; c.beginPath(); c.ellipse(cx, cy, rx * f, ry * f, 0, 0, 7); c.stroke(); } // the seats
+    oval(P.outline, cx, cy, rx * 0.56, ry * 0.56);
+    oval(P.desert0, cx, cy, rx * 0.54, ry * 0.54);
+    c.save();
+    c.beginPath(); c.ellipse(cx, cy, rx * 0.54, ry * 0.54, 0, 0, 7); c.clip();
+    for (let k = -ry; k < ry; k += 5) rect(P.desert1, cx - rx, cy + k, rx * 2, 3); // the passages under the floor
+    rect(P.outline, cx - rx, cy - 1, rx * 2, 2);
+    rect(P.brown1, cx + rx * 0.2, cy - ry, rx, ry * 2); rect(P.brown2, cx + rx * 0.2, cy - ry, 2, ry * 2); // a stretch of floor put back
+    c.restore();
+    // A bite out of the outer ring, where it fell in an earthquake.
+    c.save();
+    c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.ellipse(cx, cy, rx * 0.86, ry * 0.86, 0, 7, 0, true); c.clip();
+    oval(P.khaki2, cx - rx * 0.1, cy + ry * 1.05, rx * 0.6, ry * 0.32);
+    c.restore();
+  };
+  /** The scramble crossing round the safe zone (which sits in its middle, 6 tiles of road all round): a zebra
+   *  crossing from each corner of the junction in to the safe zone, on the slant. */
+  const scramble = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = extent(x, y, (i) => goal[i] === 1), M = 6;
+    const corners = [[x0, y0, -1, -1], [x1 + 1, y0, 1, -1], [x0, y1 + 1, -1, 1], [x1 + 1, y1 + 1, 1, 1]];
+    c.save();
+    c.strokeStyle = 'rgba(220, 221, 211, 0.8)';
+    c.lineWidth = 2;
+    for (const [cx, cy, dx, dy] of corners) {
+      const ax = (cx + dx * M) * T, ay = (cy + dy * M) * T, bx = cx * T - dx * 2, by = cy * T - dy * 2, len = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / len, ny = (bx - ax) / len;
+      for (let k = -3; k <= 3; k++) { c.beginPath(); c.moveTo(ax + nx * k * 4, ay + ny * k * 4); c.lineTo(bx + nx * k * 4, by + ny * k * 4); c.stroke(); }
+    }
+    c.restore();
+  };
+  /** The station roof: platforms and tracks running its length, a Yamanote train in at one of them. */
+  const rails = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = extent(x, y, (i) => map.rows[Math.floor(i / w)][i % w] === 's'), L = x0 * T + 4, R = (x1 + 1) * T - 4, top = y0 * T + 2, bottom = (y1 + 1) * T - 8;
+    rect(P.metal1, L, top, R - L, bottom - top);
+    let k = 0;
+    for (let px = L + 2; px + 36 <= R; px += 38, k++) {
+      rect(P.pave1, px, top, 12, bottom - top); rect(P.flash0, px, top, 1, bottom - top); rect(P.flash0, px + 11, top, 1, bottom - top); // a platform, yellow at its edges
+      for (const tx of [px + 13, px + 25]) {
+        for (let ty = top; ty < bottom; ty += 4) rect(P.brown0, tx, ty, 11, 2); // sleepers
+        rect(P.metal2, tx + 2, top, 1, bottom - top); rect(P.metal2, tx + 8, top, 1, bottom - top);
+      }
+      if (k === 1) for (let cy = top + 30; cy + 34 < bottom - 20; cy += 37) { // the train, car after car
+        rect(P.outline, px + 13, cy - 1, 11, 36);
+        rect(P.snow1, px + 14, cy, 9, 34); rect('#7fa83a', px + 14, cy + 3, 9, 3); rect(P.metal1, px + 16, cy + 8, 5, 20);
+      }
+    }
+  };
   for (const d of map.decor ?? []) {
     const { x, y } = d, r = rng(seedOf(x, y, 3));
+    // Landmarks, drawn whole wherever they are.
+    if (d.kind === 'whitehouse') { whiteHouse(x, y); continue; }
+    if (d.kind === 'colosseum') { colosseum(x, y); continue; }
+    if (d.kind === 'scramble') { scramble(x, y); continue; }
+    if (d.kind === 'rails') { rails(x, y); continue; }
     if (!WHERE[d.kind]?.includes(kindAt(x, y)) || fadeAt(x, y) > 0.4) continue; // nothing deep in the shadow
     if (d.kind === 'tree') {
       // A street tree in its own square of soil, its crown inside the tile.
@@ -394,6 +521,30 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       c.strokeStyle = P.flash0; c.lineWidth = 3; c.beginPath(); c.arc(x, y, 30, 0, 7); c.stroke();
       c.lineWidth = 1;
       rect(P.flash0, x - 10, y - 12, 4, 24); rect(P.flash0, x + 6, y - 12, 4, 24); rect(P.flash0, x - 6, y - 2, 12, 4);
+    } else if (d.kind === 'fountain') {
+      // A round stone basin, water in it, a jet in the middle.
+      disc('rgba(0,0,0,0.35)', x + 2, y + 2, 20);
+      disc(P.outline, x, y, 20); disc(P.cream, x, y, 19); disc(P.pave1, x, y, 16);
+      disc(P.teal0, x, y, 14); disc(P.teal1, x - 2, y - 2, 11);
+      c.strokeStyle = P.teal2; c.beginPath(); c.arc(x, y, 8, 0, 7); c.stroke();
+      disc(P.cream, x, y, 4); disc(P.snow2, x, y, 2);
+      for (let k = 0; k < 12; k++) { const a = r() * 7, rr = 5 + r() * 4; dot(P.snow2, x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    } else if (d.kind === 'flowers') {
+      // A bed of flowers in a stone edge: roses, tulips, white ones.
+      box(x - 22, y - 12, 44, 24, P.brown0, P.cream);
+      for (let k = 0; k < 90; k++) dot(r() < 0.3 ? P.olive2 : [P.red1, P.red2, P.flash1, P.maroon2, P.snow2][(r() * 5) | 0], x - 21 + r() * 42, y - 11 + r() * 22, r() < 0.4 ? 2 : 1);
+    } else if (d.kind === 'hachiko') {
+      // Hachiko on his plinth, waiting.
+      box(x - 6, y - 6, 12, 12, P.pave0, P.pave1);
+      rect(P.brown0, x - 4, y - 1, 7, 3); rect(P.brown0, x + 2, y - 3, 3, 3); rect(P.brown1, x + 3, y - 3, 1, 1); rect(P.brown0, x - 5, y - 2, 1, 2); // body, head, ear, tail
+    } else if (d.kind === 'billboard') {
+      // A video screen on the front, lit up, its glow on the roof round it.
+      const px = Math.floor(x / T) * T, py = Math.floor(y / T) * T, col = [P.navy2, P.teal2, P.red2, P.flash1, P.maroon2][(r() * 5) | 0];
+      rect('rgba(234, 223, 174, 0.12)', px - 2, py - 2, T + 4, T + 4);
+      rect(P.outline, px + 1, py + 2, T - 2, T - 5);
+      rect(col, px + 2, py + 3, T - 4, T - 7);
+      for (let k = py + 4; k < py + T - 4; k += 2) rect('rgba(0,0,0,0.18)', px + 2, k, T - 4, 1);
+      rect(P.flash1, px + 3 + ((r() * 6) | 0), py + 5, 3, 2);
     }
   }
 

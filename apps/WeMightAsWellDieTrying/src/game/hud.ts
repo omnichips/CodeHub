@@ -179,7 +179,7 @@ export class Hud {
           ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : [])),
         el('div', { className: 'row' },
           el('button', { type: 'button', textContent: 'Menu', onclick: () => this.on.menu('menu') }),
-          el('button', { type: 'button', textContent: 'Skill web', onclick: () => this.on.menu('tree') }),
+          el('button', { type: 'button', textContent: 'Skill tree', onclick: () => this.on.menu('tree') }),
           el('button', { type: 'button', className: 'go', textContent: 'Play again', onclick: () => this.on.again() })),
       );
     }

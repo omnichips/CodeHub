@@ -86,3 +86,8 @@ test('a save from before the skill web had levels gets back every chip it spent,
   assert.equal(s.name, 'Save');
   assert.ok(s.cleared['new-york'] && s.tutorialDone);
 });
+
+test('a New York map that was swapped for a city counts that city as cleared', () => {
+  const s = parse(JSON.stringify({ ...fresh(), cleared: { 'central-park': true, harlem: true, 'red-hook': true, 'wall-street': true, 'times-square': true } }))!;
+  assert.deepEqual(Object.keys(s.cleared).sort(), ['central-park', 'london', 'rome', 'tokyo', 'white-house']);
+});

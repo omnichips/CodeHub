@@ -2,14 +2,14 @@
 // persist(). On start the save opened most recently is the one in use.
 import brooklyn from '../data/maps/brooklyn.json' with { type: 'json' };
 import centralPark from '../data/maps/central-park.json' with { type: 'json' };
-import harlem from '../data/maps/harlem.json' with { type: 'json' };
+import london from '../data/maps/london.json' with { type: 'json' };
 import mainStreet from '../data/maps/main-street.json' with { type: 'json' };
 import newYork from '../data/maps/new-york.json' with { type: 'json' };
 import queens from '../data/maps/queens.json' with { type: 'json' };
-import redHook from '../data/maps/red-hook.json' with { type: 'json' };
-import timesSquare from '../data/maps/times-square.json' with { type: 'json' };
-import wallStreet from '../data/maps/wall-street.json' with { type: 'json' };
+import rome from '../data/maps/rome.json' with { type: 'json' };
+import tokyo from '../data/maps/tokyo.json' with { type: 'json' };
 import waves from '../data/waves.json' with { type: 'json' };
+import whiteHouse from '../data/maps/white-house.json' with { type: 'json' };
 import type { MapData } from '../sim/grid.ts';
 import { UNITS, type WavePlan } from '../sim/world.ts';
 import { build } from './progress.ts';
@@ -37,11 +37,11 @@ export const MAPS: { id: string; name: string; data: MapData; waves: WavePlan }[
   { id: 'new-york', name: 'New York', data: newYork, waves: waves['new-york'] }, // the city grid: three ways in
   // Maps 4 to 9 are drawn by scripts/maps.ts.
   { id: 'central-park', name: 'Central Park', data: centralPark, waves: waves['central-park'] }, // open ground between two avenues
-  { id: 'harlem', name: 'Harlem', data: harlem, waves: waves.harlem }, // a tight grid, ways in from the top and both sides
-  { id: 'red-hook', name: 'Red Hook Docks', data: redHook, waves: waves['red-hook'] }, // wide roads and container yards
-  { id: 'wall-street', name: 'Wall Street', data: wallStreet, waves: waves['wall-street'] }, // narrow canyons and alleys
+  { id: 'london', name: 'London', data: london, waves: waves.london }, // one long bridge, end to end, no buildings
+  { id: 'white-house', name: 'White House', data: whiteHouse, waves: waves['white-house'] }, // one open lawn, the horde along one whole side
+  { id: 'rome', name: 'Rome', data: rome, waves: waves.rome }, // Via Labicana bent into an M, the safe zone where it dips in the middle
   { id: 'queens', name: 'Queens Interchange', data: queens, waves: waves.queens }, // two highways meeting
-  { id: 'times-square', name: 'Times Square', data: timesSquare, waves: waves['times-square'] }, // the safe zone in the middle, the horde from every side
+  { id: 'tokyo', name: 'Tokyo', data: tokyo, waves: waves.tokyo }, // Shinjuku: the safe zone in the middle of the square, the horde from every side
 ];
 export const unlocked = (k: number) => k === 0 || !!profile.save.cleared[MAPS[k - 1].id];
 

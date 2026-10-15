@@ -64,6 +64,7 @@ function setupFrom(raw: unknown): Setup {
   };
 }
 const json = (text: string): unknown => { try { return JSON.parse(text); } catch { return undefined; } };
+const RENAMED: Record<string, string> = { harlem: 'london', 'red-hook': 'white-house', 'wall-street': 'rome', 'times-square': 'tokyo' };
 
 /** Reads a save from untrusted JSON (storage or an imported file). Anything unusable is dropped or reset, never
  *  trusted: unknown nodes, negative or non-number chips. Returns undefined if it is not a save at all. */
@@ -87,7 +88,8 @@ export function parse(text: string): Save | undefined {
       if (n && typeof lv === 'number' && lv > 0) skills[id] = Math.max(skills[id] ?? 0, Math.min(n.max, Math.floor(lv)));
     }
   }
-  const cleared = r.cleared && typeof r.cleared === 'object' ? Object.fromEntries(Object.entries(r.cleared).filter(([, v]) => v === true)) : {};
+  // Four New York maps were swapped for cities in October 2026; one cleared counts as the city now in its place.
+  const cleared = r.cleared && typeof r.cleared === 'object' ? Object.fromEntries(Object.entries(r.cleared).filter(([, v]) => v === true).map(([id]) => [RENAMED[id] ?? id, true])) : {};
   const st = (r.stats ?? {}) as Record<string, unknown>;
   return {
     version: VERSION,

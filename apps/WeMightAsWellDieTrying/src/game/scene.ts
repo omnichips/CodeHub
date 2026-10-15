@@ -86,8 +86,9 @@ export class Game extends Phaser.Scene {
   downs: { x: number; y: number; at: number }[] = []; // where they fell, marked on the map for a moment
   seen = 0; // zombies on screen this frame
   behind = -1e9; // when a frame last could not keep up with the speed asked for
+  muted = false; // the skill tree's demo plays without sound
 
-  constructor() { super('game'); }
+  constructor(key = 'game') { super(key); }
 
   init(data: { map?: string }) { this.mapId = data.map ?? this.mapId; }
 
@@ -526,7 +527,7 @@ export class Game extends Phaser.Scene {
   /** Corpses and blood where zombies fell, as the gore setting asks; the oldest fade out, and there is a cap. */
   spill() {
     const w = this.world, { gore, quality, bodies } = profile.settings, cap = Math.min(QUALITY[quality].corpses, bodies), life = CORPSE_LIFE[gore];
-    for (const d of w.deaths) play('die', this.near(d.x, d.y));
+    if (!this.muted) for (const d of w.deaths) play('die', this.near(d.x, d.y));
     if (gore !== 'none' && cap > 0)
       for (const d of w.deaths) {
         if (this.corpses.length >= cap) {

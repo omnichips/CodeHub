@@ -2,7 +2,8 @@
 // zone (no route finding per zombie); a soldier ordered across the map gets a small field of their own.
 
 /** `rows` of tiles: a building (`#`, or by kind: `b` brownstone, `a` apartments, `o` office, `g` parking deck, `h` shops,
- *  `m` hospital, `w` warehouse), `.` street, `,` paved plaza (a street to walk on), `t` a tree on grass,
+ *  `m` hospital, `w` warehouse, `r` old stone, `s` a station), `~` water and `f` a hedge (walls, but not buildings: nobody goes
+ *  in), `.` street, `,` paved plaza (a street to walk on), `t` a tree on grass, `l` mown lawn,
  *  `p` park, `S` where the horde enters, `E` the safe zone. `slots` are building tiles a soldier can man (windows,
  *  roofs); `props` are roadblocks already standing in the street; `decor` is only drawn. */
 export interface MapData {
@@ -14,7 +15,8 @@ export interface MapData {
   props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
   decor?: { kind: string; x: number; y: number }[];
 }
-export const BUILDING = '#boghmwa';
+export const BUILDING = '#boghmwars';
+export const BARRIER = '~f';
 
 export class Grid {
   readonly w: number;
@@ -39,6 +41,7 @@ export class Grid {
       [...row].forEach((c, x) => {
         const i = y * this.w + x;
         if (BUILDING.includes(c)) this.wall[i] = 1;
+        else if (BARRIER.includes(c)) this.wall[i] = 2; // a rocket flies over it, a generator cannot go in it
         if (c === 'E') { this.goal[i] = 1; this.goals.push(i); }
         if (c === 'S') this.spawns.push(i);
       }),

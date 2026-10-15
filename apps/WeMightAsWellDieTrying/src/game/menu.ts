@@ -1,23 +1,26 @@
 // The main menu: the city from above, drifting slowly, with a few zombies shambling along its streets, under an HTML
-// overlay. Main: new save, load a save, statistics, settings. Inside a save: its cities and its skill web.
+// overlay. Main: new save, load a save, statistics, settings. Inside a save: its cities and its skill tree.
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
 import { NODES } from '../meta/progress.ts';
+import { Grid } from '../sim/grid.ts';
 import { BODIES, exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
+import { paintMap } from './mapart.ts';
 import { play } from './sound.ts';
 import { skillWeb } from './tree.ts';
 
 export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug';
 
-/** Cities planned after the ones in MAPS, shown locked so the road ahead is visible. */
-const COMING = ['Tokyo Shinjuku'];
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
 /** Street lanes in the background picture's own pixels: [x0, y0, x1, y1] that a zombie walks along, either way. */
 const LANES = [[-40, 330, 1450, 340], [-40, 400, 1450, 392], [-40, 365, 1450, 372], [255, -40, 245, 810], [1150, -40, 1140, 810]];
 const BG_W = 1408, BG_H = 768;
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
+
+const THUMB_W = 240, THUMB_H = 150;
+const THUMBS = new Map<string, HTMLCanvasElement>(); // `${map}-${blood}`: painted once a session
 
 interface Walker { s: Phaser.GameObjects.Sprite; lane: number[]; t: number; speed: number; dir: 1 | -1 }
 
@@ -75,7 +78,7 @@ export class Menu extends Phaser.Scene {
   show(screen: Screen): void {
     if (screen === 'tree') return skillWeb(this, this.root, () => this.show('save'));
     const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug() }[screen]();
-    this.root.replaceChildren(panel); // each panel slides in (CSS)
+    this.root.replaceChildren(...[panel].flat()); // each panel slides in (CSS)
   }
 
   /** Fades the menu out and the city in. */
@@ -133,18 +136,53 @@ export class Menu extends Phaser.Scene {
     return el('div', { className: 'panel slots' }, this.head(mode === 'new' ? 'New save' : 'Load save', 'menu'), ...saves().map(row), file);
   }
 
-  /** Inside a save: its cities, how many zombies each sends per soldier you have, and the skill web. */
-  save(): HTMLElement {
-    const s = profile.save;
-    return el('div', { className: 'panel maps' },
-      this.head(s.name, 'menu'),
-      el('p', { className: 'chips' }, `${s.chips} chips`),
-      button('Skill web', () => this.show('tree')),
-      ...MAPS.map((m, k) => unlocked(k)
-        ? el('button', { type: 'button', className: 'map', onclick: () => this.play(m.id) }, m.name, el('small', {}, `${s.cleared[m.id] ? 'Cleared' : 'Not cleared yet'} · about ${perSoldier(k)} zombies per soldier`))
-        : el('button', { type: 'button', className: 'map', disabled: true }, m.name, el('small', {}, `Clear ${MAPS[k - 1].name} to unlock · about ${perSoldier(k)} per soldier`))),
-      ...COMING.map((name) => el('button', { type: 'button', className: 'map', disabled: true }, name, el('small', {}, 'Coming later'))),
-    );
+  /** Inside a save: its cities as a grid of cards, each with a picture of the map and how many zombies it sends per
+   *  soldier you have; the skill tree in the top right corner. */
+  save(): HTMLElement[] {
+    const s = profile.save, thumbs: [string, HTMLCanvasElement][] = [];
+    const cards = MAPS.map((m, k) => {
+      const open = unlocked(k), thumb = el('canvas', { className: 'thumb', width: THUMB_W, height: THUMB_H });
+      thumbs.push([m.id, thumb]);
+      return el('button', { type: 'button', className: `map${s.cleared[m.id] ? ' cleared' : ''}`, disabled: !open, onclick: () => this.play(m.id) },
+        thumb, el('i', { className: 'num' }, String(k + 1)),
+        el('b', {}, m.name),
+        el('small', {}, open ? `${s.cleared[m.id] ? 'Cleared' : 'Not cleared yet'} · ~${perSoldier(k)} per soldier` : `Clear ${MAPS[k - 1].name} to unlock`));
+    });
+    // The pictures are painted one a frame, so the screen shows at once and fills in.
+    const next = () => {
+      const [id, cv] = thumbs.shift() ?? [];
+      if (!id || !cv!.isConnected) return;
+      cv!.getContext('2d')!.drawImage(this.thumbnail(id), 0, 0);
+      cv!.classList.add('ready');
+      requestAnimationFrame(next);
+    };
+    requestAnimationFrame(next);
+    return [
+      el('div', { className: 'panel maps' }, this.head(s.name, 'menu'), el('p', { className: 'chips' }, `${s.chips} chips`), el('div', { className: 'grid' }, ...cards)),
+      button('Skill tree', () => this.show('tree'), 'go corner'),
+    ];
+  }
+
+  /** A small picture of a map: painted as in the game, cropped to the stretch where the line gets held, with the
+   *  ways in marked red. Kept, and the full-size painting let go. */
+  thumbnail(id: string) {
+    const blood = profile.settings.gore !== 'none', cached = THUMBS.get(`${id}-${blood}`);
+    if (cached) return cached;
+    const m = MAPS.find((x) => x.id === id)!, grid = new Grid(m.data), key = `map-${id}-${blood}`, had = this.textures.exists(key);
+    paintMap(this, m.data, grid, key, blood);
+    const art = this.textures.get(key).getSourceImage() as HTMLCanvasElement, T = grid.tile, W = grid.w * T, H = grid.h * T;
+    const z = Math.max(THUMB_W / W, THUMB_H / H), g = grid.goals;
+    // The same spot the game opens on: halfway between the middle of the map and the safe zone.
+    const gx = (g.reduce((n, i) => n + (i % grid.w), 0) / g.length + 0.5) * T, gy = (g.reduce((n, i) => n + Math.floor(i / grid.w), 0) / g.length + 0.5) * T;
+    const sx = Math.max(0, Math.min(W - THUMB_W / z, (gx + W / 2) / 2 - THUMB_W / z / 2)), sy = Math.max(0, Math.min(H - THUMB_H / z, (gy + H / 2) / 2 - THUMB_H / z / 2));
+    const out = el('canvas', { width: THUMB_W, height: THUMB_H }), c = out.getContext('2d')!;
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(art, sx, sy, THUMB_W / z, THUMB_H / z, 0, 0, THUMB_W, THUMB_H);
+    c.fillStyle = 'rgba(201, 71, 58, 0.85)';
+    for (const i of grid.spawns) c.fillRect(((i % grid.w) * T - sx) * z, (Math.floor(i / grid.w) * T - sy) * z, Math.ceil(T * z), Math.max(2, Math.ceil(T * z)));
+    if (!had) this.textures.remove(key); // a big canvas: the game paints it again when it is played
+    THUMBS.set(`${id}-${blood}`, out);
+    return out;
   }
 
   stats(): HTMLElement {

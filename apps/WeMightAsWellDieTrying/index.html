@@ -94,8 +94,23 @@
       #menu .panel, #menu .panel button { touch-action: pan-y; overscroll-behavior: contain; }
       #menu .go { background: #7d3a33; letter-spacing: 0.06em; text-transform: uppercase; }
       @media (hover: hover) { #menu .go:not(:disabled):hover { background: #9c4f44; } }
-      #menu .map { display: flex; flex-direction: column; justify-content: center; padding: 6px 12px; }
-      #menu .map small { color: var(--dim); font-size: 11px; }
+      /* The cities: a grid of cards, each with a picture of its map. The skill tree waits in the top right corner. */
+      #menu:has(.maps) { background: linear-gradient(90deg, rgba(20, 21, 22, 0.92), rgba(20, 21, 22, 0.72) 70%, rgba(20, 21, 22, 0.55)); }
+      #menu .maps { width: min(1040px, 100%); margin: 0 auto; }
+      #menu .maps .head { padding-right: 130px; } /* clear of the corner button */
+      #menu .maps .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 10px; padding: 4px 2px 8px; }
+      #menu .map { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 0 8px; min-height: 0; text-align: left; overflow: hidden;
+        background: var(--panel); transition: transform 0.14s ease-out, border-color 0.14s, box-shadow 0.14s; }
+      #menu .map .thumb { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; margin-bottom: 4px; background: #1a1b1c; opacity: 0; transition: opacity 0.3s; }
+      #menu .map .thumb.ready { opacity: 1; }
+      #menu .map b { padding: 0 8px; font-size: 13px; }
+      #menu .map small { padding: 0 8px; color: var(--dim); font-size: 10px; }
+      #menu .map .num { position: absolute; top: 4px; left: 4px; padding: 3px 5px; font: 700 11px/1 ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: var(--ink); background: var(--line); }
+      #menu .map.cleared .num { background: var(--olive-lit); }
+      #menu .map:disabled .thumb { filter: grayscale(1) brightness(0.55); }
+      @media (hover: hover) { #menu .map:not(:disabled):hover { transform: translateY(-3px); background: var(--panel); border-color: #c4a058; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4); } }
+      #menu .map:active:not(:disabled) { transform: scale(0.97); }
+      #menu .corner { position: absolute; z-index: 2; top: var(--top); right: var(--right); min-height: 44px; animation: pop 0.22s ease-out; }
       #menu button:disabled { opacity: 0.45; cursor: default; }
       #menu .settings { width: min(440px, 100%); gap: 6px; }
       #menu .head { display: flex; gap: 10px; align-items: center; }
@@ -106,38 +121,71 @@
       #menu .danger { background: #6b2a25; }
       #menu input[type=range] { width: 50%; accent-color: #c4a058; min-height: 32px; margin: 0; }
 
-      /* Skill web: a bar on top, the plane filling the screen, the picked node's card at the bottom. */
+      /* Skill tree: a bar on top, the tree of cards filling the screen, the picked card's details at the bottom. */
       #menu:has(.web) { padding: 0; background: rgba(20, 21, 22, 0.8); }
       #menu .web { position: absolute; inset: 0; }
       #menu .web .top { position: absolute; z-index: 1; top: var(--top); left: var(--left); right: var(--right); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
       #menu .web .top .chips { margin: 0; background: var(--panel); border: 2px solid var(--line); padding: 9px 10px; }
+      #menu .web .chips.spend { animation: spend 0.5s ease-out; }
+      @keyframes spend { 30% { color: #c9473a; transform: scale(1.08); } }
       #menu .web .tabs { display: flex; gap: 4px; margin-left: auto; }
       #menu .view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
-      #menu .plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; } /* sized to the web in tree.ts */
+      #menu .plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; } /* sized to the tree in tree.ts */
       #menu .plane svg { position: absolute; inset: 0; pointer-events: none; }
-      #menu .plane line { stroke: #3a3b3c; stroke-width: 3; }
-      #menu .plane line.open { stroke: var(--dim); }
-      #menu .plane line.owned { stroke: var(--ink); }
-      #menu .node { position: absolute; width: 40px; height: 40px; min-width: 0; min-height: 0; padding: 0; transform: translate(-50%, -50%); background: var(--panel); border-color: #3a3b3c; }
-      #menu .node.big { width: 54px; height: 54px; }
-      #menu .node img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; vertical-align: middle; }
-      #menu .node.big img { width: 44px; height: 44px; }
-      #menu .node small { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); font-size: 10px; color: var(--dim); pointer-events: none; }
+      #menu .plane path { fill: none; stroke: #3a3b3c; stroke-width: 2.5; transition: stroke 0.15s, stroke-width 0.15s; }
+      #menu .plane path.open { stroke: var(--dim); }
+      #menu .plane path.owned { stroke: var(--ink); }
+      #menu .plane path.trail { stroke: #c4a058; stroke-width: 4; }
+      #menu .plane path.drawn { stroke-dasharray: 700; animation: draw 0.7s ease-out; }
+      @keyframes draw { from { stroke-dashoffset: 700; } }
+      #menu .node { position: absolute; display: flex; align-items: center; gap: 6px; width: 176px; height: 46px; min-width: 0; min-height: 0; padding: 0 8px 0 4px;
+        text-align: left; overflow: hidden; background: var(--panel); border-color: #3a3b3c; transition: transform 0.12s ease-out, border-color 0.12s, box-shadow 0.12s, background-color 0.15s; }
+      #menu .node img { flex: none; width: 34px; height: 34px; image-rendering: pixelated; pointer-events: none; }
+      #menu .node span { display: flex; flex-direction: column; gap: 1px; min-width: 0; pointer-events: none; }
+      #menu .node b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #menu .node small { font-size: 10px; color: var(--dim); white-space: nowrap; }
       #menu .node.owned { background: var(--olive); border-color: var(--ink); }
+      #menu .node.owned small { color: var(--ink); }
+      #menu .node.part { background: #2c3220; }
       #menu .node.open { border-color: var(--dim); }
       #menu .node.afford { border-color: #c4a058; }
-      #menu .node.part { background: #2c3220; }
-      #menu .node .lv { position: absolute; right: -6px; top: -8px; font: 700 9px/1 ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: var(--ink); background: var(--line); padding: 2px 3px; pointer-events: none; }
-      #menu .node .lv:empty { display: none; }
       #menu .node.afford small { color: #c4a058; }
       #menu .node.locked img { opacity: 0.35; filter: grayscale(1); }
-      #menu .node.picked { outline: 3px solid #c9473a; outline-offset: 2px; }
-      #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(560px, calc(100vw - 16px)); box-sizing: border-box;
+      #menu .node.locked b { color: var(--dim); }
+      #menu .node.trail { border-color: #c4a058; }
+      @media (hover: hover) {
+        #menu .node:hover { z-index: 1; transform: translateY(-2px); border-color: var(--ink); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(196, 160, 88, 0.3); background: #2a2c2e; }
+        #menu .node.owned:hover { background: var(--olive-lit); }
+      }
+      #menu .node:active:not(:disabled) { transform: scale(0.95); transition-duration: 0.05s; }
+      #menu .node.picked { z-index: 1; outline: 3px solid #c9473a; outline-offset: 2px; animation: picked 1.4s ease-in-out infinite; }
+      @keyframes picked { 50% { outline-color: rgba(201, 71, 58, 0.4); outline-offset: 4px; } }
+      #menu .node.bought, #menu .node.picked.bought { animation: bought 0.55s ease-out, picked 1.4s 0.55s ease-in-out infinite; }
+      @keyframes bought { 30% { transform: scale(1.12); background: #6b7a3c; box-shadow: 0 0 0 5px rgba(196, 160, 88, 0.55), 0 0 26px #c4a058; } }
+      #menu .node .ripple { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: rgba(234, 223, 174, 0.4); pointer-events: none; animation: ripple 0.5s ease-out forwards; }
+      @keyframes ripple { to { transform: scale(32); opacity: 0; } }
+      #menu .plane .spent { position: absolute; z-index: 2; font: 700 13px ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: #c4a058; text-shadow: 2px 2px 0 var(--line); pointer-events: none; animation: spent 0.9s ease-out forwards; }
+      @keyframes spent { to { transform: translateY(-30px); opacity: 0; } }
+      #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(600px, calc(100vw - 16px)); box-sizing: border-box;
         display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--panel); border: 2px solid var(--line); }
       #menu .info img { width: 40px; height: 40px; image-rendering: pixelated; }
       #menu .info div { flex: 1; }
       #menu .info p { margin: 2px 0 0; color: var(--dim); line-height: 1.35; }
       #menu .info > p { margin: 0; }
+      /* The eye beside a soldier: watch him fight. */
+      #menu .info .eye { flex: none; display: grid; place-items: center; width: 44px; height: 40px; padding: 0; background: #2f3a54; border-color: #475675; }
+      #menu .info .eye svg { width: 24px; height: 24px; }
+      @media (hover: hover) { #menu .info .eye:hover { background: #475675; } }
+      #menu .demo { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+        padding: var(--top) var(--right) var(--bottom) var(--left); background: rgba(10, 10, 11, 0.72); animation: fade 0.18s ease-out; }
+      #menu .demo .box { display: flex; flex-direction: column; gap: 6px; width: min(780px, 100%); max-height: 100%; box-sizing: border-box; padding: 8px; background: #141516; border: 2px solid #c4a058; animation: pop 0.18s ease-out; }
+      #menu .demo .bar { display: flex; align-items: center; gap: 10px; }
+      #menu .demo .bar span { flex: 1; color: var(--dim); }
+      #menu .demo .screen { position: relative; width: 100%; aspect-ratio: 5 / 2; max-height: calc(100vh - 130px); border: 2px solid var(--line); background: var(--line); }
+      #menu .demo .canvas { position: absolute; inset: 0; }
+      #menu .demo .canvas canvas { display: block; }
+      #menu .demo p { margin: 0; color: var(--dim); line-height: 1.35; }
+      @keyframes fade { from { opacity: 0; } }
       /* A phone held upright: ask for it sideways (the game is landscape only). */
       #turn { display: none; position: fixed; inset: 0; z-index: 10; flex-direction: column; gap: 20px; align-items: center; justify-content: center; background: #232526; text-align: center; font-size: 16px; }
       #turn .phone { width: 34px; height: 58px; border: 3px solid var(--ink); border-radius: 6px; animation: turn 2.4s ease-in-out infinite; }
@@ -159,7 +207,6 @@
       @keyframes panel-in { from { opacity: 0; transform: translateX(-18px); } }
       #menu { transition: opacity 0.35s; }
       #menu.leaving { opacity: 0; pointer-events: none; }
-      #menu .node:active:not(:disabled) { transform: translate(-50%, -50%) scale(0.92); }
       #menu .slots { width: min(520px, 100%); }
       #menu .slotrow { display: flex; gap: 6px; }
       #menu .slotrow .slot { flex: 1; }
