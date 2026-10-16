@@ -12,7 +12,7 @@ import {
   type BlockKind, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
 import { Hud, type Group } from './hud.ts';
-import { hordeLevel, play } from './sound.ts';
+import { hordeLevel, music, play } from './sound.ts';
 
 /** The order things appear in the bar. Only what the skill web has unlocked is shown. */
 const ORDER = [...Object.keys(UNITS).filter((k) => k !== 'turret'), 'plastic', 'wood', 'sandbags', 'car', 'cement', ...Object.keys(STRUCTS), ...Object.keys(USABLES)];
@@ -30,7 +30,7 @@ const TUTORIAL = [
  *  a slow device runs slower than the speed asked for, and still draws, rather than freezing up. */
 const STEP_BUDGET = 25;
 const MAX_ZOOM = 4;
-const HUD_TOP = 56, HUD_BOTTOM = 104; // screen pixels the status row and the bar cover: the map can come out from under them
+const HUD_TOP = 56, HUD_BOTTOM = 104; // screen pixels the status row and the bar cover, until the HUD is there to measure
 const LIFT = 36; // a finger drags things this far above itself, so it does not hide where they go
 const GRAB = { touch: 34, mouse: 22 }; // how near (screen pixels) a soldier or his handle has to be to pick it up
 const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
@@ -145,6 +145,8 @@ export class Game extends Phaser.Scene {
       skip: () => this.endTutorial(),
     });
     this.events.once('shutdown', () => { this.hud.destroy(); hordeLevel(0); });
+    this.setZoom(this.cameras.main.zoom); // again, now the bars can be measured
+    music('game');
     this.input.keyboard?.on('keydown-R', () => {
       if (this.drag?.kind === 'place') this.turned = !this.turned;
       else if (this.canTurn) this.act('Turn');
@@ -290,9 +292,9 @@ export class Game extends Phaser.Scene {
   /** Out until the whole map fits between the status row and the bar, in to MAX_ZOOM. The map's top and bottom edges
    *  can be pulled out from under those bars; a map narrower or shorter than the room for it sits in its middle. */
   setZoom(z: number) {
-    const cam = this.cameras.main, { mapW, mapH } = this, room = Math.max(1, cam.height - HUD_TOP - HUD_BOTTOM);
+    const cam = this.cameras.main, { mapW, mapH } = this, bars = this.bars(), room = Math.max(1, cam.height - bars.top - bars.bottom);
     cam.setZoom(Phaser.Math.Clamp(z, Math.min(cam.width / mapW, room / mapH), MAX_ZOOM));
-    const vw = cam.width / cam.zoom, vh = cam.height / cam.zoom, top = HUD_TOP / cam.zoom, bottom = HUD_BOTTOM / cam.zoom;
+    const vw = cam.width / cam.zoom, vh = cam.height / cam.zoom, top = bars.top / cam.zoom, bottom = bars.bottom / cam.zoom;
     const y = mapH + top + bottom > vh ? -top : mapH / 2 - top - (vh - top - bottom) / 2;
     cam.setBounds(Math.min(0, (mapW - vw) / 2), y, Math.max(mapW, vw), Math.max(mapH + top + bottom, vh));
   }
@@ -309,8 +311,12 @@ export class Game extends Phaser.Scene {
     }
     this.overview = { zoom: cam.zoom, x: cam.midPoint.x, y: cam.midPoint.y };
     this.setZoom(0);
-    cam.centerOn(this.mapW / 2, this.mapH / 2 + (HUD_BOTTOM - HUD_TOP) / 2 / cam.zoom);
+    const bars = this.bars();
+    cam.centerOn(this.mapW / 2, this.mapH / 2 + (bars.bottom - bars.top) / 2 / cam.zoom);
   }
+
+  /** How much of the screen the controls cover at the top and bottom, in screen pixels (the canvas is the page's size). */
+  bars() { return this.hud?.margins() ?? { top: HUD_TOP, bottom: HUD_BOTTOM }; }
 
   toWorld(sx: number, sy: number): [number, number] {
     const cam = this.cameras.main;

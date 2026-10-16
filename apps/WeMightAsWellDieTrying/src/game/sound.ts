@@ -5,12 +5,16 @@
 //  - a cap on how many copies of one sound, and how many sounds in all, play at once;
 //  - every copy plays slightly higher or lower;
 //  - the more is going on, the more everything is turned down (ducking), and a compressor catches the peaks.
-// Browsers only start audio from a tap or a key, so nothing is made until the first one.
+// Browsers only start audio from a tap or a key, so nothing is made until the first one. A phone counts a tap when the
+// finger lifts, not when it lands. An iPhone's web audio obeys its ring/silent switch, so the game asks for the media
+// channel instead (like a video): sound plays with the switch on silent.
 import { profile } from '../meta/profile.ts';
 import a10 from '../sounds/a10.mp3';
 import alarm from '../sounds/alarm.mp3';
+import panic from '../sounds/city-panic.mp3';
 import explosion from '../sounds/explosion.mp3';
 import horde from '../sounds/horde.mp3';
+import floorboard from '../sounds/last-floorboard.mp3';
 import missile from '../sounds/missile.mp3';
 import call from '../sounds/zombie-call.mp3';
 import dying from '../sounds/zombie-dying.mp3';
@@ -89,12 +93,27 @@ function make(c: AudioContext, r: Recipe) {
   return b;
 }
 
+/** A moment of silence as a WAV file. Played through an <audio> element on a tap, it moves an older iPhone's web audio
+ *  to the media channel (newer ones have navigator.audioSession for that). */
+function silence() {
+  const n = 1600, b = new ArrayBuffer(44 + n), v = new DataView(b), text = (at: number, t: string) => [...t].forEach((ch, k) => v.setUint8(at + k, ch.charCodeAt(0)));
+  text(0, 'RIFF'); v.setUint32(4, 36 + n, true); text(8, 'WAVE'); text(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); text(36, 'data'); v.setUint32(40, n, true);
+  new Uint8Array(b, 44).fill(128); // 8-bit silence
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+
 function unlock() {
   if (!ctx) {
     // Older iPhones only have the prefixed one; with neither, the game is silent.
     const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Context) return;
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = 'playback';
+    else if (navigator.maxTouchPoints > 0) { const quiet = new Audio(silence()); quiet.setAttribute('playsinline', ''); void quiet.play().catch(() => {}); }
     ctx = new Context();
+    // Each track played once inside this tap, so a phone lets it start later without one.
+    for (const url of new Set(Object.values(SCORES).flat().map(([u]) => u))) track(ctx, url);
     const squash = ctx.createDynamicsCompressor();
     bus = ctx.createGain();
     bus.connect(squash).connect(ctx.destination);
@@ -115,9 +134,57 @@ function unlock() {
         }
       }).catch(() => { /* no file, no sound */ });
   }
-  if (ctx.state !== 'running') void ctx.resume();
+  if (ctx.state !== 'running') void ctx.resume().catch(() => { /* not a tap that counts: the next one */ });
+  cue();
 }
-for (const e of ['pointerdown', 'touchend', 'keydown']) addEventListener(e, unlock, { capture: true });
+
+// ---- Music ----
+// Streamed through <audio> elements into the mix, not decoded: minutes of music decoded would fill a phone's memory.
+// The menu has The Last Floorboard over a city in panic (sirens, screaming; the recording's first 5 and last 23 seconds
+// cut); a fight has the city in panic alone, at full volume. Changing screens crossfades from one to the other.
+
+/** Each screen's tracks, with each one's share of the music volume. */
+const SCORES = { menu: [[floorboard, 1], [panic, 0.5]], game: [[panic, 1]] } as const satisfies Record<string, readonly (readonly [string, number])[]>;
+const tracks = new Map<string, { el: HTMLAudioElement; gain: GainNode }>();
+let score: keyof typeof SCORES | undefined;
+
+function track(c: AudioContext, url: string) {
+  let t = tracks.get(url);
+  if (t) return t;
+  const el = new Audio(url), gain = c.createGain();
+  el.loop = true;
+  el.preload = 'auto';
+  el.setAttribute('playsinline', '');
+  gain.gain.value = 0;
+  c.createMediaElementSource(el).connect(gain).connect(c.destination);
+  tracks.set(url, (t = { el, gain }));
+  void el.play().then(() => { if (!wanted(url)) el.pause(); }, () => {});
+  return t;
+}
+const wanted = (url: string) => !!score && SCORES[score].some(([u]) => u === url);
+
+/** Plays a screen's music: 'menu' or 'game' (it starts with the first tap if there has been none yet). */
+export function music(which: keyof typeof SCORES) {
+  score = which;
+  cue();
+}
+
+/** Fades the wanted tracks in to the music volume and the rest out, pausing them once they are quiet. */
+function cue() {
+  if (!ctx || !score) return;
+  const now = ctx.currentTime, { master, music: level } = profile.settings;
+  for (const [url, t] of tracks) {
+    const share = SCORES[score].find(([u]) => u === url)?.[1] ?? 0;
+    t.gain.gain.setTargetAtTime(master * level * share, now, share ? 0.8 : 0.5);
+    if (share && t.el.paused) void t.el.play().catch(() => {});
+    if (!share && !t.el.paused) setTimeout(() => { if (!wanted(url)) t.el.pause(); }, 2500);
+  }
+}
+
+/** The settings changed: the music follows its volume at once. */
+export const retune = () => cue();
+// The events a browser lets start audio: a finger lifting, a click, a key (and a mouse button going down).
+for (const e of ['pointerup', 'touchend', 'click', 'keydown', 'mousedown']) addEventListener(e, unlock, { capture: true });
 
 /** Plays the noise `kind` (see World.sounds). `near` is 1 on screen, less the farther off it is; `size` a blast radius. */
 export function play(kind: string, near = 1, size = 0) {
@@ -183,4 +250,8 @@ function mix(count: number) {
 }
 
 // A hidden tab goes quiet (and the looping growl with it) until it is back.
-addEventListener('visibilitychange', () => { if (ctx) void (document.hidden ? ctx.suspend() : ctx.resume()); });
+addEventListener('visibilitychange', () => {
+  if (!ctx) return;
+  void (document.hidden ? ctx.suspend() : ctx.resume()).catch(() => {});
+  for (const [url, t] of tracks) if (document.hidden) t.el.pause(); else if (wanted(url)) void t.el.play().catch(() => {});
+});

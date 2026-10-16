@@ -12,6 +12,7 @@ export interface Settings {
   bodies: number; // most dead bodies left lying at once (fewer is lighter on a slow device); 0 for none
   master: number; // 0 to 1
   sfx: number;
+  music: number;
 }
 export interface Stats {
   runs: number;
@@ -42,7 +43,7 @@ const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
 export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now() });
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8 });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6 });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
@@ -116,6 +117,7 @@ export function settingsFrom(raw: unknown): Settings {
     bodies: BODIES.includes(s.bodies as number) ? (s.bodies as number) : base.bodies,
     master: unit(s.master, base.master),
     sfx: unit(s.sfx, base.sfx),
+    music: unit(s.music, base.music),
   };
 }
 

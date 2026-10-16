@@ -128,6 +128,14 @@ export class Hud {
 
   destroy() { this.root.replaceChildren(); }
 
+  /** How far the controls reach in from the top and bottom of the screen (CSS pixels): the status row and time
+   *  controls above, the bar below. Measured, since a phone's fonts or safe areas can make them bigger. */
+  margins() {
+    const rect = (sel: string) => this.root.querySelector(sel)?.getBoundingClientRect();
+    const status = rect('.status'), time = rect('.time'), dock = rect('.dock');
+    return { top: Math.max(status?.bottom ?? 0, time?.bottom ?? 0) + 8, bottom: dock ? innerHeight - dock.top + 8 : 0 };
+  }
+
   /** A big title across the screen that fades in and out by itself: the city at the start, each wave as it comes. */
   banner(title: string, sub: string) {
     this.banners.replaceChildren(el('div', {}, el('h2', {}, title), el('p', {}, sub))); // a new child restarts the animation

@@ -83,13 +83,15 @@
 
       /* Main menu, map select and settings: one panel at a time, on the left, over the drifting city. */
       #menu { position: fixed; inset: 0; display: flex; align-items: center; padding: var(--top) var(--right) var(--bottom) var(--left);
-        background: linear-gradient(90deg, rgba(12, 12, 13, 0.97) 0, rgba(12, 12, 13, 0.9) 420px, rgba(12, 12, 13, 0.72) 100%); }
+        background: linear-gradient(90deg, rgba(12, 12, 13, 0.86) 0, rgba(12, 12, 13, 0.6) 420px, rgba(12, 12, 13, 0.22) 100%); }
       #menu .panel { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); max-height: 100%; overflow-y: auto; margin-left: 4vw; }
       #menu h1 { margin: 0 0 4px; font-size: clamp(18px, 3.4vw, 26px); line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
       #menu h1 span { display: block; font-size: clamp(30px, 7vw, 52px); color: #c9473a; text-shadow: 3px 3px 0 var(--line); }
       #menu h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.04em; }
       #menu .chips { margin: 0 0 8px; color: #c4a058; }
-      #menu .panel > button { min-height: 46px; text-align: left; }
+      #menu .panel > button, #menu .pair > button { min-height: 46px; text-align: left; }
+      #menu .pair { display: flex; gap: 8px; }
+      #menu .pair > button { flex: 1; }
       /* A long list (the cities) scrolls with a finger, buttons included. */
       #menu .panel, #menu .panel button { touch-action: pan-y; overscroll-behavior: contain; }
       #menu .go { background: #7d3a33; letter-spacing: 0.06em; text-transform: uppercase; }

@@ -1,5 +1,5 @@
 // The main menu: a ruined city from above (game/menucity.ts), burning and drifting slowly, a few zombies shambling along its streets, under an HTML
-// overlay. Main: continue the last save, new save, load a save, statistics, settings. Inside a save: its cities and its skill tree.
+// overlay. Main: continue the last save, new save or load a save, settings (statistics inside). Inside a save: its cities and its skill tree.
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, lastPlayed, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
@@ -10,7 +10,7 @@ import { el } from './hud.ts';
 import { ambience } from './ambience.ts';
 import { drawn, paintMap } from './mapart.ts';
 import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
-import { play } from './sound.ts';
+import { music, play, retune } from './sound.ts';
 import { skillWeb } from './tree.ts';
 
 export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug';
@@ -62,6 +62,7 @@ export class Menu extends Phaser.Scene {
     this.root.classList.remove('leaving');
     this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; });
     this.show(this.open);
+    music('menu');
   }
 
   /** The city covers the screen with room to spare, and the view drifts across that spare room. */
@@ -101,9 +102,7 @@ export class Menu extends Phaser.Scene {
       el('h1', {}, 'We Might As Well', el('br'), el('span', {}, 'Die Trying')),
       // Straight back into the save played last.
       ...(last ? [el('button', { type: 'button', className: 'slot go', onclick: () => { open(k); this.show('save'); } }, `Continue: ${last.name}`, el('small', {}, summary(last)))] : []),
-      button('New save', () => this.show('new'), last ? '' : 'go'),
-      button('Load save', () => this.show('load')),
-      button('Statistics', () => this.show('stats')),
+      el('div', { className: 'pair' }, button('New save', () => this.show('new'), last ? '' : 'go'), button('Load save', () => this.show('load'))),
       button('Settings', () => { this.settingsFrom = 'menu'; this.show('settings'); }),
     );
   }
@@ -198,7 +197,7 @@ export class Menu extends Phaser.Scene {
     const table = el('table', {},
       el('tr', {}, el('th'), ...all.map(([name]) => el('th', {}, name)), ...(both ? [el('th', {}, 'All')] : [])),
       ...STATS.map(([f, label]) => el('tr', {}, el('th', {}, label), ...all.map(([, st]) => cell(f, st)), ...(both ? [cell(f, total)] : []))));
-    return el('div', { className: 'panel stats' }, this.head('Statistics', 'menu'), all.length ? table : el('p', {}, 'No saves yet: start one and fight.'));
+    return el('div', { className: 'panel stats' }, this.head('Statistics', 'settings'), all.length ? table : el('p', {}, 'No saves yet: start one and fight.'));
   }
 
   settings(): HTMLElement {
@@ -207,9 +206,10 @@ export class Menu extends Phaser.Scene {
     const choice = (label: string, k: 'gore' | 'quality', options: string[]) =>
       el('div', { className: 'row' }, el('span', {}, label), el('div', { className: 'seg' },
         ...options.map((o) => el('button', { type: 'button', textContent: o[0].toUpperCase() + o.slice(1), ariaPressed: String(s[k] === o), onclick: () => set(k, o as never) }))));
-    const volume = (label: string, k: 'master' | 'sfx') => {
+    const volume = (label: string, k: 'master' | 'sfx' | 'music') => {
       const input = el('input', { type: 'range', min: '0', max: '100', value: String(Math.round(s[k] * 100)), ariaLabel: label });
-      input.onchange = () => { s[k] = Number(input.value) / 100; persist(); play('rifleman'); }; // a shot to hear the level by
+      input.oninput = () => { s[k] = Number(input.value) / 100; retune(); }; // the music follows the slider
+      input.onchange = () => { s[k] = Number(input.value) / 100; persist(); retune(); if (k !== 'music') play('rifleman'); }; // a shot to hear the level by
       return el('div', { className: 'row' }, el('span', {}, label), input);
     };
     return el('div', { className: 'panel settings' },
@@ -224,8 +224,11 @@ export class Menu extends Phaser.Scene {
         el('button', { type: 'button', textContent: 'On', ariaPressed: String(s.lefty), onclick: () => set('lefty', true) }))),
       volume('Master volume', 'master'),
       volume('Effects volume', 'sfx'),
+      volume('Music volume', 'music'),
       this.storage(),
+      el('div', { className: 'row' }, el('span', {}, 'Every save, side by side'), el('div', { className: 'seg' }, button('Statistics', () => this.show('stats')))),
       el('div', { className: 'row' }, el('span', {}, 'Cheats for testing'), el('div', { className: 'seg' }, button('Debug', () => { this.note = ''; this.show('debug'); }))),
+      el('p', { className: 'note' }, `Build ${__BUILD__}`), // which version this device is running
     );
   }
 
