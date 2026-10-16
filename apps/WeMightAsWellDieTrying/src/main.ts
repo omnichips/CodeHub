@@ -21,3 +21,12 @@ const game = new Phaser.Game({
   scene: q.has('art') ? View : q.has('play') ? [Game, Menu] : [Menu, Game], // the first one starts
 });
 watchForCrashes(game);
+
+// An iPhone zooms the page itself on a pinch, whatever the viewport tag says, and the bottom of the game is then off the
+// screen with no way back to it. The game does its own pinch, so the page's is stopped.
+for (const e of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(e, (ev) => ev.preventDefault(), { passive: false });
+document.addEventListener('touchmove', (ev) => { if (ev.touches.length > 1) ev.preventDefault(); }, { passive: false });
+// It also reports the old size for a moment after the phone turns: measure again as it settles.
+const settle = () => { for (const ms of [100, 400, 1000]) setTimeout(() => game.scale.refresh(), ms); };
+addEventListener('orientationchange', settle);
+visualViewport?.addEventListener('resize', settle);

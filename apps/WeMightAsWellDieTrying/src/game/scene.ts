@@ -273,9 +273,10 @@ export class Game extends Phaser.Scene {
   setupCamera() {
     const cam = this.cameras.main;
     this.setZoom(this.scale.height / 480);
-    const fit = () => this.setZoom(cam.zoom); // a phone turned or a window resized
+    const fit = () => this.setZoom(cam.zoom); // a phone turned, a window resized, or the part of the page on screen changed
     this.scale.on('resize', fit);
-    this.events.once('shutdown', () => this.scale.off('resize', fit));
+    visualViewport?.addEventListener('resize', fit);
+    this.events.once('shutdown', () => { this.scale.off('resize', fit); visualViewport?.removeEventListener('resize', fit); });
     // Halfway between the middle of the map and the safe zone, where the line will be held: on the street nearest it,
     // not on a roof in the dark.
     const { goals: g, tile: T, w, h, wall } = this.world.grid;
@@ -316,7 +317,11 @@ export class Game extends Phaser.Scene {
   }
 
   /** How much of the screen the controls cover at the top and bottom, in screen pixels (the canvas is the page's size). */
-  bars() { return this.hud?.margins() ?? { top: HUD_TOP, bottom: HUD_BOTTOM }; }
+  bars() {
+    if (!this.hud) return { top: HUD_TOP, bottom: HUD_BOTTOM };
+    const canvas = this.game.canvas.getBoundingClientRect(), v = visualViewport;
+    return this.hud.margins(canvas, { top: Math.max(canvas.top, v?.offsetTop ?? 0), bottom: Math.min(canvas.bottom, v ? v.offsetTop + v.height : innerHeight) });
+  }
 
   toWorld(sx: number, sy: number): [number, number] {
     const cam = this.cameras.main;

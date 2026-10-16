@@ -128,12 +128,16 @@ export class Hud {
 
   destroy() { this.root.replaceChildren(); }
 
-  /** How far the controls reach in from the top and bottom of the screen (CSS pixels): the status row and time
-   *  controls above, the bar below. Measured, since a phone's fonts or safe areas can make them bigger. */
-  margins() {
+  /** How much of the game's canvas (`canvas`, on the page) is out of sight at the top and bottom, in CSS pixels: under
+   *  the status row and time controls, under the bar, or off the part of the page on screen (`seen`). Measured, since a
+   *  phone's fonts, safe areas or browser can make any of it bigger. */
+  margins(canvas: { top: number; bottom: number }, seen: { top: number; bottom: number }) {
     const rect = (sel: string) => this.root.querySelector(sel)?.getBoundingClientRect();
     const status = rect('.status'), time = rect('.time'), dock = rect('.dock');
-    return { top: Math.max(status?.bottom ?? 0, time?.bottom ?? 0) + 8, bottom: dock ? innerHeight - dock.top + 8 : 0 };
+    return {
+      top: Math.max(status?.bottom ?? 0, time?.bottom ?? 0, seen.top) - canvas.top + 8,
+      bottom: canvas.bottom - Math.min(dock?.top ?? Infinity, seen.bottom) + 8,
+    };
   }
 
   /** A big title across the screen that fades in and out by itself: the city at the start, each wave as it comes. */
