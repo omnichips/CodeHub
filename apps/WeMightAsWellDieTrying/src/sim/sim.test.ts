@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readdirSync } from 'node:fs';
-import { World, ZOMBIE_KINDS, baseStats } from './world.ts';
+import { World, ZOMBIES, ZOMBIE_KINDS, baseStats } from './world.ts';
 
 const noWaves = { gap: 0, waves: [] };
+const full = (name: string) => ZOMBIES[ZOMBIE_KINDS.indexOf(name)].hp; // a zombie's hp, unhurt
 const MAP_NAMES = readdirSync(new URL('../data/maps/', import.meta.url)).map((f) => f.replace('.json', ''));
 const world = (rows: string[]) => new World({ name: 'test', tile: 16, par: 60, rows }, noWaves);
 const run = (w: World, seconds: number, each?: () => void) => {
@@ -115,7 +116,7 @@ test('a medic heals the soldiers round him; a sniper takes the toughest mark whe
   w.start();
   w.step();
   assert.ok(hurt.hp > 40);
-  assert.ok(w.zhp[tough] < 600 && w.zhp[weak] === 100, 'shot the tanky, not the nearer normal');
+  assert.ok(w.zhp[tough] < full('tanky') && w.zhp[weak] === full('normal'), 'shot the tanky, not the nearer normal');
 });
 
 test('a hordemother keeps adding zombies while she lives', () => {
@@ -189,7 +190,7 @@ test('an electric puddle only works with a generator in a building', () => {
     const z = w.spawn(kind('tanky'), 168, 56);
     w.start();
     run(w, 1);
-    return 600 - w.zhp[z];
+    return full('tanky') - w.zhp[z];
   };
   assert.equal(hurt(false), 0);
   assert.ok(hurt(true) > 10);
@@ -276,7 +277,7 @@ test('Main Street: undefended, the first wave walks the whole street into the sa
   const plan = (await import('../data/waves.json', { with: { type: 'json' } })).default['main-street'];
   const w = new World(map, { gap: plan.gap, waves: plan.waves.slice(0, 1) });
   w.start();
-  run(w, 120);
+  run(w, 300); // a long street: 128 tiles
   assert.equal(w.phase, 'lost', 'overrun: the whole first wave walked the street into the safe zone');
 });
 
@@ -303,7 +304,7 @@ test('a soldier in a window still cannot shoot through his building to the stree
   w.start();
   run(w, 1);
   assert.ok(s.firedAt > 0, 'he did fire');
-  assert.equal(w.zhp[0], 100, 'untouched: the walls stopped every shot');
+  assert.equal(w.zhp[0], full('normal'), 'untouched: the walls stopped every shot');
 });
 
 test('a zombie keeps to its lane until a roadblock is close, then goes round it', () => {
@@ -333,7 +334,9 @@ test('every map: each car, bus and barricade already in the street fits, and no 
     const map = (await import(`../data/maps/${name}.json`, { with: { type: 'json' } })).default;
     const w = new World(map, noWaves);
     assert.equal(w.roadblocks.length, (map.props ?? []).length, `${name}: every prop placed`);
-    const roadside = (x: number, y: number) => [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => w.grid.wall[(y + dy) * w.grid.w + x + dx]));
+    // A sidewalk is as many tiles wide as the map is scaled up.
+    const s = map.scale ?? 1, near = Array.from({ length: 2 * s + 1 }, (_, k) => k - s);
+    const roadside = (x: number, y: number) => near.some((dy) => near.some((dx) => w.grid.wall[(y + dy) * w.grid.w + x + dx]));
     for (const d of map.decor ?? []) {
       if (d.kind !== 'tree') continue;
       const tx = Math.floor(d.x / 16), ty = Math.floor(d.y / 16), c = map.rows[ty][tx];
@@ -474,4 +477,28 @@ test('a mob whose way in stays full goes in at another, so every zombie of the w
     assert.equal(pocket.spawned, pocket.queue.length, `seed ${seed}: all 60 came in`);
     assert.ok(w.leaks >= 50, `seed ${seed}: and most of them reached the safe zone (${w.leaks})`);
   }
+});
+
+test('an intelligent zombie and a tanky stood in front of it, where the street turns, both go on (they once stood forever)', () => {
+  // The tanky sits on the spot the intelligent one draws its followers to, right in its path, at the corner of a side street.
+  const w = world(['............', '............', '............', '######...###', '######...###', 'EEEEEEEEEEEE']);
+  const T = 16, intelligent = w.spawn(ZOMBIE_KINDS.indexOf('intelligent'), 5.0 * T, 2.22 * T), tanky = w.spawn(ZOMBIE_KINDS.indexOf('tanky'), 6.15 * T, 2.46 * T);
+  w.zdx[intelligent] = 0.98;
+  w.zdy[intelligent] = 0.19;
+  w.start();
+  run(w, 30);
+  assert.equal(w.living, 0, `still standing: intelligent at ${w.zx[intelligent].toFixed(0)},${w.zy[intelligent].toFixed(0)}, tanky at ${w.zx[tanky].toFixed(0)},${w.zy[tanky].toFixed(0)}`);
+});
+
+test('big zombies squeezed against a flat wall at the end of a street still walk down it (a slant push off a tile corner held them)', () => {
+  const w = world(['bbbbbbbbbbbb', 'E..........S', 'E..........S', 'E..........S', 'oooooooooooo']);
+  // Where and how they stood when they jammed on a wide map: stacked up the street, the bottom one pressed into the wall.
+  const T = 16, jam = [['tanky', 11.43, 1.56, -5.65, 5.67, -0.71, 0.71], ['bloater', 11.5, 2.65, -7.63, 6.46, -0.76, 0.65], ['tanky', 11.45, 3.44, -7.98, 0.53, -1, 0.07]] as const;
+  for (const [kind, x, y, vx, vy, dx, dy] of jam) {
+    const i = w.spawn(ZOMBIE_KINDS.indexOf(kind), x * T, y * T);
+    [w.zvx[i], w.zvy[i], w.zdx[i], w.zdy[i]] = [vx, vy, dx, dy];
+  }
+  w.start();
+  run(w, 60);
+  assert.equal(w.living, 0);
 });

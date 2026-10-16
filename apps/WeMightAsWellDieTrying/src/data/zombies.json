@@ -1,12 +1,12 @@
 {
-  "normal": { "name": "Normal", "hp": 100, "speed": 14, "radius": 6, "leak": 1, "sight": 64, "dps": 12 },
-  "fast": { "name": "Fast", "hp": 50, "speed": 32, "radius": 5, "leak": 1, "sight": 72, "dps": 10 },
-  "jumper": { "name": "Jumper", "hp": 90, "speed": 18, "radius": 6, "leak": 1, "sight": 64, "dps": 12, "jumps": true },
-  "screamer": { "name": "Screamer", "hp": 120, "speed": 13, "radius": 6, "leak": 1, "sight": 64, "dps": 8, "scream": { "every": 5, "radius": 72, "boost": 1.6, "time": 3 } },
-  "bloater": { "name": "Bloater", "hp": 160, "speed": 10, "radius": 8, "leak": 2, "sight": 56, "dps": 14, "burst": { "radius": 36, "damage": 60, "boost": 1.8, "time": 1 } },
-  "intelligent": { "name": "Intelligent", "hp": 140, "speed": 11, "radius": 6, "leak": 2, "sight": 80, "dps": 12, "shield": { "radius": 64, "ahead": 18 } },
-  "armored": { "name": "Armored", "hp": 180, "speed": 12, "radius": 7, "leak": 2, "sight": 64, "dps": 14, "armor": 0.35 },
-  "tanky": { "name": "Tanky", "hp": 600, "speed": 8, "radius": 9, "leak": 3, "sight": 56, "dps": 20 },
-  "brute": { "name": "Brute", "hp": 2200, "speed": 9, "radius": 12, "leak": 3, "sight": 72, "dps": 40, "smash": 8 },
-  "hordemother": { "name": "Hordemother", "hp": 900, "speed": 7, "radius": 11, "leak": 3, "sight": 56, "dps": 20, "brood": { "every": 3, "count": 2, "kind": "normal" } }
+  "normal": { "name": "Normal", "hp": 120, "speed": 14, "radius": 6, "leak": 1, "sight": 64, "dps": 12 },
+  "fast": { "name": "Fast", "hp": 60, "speed": 32, "radius": 5, "leak": 1, "sight": 72, "dps": 10 },
+  "jumper": { "name": "Jumper", "hp": 108, "speed": 18, "radius": 6, "leak": 1, "sight": 64, "dps": 12, "jumps": true },
+  "screamer": { "name": "Screamer", "hp": 144, "speed": 13, "radius": 6, "leak": 1, "sight": 64, "dps": 8, "scream": { "every": 5, "radius": 72, "boost": 1.6, "time": 3 } },
+  "bloater": { "name": "Bloater", "hp": 192, "speed": 10, "radius": 8, "leak": 2, "sight": 56, "dps": 14, "burst": { "radius": 36, "damage": 60, "boost": 1.8, "time": 1 } },
+  "intelligent": { "name": "Intelligent", "hp": 168, "speed": 11, "radius": 6, "leak": 2, "sight": 80, "dps": 12, "shield": { "radius": 64, "ahead": 18 } },
+  "armored": { "name": "Armored", "hp": 216, "speed": 12, "radius": 7, "leak": 2, "sight": 64, "dps": 14, "armor": 0.35 },
+  "tanky": { "name": "Tanky", "hp": 720, "speed": 8, "radius": 9, "leak": 3, "sight": 56, "dps": 20 },
+  "brute": { "name": "Brute", "hp": 2640, "speed": 9, "radius": 12, "leak": 3, "sight": 72, "dps": 40, "smash": 8 },
+  "hordemother": { "name": "Hordemother", "hp": 1080, "speed": 7, "radius": 11, "leak": 3, "sight": 56, "dps": 20, "brood": { "every": 3, "count": 2, "kind": "normal" } }
 }

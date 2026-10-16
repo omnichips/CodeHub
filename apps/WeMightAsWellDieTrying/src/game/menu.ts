@@ -1,56 +1,60 @@
-// The main menu: the city from above, drifting slowly, with a few zombies shambling along its streets, under an HTML
-// overlay. Main: new save, load a save, statistics, settings. Inside a save: its cities and its skill tree.
+// The main menu: a ruined city from above (game/menucity.ts), burning and drifting slowly, a few zombies shambling along its streets, under an HTML
+// overlay. Main: continue the last save, new save, load a save, statistics, settings. Inside a save: its cities and its skill tree.
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
-import { MAPS, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
+import { MAPS, lastPlayed, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
 import { NODES } from '../meta/progress.ts';
-import { Grid } from '../sim/grid.ts';
+import { Grid, type MapData } from '../sim/grid.ts';
 import { BODIES, exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
-import { paintMap } from './mapart.ts';
+import { ambience } from './ambience.ts';
+import { drawn, paintMap } from './mapart.ts';
+import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
 import { play } from './sound.ts';
 import { skillWeb } from './tree.ts';
 
 export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
-/** Street lanes in the background picture's own pixels: [x0, y0, x1, y1] that a zombie walks along, either way. */
-const LANES = [[-40, 330, 1450, 340], [-40, 400, 1450, 392], [-40, 365, 1450, 372], [255, -40, 245, 810], [1150, -40, 1140, 810]];
-const BG_W = 1408, BG_H = 768;
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
 
 const THUMB_W = 240, THUMB_H = 150;
 const THUMBS = new Map<string, HTMLCanvasElement>(); // `${map}-${blood}`: painted once a session
+/** A doubled map at half size, as it was designed: it looks the same in a thumbnail, for a quarter of the painting. */
+const half = (m: MapData): MapData => ((m.scale ?? 1) < 2 ? m : {
+  ...m, scale: m.scale! / 2, props: [], rows: m.rows.filter((_, y) => y % 2 === 0).map((r) => [...r].filter((_, x) => x % 2 === 0).join('')),
+  slots: m.slots?.map(([x, y]) => [x >> 1, y >> 1]), decor: m.decor?.map((d) => ({ ...d, x: d.x / 2, y: d.y / 2 })),
+});
 
 interface Walker { s: Phaser.GameObjects.Sprite; lane: number[]; t: number; speed: number; dir: 1 | -1 }
 
 const button = (text: string, onclick: () => void, className = '') => el('button', { type: 'button', textContent: text, className, onclick });
 const LEVELS = NODES.reduce((n, x) => n + x.max, 0);
 const summary = (s: Save) => `${s.chips} chips · ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities · ${Object.values(s.skills).reduce((a, b) => a + b, 0)}/${LEVELS} skills`;
+const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 const clock = (t: number) => `${Math.floor(t / 3600)}h ${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}m`;
 
 export class Menu extends Phaser.Scene {
   open: Screen = 'menu';
-  bg!: Phaser.GameObjects.Image;
   walkers: Walker[] = [];
   root!: HTMLElement;
   note = ''; // a line saying what the last cheat did
+  settingsFrom: Screen = 'menu'; // where Settings goes back to: the main menu or a save's cities
 
   constructor() { super('menu'); }
 
   init(data: { open?: Screen }) { this.open = data.open ?? 'menu'; }
 
-  preload() {
-    load(this);
-    if (!this.textures.exists('menu-bg')) this.load.image('menu-bg', 'menu-bg.jpg');
-  }
+  preload() { load(this); }
 
   create() {
     bake(this);
     this.cameras.main.fadeIn(400);
-    this.bg = this.add.image(0, 0, 'menu-bg');
+    const city = paintMap(this, MENU_CITY, new Grid(MENU_CITY), `menu-city-${profile.settings.gore !== 'none'}`, profile.settings.gore !== 'none');
+    this.add.image(0, 0, city).setOrigin(0);
+    ambience(this, drawn.get(city) ?? [], 40, 2); // bigger: the menu shows the city from farther off
     this.walkers = SHAMBLERS.map((kind, k) => ({
-      s: this.add.sprite(0, 0, 'sprites').play({ key: `${kind}-walk`, startFrame: k % 2 }),
+      s: this.add.sprite(0, 0, 'sprites').setDepth(2).setScale(1.7).play({ key: `${kind}-walk`, startFrame: k % 2 }),
       lane: LANES[k % LANES.length], t: Math.random(), speed: 7 + Math.random() * 6, dir: k % 2 ? 1 : -1,
     }));
     this.root = document.getElementById('menu')!;
@@ -60,18 +64,17 @@ export class Menu extends Phaser.Scene {
     this.show(this.open);
   }
 
-  /** The picture covers the screen with room to spare, and drifts across that spare room; the zombies ride along. */
+  /** The city covers the screen with room to spare, and the view drifts across that spare room. */
   update(time: number, delta: number) {
-    const { width: W, height: H } = this.scale, z = Math.max(W / BG_W, H / BG_H) * 1.12;
-    const t = time / 1000, x = W / 2 + Math.sin(t / 23) * (BG_W * z - W) / 2, y = H / 2 + Math.cos(t / 31) * (BG_H * z - H) / 2;
-    this.bg.setScale(z).setPosition(x, y);
+    const { width: W, height: H } = this.scale, z = Math.max(W / CITY_W, H / CITY_H) * 1.12, t = time / 1000;
+    this.cameras.main.setZoom(z).centerOn(CITY_W / 2 - (Math.sin(t / 23) * (CITY_W * z - W)) / 2 / z, CITY_H / 2 - (Math.cos(t / 31) * (CITY_H * z - H)) / 2 / z);
     for (const w of this.walkers) {
       const [x0, y0, x1, y1] = w.lane, len = Math.hypot(x1 - x0, y1 - y0);
       w.t += (w.dir * w.speed * delta) / 1000 / len;
       if (w.t > 1 || w.t < 0) w.t = w.dir > 0 ? 0 : 1; // off the edge: back in at the other end
       const wobble = Math.sin(t * 1.7 + w.speed) * 0.25, ang = Math.atan2(y1 - y0, x1 - x0) + (w.dir > 0 ? 0 : Math.PI) + wobble;
       const px = x0 + (x1 - x0) * w.t, py = y0 + (y1 - y0) * w.t;
-      w.s.setPosition(x + (px - BG_W / 2) * z, y + (py - BG_H / 2) * z).setRotation(ang).setScale(z * 1.7);
+      w.s.setPosition(px, py).setRotation(ang);
     }
   }
 
@@ -93,12 +96,15 @@ export class Menu extends Phaser.Scene {
   }
 
   main(): HTMLElement {
+    const all = saves(), k = lastPlayed(all), last = all[k];
     return el('div', { className: 'panel main' },
       el('h1', {}, 'We Might As Well', el('br'), el('span', {}, 'Die Trying')),
-      button('New save', () => this.show('new'), 'go'),
+      // Straight back into the save played last.
+      ...(last ? [el('button', { type: 'button', className: 'slot go', onclick: () => { open(k); this.show('save'); } }, `Continue: ${last.name}`, el('small', {}, summary(last)))] : []),
+      button('New save', () => this.show('new'), last ? '' : 'go'),
       button('Load save', () => this.show('load')),
       button('Statistics', () => this.show('stats')),
-      button('Settings', () => this.show('settings')),
+      button('Settings', () => { this.settingsFrom = 'menu'; this.show('settings'); }),
     );
   }
 
@@ -159,7 +165,7 @@ export class Menu extends Phaser.Scene {
     requestAnimationFrame(next);
     return [
       el('div', { className: 'panel maps' }, this.head(s.name, 'menu'), el('p', { className: 'chips' }, `${s.chips} chips`), el('div', { className: 'grid' }, ...cards)),
-      button('Skill tree', () => this.show('tree'), 'go corner'),
+      el('div', { className: 'corner' }, button('Settings', () => { this.settingsFrom = 'save'; this.show('settings'); }), button('Skill tree', () => this.show('tree'), 'go')),
     ];
   }
 
@@ -168,8 +174,8 @@ export class Menu extends Phaser.Scene {
   thumbnail(id: string) {
     const blood = profile.settings.gore !== 'none', cached = THUMBS.get(`${id}-${blood}`);
     if (cached) return cached;
-    const m = MAPS.find((x) => x.id === id)!, grid = new Grid(m.data), key = `map-${id}-${blood}`, had = this.textures.exists(key);
-    paintMap(this, m.data, grid, key, blood);
+    const m = MAPS.find((x) => x.id === id)!, data = half(m.data), grid = new Grid(data), key = `thumb-${id}-${blood}`;
+    paintMap(this, data, grid, key, blood);
     const art = this.textures.get(key).getSourceImage() as HTMLCanvasElement, T = grid.tile, W = grid.w * T, H = grid.h * T;
     const z = Math.max(THUMB_W / W, THUMB_H / H), g = grid.goals;
     // The same spot the game opens on: halfway between the middle of the map and the safe zone.
@@ -180,7 +186,7 @@ export class Menu extends Phaser.Scene {
     c.drawImage(art, sx, sy, THUMB_W / z, THUMB_H / z, 0, 0, THUMB_W, THUMB_H);
     c.fillStyle = 'rgba(201, 71, 58, 0.85)';
     for (const i of grid.spawns) c.fillRect(((i % grid.w) * T - sx) * z, (Math.floor(i / grid.w) * T - sy) * z, Math.ceil(T * z), Math.max(2, Math.ceil(T * z)));
-    if (!had) this.textures.remove(key); // a big canvas: the game paints it again when it is played
+    this.textures.remove(key); // only the thumbnail is kept
     THUMBS.set(`${id}-${blood}`, out);
     return out;
   }
@@ -207,7 +213,7 @@ export class Menu extends Phaser.Scene {
       return el('div', { className: 'row' }, el('span', {}, label), input);
     };
     return el('div', { className: 'panel settings' },
-      this.head('Settings', 'menu'),
+      this.head('Settings', this.settingsFrom),
       choice('Gore', 'gore', ['none', 'some', 'normal']),
       choice('Quality', 'quality', ['low', 'medium', 'high']),
       // Fewer bodies lying about is lighter on a slow device.
@@ -218,8 +224,27 @@ export class Menu extends Phaser.Scene {
         el('button', { type: 'button', textContent: 'On', ariaPressed: String(s.lefty), onclick: () => set('lefty', true) }))),
       volume('Master volume', 'master'),
       volume('Effects volume', 'sfx'),
+      this.storage(),
       el('div', { className: 'row' }, el('span', {}, 'Cheats for testing'), el('div', { className: 'seg' }, button('Debug', () => { this.note = ''; this.show('debug'); }))),
     );
+  }
+
+  /** How much this device keeps for the game: the saves and settings, in browser storage that holds about 5 MB (the
+   *  bar), and everything else besides once it is installed (its offline copy), as far as the browser says. */
+  storage(): HTMLElement {
+    const LIMIT = 5 * 1024 * 1024;
+    let bytes = 0;
+    try {
+      for (let k = 0; k < localStorage.length; k++) {
+        const key = localStorage.key(k)!;
+        if (key.startsWith('dietrying.')) bytes += (key.length + (localStorage.getItem(key)?.length ?? 0)) * 2; // two bytes a character
+      }
+    } catch { /* storage blocked: nothing is kept */ }
+    const fill = el('i'), text = el('small', {}, `Saves ${size(bytes)} of about 5 MB`);
+    fill.style.width = `${Math.min(100, Math.max(1, (bytes / LIMIT) * 100))}%`;
+    fill.classList.toggle('full', bytes > LIMIT * 0.8);
+    navigator.storage?.estimate?.().then(({ usage }) => { if (usage) text.textContent += ` · ${size(usage)} in all on this device`; }, () => {});
+    return el('div', { className: 'row storage' }, el('span', {}, 'Storage'), el('div', { className: 'meter', role: 'img', ariaLabel: text.textContent ?? '' }, fill), text);
   }
 
   /** Cheats, for testing: they change the save in use. */

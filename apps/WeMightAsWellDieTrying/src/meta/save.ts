@@ -22,7 +22,7 @@ export interface Stats {
   time: number; // seconds of fighting
 }
 export interface Save {
-  version: 3;
+  version: 4;
   name: string;
   chips: number;
   skills: Record<string, number>; // skill web node: levels bought
@@ -36,7 +36,7 @@ export interface Save {
 export const SLOTS = 3;
 /** The choices for how many dead bodies may lie about at once. */
 export const BODIES = [0, 50, 150, 300];
-export const VERSION = 3;
+export const VERSION = 4;
 const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.save'); // slot 1 keeps the key of the days before slots
 const SETTINGS = 'dietrying.settings';
 
@@ -64,7 +64,7 @@ function setupFrom(raw: unknown): Setup {
   };
 }
 const json = (text: string): unknown => { try { return JSON.parse(text); } catch { return undefined; } };
-const RENAMED: Record<string, string> = { harlem: 'london', 'red-hook': 'white-house', 'wall-street': 'rome', 'times-square': 'tokyo' };
+const RENAMED: Record<string, string> = { harlem: 'london', 'red-hook': 'white-house', 'wall-street': 'rome', 'times-square': 'tokyo', brooklyn: 'chicago', queens: 'manila', 'central-park': 'mexico' };
 
 /** Reads a save from untrusted JSON (storage or an imported file). Anything unusable is dropped or reset, never
  *  trusted: unknown nodes, negative or non-number chips. Returns undefined if it is not a save at all. */
@@ -88,7 +88,8 @@ export function parse(text: string): Save | undefined {
       if (n && typeof lv === 'number' && lv > 0) skills[id] = Math.max(skills[id] ?? 0, Math.min(n.max, Math.floor(lv)));
     }
   }
-  // Four New York maps were swapped for cities in October 2026; one cleared counts as the city now in its place.
+  // Four New York maps were swapped for cities in October 2026, and Brooklyn, Queens and Central Park became Chicago,
+  // Manila and Mexico City; one cleared counts as the city now in its place.
   const cleared = r.cleared && typeof r.cleared === 'object' ? Object.fromEntries(Object.entries(r.cleared).filter(([, v]) => v === true).map(([id]) => [RENAMED[id] ?? id, true])) : {};
   const st = (r.stats ?? {}) as Record<string, unknown>;
   return {
@@ -98,7 +99,8 @@ export function parse(text: string): Save | undefined {
     skills,
     cleared,
     tutorialDone: r.tutorialDone === true,
-    setups: Object.fromEntries(Object.entries(r.setups && typeof r.setups === 'object' ? r.setups : {}).slice(0, 50).map(([id, v]) => [id, setupFrom(v)])),
+    // Every map was made twice as big in version 4: a defence kept from before would land in the wrong places.
+    setups: r.version < 4 ? {} : Object.fromEntries(Object.entries(r.setups && typeof r.setups === 'object' ? r.setups : {}).slice(0, 50).map(([id, v]) => [id, setupFrom(v)])),
     stats: { runs: count(st.runs), wins: count(st.wins), kills: count(st.kills), leaks: count(st.leaks), chips: count(st.chips), time: count(st.time) },
     played: count(r.played) || Date.now(), // version 1 never said
   };

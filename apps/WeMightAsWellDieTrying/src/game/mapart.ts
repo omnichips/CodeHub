@@ -10,9 +10,11 @@ import { BUILDING, type Grid, type MapData } from '../sim/grid.ts';
 
 const P = palette;
 const LANES = 10; // the most lanes a road can have; wider than that both ways is a crossing
-const SHADE = { rgb: [0, 0, 0], most: 0.35, over: 5 }; // roofs deep inside a block darken: to black, at most 35%, over 5 tiles
-type Front = 'brick' | 'glass' | 'shop' | 'deck' | 'clinic' | 'metal';
-interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' }
+const SHADE = { rgb: [0, 0, 0], most: 1, over: 5 }; // roofs deep inside a block darken all the way to black, over 5 tiles (times the map's scale)
+/** Each shanty and each casita its own colour: tin, rust, tarp; ochre, rose, teal. */
+const PATCHES = { y: ['#6a5444', '#5b6970', '#7a4a3a', '#5f6a4f', '#857f73', '#3f5a7a', '#8a6a3a'], x: ['#b0704f', '#c49a4a', '#b06a78', '#4f8a86', '#8a9a4a', '#c08a5a'] };
+type Front = 'brick' | 'glass' | 'shop' | 'deck' | 'clinic' | 'metal' | 'stone' | 'shack' | 'stucco';
+interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' | 'tin' }
 /** Each kind of building: its roof and the wall it shows the street. */
 const ROOFS: Record<string, Roof> = {
   b: { base: '#3d3634', dark: '#2d2827', light: '#4d4441', front: 'brick', texture: 'gravel' }, // brownstones
@@ -24,6 +26,11 @@ const ROOFS: Record<string, Roof> = {
   w: { base: '#474c4c', dark: '#373b3b', light: '#5d6363', front: 'metal', texture: 'ribs' }, // warehouses
   r: { base: '#7d725d', dark: '#685f4d', light: '#948870', front: 'brick', texture: 'gravel' }, // old Roman stone
   s: { base: '#55585a', dark: '#45484a', light: '#6a6e70', front: 'glass', texture: 'panels' }, // a railway station
+  k: { base: '#4a4946', dark: '#393836', light: '#5c5b57', front: 'stone', texture: 'gravel' }, // Chicago greystones, two flats each
+  z: { base: '#2b2e32', dark: '#212327', light: '#3c4146', front: 'glass', texture: 'panels' }, // a skyscraper
+  y: { base: '#6a5444', dark: '#4e3d31', light: '#87705c', front: 'shack', texture: 'tin' }, // shanties: tin, tarps and plywood
+  x: { base: '#a8664a', dark: '#8a5039', light: '#c07a5a', front: 'stucco', texture: 'clean' }, // casitas, painted every colour
+  c: { base: '#6b4a40', dark: '#563a32', light: '#82594c', front: 'stone', texture: 'gravel' }, // colonial red stone (tezontle)
   '#': { base: '#3b3d3f', dark: '#2c2e30', light: '#4c4e50', front: 'brick', texture: 'gravel' },
 };
 
@@ -38,10 +45,13 @@ function rng(seed: number) {
 }
 const seedOf = (x: number, y: number, salt = 0) => Math.imul(x + 1, 73856093) ^ Math.imul(y + 1, 19349663) ^ salt;
 
+/** The decor each painted map shows (some is left out: deep in a roof's shade, or where it does not belong). */
+export const drawn = new Map<string, { kind: string; x: number; y: number }[]>();
+
 /** Makes the map texture `key` (once) and returns it. `blood` is off when gore is set to none. */
 export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: string, blood: boolean) {
   if (scene.textures.exists(key)) return key;
-  const { w, h, tile: T, wall, goal } = grid, W = w * T, H = h * T;
+  const { w, h, tile: T, wall, goal } = grid, W = w * T, H = h * T, S = map.scale ?? 1; // S tiles to one tile of the design
   const tex = scene.textures.createCanvas(key, W, H)!, c = tex.context;
   const ch = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? '#' : map.rows[y][x]);
   const built = (x: number, y: number) => BUILDING.includes(ch(x, y));
@@ -50,14 +60,14 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const disc = (col: string, x: number, y: number, rr: number) => { c.fillStyle = col; c.beginPath(); c.arc(x, y, rr, 0, 7); c.fill(); };
 
   // ---- What each open tile is ----
-  // Sidewalk: open street next to a building (diagonals too). Road: the rest of the open street.
+  // Sidewalk: open street within S tiles of a building (diagonals too). Road: the rest of the open street.
   const side = new Uint8Array(w * h), road = new Uint8Array(w * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const t = ch(x, y);
       if (t !== '.' && t !== 'S') continue;
       let near = false;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (built(x + dx, y + dy)) near = true;
+      for (let dy = -S; dy <= S; dy++) for (let dx = -S; dx <= S; dx++) if (built(x + dx, y + dy)) near = true;
       (near ? side : road)[y * w + x] = 1;
     }
   const isRoad = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && road[y * w + x] === 1;
@@ -65,7 +75,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const runX = (x: number, y: number) => { let a = x, b = x; while (isRoad(a - 1, y)) a--; while (isRoad(b + 1, y)) b++; return [a, b]; };
   const runY = (x: number, y: number) => { let a = y, b = y; while (isRoad(x, a - 1)) a--; while (isRoad(x, b + 1)) b++; return [a, b]; };
   /** Where two roads cross: the road runs on a long way both across and down. */
-  const crossing = (x: number, y: number) => { if (!isRoad(x, y)) return false; const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y); return b1 - a1 >= LANES && b2 - a2 >= LANES; };
+  const crossing = (x: number, y: number) => { if (!isRoad(x, y)) return false; const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y); return b1 - a1 >= LANES * S && b2 - a2 >= LANES * S; };
 
   // ---- Buildings: each connected block, and brownstones and shops cut into lots a few tiles wide ----
   const region = new Int32Array(w * h).fill(-1);
@@ -83,7 +93,16 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     }
     regions++;
   }
-  const lot = (x: number, y: number) => { const t = ch(x, y); return t === 'b' || t === 'h' ? Math.floor(x / 4) * 100000 + region[y * w + x] : region[y * w + x]; };
+  const lot = (x: number, y: number) => {
+    const t = ch(x, y), r = region[y * w + x];
+    if (t === 'y') {
+      // Shanties in rows, each row cut into roofs of its own width (2 to 4 tiles of the design) and offset: no grid.
+      const row = Math.floor(y / (2 * S)), hash = Math.imul(row + 1, 2654435761) >>> 0, width = S * (2 + (hash % 3)), shift = (hash >>> 8) % width;
+      return r * 1e6 + row * 1000 + Math.floor((x + shift) / width);
+    }
+    return t === 'b' || t === 'h' || t === 'k' ? Math.floor(x / (4 * S)) * 100000 + r : t === 'x' ? Math.floor(x / (3 * S)) * 100000 + r : r;
+  };
+  const patch = (x: number, y: number, list: string[]) => list[Math.abs(Math.imul(lot(x, y), 2654435761) >>> 7) % list.length];
   const same = (x: number, y: number, x2: number, y2: number) => built(x2, y2) && (x2 < 0 || y2 < 0 || x2 >= w || y2 >= h || lot(x, y) === lot(x2, y2));
 
   // ---- The tiles ----
@@ -141,20 +160,34 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     for (let k = 0; k < 3; k++) dot(P.olive2, px + 2 + r() * (T - 4), py + 2 + r() * 5);
   };
   const roofTile = (x: number, y: number, px: number, py: number, r: () => number) => {
-    const t = ch(x, y), roof = ROOFS[t] ?? ROOFS['#'];
-    rect(roof.base, px, py, T, T);
+    const t = ch(x, y), roof = ROOFS[t] ?? ROOFS['#'], base = t === 'y' || t === 'x' ? patch(x, y, PATCHES[t]) : roof.base;
+    rect(base, px, py, T, T);
     if ((lot(x, y) * 37) % 5 === 1) rect('rgba(90,60,50,0.1)', px, py, T, T); // lots differ a little
     if (roof.texture === 'gravel') for (let k = 0; k < 20; k++) dot(r() < 0.55 ? roof.dark : roof.light, px + r() * T, py + r() * T);
     else if (roof.texture === 'panels') { rect(roof.dark, px, py + 7, T, 1); rect(roof.dark, px + 7, py, 1, T); rect(roof.light, px, py, T, 1); for (let k = 0; k < 6; k++) dot(roof.dark, px + r() * T, py + r() * T); }
     else if (roof.texture === 'deck') { for (let k = 0; k < 8; k++) dot(roof.dark, px + r() * T, py + r() * T); if (x % 3 === 0) rect(P.pave1, px + 1, py, 1, T); if (r() < 0.12) disc('rgba(0,0,0,0.25)', px + 4 + r() * 8, py + 4 + r() * 8, 2.5); } // bay lines, oil
     else if (roof.texture === 'clean') for (let k = 0; k < 6; k++) dot(r() < 0.6 ? roof.dark : roof.light, px + r() * T, py + r() * T);
+    else if (roof.texture === 'tin') {
+      const across = lot(x, y) % 2 === 0;
+      for (let k = 0; k < T; k += 2) rect('rgba(0,0,0,0.18)', across ? px + k : px, across ? py : py + k, across ? 1 : T, across ? T : 1);
+      if (r() < 0.25) disc('rgba(90,40,20,0.35)', px + r() * T, py + r() * T, 2 + r() * 3); // rust
+      if (r() < 0.08) { disc(P.outline, px + 4 + r() * 8, py + 4 + r() * 8, 3); } // a tyre holding it down
+      else if (r() < 0.1) dot(P.pave1, px + 3 + r() * 10, py + 3 + r() * 10, 2); // a stone
+      if (r() < 0.06) rect([P.navy1, P.teal1, P.red1, P.flash1][(r() * 4) | 0], px + r() * 6, py + r() * 6, 6 + r() * 6, 5 + r() * 6); // a tarp
+    }
     else for (let k = 0; k < T; k += 3) { rect(roof.light, px + k, py, 1, T); rect(roof.dark, px + k + 1, py, 1, T); } // corrugated ribs
     const edgeN = !same(x, y, x, y - 1), edgeS = !same(x, y, x, y + 1), edgeW = !same(x, y, x - 1, y), edgeE = !same(x, y, x + 1, y);
-    // A parapet where the roof ends: lit on the top and left, in shade on the bottom and right.
-    if (edgeN) { rect(P.cream, px, py, T, 2); rect(P.outline, px, py + 2, T, 1); }
-    if (edgeW) { rect(P.cream, px, py, 2, T); rect(P.outline, px + 2, py, 1, T); }
-    if (edgeS) rect(P.pave0, px, py + T - 2, T, 2);
-    if (edgeE) rect(P.pave0, px + T - 2, py, 2, T);
+    // A parapet where the roof ends: lit on the top and left, in shade on the bottom and right. Shanties have none,
+    // only a dark seam where one tin roof meets the next.
+    if (t === 'y') {
+      if (edgeN) rect('rgba(0,0,0,0.45)', px, py, T, 1);
+      if (edgeW) rect('rgba(0,0,0,0.45)', px, py, 1, T);
+    } else {
+      if (edgeN) { rect(P.cream, px, py, T, 2); rect(P.outline, px, py + 2, T, 1); }
+      if (edgeW) { rect(P.cream, px, py, 2, T); rect(P.outline, px + 2, py, 1, T); }
+      if (edgeS) rect(P.pave0, px, py + T - 2, T, 2);
+      if (edgeE) rect(P.pave0, px + T - 2, py, 2, T);
+    }
     if (!built(x, y + 1)) wallFace(roof.front, x, px, py, r);
     else if (!edgeN && !edgeS && !edgeW && !edgeE && roof.texture !== 'deck') clutter(px, py, r);
     if (roof.texture === 'ribs' && !edgeN && !edgeS && (x + y * 3) % 7 === 0) { rect(P.outline, px + 3, py + 4, 10, 8); rect(P.cloth1, px + 4, py + 5, 8, 6); rect(P.cloth2, px + 4, py + 5, 8, 1); } // a skylight
@@ -167,7 +200,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       for (let k = 0; k < 4; k++) rect(P.blood1, px + k * 4 + (x % 2) * 2, y0 + 1, 3, 1);
       rect(P.outline, px + 3, y0 + 2, 3, 3); rect(P.outline, px + 10, y0 + 2, 3, 3); rect(P.cloth1, px + 3, y0 + 2, 1, 1);
       if (r() < 0.15) rect(P.metal1, px + 6, y0 + 1, 5, 5); // a door or shutter
-      if (front === 'shop') for (let k = 0; k < 4; k++) rect(k % 2 ? P.cream : [P.red1, P.olive2, P.teal1][Math.floor(x / 4) % 3], px + k * 4, y0 - 2, 4, 2); // the awning
+      if (front === 'shop') for (let k = 0; k < 4; k++) rect(k % 2 ? P.cream : [P.red1, P.olive2, P.teal1][Math.floor(x / (4 * S)) % 3], px + k * 4, y0 - 2, 4, 2); // the awning
     } else if (front === 'glass') {
       rect(P.navy1, px, y0, T, 6); rect(P.navy2, px, y0, T, 1);
       for (let k = 0; k < T; k += 4) rect(P.metal0, px + k, y0, 1, 6); // mullions
@@ -176,7 +209,20 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     } else if (front === 'clinic') {
       rect(P.snow1, px, y0, T, 6); rect(P.snow2, px, y0, T, 1);
       rect(P.cloth1, px + 3, y0 + 2, 3, 2); rect(P.cloth1, px + 10, y0 + 2, 3, 2);
-      if (x % 6 === 0) { rect(P.red1, px + 7, y0 + 1, 2, 4); rect(P.red1, px + 6, y0 + 2, 4, 2); }
+      if (x % (6 * S) === 0) { rect(P.red1, px + 7, y0 + 1, 2, 4); rect(P.red1, px + 6, y0 + 2, 4, 2); }
+    } else if (front === 'stone') {
+      // Dressed stone, a tall window in each bay.
+      rect(P.pave0, px, y0, T, 6); rect(P.pave1, px, y0, T, 1);
+      for (let k = 0; k < T; k += 4) rect('rgba(0,0,0,0.15)', px + k, y0 + 3, 1, 3);
+      rect(P.outline, px + 4, y0 + 1, 2, 4); rect(P.outline, px + 11, y0 + 1, 2, 4);
+    } else if (front === 'shack') {
+      // Plywood and tin nailed up: no two boards alike, a curtain for a door.
+      for (let k = 0; k < T; k += 4) rect([P.brown0, P.brown1, P.metal1, P.rust, P.khaki0][(r() * 5) | 0], px + k, y0, 4, 6);
+      if (r() < 0.3) rect([P.red1, P.teal1, P.flash1][(r() * 3) | 0], px + 5, y0 + 1, 5, 5);
+    } else if (front === 'stucco') {
+      // Painted plaster, a dark window and a door.
+      rect(patch(x, py / T, PATCHES.x), px, y0, T, 6); rect('rgba(255,255,255,0.12)', px, y0, T, 1);
+      rect(P.outline, px + 3, y0 + 2, 3, 2); if (x % 3 === 1) rect(P.brown0, px + 9, y0 + 1, 4, 5);
     } else {
       rect(P.urban0, px, y0, T, 6);
       for (let k = 0; k < T; k += 2) rect(P.urban1, px + k, y0, 1, 6);
@@ -210,30 +256,34 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         if ((x + y) % 2) dot(P.pave1, px + 4 + r() * 8, py + 4 + r() * 8);
         if (!goal[i - w]) for (let k = 0; k < 4; k++) rect(k % 2 ? P.outline : P.flash0, px + k * 4, py, 4, 3); // hazard edge
       } else if (t === 'p') grass(x, y, px, py, r);
-      else if (t === 'l') { grass(x, y, px, py, r); rect(Math.floor(x / 2) % 2 ? 'rgba(234,223,174,0.05)' : 'rgba(0,0,0,0.08)', px, py, T, T); } // mown in stripes
+      else if (t === 'l') { grass(x, y, px, py, r); rect(Math.floor(x / (2 * S)) % 2 ? 'rgba(234,223,174,0.05)' : 'rgba(0,0,0,0.08)', px, py, T, T); } // mown in stripes
       else if (t === 't') { grass(x, y, px, py, r); tree(px + T / 2, py + T / 2, 7, r); }
       else if (t === ',') { paveSlabs(px, py, r, true); curbs(x, y, px, py); }
       else if (side[i]) { paveSlabs(px, py, r, false); curbs(x, y, px, py); }
       else {
         asphalt(px, py, r);
-        // A stretch of road is a tile per lane across. It shows them all: a solid line down the middle, dashes between
-        // the rest; the tiles next to a crossing get a crosswalk instead, and a crossing has no lanes.
+        // A stretch of road is S tiles per lane across. It shows them all: a solid line down the middle, dashes between
+        // the rest; the S tiles next to a crossing get a crosswalk instead, and a crossing has no lanes.
         const [ax, bx] = runX(x, y), [ay, by] = runY(x, y), across = bx - ax + 1, down = by - ay + 1;
-        const vertical = across <= LANES && down > across, flat = down <= LANES && across > down;
-        if (vertical && (crossing(x, y - 1) || crossing(x, y + 1))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 1, py + 2 + k * 5, T - 2, 2);
-        else if (flat && (crossing(x - 1, y) || crossing(x + 1, y))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 2 + k * 5, py + 1, 2, T - 2);
+        const vertical = across <= LANES * S && down > across, flat = down <= LANES * S && across > down;
+        const near = (f: (d: number) => boolean) => { for (let d = 1; d <= S; d++) if (f(d)) return true; return false; };
+        if (vertical && near((d) => crossing(x, y - d) || crossing(x, y + d))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 1, py + 2 + k * 5, T - 2, 2);
+        else if (flat && near((d) => crossing(x - d, y) || crossing(x + d, y))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 2 + k * 5, py + 1, 2, T - 2);
         else if (vertical || flat) {
-          const [a, b, k, along] = vertical ? [ax, bx, x, y] : [ay, by, y, x], n = b - a + 1, middle = n % 2 ? -1 : a + n / 2;
-          // The line between lane `edge - 1` and lane `edge`, on this tile's near (0) or far (1) side.
+          const [a, b, k, along] = vertical ? [ax, bx, x, y] : [ay, by, y, x], lanes = Math.round((b - a + 1) / S), middle = lanes % 2 ? -1 : lanes / 2;
+          // The line between lane `edge - 1` and lane `edge` (counted in lanes), on this tile's near (0) or far (1) side.
           const line = (edge: number, far: number) => {
-            const solid = edge === middle;
-            if (!solid && along % 2) return; // dashes: one tile on, one off
-            const col = solid ? P.paint : P.pave1, at = far ? T - 1 : 0, from = solid ? 0 : 4, len = solid ? T : 8;
-            if (vertical) rect(col, px + at, py + from, 1, len);
-            else rect(col, px + from, py + at, len, 1);
+            const solid = edge === middle, at = far ? T - 1 : 0;
+            if (solid) return vertical ? rect(P.paint, px + at, py, 1, T) : rect(P.paint, px, py + at, T, 1);
+            // Dashes: half a stretch of 2S tiles on, the rest off.
+            if (Math.floor(along / S) % 2) return;
+            const pos = (along % S) * T, from = Math.max(0, 4 * S - pos), to = Math.min(T, 12 * S - pos);
+            if (to <= from) return;
+            if (vertical) rect(P.pave1, px + at, py + from, 1, to - from);
+            else rect(P.pave1, px + from, py + at, to - from, 1);
           };
-          if (k > a) line(k, 0);
-          if (k < b) line(k + 1, 1);
+          if (k > a && (k - a) % S === 0) line((k - a) / S, 0);
+          if (k < b && (k - a + 1) % S === 0) line((k - a + 1) / S, 1);
         }
         if (r() < 0.12) { // a crack, kept inside the tile
           c.strokeStyle = 'rgba(15,16,17,0.75)';
@@ -294,12 +344,23 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       const tiles: [number, number][] = [];
       for (let yy = y; yy < Math.min(h, y + 40); yy++) for (let xx = Math.max(0, x - 40); xx < Math.min(w, x + 40); xx++) if (built(xx, yy) && lot(xx, yy) === l) tiles.push([xx, yy]);
       const mid = [Math.round(tiles.reduce((n, p) => n + p[0], 0) / tiles.length), Math.round(tiles.reduce((n, p) => n + p[1], 0) / tiles.length)];
-      if (t === 'm' && inside(mid[0] - 1, mid[1] - 1, mid[0] + 1, mid[1] + 1, l)) {
+      if (t === 'm' && inside(mid[0] - S, mid[1] - S, mid[0] + S, mid[1] + S, l)) {
         // The hospital's roof: a big red cross on a white square. A landmark: painted after the fade, so it stays.
-        const cx = (mid[0] + 0.5) * T, cy = (mid[1] + 0.5) * T;
+        const cx = (mid[0] + 0.5) * T, cy = (mid[1] + 0.5) * T, u = S;
         landmarks.push(() => {
-          rect(P.snow1, cx - 22, cy - 22, 44, 44); rect(P.snow2, cx - 22, cy - 22, 44, 2);
-          rect(P.red1, cx - 6, cy - 18, 12, 36); rect(P.red1, cx - 18, cy - 6, 36, 12); rect(P.red2, cx - 6, cy - 18, 12, 2); rect(P.red2, cx - 18, cy - 6, 2, 12);
+          rect(P.snow1, cx - 22 * u, cy - 22 * u, 44 * u, 44 * u); rect(P.snow2, cx - 22 * u, cy - 22 * u, 44 * u, 2 * u);
+          rect(P.red1, cx - 6 * u, cy - 18 * u, 12 * u, 36 * u); rect(P.red1, cx - 18 * u, cy - 6 * u, 36 * u, 12 * u); rect(P.red2, cx - 6 * u, cy - 18 * u, 12 * u, 2 * u); rect(P.red2, cx - 18 * u, cy - 6 * u, 2 * u, 12 * u);
+        });
+      } else if (t === 'z' && tiles.length > 30) {
+        // A tower's top: it stands above the shade round it, its plant room on the roof and two masts.
+        const xs = tiles.map((p) => p[0]), ys = tiles.map((p) => p[1]), L = Math.min(...xs) * T, R = (Math.max(...xs) + 1) * T, Tp = Math.min(...ys) * T, B = (Math.max(...ys) + 1) * T;
+        landmarks.push(() => {
+          rect(P.outline, L + 3, Tp + 3, R - L - 6, B - Tp - 9); rect(ROOFS.z.light, L + 4, Tp + 4, R - L - 8, B - Tp - 11);
+          rect(ROOFS.z.base, L + 10, Tp + 10, R - L - 20, B - Tp - 23);
+          for (let k = L + 14; k < R - 14; k += 8) rect(ROOFS.z.dark, k, Tp + 12, 4, B - Tp - 27); // panels
+          const cx = (L + R) / 2, cy = (Tp + B) / 2 - 3;
+          rect(P.outline, cx - 15, cy - 11, 30, 22); rect(P.metal1, cx - 14, cy - 10, 28, 20); rect(P.metal2, cx - 14, cy - 10, 28, 2); // the plant room
+          for (const dx of [-8, 8]) { disc('rgba(0,0,0,0.4)', cx + dx + 2, cy + 2, 3); disc(P.snow2, cx + dx, cy, 2.5); dot(P.red2, cx + dx, cy - 1, 1); } // the masts, lit red
         });
       } else if (t === 'a') {
         // A water tower on its legs, somewhere well inside the roof.
@@ -322,7 +383,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   // the ground anyone can walk to (reached from the safe zone; a walled-in courtyard fades too). It is smoothed in 4 px
   // steps between tile centres, so it reads as a gradient, not as blocks.
   const reach = new Uint8Array(w * h), dist = new Float32Array(w * h).fill(Infinity), queue: number[] = [];
-  for (const i of grid.goals) { reach[i] = 1; queue.push(i); }
+  // (A city with no safe zone, the menu's, counts from all its open ground.)
+  for (const i of grid.goals.length ? grid.goals : [...wall.keys()].filter((j) => !wall[j])) { reach[i] = 1; queue.push(i); }
   for (let k = 0; k < queue.length; k++) {
     const i = queue[k], x = i % w, y = (i - x) / w;
     for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !reach[j] && !wall[j]) { reach[j] = 1; queue.push(j); }
@@ -338,7 +400,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       near.push(j);
     }
   }
-  const fade = (x: number, y: number) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); return Math.max(0, Math.min(1, (dist[y * w + x] - 1) / SHADE.over)) * SHADE.most; };
+  const fade = (x: number, y: number) => { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); return Math.max(0, Math.min(1, (dist[y * w + x] - S) / (SHADE.over * S))) * SHADE.most; };
   const fadeAt = (wx: number, wy: number) => fade(Math.floor(wx / T), Math.floor(wy / T));
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
@@ -361,6 +423,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     tree: ['grass', 'sidewalk', 'plaza'], lamp: ['sidewalk', 'plaza'], manhole: ['road'], rubble: ['road', 'sidewalk', 'plaza'], wreck: ['roof'],
     sandbag: ['plaza', 'safe', 'sidewalk'], helipad: ['plaza', 'safe', 'grass'], fountain: ['plaza', 'grass'], flowers: ['grass'], hachiko: ['plaza'], billboard: ['roof'], barrel: ['sidewalk', 'plaza', 'roof', 'safe'], crate: ['sidewalk', 'plaza', 'roof', 'safe'],
     trash: ['sidewalk'], dumpster: ['sidewalk'], hydrant: ['sidewalk'], cone: ['road'], bench: ['plaza', 'grass'], bin: ['sidewalk', 'plaza'],
+    el: ['road', 'sidewalk', 'plaza'], laundry: ['road', 'sidewalk'], court: ['plaza'],
+    crater: ['road', 'sidewalk', 'plaza'], scorch: ['road', 'sidewalk', 'plaza', 'roof', 'grass'], collapse: ['roof'], burnt: ['road', 'sidewalk', 'plaza'], blaze: ['road', 'sidewalk', 'plaza', 'roof', 'grass'],
   };
   /** A small box from above: outline, body, a lit top edge. */
   const box = (x: number, y: number, ww: number, hh: number, body: string, lit: string) => {
@@ -388,7 +452,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   /** The White House on the safe zone, seen from above: the residence, its two porticoes and the long low wings. */
   const whiteHouse = (x: number, y: number) => {
     const [x0, y0, x1, y1] = extent(x, y, (i) => goal[i] === 1), L = x0 * T, R = (x1 + 1) * T, top = (y0 + 1) * T, bottom = (y1 + 1) * T - 4;
-    const cx = (L + R) / 2, W = R - L, Hh = bottom - top, bw = W * 0.46, bh = Hh * 0.52, by = top + Hh * 0.22;
+    const cx = (L + R) / 2, W = R - L, Hh = bottom - top, bw = W * 0.6, bh = Hh * 0.56, by = top + Hh * 0.2, u = S;
     rect('rgba(0,0,0,0.35)', L + 6 + 3, by + bh * 0.3 + 3, W - 12, bh * 0.42); // wings' shadow
     rect(P.outline, L + 5, by + bh * 0.3 - 1, W - 10, bh * 0.42 + 2);
     rect(P.snow1, L + 6, by + bh * 0.3, W - 12, bh * 0.42);
@@ -399,13 +463,13 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     rect(P.snow2, cx - bw / 2, by, bw, bh);
     rect(P.snow1, cx - bw / 2 + 4, by + 4, bw - 8, bh - 8); // the roof inside its balustrade
     rect(P.metal2, cx - bw / 2 + 8, by + bh / 2 - 1, bw - 16, 2); // the ridge
-    for (let k = 0; k < 4; k++) rect(P.snow0, cx - bw / 2 + 10 + k * ((bw - 24) / 3), by + 6, 4, 3); // chimneys
-    rect(P.outline, cx - 13, by - 9, 26, 10); rect(P.snow2, cx - 12, by - 8, 24, 9); // the north portico
-    for (let k = 0; k < 4; k++) rect(P.snow0, cx - 10 + k * 6, by - 7, 2, 2);
-    disc(P.outline, cx, by + bh, 15); disc(P.snow2, cx, by + bh, 14); disc(P.snow1, cx, by + bh, 10); // the south portico
-    rect(P.snow2, cx - 15, by + bh - 15, 30, 14);
-    for (let k = 0; k < 7; k++) { const a = Math.PI * (k / 6); dot(P.snow0, cx + Math.cos(a) * 12 - 1, by + bh + Math.sin(a) * 12 - 1, 2); }
-    rect(P.metal1, cx, by - 2, 1, 10); rect(P.red1, cx + 1, by - 2, 6, 2); rect(P.snow2, cx + 1, by, 6, 1); rect(P.navy2, cx + 1, by - 2, 3, 2); // the flag
+    for (let k = 0; k < 6; k++) rect(P.snow0, cx - bw / 2 + 10 * u + k * ((bw - 24 * u) / 5), by + 6 * u, 4 * u, 3 * u); // chimneys
+    rect(P.outline, cx - 13 * u, by - 9 * u, 26 * u, 10 * u); rect(P.snow2, cx - 12 * u, by - 8 * u, 24 * u, 9 * u); // the north portico
+    for (let k = 0; k < 4; k++) rect(P.snow0, cx - 10 * u + k * 6 * u, by - 7 * u, 2 * u, 2 * u);
+    disc(P.outline, cx, by + bh, 15 * u); disc(P.snow2, cx, by + bh, 14 * u); disc(P.snow1, cx, by + bh, 10 * u); // the south portico
+    rect(P.snow2, cx - 15 * u, by + bh - 15 * u, 30 * u, 14 * u);
+    for (let k = 0; k < 7; k++) { const a = Math.PI * (k / 6); dot(P.snow0, cx + Math.cos(a) * 12 * u - 1, by + bh + Math.sin(a) * 12 * u - 1, 2 * u); }
+    rect(P.metal1, cx, by - 2 * u, u, 10 * u); rect(P.red1, cx + u, by - 2 * u, 6 * u, 2 * u); rect(P.snow2, cx + u, by, 6 * u, u); rect(P.navy2, cx + u, by - 2 * u, 3 * u, 2 * u); // the flag
   };
   /** The Colosseum over its block of old stone: the outer ring of arches, the tiers of seats, the arena floor gone,
    *  so the passages under it show. */
@@ -435,7 +499,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   /** The scramble crossing round the safe zone (which sits in its middle, 6 tiles of road all round): a zebra
    *  crossing from each corner of the junction in to the safe zone, on the slant. */
   const scramble = (x: number, y: number) => {
-    const [x0, y0, x1, y1] = extent(x, y, (i) => goal[i] === 1), M = 6;
+    const [x0, y0, x1, y1] = extent(x, y, (i) => goal[i] === 1), M = 6 * S;
     const corners = [[x0, y0, -1, -1], [x1 + 1, y0, 1, -1], [x0, y1 + 1, -1, 1], [x1 + 1, y1 + 1, 1, 1]];
     c.save();
     c.strokeStyle = 'rgba(220, 221, 211, 0.8)';
@@ -463,14 +527,53 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       }
     }
   };
-  for (const d of map.decor ?? []) {
+  /** Mexico City's cathedral over its block of red stone, seen from above: a Latin cross of nave and transepts under
+   *  a dome, the two bell towers at its front (the south, on the square), chapels down both sides. */
+  const cathedral = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = extent(x, y, (i) => map.rows[Math.floor(i / w)][i % w] === 'c'), L = x0 * T + 3, R = (x1 + 1) * T - 3, Tp = y0 * T + 3, B = (y1 + 1) * T - 6;
+    const W = R - L, Hh = B - Tp, cx = (L + R) / 2, nave = W * 0.34, arm = Hh * 0.22, cy = Tp + Hh * 0.42;
+    rect('rgba(0,0,0,0.4)', L + 4, Tp + 4, W, Hh);
+    rect(P.outline, L - 1, Tp - 1, W + 2, Hh + 2); rect(ROOFS.c.base, L, Tp, W, Hh); // the chapels round it, flat roofed
+    for (let k = L + 6; k < R - 6; k += 10) { rect(ROOFS.c.dark, k, Tp + 4, 6, Hh - 8); }
+    rect(P.outline, cx - nave / 2 - 1, Tp + 2, nave + 2, Hh - 4); rect(P.khaki1, cx - nave / 2, Tp + 3, nave, Hh - 6); // the nave
+    rect(P.outline, L + 4, cy - arm / 2 - 1, W - 8, arm + 2); rect(P.khaki1, L + 5, cy - arm / 2, W - 10, arm); // the transepts
+    rect(P.khaki0, cx - 1, Tp + 3, 2, Hh - 6); rect(P.khaki0, L + 5, cy - 1, W - 10, 2); // the ridges
+    disc(P.outline, cx, cy, arm * 0.62); disc(P.flash0, cx, cy, arm * 0.56); disc(P.khaki2, cx, cy, arm * 0.4); // the dome, its lantern
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; rect(P.brown0, cx + Math.cos(a) * arm * 0.48 - 1, cy + Math.sin(a) * arm * 0.48 - 1, 2, 2); }
+    const tw = Math.max(18, W * 0.17);
+    for (const tx of [L + 4, R - 4 - tw]) { // the bell towers
+      rect('rgba(0,0,0,0.4)', tx + 5, B - tw - 2 + 5, tw, tw);
+      rect(P.outline, tx - 1, B - tw - 3, tw + 2, tw + 2); rect(P.cream, tx, B - tw - 2, tw, tw); rect(P.khaki2, tx + 3, B - tw + 1, tw - 6, tw - 6);
+      disc(P.khaki0, tx + tw / 2, B - tw / 2 - 2, tw * 0.28); disc(P.flash0, tx + tw / 2 - 1, B - tw / 2 - 3, tw * 0.12);
+    }
+    rect(P.cream, L + 4 + tw, B - 6, W - 8 - 2 * tw, 4); // the facade between them
+  };
+  /** A giant flag on the square: its plinth and pole, the green, white and red flying out to the east. */
+  const flag = (x: number, y: number) => {
+    disc('rgba(0,0,0,0.35)', x + 3, y + 3, 16); disc(P.outline, x, y, 16); disc(P.pave1, x, y, 15); disc(P.pave0, x, y, 10);
+    disc(P.metal2, x, y, 2.5);
+    const fx = x + 3, fy = y - 13, fw = 54, fh = 30;
+    rect('rgba(0,0,0,0.25)', fx + 6, fy + 8, fw, fh);
+    rect(P.outline, fx - 1, fy - 1, fw + 2, fh + 2);
+    rect('#2f6b45', fx, fy, fw / 3, fh); rect(P.snow1, fx + fw / 3, fy, fw / 3, fh); rect(P.red1, fx + (2 * fw) / 3, fy, fw / 3, fh);
+    disc(P.brown1, fx + fw / 2, fy + fh / 2, 4); dot(P.olive1, fx + fw / 2 - 2, fy + fh / 2 + 2, 2); // the eagle
+    for (let k = 4; k < fw; k += 9) rect('rgba(0,0,0,0.12)', fx + k, fy, 2, fh); // folds
+  };
+  const shown: { kind: string; x: number; y: number }[] = [];
+  drawn.set(key, shown);
+  /** Things drawn at a size of their own (the grounds' furniture: fountains, beds, the court, the L) grow with the map. */
+  const GROWS = ['fountain', 'flowers', 'helipad', 'flag', 'court', 'laundry', 'el'];
+  const one = (d: { kind: string; x: number; y: number }) => {
     const { x, y } = d, r = rng(seedOf(x, y, 3));
     // Landmarks, drawn whole wherever they are.
-    if (d.kind === 'whitehouse') { whiteHouse(x, y); continue; }
-    if (d.kind === 'colosseum') { colosseum(x, y); continue; }
-    if (d.kind === 'scramble') { scramble(x, y); continue; }
-    if (d.kind === 'rails') { rails(x, y); continue; }
-    if (!WHERE[d.kind]?.includes(kindAt(x, y)) || fadeAt(x, y) > 0.4) continue; // nothing deep in the shadow
+    if (d.kind === 'whitehouse') { whiteHouse(x, y); return; }
+    if (d.kind === 'cathedral') { cathedral(x, y); return; }
+    if (d.kind === 'flag') { flag(x, y); return; }
+    if (d.kind === 'colosseum') { colosseum(x, y); return; }
+    if (d.kind === 'scramble') { scramble(x, y); return; }
+    if (d.kind === 'rails') { rails(x, y); return; }
+    if (!WHERE[d.kind]?.includes(kindAt(x, y)) || fadeAt(x, y) > 0.4) return; // nothing deep in the shadow
+    shown.push(d);
     if (d.kind === 'tree') {
       // A street tree in its own square of soil, its crown inside the tile.
       const px = Math.floor(x / T) * T, py = Math.floor(y / T) * T;
@@ -537,6 +640,49 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       // Hachiko on his plinth, waiting.
       box(x - 6, y - 6, 12, 12, P.pave0, P.pave1);
       rect(P.brown0, x - 4, y - 1, 7, 3); rect(P.brown0, x + 2, y - 3, 3, 3); rect(P.brown1, x + 3, y - 3, 1, 1); rect(P.brown0, x - 5, y - 2, 1, 2); // body, head, ear, tail
+    } else if (d.kind === 'scorch' || d.kind === 'blaze') {
+      // Soot blown out round where something burned; a blaze has its heap of burning wreckage and a glow on it.
+      for (let k = 0; k < 6; k++) disc('rgba(8,8,8,0.16)', x + (r() - 0.5) * 14, y + (r() - 0.5) * 10, 6 + r() * 9);
+      if (d.kind === 'blaze') {
+        for (let k = 0; k < 14; k++) { const s = 2 + ((r() * 3) | 0); rect(P.outline, x - 8 + r() * 16, y - 6 + r() * 12 + 1, s, s); rect([P.brown0, P.metal0, P.rust, P.khaki0][k % 4], x - 8 + r() * 16, y - 6 + r() * 12, s, s); }
+        disc('rgba(255,150,60,0.16)', x, y, 16); disc('rgba(255,190,90,0.18)', x, y, 8);
+      }
+    } else if (d.kind === 'crater') {
+      // A shell hole: a ragged ring of thrown-up asphalt, dark inside, chunks round it.
+      for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2 + r(); disc(P.pave1, x + Math.cos(a) * 5, y + Math.sin(a) * 5, 7 + r() * 4); }
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + r(); disc(P.asphalt0, x + Math.cos(a) * 3, y + Math.sin(a) * 3, 6 + r() * 3); }
+      for (let k = 0; k < 4; k++) disc(P.outline, x + (r() - 0.5) * 6, y + (r() - 0.5) * 6, 3 + r() * 3);
+      for (let k = 0; k < 12; k++) { const a = r() * 7, rr = 13 + r() * 9; dot([P.asphalt2, P.pave1, P.outline][k % 3], x + Math.cos(a) * rr, y + Math.sin(a) * rr, 1 + ((r() * 2) | 0)); }
+    } else if (d.kind === 'collapse') {
+      // A roof fallen in: a black hole, the joists showing across it, rubble heaped at its edge.
+      disc(P.outline, x, y, 13); disc('#0c0b0b', x + 1, y + 1, 10);
+      c.save(); c.translate(x, y); c.rotate(r() * 3);
+      for (let k = -9; k <= 9; k += 6) { rect(P.brown0, k - 1, -12, 3, 24); rect(P.brown1, k - 1, -12, 1, 24); }
+      c.restore();
+      for (let k = 0; k < 16; k++) { const a = r() * 7, rr = 9 + r() * 6, s = 1 + ((r() * 3) | 0); rect([P.pave1, P.khaki0, P.brown0, P.metal1][k % 4], x + Math.cos(a) * rr, y + Math.sin(a) * rr, s, s); }
+    } else if (d.kind === 'burnt') {
+      // A car burned out where it stopped in the street.
+      disc('rgba(10,10,10,0.45)', x, y, 16);
+      stamp(`car/${(x + y) % 3}`, x, y, r() * 0.8 - 0.4 + (r() < 0.5 ? 0 : Math.PI / 2), 0.66);
+    } else if (d.kind === 'el') {
+      // A stretch of Chicago's elevated railway over the street: its shadow, the steel deck, sleepers and rails, and a
+      // pillar under every other stretch.
+      const len = 2 * T;
+      rect('rgba(0,0,0,0.3)', x - len / 2 + 6, y - 7, len, 22);
+      rect(P.outline, x - len / 2, y - 11, len, 22); rect(P.metal0, x - len / 2, y - 10, len, 20);
+      for (let k = x - len / 2; k < x + len / 2; k += 3) rect(P.brown0, k, y - 9, 2, 18);
+      for (const dy of [-7, -3, 3, 7]) rect(P.metal2, x - len / 2, y + dy, len, 1);
+      if (Math.round(x / len) % 2 === 0) { rect(P.outline, x - 3, y + 11, 6, 3); rect(P.metal1, x - 2, y + 11, 4, 2); }
+    } else if (d.kind === 'laundry') {
+      // Washing hung on a line across an alley.
+      rect('rgba(0,0,0,0.25)', x - 14, y + 2, 30, 1); rect(P.metal2, x - 15, y, 30, 1);
+      for (let k = -13; k < 14; k += 4 + ((r() * 2) | 0)) rect([P.snow1, P.red1, P.navy2, P.flash1, P.teal1, P.maroon2][(r() * 6) | 0], x + k, y + 1, 3, 3 + ((r() * 3) | 0));
+    } else if (d.kind === 'court') {
+      // A barangay basketball court: its lines, a hoop at each end.
+      rect('#5a6b5e', x - 30, y - 18, 60, 36); rect(P.cream, x - 30, y - 18, 60, 1); rect(P.cream, x - 30, y + 17, 60, 1);
+      rect(P.cream, x - 30, y - 18, 1, 36); rect(P.cream, x + 29, y - 18, 1, 36); rect(P.cream, x, y - 18, 1, 36);
+      c.strokeStyle = P.cream; c.beginPath(); c.arc(x, y, 6, 0, 7); c.stroke();
+      for (const hx of [x - 27, x + 27]) { rect(P.outline, hx - 1, y - 4, 3, 8); disc(P.hivis1, hx + (hx < x ? 3 : -3), y, 2); }
     } else if (d.kind === 'billboard') {
       // A video screen on the front, lit up, its glow on the roof round it.
       const px = Math.floor(x / T) * T, py = Math.floor(y / T) * T, col = [P.navy2, P.teal2, P.red2, P.flash1, P.maroon2][(r() * 5) | 0];
@@ -546,6 +692,12 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       for (let k = py + 4; k < py + T - 4; k += 2) rect('rgba(0,0,0,0.18)', px + 2, k, T - 4, 1);
       rect(P.flash1, px + 3 + ((r() * 6) | 0), py + 5, 3, 2);
     }
+  };
+  for (const d of map.decor ?? []) {
+    const grow = S > 1 && GROWS.includes(d.kind);
+    if (grow) { c.save(); c.translate(d.x, d.y); c.scale(S, S); c.translate(-d.x, -d.y); }
+    one(d);
+    if (grow) c.restore();
   }
 
   // Window and roof spots a soldier can man.

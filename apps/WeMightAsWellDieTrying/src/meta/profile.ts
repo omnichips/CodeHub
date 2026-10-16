@@ -1,11 +1,11 @@
 // The save in use and the settings, shared by the menu and the game. Change profile.save or profile.settings, then
 // persist(). On start the save opened most recently is the one in use.
-import brooklyn from '../data/maps/brooklyn.json' with { type: 'json' };
-import centralPark from '../data/maps/central-park.json' with { type: 'json' };
+import chicago from '../data/maps/chicago.json' with { type: 'json' };
 import london from '../data/maps/london.json' with { type: 'json' };
 import mainStreet from '../data/maps/main-street.json' with { type: 'json' };
 import newYork from '../data/maps/new-york.json' with { type: 'json' };
-import queens from '../data/maps/queens.json' with { type: 'json' };
+import manila from '../data/maps/manila.json' with { type: 'json' };
+import mexico from '../data/maps/mexico.json' with { type: 'json' };
 import rome from '../data/maps/rome.json' with { type: 'json' };
 import tokyo from '../data/maps/tokyo.json' with { type: 'json' };
 import waves from '../data/waves.json' with { type: 'json' };
@@ -18,7 +18,10 @@ import { SLOTS, fresh, load, loadSettings, store, storeSettings } from './save.t
 /** Every slot: its save, or undefined if empty. */
 export const saves = () => Array.from({ length: SLOTS }, (_, k) => load(k));
 
-const found = saves(), last = found.reduce((best, s, k) => (s && (!found[best] || s.played > found[best]!.played) ? k : best), 0);
+/** The slot played most recently, or -1 if every slot is empty. */
+export const lastPlayed = (found = saves()) => found.reduce((best, s, k) => (s && (best < 0 || s.played > found[best]!.played) ? k : best), -1);
+
+const found = saves(), last = Math.max(0, lastPlayed(found));
 export const profile = { slot: last, save: found[last] ?? fresh('Save 1'), settings: loadSettings() };
 export const persist = () => { store(profile.slot, profile.save); storeSettings(profile.settings); };
 
@@ -33,17 +36,18 @@ export function open(slot: number, save = load(slot) ?? fresh(`Save ${slot + 1}`
 /** The maps, in the order they unlock: the next opens once the one before is cleared. */
 export const MAPS: { id: string; name: string; data: MapData; waves: WavePlan }[] = [
   { id: 'main-street', name: 'Main Street', data: mainStreet, waves: waves['main-street'] }, // one straight street: learn the game here
-  { id: 'brooklyn', name: 'Brooklyn', data: brooklyn, waves: waves.brooklyn }, // an F: two ways in
+  { id: 'chicago', name: 'Chicago', data: chicago, waves: waves.chicago }, // an F: two ways in, the L over the top street
   { id: 'new-york', name: 'New York', data: newYork, waves: waves['new-york'] }, // the city grid: three ways in
   // Maps 4 to 9 are drawn by scripts/maps.ts.
-  { id: 'central-park', name: 'Central Park', data: centralPark, waves: waves['central-park'] }, // open ground between two avenues
-  { id: 'london', name: 'London', data: london, waves: waves.london }, // one long bridge, end to end, no buildings
-  { id: 'white-house', name: 'White House', data: whiteHouse, waves: waves['white-house'] }, // one open lawn, the horde along one whole side
+  { id: 'manila', name: 'Manila', data: manila, waves: waves.manila }, // the slums: shanties, alleys, a canal
+  { id: 'mexico', name: 'Mexico City', data: mexico, waves: waves.mexico }, // the Zócalo: open ground, the cathedral and palace standing in it
   { id: 'rome', name: 'Rome', data: rome, waves: waves.rome }, // Via Labicana bent into an M, the safe zone where it dips in the middle
-  { id: 'queens', name: 'Queens Interchange', data: queens, waves: waves.queens }, // two highways meeting
-  { id: 'tokyo', name: 'Tokyo', data: tokyo, waves: waves.tokyo }, // Shinjuku: the safe zone in the middle of the square, the horde from every side
+  { id: 'tokyo', name: 'Tokyo', data: tokyo, waves: waves.tokyo }, // Shibuya: the safe zone in the middle of the scramble crossing, the horde from every side
+  { id: 'london', name: 'London', data: london, waves: waves.london }, // one long bridge, end to end, no buildings
+  { id: 'white-house', name: 'White House', data: whiteHouse, waves: waves['white-house'] }, // the last stand: one open lawn, the horde along one whole side
 ];
-export const unlocked = (k: number) => k === 0 || !!profile.save.cleared[MAPS[k - 1].id];
+/** Open once the map before it is cleared, or if cleared already (a save from before the maps were put in this order). */
+export const unlocked = (k: number) => k === 0 || !!profile.save.cleared[MAPS[k - 1].id] || !!profile.save.cleared[MAPS[k].id];
 
 /** About how many zombies a map sends for each soldier the save in use can field: a feel for how hard it is. */
 export function perSoldier(k: number) {

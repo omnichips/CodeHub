@@ -45,8 +45,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    10,
-    15
+    15,
+    25
    ],
    "parent": "rifleman",
    "icon": "rifleman-idle-6/0",
@@ -66,9 +66,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    5,
     10,
-    15
+    15,
+    25
    ],
    "parent": "rifleman.more",
    "icon": "icon-range/0",
@@ -89,9 +89,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    5,
     10,
-    15
+    15,
+    25
    ],
    "parent": "rifleman.more",
    "icon": "icon-damage/0",
@@ -112,9 +112,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    20
+    25,
+    30
    ],
    "parent": "rifleman.more",
    "icon": "icon-rate/0",
@@ -135,8 +135,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    25
+    30,
+    40
    ],
    "parent": "rifleman.damage",
    "icon": "rifleman-idle-6/0",
@@ -156,9 +156,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    20
+    25,
+    30
    ],
    "parent": "rifleman.more2",
    "icon": "icon-hp/0",
@@ -179,7 +179,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "shield-idle-6/0",
@@ -199,8 +199,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "shield",
    "icon": "shield-idle-6/0",
@@ -220,9 +220,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "shield.more",
    "icon": "icon-range/0",
@@ -243,9 +243,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "shield.more",
    "icon": "icon-damage/0",
@@ -266,9 +266,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "shield.more",
    "icon": "icon-rate/0",
@@ -289,8 +289,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "shield.damage",
    "icon": "shield-idle-6/0",
@@ -310,9 +310,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "shield.more2",
    "icon": "icon-hp/0",
@@ -333,7 +333,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    85
    ],
    "parent": "shield.more2",
    "icon": "noise/0",
@@ -354,7 +354,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "shotgunner-idle-6/0",
@@ -374,8 +374,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "shotgunner",
    "icon": "shotgunner-idle-6/0",
@@ -395,9 +395,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "shotgunner.more",
    "icon": "icon-range/0",
@@ -418,9 +418,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "shotgunner.more",
    "icon": "icon-damage/0",
@@ -441,9 +441,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "shotgunner.more",
    "icon": "icon-rate/0",
@@ -464,8 +464,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "shotgunner.damage",
    "icon": "shotgunner-idle-6/0",
@@ -485,9 +485,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-hp/0",
@@ -508,7 +508,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    85
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-pellets/0",
@@ -529,7 +529,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "machinegunner-idle-6/0",
@@ -549,8 +549,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "machinegunner",
    "icon": "machinegunner-idle-6/0",
@@ -570,9 +570,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "machinegunner.more",
    "icon": "icon-range/0",
@@ -593,9 +593,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "machinegunner.more",
    "icon": "icon-damage/0",
@@ -616,9 +616,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "machinegunner.more",
    "icon": "icon-rate/0",
@@ -639,8 +639,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "machinegunner.damage",
    "icon": "machinegunner-idle-6/0",
@@ -660,9 +660,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-hp/0",
@@ -683,7 +683,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "marksman-idle-6/0",
@@ -703,8 +703,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "marksman",
    "icon": "marksman-idle-6/0",
@@ -724,9 +724,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "marksman.more",
    "icon": "icon-range/0",
@@ -747,9 +747,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "marksman.more",
    "icon": "icon-damage/0",
@@ -770,9 +770,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "marksman.more",
    "icon": "icon-rate/0",
@@ -793,8 +793,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "marksman.damage",
    "icon": "marksman-idle-6/0",
@@ -814,9 +814,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "marksman.more2",
    "icon": "icon-hp/0",
@@ -837,7 +837,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "grenadier-idle-6/0",
@@ -857,8 +857,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "grenadier",
    "icon": "grenadier-idle-6/0",
@@ -878,9 +878,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "grenadier.more",
    "icon": "icon-range/0",
@@ -901,9 +901,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "grenadier.more",
    "icon": "icon-damage/0",
@@ -924,9 +924,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "grenadier.more",
    "icon": "icon-rate/0",
@@ -947,8 +947,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "grenadier.damage",
    "icon": "grenadier-idle-6/0",
@@ -968,9 +968,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "grenadier.more2",
    "icon": "icon-hp/0",
@@ -991,7 +991,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    85
    ],
    "parent": "grenadier.more2",
    "icon": "icon-blast/0",
@@ -1012,7 +1012,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "rifleman",
    "icon": "medic-idle-6/0",
@@ -1032,8 +1032,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "medic",
    "icon": "medic-idle-6/0",
@@ -1053,9 +1053,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "medic.more",
    "icon": "icon-range/0",
@@ -1076,9 +1076,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    10,
-    20,
-    25
+    15,
+    30,
+    40
    ],
    "parent": "medic.more",
    "icon": "icon-heal/0",
@@ -1099,8 +1099,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    45
+    45,
+    70
    ],
    "parent": "medic.heal",
    "icon": "medic-idle-6/0",
@@ -1120,9 +1120,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "medic.more2",
    "icon": "icon-hp/0",
@@ -1143,7 +1143,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    45
+    70
    ],
    "parent": "shotgunner",
    "icon": "flamethrower-idle-6/0",
@@ -1163,8 +1163,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "flamethrower",
    "icon": "flamethrower-idle-6/0",
@@ -1184,9 +1184,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "flamethrower.more",
    "icon": "icon-range/0",
@@ -1207,9 +1207,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "flamethrower.more",
    "icon": "icon-damage/0",
@@ -1230,9 +1230,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "flamethrower.more",
    "icon": "icon-rate/0",
@@ -1253,8 +1253,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    45,
-    70
+    70,
+    105
    ],
    "parent": "flamethrower.damage",
    "icon": "flamethrower-idle-6/0",
@@ -1274,9 +1274,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-hp/0",
@@ -1297,7 +1297,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    85
+    130
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-burn/0",
@@ -1318,7 +1318,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    45
+    70
    ],
    "parent": "marksman",
    "icon": "sniper-idle-6/0",
@@ -1338,8 +1338,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "sniper",
    "icon": "sniper-idle-6/0",
@@ -1359,9 +1359,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "sniper.more",
    "icon": "icon-range/0",
@@ -1382,9 +1382,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "sniper.more",
    "icon": "icon-damage/0",
@@ -1405,9 +1405,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "sniper.more",
    "icon": "icon-rate/0",
@@ -1428,8 +1428,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    45,
-    70
+    70,
+    105
    ],
    "parent": "sniper.damage",
    "icon": "sniper-idle-6/0",
@@ -1449,9 +1449,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "sniper.more2",
    "icon": "icon-hp/0",
@@ -1472,7 +1472,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    85
+    130
    ],
    "parent": "sniper.more2",
    "icon": "icon-pierce/0",
@@ -1493,7 +1493,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    45
+    70
    ],
    "parent": "grenadier",
    "icon": "bazooka-idle-6/0",
@@ -1513,8 +1513,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "bazooka",
    "icon": "bazooka-idle-6/0",
@@ -1534,9 +1534,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "bazooka.more",
    "icon": "icon-range/0",
@@ -1557,9 +1557,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "bazooka.more",
    "icon": "icon-damage/0",
@@ -1580,9 +1580,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "bazooka.more",
    "icon": "icon-rate/0",
@@ -1603,8 +1603,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    45,
-    70
+    70,
+    105
    ],
    "parent": "bazooka.damage",
    "icon": "bazooka-idle-6/0",
@@ -1624,9 +1624,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "bazooka.more2",
    "icon": "icon-hp/0",
@@ -1647,7 +1647,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    85
+    130
    ],
    "parent": "bazooka.more2",
    "icon": "icon-blast/0",
@@ -1668,7 +1668,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    45
+    70
    ],
    "parent": "medic",
    "icon": "engineer-idle-6/0",
@@ -1688,8 +1688,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "engineer",
    "icon": "engineer-idle-6/0",
@@ -1709,9 +1709,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "engineer.more",
    "icon": "icon-range/0",
@@ -1732,9 +1732,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "engineer.more",
    "icon": "icon-repair/0",
@@ -1755,8 +1755,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    45,
-    70
+    70,
+    105
    ],
    "parent": "engineer.repair",
    "icon": "engineer-idle-6/0",
@@ -1776,9 +1776,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "engineer.more2",
    "icon": "icon-hp/0",
@@ -1799,7 +1799,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    60
+    90
    ],
    "parent": "bazooka",
    "icon": "mortar-idle-6/0",
@@ -1819,8 +1819,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    40
+    45,
+    60
    ],
    "parent": "mortar",
    "icon": "mortar-idle-6/0",
@@ -1840,9 +1840,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "mortar.more",
    "icon": "icon-range/0",
@@ -1863,9 +1863,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    35,
-    55
+    40,
+    55,
+    85
    ],
    "parent": "mortar.more",
    "icon": "icon-damage/0",
@@ -1886,9 +1886,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    30,
-    40,
-    65
+    45,
+    60,
+    100
    ],
    "parent": "mortar.more",
    "icon": "icon-rate/0",
@@ -1909,8 +1909,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    60,
-    90
+    90,
+    135
    ],
    "parent": "mortar.damage",
    "icon": "mortar-idle-6/0",
@@ -1930,9 +1930,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    30,
-    40,
-    65
+    45,
+    60,
+    100
    ],
    "parent": "mortar.more2",
    "icon": "icon-hp/0",
@@ -1953,7 +1953,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    110
+    165
    ],
    "parent": "mortar.more2",
    "icon": "icon-blast/0",
@@ -1974,7 +1974,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    60
+    90
    ],
    "parent": "engineer",
    "icon": "operator-idle-6/0",
@@ -1994,8 +1994,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    30,
-    40
+    45,
+    60
    ],
    "parent": "operator",
    "icon": "operator-idle-6/0",
@@ -2015,9 +2015,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "operator.more",
    "icon": "icon-range/0",
@@ -2038,9 +2038,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    35,
-    55
+    40,
+    55,
+    85
    ],
    "parent": "operator.more",
    "icon": "icon-damage/0",
@@ -2061,9 +2061,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    30,
-    40,
-    65
+    45,
+    60,
+    100
    ],
    "parent": "operator.more",
    "icon": "icon-rate/0",
@@ -2084,8 +2084,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    60,
-    90
+    90,
+    135
    ],
    "parent": "operator.damage",
    "icon": "operator-idle-6/0",
@@ -2105,9 +2105,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    30,
-    40,
-    65
+    45,
+    60,
+    100
    ],
    "parent": "operator.more2",
    "icon": "icon-hp/0",
@@ -2128,7 +2128,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    110
+    165
    ],
    "parent": "operator.more2",
    "icon": "turret-idle-6/0",
@@ -2170,8 +2170,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    10,
-    15
+    15,
+    25
    ],
    "parent": "plastic",
    "icon": "plastic/0",
@@ -2191,9 +2191,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    10,
     15,
-    20
+    25,
+    30
    ],
    "parent": "plastic.more",
    "icon": "icon-hp/0",
@@ -2235,8 +2235,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    10,
-    15
+    15,
+    25
    ],
    "parent": "wood",
    "icon": "wood/0",
@@ -2256,9 +2256,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    10,
     15,
-    20
+    25,
+    30
    ],
    "parent": "wood.more",
    "icon": "icon-hp/0",
@@ -2279,7 +2279,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    20
+    30
    ],
    "parent": "wood",
    "icon": "sandbags/0",
@@ -2299,8 +2299,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "sandbags",
    "icon": "sandbags/0",
@@ -2320,9 +2320,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "sandbags.more",
    "icon": "icon-hp/0",
@@ -2343,7 +2343,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    35
+    55
    ],
    "parent": "sandbags",
    "icon": "car/0",
@@ -2363,8 +2363,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    25
+    30,
+    40
    ],
    "parent": "car",
    "icon": "car/0",
@@ -2384,9 +2384,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "car.more",
    "icon": "icon-hp/0",
@@ -2407,7 +2407,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    60
+    90
    ],
    "parent": "car",
    "icon": "cement/0",
@@ -2427,8 +2427,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    25,
-    40
+    40,
+    60
    ],
    "parent": "cement",
    "icon": "cement/0",
@@ -2448,9 +2448,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    25,
     40,
-    55
+    60,
+    85
    ],
    "parent": "cement.more",
    "icon": "icon-hp/0",
@@ -2471,7 +2471,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    10
+    15
    ],
    "parent": "plastic",
    "icon": "wire/0",
@@ -2491,8 +2491,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    10,
-    15
+    15,
+    25
    ],
    "parent": "wire",
    "icon": "wire/0",
@@ -2512,9 +2512,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    15,
-    20,
-    30
+    25,
+    30,
+    45
    ],
    "parent": "wire.more",
    "icon": "icon-power/0",
@@ -2535,7 +2535,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    20
+    30
    ],
    "parent": "wire",
    "icon": "spikes/0",
@@ -2555,8 +2555,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "spikes",
    "icon": "spikes/0",
@@ -2576,9 +2576,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
-    25,
-    40
+    30,
+    40,
+    60
    ],
    "parent": "spikes.more",
    "icon": "icon-power/0",
@@ -2599,7 +2599,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "spikes",
    "icon": "noise/0",
@@ -2619,8 +2619,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    25
+    25,
+    40
    ],
    "parent": "noise",
    "icon": "noise/0",
@@ -2640,9 +2640,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
     30,
-    50
+    45,
+    75
    ],
    "parent": "noise.more",
    "icon": "icon-power/0",
@@ -2663,7 +2663,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    25
+    40
    ],
    "parent": "wire",
    "icon": "mine/0",
@@ -2683,8 +2683,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    25
+    25,
+    40
    ],
    "parent": "mine",
    "icon": "mine/0",
@@ -2704,9 +2704,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "mine.more",
    "icon": "icon-power/0",
@@ -2727,7 +2727,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    40
+    60
    ],
    "parent": "mine",
    "icon": "explosives/0",
@@ -2747,8 +2747,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "explosives",
    "icon": "explosives/0",
@@ -2768,9 +2768,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    25,
     40,
-    55
+    60,
+    85
    ],
    "parent": "explosives.more",
    "icon": "icon-power/0",
@@ -2791,7 +2791,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    65
+    100
    ],
    "parent": "explosives",
    "icon": "rigged/0",
@@ -2811,8 +2811,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    25,
-    40
+    40,
+    60
    ],
    "parent": "rigged",
    "icon": "rigged/0",
@@ -2832,9 +2832,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    35,
-    50,
-    75
+    55,
+    75,
+    115
    ],
    "parent": "rigged.more",
    "icon": "icon-power/0",
@@ -2855,7 +2855,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    50
+    75
    ],
    "parent": "mine",
    "icon": "puddle/0",
@@ -2879,8 +2879,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    35
+    30,
+    55
    ],
    "parent": "puddle",
    "icon": "puddle/0",
@@ -2900,9 +2900,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    30,
     45,
-    65
+    70,
+    100
    ],
    "parent": "puddle.more",
    "icon": "icon-power/0",
@@ -2923,7 +2923,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    15
+    25
    ],
    "parent": "wood",
    "icon": "nest/0",
@@ -2943,8 +2943,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    20
+    25,
+    30
    ],
    "parent": "nest",
    "icon": "nest/0",
@@ -2964,9 +2964,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "nest.more",
    "icon": "icon-power/0",
@@ -2987,7 +2987,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    30
+    45
    ],
    "parent": "nest",
    "icon": "watchtower/0",
@@ -3007,8 +3007,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    25
+    25,
+    40
    ],
    "parent": "watchtower",
    "icon": "watchtower/0",
@@ -3028,9 +3028,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
     30,
-    50
+    45,
+    75
    ],
    "parent": "watchtower.more",
    "icon": "icon-power/0",
@@ -3051,7 +3051,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    25
+    40
    ],
    "parent": "sandbags",
    "icon": "ammo/0",
@@ -3071,8 +3071,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    15,
-    25
+    25,
+    40
    ],
    "parent": "ammo",
    "icon": "ammo/0",
@@ -3092,9 +3092,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "ammo.more",
    "icon": "icon-power/0",
@@ -3115,7 +3115,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    40
+    60
    ],
    "parent": "ammo",
    "icon": "incendiary/0",
@@ -3135,8 +3135,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "incendiary",
    "icon": "incendiary/0",
@@ -3156,9 +3156,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    25,
     40,
-    55
+    60,
+    85
    ],
    "parent": "incendiary.more",
    "icon": "icon-power/0",
@@ -3200,8 +3200,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    10,
-    15
+    15,
+    25
    ],
    "parent": "missile",
    "icon": "missile/0",
@@ -3221,9 +3221,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    10,
     15,
-    25
+    25,
+    40
    ],
    "parent": "missile.charge",
    "icon": "icon-power/0",
@@ -3244,7 +3244,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    35
+    55
    ],
    "parent": "missile",
    "icon": "a10/0",
@@ -3264,8 +3264,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "a10",
    "icon": "a10/0",
@@ -3285,9 +3285,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    25,
-    35,
-    55
+    40,
+    55,
+    85
    ],
    "parent": "a10.charge",
    "icon": "icon-power/0",
@@ -3308,7 +3308,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    25
+    40
    ],
    "parent": "missile",
    "icon": "smoke/0",
@@ -3328,8 +3328,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    15,
-    25
+    25,
+    40
    ],
    "parent": "smoke",
    "icon": "smoke/0",
@@ -3349,9 +3349,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    20,
     30,
-    45
+    45,
+    70
    ],
    "parent": "smoke.charge",
    "icon": "icon-power/0",
@@ -3372,7 +3372,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    60
+    90
    ],
    "parent": "missile",
    "icon": "artillery/0",
@@ -3392,8 +3392,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    25,
-    40
+    40,
+    60
    ],
    "parent": "artillery",
    "icon": "artillery/0",
@@ -3413,9 +3413,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    30,
-    50,
-    75
+    45,
+    75,
+    115
    ],
    "parent": "artillery.charge",
    "icon": "icon-power/0",
@@ -3436,7 +3436,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    35
+    55
    ],
    "parent": "smoke",
    "icon": "flare/0",
@@ -3456,8 +3456,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    20,
-    30
+    30,
+    45
    ],
    "parent": "flare",
    "icon": "flare/0",
@@ -3477,9 +3477,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    25,
-    35,
-    55
+    40,
+    55,
+    85
    ],
    "parent": "flare.charge",
    "icon": "icon-power/0",
@@ -3500,7 +3500,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    55
+    85
    ],
    "parent": "a10",
    "icon": "napalm/0",
@@ -3520,8 +3520,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    25,
-    40
+    40,
+    60
    ],
    "parent": "napalm",
    "icon": "napalm/0",
@@ -3541,9 +3541,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    30,
     45,
-    70
+    70,
+    105
    ],
    "parent": "napalm.charge",
    "icon": "icon-power/0",
@@ -3564,9 +3564,9 @@
    "cat": "base",
    "max": 3,
    "cost": [
-    15,
     25,
-    35
+    40,
+    55
    ],
    "parent": "command",
    "icon": "icon-leak/0",
@@ -3585,8 +3585,8 @@
    "cat": "base",
    "max": 2,
    "cost": [
-    45,
-    70
+    70,
+    105
    ],
    "parent": "leak",
    "icon": "icon-leak/0",
@@ -3605,9 +3605,9 @@
    "cat": "base",
    "max": 3,
    "cost": [
-    30,
     45,
-    70
+    70,
+    105
    ],
    "parent": "command",
    "icon": "icon-chips/0",

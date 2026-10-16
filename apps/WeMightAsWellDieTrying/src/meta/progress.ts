@@ -25,8 +25,10 @@ export function state(owned: Levels, id: string): 'owned' | 'open' | 'locked' {
 /** What the next level of a node costs (undefined once it is fully bought). */
 export const nextCost = (owned: Levels, id: string) => NODE.get(id)!.cost[level(owned, id)];
 
-/** Every game speed, from the start. */
-export const SPEEDS = [1, 2, 4, 5, 10];
+/** Every game speed, from the start. 1× is already brisk: the fight runs PACE times faster than real time. */
+export const SPEEDS = [0.5, 1, 2, 5];
+/** Seconds of fighting per real second at 1× (what used to be 5×). */
+export const PACE = 5;
 
 export interface Build {
   stats: Stats;
@@ -88,7 +90,7 @@ export function build(owned: Levels): Build {
 export interface RunResult { kills: number; leaks: number; leakLimit: number; time: number; par: number; won: boolean; firstClear: boolean; chipGain: number }
 export interface Payout { total: number; base: number; timeBonus: number; leakBonus: number; firstClear: number }
 
-/** chips = ⌊kills / 10⌋ × (1 + time bonus + leak bonus) + first-clear bonus; a loss keeps half the kill chips.
+/** chips = ⌊kills / 15⌋ × (1 + time bonus + leak bonus) + first-clear bonus; a loss keeps half the kill chips.
  *  Chip gain from the skill web multiplies everything but the first-clear bonus. All numbers in economy.json. */
 export function payout(r: RunResult): Payout {
   const e = economy, base = Math.floor(r.kills / e.killsPerChip);

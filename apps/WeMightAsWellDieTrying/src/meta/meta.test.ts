@@ -8,7 +8,7 @@ test('a fresh start owns 4 Riflemen, plastic and wood roadblocks and one Missile
   assert.deepEqual(b.loadout, { rifleman: 4, plastic: 3, wood: 2 });
   assert.equal(b.stats.usables.missile.charges, 1);
   assert.equal(b.stats.usables.a10.charges, 0);
-  assert.deepEqual(b.speeds, [1, 2, 4, 5, 10], 'every speed from the start');
+  assert.deepEqual(b.speeds, [0.5, 1, 2, 5], 'every speed from the start');
   assert.equal(b.stats.leakLimit, 50);
 });
 
@@ -43,15 +43,15 @@ test('every level of every node can be bought, starting from nothing but the sta
     for (const n of NODES) if (state(owned, n.id) === 'open') { spent += nextCost(owned, n.id)!; owned[n.id] = level(owned, n.id) + 1; grew = true; }
   }
   assert.ok(NODES.every((n) => level(owned, n.id) === n.max));
-  assert.ok(spent > 8000 && spent < 14000, `everything costs ${spent} chips: tens of runs, not hundreds`);
+  assert.ok(spent > 12000 && spent < 20000, `everything costs ${spent} chips: tens of runs, not hundreds`);
 });
 
-test('chips: kills/10 with time and leak bonuses on a win, half the kill chips on a loss', () => {
-  const run = { kills: 500, leaks: 0, leakLimit: 50, time: 420, par: 420, won: true, firstClear: true, chipGain: 1 };
-  assert.equal(payout(run).total, Math.floor(50 * 1.25) + 200); // at par: no time bonus; no leaks: +25%
-  assert.equal(payout({ ...run, time: 315, firstClear: false }).total, Math.floor(50 * 1.55)); // 25% under par: full +30%
-  assert.equal(payout({ ...run, leaks: 50, firstClear: false }).total, 50);
-  assert.equal(payout({ ...run, won: false }).total, 25);
+test('chips: kills/15 with time and leak bonuses on a win, half the kill chips on a loss', () => {
+  const run = { kills: 600, leaks: 0, leakLimit: 50, time: 420, par: 420, won: true, firstClear: true, chipGain: 1 };
+  assert.equal(payout(run).total, Math.floor(40 * 1.25) + 100); // at par: no time bonus; no leaks: +25%
+  assert.equal(payout({ ...run, time: 315, firstClear: false }).total, Math.floor(40 * 1.55)); // 25% under par: full +30%
+  assert.equal(payout({ ...run, leaks: 50, firstClear: false }).total, 40);
+  assert.equal(payout({ ...run, won: false }).total, 20);
 });
 
 test('a save from a file is never trusted: junk is dropped, bad numbers reset', () => {
@@ -80,14 +80,17 @@ test('a save from a file is never trusted: junk is dropped, bad numbers reset', 
 test('a save from before the skill web had levels gets back every chip it spent, and keeps its cities', () => {
   // Version 1 (before slots) and version 2 owned nodes of the old web: 'sniper' cost 50, 'leak1' 15.
   const s = parse(JSON.stringify({ version: 1, chips: 40, owned: ['command', 'rifleman', 'sniper', 'leak1'], cleared: { 'new-york': true }, tutorialDone: true, settings: { gore: 'some' } }))!;
-  assert.equal(s.version, 3);
+  assert.equal(s.version, 4);
   assert.equal(s.chips, 40 + 50 + 15);
   assert.deepEqual(s.skills, { ...STARTING }, 'the new web starts afresh');
   assert.equal(s.name, 'Save');
   assert.ok(s.cleared['new-york'] && s.tutorialDone);
 });
 
-test('a New York map that was swapped for a city counts that city as cleared', () => {
-  const s = parse(JSON.stringify({ ...fresh(), cleared: { 'central-park': true, harlem: true, 'red-hook': true, 'wall-street': true, 'times-square': true } }))!;
-  assert.deepEqual(Object.keys(s.cleared).sort(), ['central-park', 'london', 'rome', 'tokyo', 'white-house']);
+test('a map that was swapped for a city counts that city as cleared; a defence kept from before the maps doubled is dropped', () => {
+  const s = parse(JSON.stringify({ ...fresh(), cleared: { 'central-park': true, harlem: true, 'red-hook': true, 'wall-street': true, 'times-square': true, brooklyn: true, queens: true } }))!;
+  assert.deepEqual(Object.keys(s.cleared).sort(), ['chicago', 'london', 'manila', 'mexico', 'rome', 'tokyo', 'white-house']);
+  const kept = { soldiers: [], blocks: [{ kind: 'wood', tx: 10, ty: 8, vertical: true }], props: [], structures: [] };
+  assert.deepEqual(parse(JSON.stringify({ ...fresh(), version: 3, setups: { 'main-street': kept } }))!.setups, {});
+  assert.equal(parse(JSON.stringify({ ...fresh(), setups: { 'main-street': kept } }))!.setups['main-street'].blocks.length, 1);
 });

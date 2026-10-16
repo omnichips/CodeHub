@@ -2,10 +2,13 @@
 // zone (no route finding per zombie); a soldier ordered across the map gets a small field of their own.
 
 /** `rows` of tiles: a building (`#`, or by kind: `b` brownstone, `a` apartments, `o` office, `g` parking deck, `h` shops,
- *  `m` hospital, `w` warehouse, `r` old stone, `s` a station), `~` water and `f` a hedge (walls, but not buildings: nobody goes
+ *  `m` hospital, `w` warehouse, `r` old stone, `s` a station, `k` greystones, `z` a skyscraper, `y` shanties, `x` casitas,
+ *  `c` colonial stone), `~` water and `f` a hedge (walls, but not buildings: nobody goes
  *  in), `.` street, `,` paved plaza (a street to walk on), `t` a tree on grass, `l` mown lawn,
  *  `p` park, `S` where the horde enters, `E` the safe zone. `slots` are building tiles a soldier can man (windows,
- *  roofs); `props` are roadblocks already standing in the street; `decor` is only drawn. */
+ *  roofs); `props` are roadblocks already standing in the street; `decor` is only drawn. `scale` is how many tiles across
+ *  one tile of the map's design is (2: a street drawn 4 tiles wide is 8), for the painter: lanes, sidewalks and the
+ *  like come out that much wider. */
 export interface MapData {
   name: string;
   tile: number;
@@ -14,8 +17,9 @@ export interface MapData {
   slots?: number[][];
   props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
   decor?: { kind: string; x: number; y: number }[];
+  scale?: number;
 }
-export const BUILDING = '#boghmwars';
+export const BUILDING = '#boghmwarskzyxc';
 export const BARRIER = '~f';
 
 export class Grid {
@@ -59,7 +63,7 @@ export class Grid {
   solid(tx: number, ty: number) {
     if (tx < 0 || ty < 0 || tx >= this.w || ty >= this.h) return true;
     const i = ty * this.w + tx;
-    return this.wall[i] === 1 || this.block[i] !== 0;
+    return this.wall[i] !== 0 || this.block[i] !== 0; // water and hedges too
   }
 }
 

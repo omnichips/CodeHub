@@ -875,6 +875,9 @@ export class World {
           const shield = ZOMBIES[this.zkind[m]].shield!;
           if (m === i || (this.zx[m] - x) ** 2 + (this.zy[m] - y) ** 2 > shield.radius ** 2) continue;
           const ax = this.zx[m] + this.zdx[m] * shield.ahead - x, ay = this.zy[m] + this.zdy[m] * shield.ahead - y, al = Math.hypot(ax, ay) || 1;
+          // Never a pull back against its own way: one already standing in front of the leader (in its path) was drawn
+          // back onto the spot forever, holding the leader up, and pulls that cancelled the way left it standing.
+          if (ax * dx + ay * dy <= 0) continue;
           const bx = dx + ax / al, by = dy + ay / al, bl = Math.hypot(bx, by) || 1;
           dx = bx / bl;
           dy = by / bl;
@@ -1008,6 +1011,15 @@ export class World {
         const inside = tx >= 0 && ty >= 0 && tx < g.w && ty < g.h, b = inside ? g.block[ty * g.w + tx] : 0;
         if (!g.solid(tx, ty) || (!blocks && b && !g.wall[ty * g.w + tx])) continue;
         let ox = x - clamp(x, tx * T, tx * T + T), oy = y - clamp(y, ty * T, ty * T + T);
+        if (ox && oy) {
+          // A corner with a solid tile beside it is no corner but a flat wall: out straight, not slantwise (a slant push
+          // off it, against a body squeezed into the wall, cancelled its walking and held it there for good).
+          const hard = (tx: number, ty: number) => g.solid(tx, ty) && (blocks || tx < 0 || ty < 0 || tx >= g.w || ty >= g.h || !!g.wall[ty * g.w + tx]);
+          const sx = hard(tx + Math.sign(ox), ty), sy = hard(tx, ty + Math.sign(oy));
+          if (sx && sy) continue;
+          if (sx) ox = 0;
+          else if (sy) oy = 0;
+        }
         const d = Math.hypot(ox, oy);
         if (d >= r) continue;
         if (d === 0) {

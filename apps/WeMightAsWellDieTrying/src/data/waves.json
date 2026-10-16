@@ -2,24 +2,24 @@
   "main-street": {
     "gap": 7,
     "waves": [
-      { "duration": 25, "spawn": { "normal": 100 } },
-      { "duration": 28, "spawn": { "normal": 150, "fast": 30 } },
-      { "duration": 32, "spawn": { "normal": 180, "fast": 30, "jumper": 10 } },
-      { "duration": 36, "spawn": { "normal": 200, "fast": 40, "screamer": 10, "bloater": 10 } },
-      { "duration": 36, "spawn": { "normal": 200, "fast": 30, "armored": 10 } }
+      { "duration": 25, "spawn": { "normal": 125 } },
+      { "duration": 28, "spawn": { "normal": 188, "fast": 38 } },
+      { "duration": 32, "spawn": { "normal": 225, "fast": 38, "jumper": 13 } },
+      { "duration": 36, "spawn": { "normal": 250, "fast": 50, "screamer": 13, "bloater": 13 } },
+      { "duration": 36, "spawn": { "normal": 250, "fast": 38, "armored": 13 } }
     ]
   },
-  "brooklyn": {
+  "chicago": {
     "gap": 8,
     "waves": [
-      { "duration": 30, "spawn": { "normal": 150, "fast": 20 } },
-      { "duration": 32, "spawn": { "normal": 180, "fast": 30, "jumper": 10 } },
-      { "duration": 35, "spawn": { "normal": 200, "fast": 40, "screamer": 10 } },
-      { "duration": 38, "spawn": { "normal": 230, "fast": 40, "bloater": 15, "armored": 10 } },
-      { "duration": 40, "spawn": { "normal": 260, "fast": 50, "jumper": 15, "intelligent": 10, "tanky": 5 } },
-      { "duration": 42, "spawn": { "normal": 280, "fast": 60, "armored": 20, "bloater": 15, "hordemother": 2 } },
-      { "duration": 45, "spawn": { "normal": 300, "fast": 60, "screamer": 20, "tanky": 10, "intelligent": 10 } },
-      { "duration": 48, "spawn": { "normal": 341, "fast": 60, "armored": 20, "tanky": 10, "jumper": 15, "brute": 2 } }
+      { "duration": 30, "spawn": { "normal": 225, "fast": 30 } },
+      { "duration": 32, "spawn": { "normal": 270, "fast": 45, "jumper": 15 } },
+      { "duration": 35, "spawn": { "normal": 300, "fast": 60, "screamer": 15 } },
+      { "duration": 38, "spawn": { "normal": 345, "fast": 60, "bloater": 23, "armored": 15 } },
+      { "duration": 40, "spawn": { "normal": 390, "fast": 75, "jumper": 23, "intelligent": 15, "tanky": 8 } },
+      { "duration": 42, "spawn": { "normal": 420, "fast": 90, "armored": 30, "bloater": 23, "hordemother": 3 } },
+      { "duration": 45, "spawn": { "normal": 450, "fast": 90, "screamer": 30, "tanky": 15, "intelligent": 15 } },
+      { "duration": 48, "spawn": { "normal": 512, "fast": 90, "armored": 30, "tanky": 15, "jumper": 23, "brute": 3 } }
     ]
   },
   "new-york": {
@@ -37,100 +37,100 @@
       { "duration": 52, "spawn": { "normal": 280, "fast": 50, "armored": 30, "tanky": 20, "intelligent": 20, "brute": 4, "screamer": 7 } }
     ]
   },
-  "central-park": {
-    "gap": 8,
-    "waves": [
-      { "duration": 34, "spawn": { "normal": 255, "fast": 15 } },
-      { "duration": 37, "spawn": { "normal": 283, "fast": 20, "jumper": 7 } },
-      { "duration": 39, "spawn": { "normal": 293, "fast": 26, "jumper": 9, "armored": 13, "bloater": 9 } },
-      { "duration": 42, "spawn": { "normal": 310, "fast": 33, "jumper": 12, "armored": 16, "bloater": 12, "screamer": 7 } },
-      { "duration": 45, "spawn": { "normal": 308, "fast": 40, "jumper": 14, "armored": 20, "bloater": 14, "screamer": 9, "intelligent": 11, "tanky": 14 } },
-      { "duration": 47, "spawn": { "normal": 319, "fast": 48, "jumper": 17, "armored": 24, "bloater": 17, "screamer": 10, "intelligent": 14, "tanky": 17, "hordemother": 4 } },
-      { "duration": 50, "spawn": { "normal": 327, "fast": 57, "jumper": 20, "armored": 29, "bloater": 20, "screamer": 12, "intelligent": 16, "tanky": 20, "hordemother": 4, "brute": 5 } },
-      { "duration": 53, "spawn": { "normal": 336, "fast": 67, "jumper": 24, "armored": 33, "bloater": 24, "screamer": 14, "intelligent": 19, "tanky": 24, "hordemother": 4, "brute": 5 } },
-      { "duration": 55, "spawn": { "normal": 340, "fast": 77, "jumper": 28, "armored": 39, "bloater": 28, "screamer": 17, "intelligent": 22, "tanky": 28, "hordemother": 5, "brute": 6 } },
-      { "duration": 58, "spawn": { "normal": 345, "fast": 88, "jumper": 32, "armored": 44, "bloater": 32, "screamer": 19, "intelligent": 25, "tanky": 32, "hordemother": 5, "brute": 8 } }
-    ]
-  },
-  "queens": {
-    "gap": 8,
-    "waves": [
-      { "duration": 34, "spawn": { "normal": 326, "fast": 24 } },
-      { "duration": 36, "spawn": { "normal": 362, "fast": 30 } },
-      { "duration": 38, "spawn": { "normal": 387, "fast": 37, "jumper": 11 } },
-      { "duration": 41, "spawn": { "normal": 387, "fast": 45, "jumper": 13, "armored": 19, "bloater": 13 } },
-      { "duration": 43, "spawn": { "normal": 401, "fast": 54, "jumper": 16, "armored": 23, "bloater": 16, "screamer": 10 } },
-      { "duration": 45, "spawn": { "normal": 383, "fast": 64, "jumper": 19, "armored": 26, "bloater": 19, "screamer": 11, "intelligent": 15, "tanky": 25 } },
-      { "duration": 47, "spawn": { "normal": 392, "fast": 74, "jumper": 22, "armored": 31, "bloater": 22, "screamer": 13, "intelligent": 18, "tanky": 29, "hordemother": 4 } },
-      { "duration": 49, "spawn": { "normal": 398, "fast": 85, "jumper": 25, "armored": 35, "bloater": 25, "screamer": 15, "intelligent": 20, "tanky": 33, "hordemother": 4, "brute": 7 } },
-      { "duration": 51, "spawn": { "normal": 406, "fast": 97, "jumper": 29, "armored": 40, "bloater": 29, "screamer": 17, "intelligent": 23, "tanky": 37, "hordemother": 4, "brute": 7 } },
-      { "duration": 54, "spawn": { "normal": 410, "fast": 110, "jumper": 33, "armored": 46, "bloater": 33, "screamer": 20, "intelligent": 26, "tanky": 42, "hordemother": 4, "brute": 8 } },
-      { "duration": 56, "spawn": { "normal": 414, "fast": 123, "jumper": 37, "armored": 51, "bloater": 37, "screamer": 22, "intelligent": 29, "tanky": 48, "hordemother": 5, "brute": 8 } },
-      { "duration": 58, "spawn": { "normal": 413, "fast": 137, "jumper": 41, "armored": 57, "bloater": 41, "screamer": 25, "intelligent": 33, "tanky": 53, "hordemother": 5, "brute": 12 } }
-    ]
-  },
   "london": {
     "gap": 8,
     "waves": [
-      { "duration": 34, "spawn": { "normal": 278, "fast": 22 } },
-      { "duration": 37, "spawn": { "normal": 304, "fast": 29, "jumper": 11 } },
-      { "duration": 39, "spawn": { "normal": 311, "fast": 38, "jumper": 15, "armored": 15, "bloater": 10 } },
-      { "duration": 42, "spawn": { "normal": 329, "fast": 47, "jumper": 18, "armored": 18, "bloater": 13, "screamer": 8 } },
-      { "duration": 45, "spawn": { "normal": 321, "fast": 58, "jumper": 22, "armored": 22, "bloater": 16, "screamer": 10, "intelligent": 13, "tanky": 16 } },
-      { "duration": 47, "spawn": { "normal": 330, "fast": 70, "jumper": 27, "armored": 27, "bloater": 19, "screamer": 11, "intelligent": 15, "tanky": 19, "hordemother": 4 } },
-      { "duration": 50, "spawn": { "normal": 333, "fast": 83, "jumper": 32, "armored": 32, "bloater": 23, "screamer": 14, "intelligent": 18, "tanky": 23, "hordemother": 4, "brute": 5 } },
-      { "duration": 53, "spawn": { "normal": 343, "fast": 96, "jumper": 37, "armored": 37, "bloater": 26, "screamer": 16, "intelligent": 21, "tanky": 26, "hordemother": 4, "brute": 5 } },
-      { "duration": 55, "spawn": { "normal": 344, "fast": 111, "jumper": 43, "armored": 43, "bloater": 31, "screamer": 18, "intelligent": 24, "tanky": 31, "hordemother": 5, "brute": 6 } },
-      { "duration": 58, "spawn": { "normal": 343, "fast": 127, "jumper": 49, "armored": 49, "bloater": 35, "screamer": 21, "intelligent": 28, "tanky": 35, "hordemother": 5, "brute": 8 } }
+      { "duration": 34, "spawn": { "normal": 352, "fast": 28 } },
+      { "duration": 36, "spawn": { "normal": 391, "fast": 35 } },
+      { "duration": 38, "spawn": { "normal": 411, "fast": 44, "jumper": 17 } },
+      { "duration": 41, "spawn": { "normal": 410, "fast": 53, "jumper": 20, "armored": 20, "bloater": 15 } },
+      { "duration": 43, "spawn": { "normal": 426, "fast": 63, "jumper": 24, "armored": 24, "bloater": 17, "screamer": 10 } },
+      { "duration": 45, "spawn": { "normal": 407, "fast": 75, "jumper": 29, "armored": 29, "bloater": 21, "screamer": 12, "intelligent": 16, "tanky": 21 } },
+      { "duration": 47, "spawn": { "normal": 418, "fast": 87, "jumper": 33, "armored": 33, "bloater": 24, "screamer": 14, "intelligent": 19, "tanky": 24, "hordemother": 4 } },
+      { "duration": 49, "spawn": { "normal": 425, "fast": 100, "jumper": 38, "armored": 38, "bloater": 27, "screamer": 16, "intelligent": 22, "tanky": 27, "hordemother": 4, "brute": 5 } },
+      { "duration": 51, "spawn": { "normal": 431, "fast": 114, "jumper": 44, "armored": 44, "bloater": 31, "screamer": 19, "intelligent": 25, "tanky": 31, "hordemother": 4, "brute": 5 } },
+      { "duration": 54, "spawn": { "normal": 438, "fast": 129, "jumper": 50, "armored": 50, "bloater": 35, "screamer": 21, "intelligent": 28, "tanky": 35, "hordemother": 4, "brute": 5 } },
+      { "duration": 56, "spawn": { "normal": 437, "fast": 145, "jumper": 56, "armored": 56, "bloater": 40, "screamer": 24, "intelligent": 32, "tanky": 40, "hordemother": 5, "brute": 6 } },
+      { "duration": 58, "spawn": { "normal": 439, "fast": 161, "jumper": 62, "armored": 62, "bloater": 44, "screamer": 27, "intelligent": 35, "tanky": 44, "hordemother": 5, "brute": 8 } }
     ]
   },
   "white-house": {
     "gap": 8,
     "waves": [
-      { "duration": 34, "spawn": { "normal": 288, "fast": 17 } },
-      { "duration": 36, "spawn": { "normal": 316, "fast": 22, "jumper": 8 } },
-      { "duration": 39, "spawn": { "normal": 316, "fast": 28, "jumper": 10, "armored": 21, "bloater": 12 } },
-      { "duration": 41, "spawn": { "normal": 333, "fast": 35, "jumper": 12, "armored": 26, "bloater": 15, "screamer": 7 } },
-      { "duration": 44, "spawn": { "normal": 320, "fast": 42, "jumper": 15, "armored": 31, "bloater": 18, "screamer": 9, "intelligent": 12, "tanky": 21 } },
-      { "duration": 46, "spawn": { "normal": 329, "fast": 50, "jumper": 18, "armored": 37, "bloater": 21, "screamer": 11, "intelligent": 14, "tanky": 25, "hordemother": 4 } },
-      { "duration": 48, "spawn": { "normal": 332, "fast": 59, "jumper": 21, "armored": 44, "bloater": 25, "screamer": 13, "intelligent": 17, "tanky": 29, "hordemother": 4, "brute": 6 } },
-      { "duration": 51, "spawn": { "normal": 340, "fast": 68, "jumper": 24, "armored": 51, "bloater": 29, "screamer": 15, "intelligent": 19, "tanky": 34, "hordemother": 4, "brute": 7 } },
-      { "duration": 53, "spawn": { "normal": 345, "fast": 78, "jumper": 28, "armored": 58, "bloater": 33, "screamer": 17, "intelligent": 22, "tanky": 39, "hordemother": 4, "brute": 7 } },
-      { "duration": 56, "spawn": { "normal": 347, "fast": 88, "jumper": 32, "armored": 66, "bloater": 38, "screamer": 19, "intelligent": 25, "tanky": 44, "hordemother": 5, "brute": 8 } },
-      { "duration": 58, "spawn": { "normal": 343, "fast": 100, "jumper": 36, "armored": 75, "bloater": 43, "screamer": 21, "intelligent": 29, "tanky": 50, "hordemother": 5, "brute": 11 } }
+      { "duration": 34, "spawn": { "normal": 401, "fast": 24 } },
+      { "duration": 36, "spawn": { "normal": 447, "fast": 30 } },
+      { "duration": 38, "spawn": { "normal": 477, "fast": 38, "jumper": 13 } },
+      { "duration": 41, "spawn": { "normal": 464, "fast": 46, "jumper": 16, "armored": 34, "bloater": 20 } },
+      { "duration": 43, "spawn": { "normal": 480, "fast": 55, "jumper": 20, "armored": 41, "bloater": 23, "screamer": 12 } },
+      { "duration": 45, "spawn": { "normal": 456, "fast": 64, "jumper": 23, "armored": 48, "bloater": 28, "screamer": 14, "intelligent": 18, "tanky": 32 } },
+      { "duration": 47, "spawn": { "normal": 466, "fast": 75, "jumper": 27, "armored": 56, "bloater": 32, "screamer": 16, "intelligent": 21, "tanky": 37, "hordemother": 4 } },
+      { "duration": 49, "spawn": { "normal": 471, "fast": 86, "jumper": 31, "armored": 65, "bloater": 37, "screamer": 18, "intelligent": 25, "tanky": 43, "hordemother": 4, "brute": 6 } },
+      { "duration": 51, "spawn": { "normal": 479, "fast": 98, "jumper": 35, "armored": 74, "bloater": 42, "screamer": 21, "intelligent": 28, "tanky": 49, "hordemother": 4, "brute": 7 } },
+      { "duration": 54, "spawn": { "normal": 485, "fast": 111, "jumper": 40, "armored": 83, "bloater": 48, "screamer": 24, "intelligent": 32, "tanky": 55, "hordemother": 4, "brute": 7 } },
+      { "duration": 56, "spawn": { "normal": 488, "fast": 124, "jumper": 44, "armored": 93, "bloater": 53, "screamer": 27, "intelligent": 36, "tanky": 62, "hordemother": 5, "brute": 8 } },
+      { "duration": 58, "spawn": { "normal": 484, "fast": 139, "jumper": 50, "armored": 104, "bloater": 60, "screamer": 30, "intelligent": 40, "tanky": 69, "hordemother": 5, "brute": 11 } }
     ]
   },
   "rome": {
     "gap": 8,
     "waves": [
-      { "duration": 34, "spawn": { "normal": 315, "fast": 23 } },
-      { "duration": 36, "spawn": { "normal": 340, "fast": 30, "jumper": 13 } },
-      { "duration": 39, "spawn": { "normal": 347, "fast": 37, "jumper": 17, "armored": 16, "bloater": 11 } },
-      { "duration": 41, "spawn": { "normal": 365, "fast": 46, "jumper": 21, "armored": 19, "bloater": 14, "screamer": 8 } },
-      { "duration": 44, "spawn": { "normal": 354, "fast": 56, "jumper": 25, "armored": 23, "bloater": 17, "screamer": 10, "intelligent": 17, "tanky": 17 } },
-      { "duration": 46, "spawn": { "normal": 363, "fast": 66, "jumper": 30, "armored": 28, "bloater": 20, "screamer": 12, "intelligent": 21, "tanky": 20, "hordemother": 4 } },
-      { "duration": 48, "spawn": { "normal": 372, "fast": 78, "jumper": 35, "armored": 32, "bloater": 23, "screamer": 14, "intelligent": 24, "tanky": 23, "hordemother": 4, "brute": 4 } },
-      { "duration": 51, "spawn": { "normal": 379, "fast": 90, "jumper": 40, "armored": 38, "bloater": 27, "screamer": 16, "intelligent": 28, "tanky": 27, "hordemother": 4, "brute": 5 } },
-      { "duration": 53, "spawn": { "normal": 386, "fast": 103, "jumper": 46, "armored": 43, "bloater": 31, "screamer": 18, "intelligent": 32, "tanky": 31, "hordemother": 4, "brute": 5 } },
-      { "duration": 56, "spawn": { "normal": 388, "fast": 117, "jumper": 52, "armored": 49, "bloater": 35, "screamer": 21, "intelligent": 36, "tanky": 35, "hordemother": 5, "brute": 6 } },
-      { "duration": 58, "spawn": { "normal": 386, "fast": 133, "jumper": 59, "armored": 55, "bloater": 39, "screamer": 24, "intelligent": 41, "tanky": 39, "hordemother": 5, "brute": 8 } }
+      { "duration": 34, "spawn": { "normal": 305, "fast": 22 } },
+      { "duration": 36, "spawn": { "normal": 329, "fast": 29, "jumper": 13 } },
+      { "duration": 39, "spawn": { "normal": 337, "fast": 36, "jumper": 16, "armored": 15, "bloater": 11 } },
+      { "duration": 41, "spawn": { "normal": 353, "fast": 45, "jumper": 20, "armored": 19, "bloater": 13, "screamer": 8 } },
+      { "duration": 44, "spawn": { "normal": 343, "fast": 54, "jumper": 24, "armored": 22, "bloater": 16, "screamer": 10, "intelligent": 17, "tanky": 16 } },
+      { "duration": 46, "spawn": { "normal": 352, "fast": 64, "jumper": 29, "armored": 27, "bloater": 19, "screamer": 11, "intelligent": 20, "tanky": 19, "hordemother": 4 } },
+      { "duration": 48, "spawn": { "normal": 361, "fast": 75, "jumper": 34, "armored": 31, "bloater": 22, "screamer": 13, "intelligent": 23, "tanky": 22, "hordemother": 4, "brute": 4 } },
+      { "duration": 51, "spawn": { "normal": 367, "fast": 87, "jumper": 39, "armored": 36, "bloater": 26, "screamer": 16, "intelligent": 27, "tanky": 26, "hordemother": 4, "brute": 5 } },
+      { "duration": 53, "spawn": { "normal": 371, "fast": 100, "jumper": 45, "armored": 42, "bloater": 30, "screamer": 18, "intelligent": 31, "tanky": 30, "hordemother": 4, "brute": 5 } },
+      { "duration": 56, "spawn": { "normal": 374, "fast": 114, "jumper": 51, "armored": 47, "bloater": 34, "screamer": 20, "intelligent": 35, "tanky": 34, "hordemother": 5, "brute": 6 } },
+      { "duration": 58, "spawn": { "normal": 374, "fast": 128, "jumper": 57, "armored": 53, "bloater": 38, "screamer": 23, "intelligent": 40, "tanky": 38, "hordemother": 5, "brute": 8 } }
     ]
   },
   "tokyo": {
     "gap": 8,
     "waves": [
-      { "duration": 34, "spawn": { "normal": 378, "fast": 22 } },
-      { "duration": 36, "spawn": { "normal": 419, "fast": 29 } },
-      { "duration": 38, "spawn": { "normal": 449, "fast": 35, "jumper": 13 } },
-      { "duration": 41, "spawn": { "normal": 446, "fast": 43, "jumper": 15, "armored": 26, "bloater": 15 } },
-      { "duration": 43, "spawn": { "normal": 459, "fast": 51, "jumper": 18, "armored": 31, "bloater": 18, "screamer": 17 } },
-      { "duration": 45, "spawn": { "normal": 440, "fast": 60, "jumper": 22, "armored": 36, "bloater": 22, "screamer": 19, "intelligent": 21, "tanky": 22 } },
-      { "duration": 47, "spawn": { "normal": 452, "fast": 70, "jumper": 25, "armored": 42, "bloater": 25, "screamer": 23, "intelligent": 24, "tanky": 25, "hordemother": 5 } },
-      { "duration": 49, "spawn": { "normal": 457, "fast": 81, "jumper": 29, "armored": 49, "bloater": 29, "screamer": 26, "intelligent": 28, "tanky": 29, "hordemother": 6, "brute": 5 } },
-      { "duration": 51, "spawn": { "normal": 469, "fast": 92, "jumper": 33, "armored": 55, "bloater": 33, "screamer": 30, "intelligent": 32, "tanky": 33, "hordemother": 6, "brute": 5 } },
-      { "duration": 54, "spawn": { "normal": 476, "fast": 104, "jumper": 37, "armored": 63, "bloater": 37, "screamer": 34, "intelligent": 36, "tanky": 37, "hordemother": 7, "brute": 5 } },
-      { "duration": 56, "spawn": { "normal": 481, "fast": 117, "jumper": 42, "armored": 70, "bloater": 42, "screamer": 38, "intelligent": 40, "tanky": 42, "hordemother": 7, "brute": 6 } },
-      { "duration": 58, "spawn": { "normal": 480, "fast": 131, "jumper": 47, "armored": 78, "bloater": 47, "screamer": 42, "intelligent": 45, "tanky": 47, "hordemother": 8, "brute": 8 } }
+      { "duration": 34, "spawn": { "normal": 350, "fast": 21 } },
+      { "duration": 36, "spawn": { "normal": 383, "fast": 27, "jumper": 10 } },
+      { "duration": 39, "spawn": { "normal": 391, "fast": 34, "jumper": 12, "armored": 21, "bloater": 12 } },
+      { "duration": 41, "spawn": { "normal": 408, "fast": 42, "jumper": 15, "armored": 25, "bloater": 15, "screamer": 14 } },
+      { "duration": 44, "spawn": { "normal": 400, "fast": 51, "jumper": 18, "armored": 31, "bloater": 18, "screamer": 16, "intelligent": 17, "tanky": 18 } },
+      { "duration": 46, "spawn": { "normal": 410, "fast": 61, "jumper": 22, "armored": 36, "bloater": 22, "screamer": 19, "intelligent": 21, "tanky": 22, "hordemother": 5 } },
+      { "duration": 48, "spawn": { "normal": 422, "fast": 71, "jumper": 25, "armored": 43, "bloater": 25, "screamer": 23, "intelligent": 24, "tanky": 25, "hordemother": 6, "brute": 4 } },
+      { "duration": 51, "spawn": { "normal": 434, "fast": 82, "jumper": 29, "armored": 49, "bloater": 29, "screamer": 26, "intelligent": 28, "tanky": 29, "hordemother": 6, "brute": 5 } },
+      { "duration": 53, "spawn": { "normal": 440, "fast": 94, "jumper": 34, "armored": 57, "bloater": 34, "screamer": 30, "intelligent": 32, "tanky": 34, "hordemother": 7, "brute": 5 } },
+      { "duration": 56, "spawn": { "normal": 446, "fast": 107, "jumper": 38, "armored": 64, "bloater": 38, "screamer": 35, "intelligent": 37, "tanky": 38, "hordemother": 7, "brute": 6 } },
+      { "duration": 58, "spawn": { "normal": 445, "fast": 121, "jumper": 43, "armored": 73, "bloater": 43, "screamer": 39, "intelligent": 42, "tanky": 43, "hordemother": 8, "brute": 8 } }
+    ]
+  },
+  "mexico": {
+    "gap": 8,
+    "waves": [
+      { "duration": 34, "spawn": { "normal": 300, "fast": 18 } },
+      { "duration": 37, "spawn": { "normal": 332, "fast": 24, "jumper": 9 } },
+      { "duration": 39, "spawn": { "normal": 344, "fast": 31, "jumper": 11, "armored": 15, "bloater": 11 } },
+      { "duration": 42, "spawn": { "normal": 365, "fast": 39, "jumper": 14, "armored": 19, "bloater": 14, "screamer": 8 } },
+      { "duration": 45, "spawn": { "normal": 361, "fast": 47, "jumper": 17, "armored": 24, "bloater": 17, "screamer": 10, "intelligent": 13, "tanky": 17 } },
+      { "duration": 47, "spawn": { "normal": 377, "fast": 57, "jumper": 20, "armored": 28, "bloater": 20, "screamer": 12, "intelligent": 16, "tanky": 20, "hordemother": 4 } },
+      { "duration": 50, "spawn": { "normal": 386, "fast": 67, "jumper": 24, "armored": 34, "bloater": 24, "screamer": 14, "intelligent": 19, "tanky": 24, "hordemother": 4, "brute": 5 } },
+      { "duration": 53, "spawn": { "normal": 398, "fast": 79, "jumper": 28, "armored": 39, "bloater": 28, "screamer": 17, "intelligent": 22, "tanky": 28, "hordemother": 4, "brute": 5 } },
+      { "duration": 55, "spawn": { "normal": 407, "fast": 91, "jumper": 32, "armored": 45, "bloater": 32, "screamer": 19, "intelligent": 26, "tanky": 32, "hordemother": 5, "brute": 6 } },
+      { "duration": 58, "spawn": { "normal": 410, "fast": 104, "jumper": 37, "armored": 52, "bloater": 37, "screamer": 22, "intelligent": 30, "tanky": 37, "hordemother": 5, "brute": 8 } }
+    ]
+  },
+  "manila": {
+    "gap": 8,
+    "waves": [
+      { "duration": 34, "spawn": { "normal": 256, "fast": 20 } },
+      { "duration": 37, "spawn": { "normal": 280, "fast": 27, "jumper": 10 } },
+      { "duration": 39, "spawn": { "normal": 287, "fast": 35, "jumper": 12, "armored": 13, "bloater": 11 } },
+      { "duration": 42, "spawn": { "normal": 301, "fast": 44, "jumper": 16, "armored": 17, "bloater": 14, "screamer": 7 } },
+      { "duration": 45, "spawn": { "normal": 293, "fast": 53, "jumper": 19, "armored": 21, "bloater": 18, "screamer": 9, "intelligent": 12, "tanky": 15 } },
+      { "duration": 47, "spawn": { "normal": 300, "fast": 64, "jumper": 23, "armored": 25, "bloater": 21, "screamer": 11, "intelligent": 14, "tanky": 18, "hordemother": 4 } },
+      { "duration": 50, "spawn": { "normal": 304, "fast": 76, "jumper": 27, "armored": 29, "bloater": 25, "screamer": 13, "intelligent": 17, "tanky": 21, "hordemother": 4, "brute": 5 } },
+      { "duration": 53, "spawn": { "normal": 311, "fast": 89, "jumper": 32, "armored": 34, "bloater": 29, "screamer": 15, "intelligent": 19, "tanky": 24, "hordemother": 4, "brute": 5 } },
+      { "duration": 55, "spawn": { "normal": 312, "fast": 102, "jumper": 37, "armored": 39, "bloater": 34, "screamer": 17, "intelligent": 23, "tanky": 28, "hordemother": 5, "brute": 6 } },
+      { "duration": 58, "spawn": { "normal": 311, "fast": 117, "jumper": 42, "armored": 45, "bloater": 39, "screamer": 19, "intelligent": 26, "tanky": 32, "hordemother": 5, "brute": 8 } }
     ]
   }
 }

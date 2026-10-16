@@ -12,6 +12,8 @@ export interface HudState {
   planning: boolean;
   restore: boolean; // a setup kept from last time can be put down
   speed: number;
+  armed: string; // the bar item tapped, waiting for a tap on the map
+  overview: boolean; // the whole map is in view
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
@@ -19,6 +21,8 @@ export interface HudState {
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
+  arm(id: string): void; // a finger tapped a bar item: the next tap on the map puts it down
+  fit(): void; // out to the whole map, or back
   start(): void;
   setup(): void; // puts down the setup kept from last time
   speed(n: number): void;
@@ -45,6 +49,7 @@ export class Hud {
   private readonly restore: HTMLButtonElement;
   private readonly notices: HTMLElement;
   private readonly speeds: HTMLElement;
+  private readonly fit: HTMLButtonElement;
   private readonly speedList: number[];
   private readonly tabs: HTMLButtonElement[];
   private readonly items = new Map<string, { button: HTMLElement; count: HTMLElement; group: Group }>();
@@ -68,10 +73,11 @@ export class Hud {
     root.classList.toggle('lefty', lefty);
     this.status = [el('span'), el('span'), el('span')];
     const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : (this.confirm.hidden = false)) });
+    this.fit = el('button', { type: 'button', className: 'menu', textContent: 'Map', title: 'See the whole map (and back)', onclick: () => on.fit() });
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
     this.restore = el('button', { type: 'button', textContent: 'Last setup', title: 'Put everything back where it was last time', onclick: () => on.setup() });
     this.notices = el('div', { className: 'notices' });
-    this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
+    this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n === 0.5 ? '½×' : n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
     this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => el('button', { type: 'button', className: 'tab', textContent: label, onclick: () => { this.group = group; bar.scrollLeft = 0; } }));
@@ -83,7 +89,8 @@ export class Hud {
       // A mouse hovering, or a finger held still, shows who this is.
       button.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') explain(); });
       button.addEventListener('pointerleave', () => this.unexplain());
-      // Sideways scrolls the bar; dragging up out of it picks the item up (a mouse can drag straight away).
+      // Sideways scrolls the bar; dragging up out of it picks the item up (a mouse can drag straight away). A finger can
+      // also tap it, then tap the map.
       button.addEventListener('pointerdown', (down) => {
         if (down.pointerType === 'mouse') {
           this.unexplain();
@@ -96,9 +103,10 @@ export class Hud {
           if (-dy > 10 && -dy * 2 > Math.abs(dx) && !button.classList.contains('empty')) { stop(); on.drag(id, e); } // up, or up and to the side
           else if (Math.abs(dx) > 12) stop();
         };
-        const stop = () => { clearTimeout(hold); this.unexplain(); removeEventListener('pointermove', move); removeEventListener('pointerup', stop); removeEventListener('pointercancel', stop); };
+        const tap = () => { stop(); if (!button.classList.contains('empty')) on.arm(id); };
+        const stop = () => { clearTimeout(hold); this.unexplain(); removeEventListener('pointermove', move); removeEventListener('pointerup', tap); removeEventListener('pointercancel', stop); };
         addEventListener('pointermove', move);
-        addEventListener('pointerup', stop);
+        addEventListener('pointerup', tap);
         addEventListener('pointercancel', stop);
       });
       bar.append(button);
@@ -113,7 +121,7 @@ export class Hud {
     this.end = el('div', { className: 'end', hidden: true });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
-      el('div', { className: 'status' }, menu, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
+      el('div', { className: 'status' }, menu, this.fit, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
       el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.confirm, this.end, this.hint, this.banners,
     );
   }
@@ -151,11 +159,13 @@ export class Hud {
     this.restore.hidden = !s.planning || !s.restore;
     this.speeds.hidden = s.planning;
     [...this.speeds.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i] === s.speed)));
+    this.fit.setAttribute('aria-pressed', String(s.overview));
     this.tabs.forEach((t) => t.setAttribute('aria-pressed', String(TABS.find(([, l]) => l === t.textContent)?.[0] === this.group)));
     for (const [id, { button, count, group }] of this.items) {
       button.hidden = group !== this.group;
       text(count, `×${s.counts[id]}`);
       button.classList.toggle('empty', !s.ready[id]);
+      button.setAttribute('aria-pressed', String(s.armed === id));
       button.style.setProperty('--cool', String(s.cool[id] ?? 0));
     }
     const shown = [s.selection, ...s.actions].join('|');

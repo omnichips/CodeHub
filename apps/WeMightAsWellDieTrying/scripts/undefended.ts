@@ -8,4 +8,4 @@ stats.leakLimit = 1e9;
 const w = new World(map, plan, 7, stats);
 w.start();
 while (w.phase === 'wave' && w.time < 3600) w.step();
-console.log(`${id}: ${w.phase} at ${Math.round(w.time)} s, ${w.leaks} through, ${w.living} still on the map`);
+console.log(`${id}: ${w.phase} at ${Math.round(w.time)} s, ${w.leaks} through, ${w.living} still on the map; par about ${Math.ceil((w.time * 1.05) / 30) * 30} (now ${map.par})`);

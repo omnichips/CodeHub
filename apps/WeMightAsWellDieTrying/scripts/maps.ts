@@ -1,9 +1,11 @@
 // Draws maps 4 to 9 from a few rectangles each (streets, the edge tiles the horde comes in at, parks, plazas, the
 // safe zone, and any block that must be one kind of building), then fills in the rest: building kinds block by
 // block, the windows and roofs a soldier can man, cars and barricades in the street, street clutter, and the waves.
-// Every map is checked in the simulation before it is written. Run: node scripts/maps.ts
+// A plan is laid out at design size and the map written twice as big each way (scripts/upscale.ts): room for the
+// horde. Every map is checked in the simulation before it is written. Run: node scripts/maps.ts
 import { readFileSync, writeFileSync } from 'node:fs';
 import { World, ZOMBIE_KINDS, type BlockKind } from '../src/sim/world.ts';
+import { upscale } from './upscale.ts';
 
 type Rect = [x: number, y: number, w: number, h: number];
 interface Plan {
@@ -32,21 +34,25 @@ interface Plan {
   kinds: string; // building kinds to fill blocks with, more of a letter for more of that kind
   zombies: number;
   waves: number;
+  par: number; // seconds at design size: about what an undefended run takes there; the longer walk on the bigger map is added
   mix?: Partial<Record<string, number>>; // more (or fewer) of a special kind than usual
   yards?: boolean; // crates and drums stacked on the paving (container yards), short of the safe zone
 }
 
 const PLANS: Plan[] = [
   {
-    // An open park between two avenues: no buildings to shoot from in the middle, the horde comes through the trees.
-    id: 'central-park', name: 'Central Park', w: 64, h: 80, kinds: 'aabbbo',
-    parks: [[10, 6, 44, 44]],
-    roads: [[4, 0, 6, 72], [54, 0, 6, 72], [29, 0, 6, 6], [10, 26, 44, 4], [4, 50, 56, 6], [29, 56, 6, 8]],
-    plazas: [[14, 10, 36, 2], [14, 44, 36, 2], [14, 10, 2, 36], [48, 10, 2, 36], [31, 6, 2, 20], [4, 64, 56, 8]],
-    zones: [[18, 14, 6, 4, 'h'], [38, 36, 8, 5, 'o'], [10, 0, 19, 6, 'a'], [35, 0, 19, 6, 'o'], [35, 56, 19, 8, 'm']],
+    // Mexico City: the Zócalo, one great open square between two avenues, with the Metropolitan Cathedral, the
+    // National Palace and the ruins of the Templo Mayor standing out in it and the giant flag in its middle; painted
+    // casitas all round. Open ground with buildings in the middle, the horde in from the north.
+    id: 'mexico', name: 'Mexico City', w: 64, h: 80, kinds: 'xxxxc', trees: 0.3,
+    roads: [[4, 0, 6, 72], [54, 0, 6, 72], [29, 0, 6, 8], [4, 50, 56, 6], [29, 56, 6, 8]],
+    plazas: [[10, 8, 44, 42], [4, 64, 56, 8]],
+    ovals: [[16, 44, 5, 3.5, 'p'], [48, 44, 5, 3.5, 'p']], // two little gardens
+    zones: [[22, 11, 20, 10, 'c'], [44, 24, 8, 16, 'c'], [12, 26, 8, 10, 'r'], [10, 0, 19, 8, 'x'], [35, 0, 19, 8, 'x'], [35, 56, 19, 8, 'x']],
     entries: [[4, 0, 6, 1], [29, 0, 6, 1], [54, 0, 6, 1]],
     safe: [4, 72, 56, 8],
-    zombies: 4500, waves: 10,
+    decor: [['cathedral', 32, 16], ['flag', 32, 34], ['tree', 14, 44], ['tree', 18, 45], ['tree', 46, 44], ['tree', 50, 43]],
+    zombies: 5300, waves: 10, par: 1020,
   },
   {
     // A bridge over the Thames and nothing else: one long road end to end, walkways either side, two piers that
@@ -57,30 +63,30 @@ const PLANS: Plan[] = [
     plazas: [[14, 0, 2, 96], [24, 0, 2, 96], [11, 30, 18, 6], [11, 62, 18, 6]],
     entries: [[14, 0, 12, 1]],
     safe: [14, 88, 12, 8],
-    zombies: 5000, waves: 10, mix: { fast: 1.3, jumper: 1.4 },
+    zombies: 7600, waves: 12, par: 1350, mix: { fast: 1.3, jumper: 1.4 },
   },
   {
-    // The White House on the far side of one wide mown lawn: the horde comes in off Pennsylvania Avenue, along the
+    // The last stand: the White House on the far side of one wide mown lawn: the horde comes in off Pennsylvania Avenue, along the
     // whole north side, past the fountains, the walks, the gardens and the barricades left standing. Groves of trees
     // and the hedges down the sides; the drive curves up to the north portico. Armoured and heavy ones.
-    id: 'white-house', name: 'White House', w: 64, h: 64, kinds: 'o', edge: 'f', lawn: true, trees: 0, benches: 0,
+    id: 'white-house', name: 'White House', w: 64, h: 96, kinds: 'o', edge: 'f', lawn: true, trees: 0, benches: 0,
     roads: [[0, 0, 64, 4]], // Pennsylvania Avenue
-    parks: [[0, 6, 64, 58]],
-    groves: [[1, 7, 7, 38], [56, 7, 7, 38], [1, 45, 13, 12], [50, 45, 13, 12]],
-    plazas: [[0, 4, 64, 2], [31, 6, 2, 24], [31, 36, 2, 12]], // the sidewalk; the walk down the middle
-    ovals: [[32, 30, 15, 9, ','], [32, 30, 12.5, 6.5, 'l'], [32, 30, 3, 3, ','], [32, 54, 13, 6, ','], [32, 54, 10.5, 3.5, 'l']], // a ring of path round the fountain; the drive
+    parks: [[0, 6, 64, 90]],
+    groves: [[1, 7, 7, 60], [56, 7, 7, 60], [1, 67, 11, 14], [52, 67, 11, 14]],
+    plazas: [[0, 4, 64, 2], [31, 6, 2, 26], [31, 48, 2, 22]], // the sidewalk; the walk down the middle
+    ovals: [[32, 40, 15, 9, ','], [32, 40, 12.5, 6.5, 'l'], [32, 40, 3, 3, ','], [32, 80, 19, 6, ','], [32, 80, 16.5, 3.5, 'l']], // a ring of path round the fountain; the drive
     entries: [[0, 0, 64, 1]],
-    safe: [20, 52, 24, 12],
-    props: [['police', 10, 12, false], ['police', 22, 13, false], ['police', 40, 13, false], ['police', 52, 12, false], ['sandbags', 12, 44, false], ['sandbags', 49, 44, false]],
+    safe: [14, 80, 36, 16],
+    props: [['police', 10, 12, false], ['police', 22, 13, false], ['police', 40, 13, false], ['police', 52, 12, false], ['sandbags', 12, 62, false], ['sandbags', 49, 62, false]],
     decor: [
-      ['whitehouse', 32, 57], ['fountain', 32, 30], ['helipad', 48, 21],
-      ['flowers', 16, 59], ['flowers', 47, 59], ['flowers', 24, 47], ['flowers', 40, 47], // the Rose Garden, the East Garden, beds by the drive
+      ['whitehouse', 32, 86], ['fountain', 32, 40], ['helipad', 48, 24],
+      ['flowers', 7, 88], ['flowers', 56, 88], ['flowers', 22, 72], ['flowers', 42, 72], // the Rose Garden, the East Garden, beds by the drive
       ...Array.from({ length: 10 }, (_, k): [string, number, number] => ['lamp', 3 + Math.round(k * 6.4), 4]),
-      ['lamp', 31, 10], ['lamp', 32, 17], ['lamp', 31, 24], ['lamp', 32, 40], ['lamp', 31, 46],
-      ['bench', 18, 30], ['bench', 46, 30], ['bench', 32, 22], ['bench', 32, 38],
+      ['lamp', 31, 10], ['lamp', 32, 18], ['lamp', 31, 26], ['lamp', 32, 52], ['lamp', 31, 60], ['lamp', 32, 68],
+      ['bench', 18, 40], ['bench', 46, 40], ['bench', 32, 28], ['bench', 32, 54],
     ],
     helipad: false,
-    zombies: 5600, waves: 11, mix: { armored: 1.5, tanky: 1.4, brute: 1.4, bloater: 1.2 },
+    zombies: 8500, waves: 12, par: 1410, mix: { armored: 1.5, tanky: 1.4, brute: 1.4, bloater: 1.2 },
   },
   {
     // Via Labicana bent into an M: up from both feet at the bottom, over the two peaks and down into the safe zone
@@ -94,20 +100,27 @@ const PLANS: Plan[] = [
     entries: [[0, 63, 72, 1]],
     safe: [32, 37, 8, 8],
     decor: [['colosseum', 36, 14]], helipad: false,
-    zombies: 6200, waves: 11, mix: { jumper: 1.5, intelligent: 1.3, fast: 1.2 },
+    zombies: 6000, waves: 11, par: 1380, mix: { jumper: 1.5, intelligent: 1.3, fast: 1.2 },
   },
   {
-    // Two highways meet and run south as one wide boulevard, past car parks and a mall. Wide open; bosses.
-    id: 'queens', name: 'Queens Interchange', w: 64, h: 80, kinds: 'hhggwo',
-    roads: [[26, 0, 12, 68], [38, 18, 26, 10], [4, 12, 22, 4], [4, 12, 4, 56], [0, 30, 4, 4]],
-    plazas: [[8, 40, 18, 14], [38, 28, 22, 16], [4, 68, 56, 4]],
-    zones: [[40, 46, 20, 14, 'h'], [8, 56, 16, 8, 'g']],
-    entries: [[26, 0, 12, 1], [63, 18, 1, 10], [0, 30, 1, 4]],
-    safe: [4, 72, 56, 8],
-    zombies: 7000, waves: 12, mix: { brute: 1.5, tanky: 1.3, fast: 1.2 },
+    // Manila, the slums by the estero: shanties packed roof to roof (tin, tarps and tyres), alleys winding through
+    // them with washing strung across, a basketball court, a canal the main road bridges. Three ways in: the main
+    // road from the north, a street from the east and one from the west. Fast ones and jumpers over the roofs.
+    id: 'manila', name: 'Manila', w: 64, h: 80, kinds: 'yyyyyyyh',
+    water: [[0, 52, 64, 4]], // the estero
+    roads: [[28, 0, 8, 66], [36, 22, 28, 6], [0, 36, 28, 4]],
+    paths: [
+      [[[6, 4], [10, 16], [6, 28], [12, 44], [8, 62]], 2], [[[44, 30], [50, 40], [46, 48], [52, 63]], 2], // alleys, footbridges over the estero
+      [[[10, 16], [28, 14]], 2], [[[12, 44], [28, 46]], 2], [[[36, 40], [46, 41]], 2], [[[50, 12], [36, 9]], 2], [[[52, 63], [52, 66]], 2],
+    ],
+    plazas: [[18, 28, 10, 7], [4, 64, 56, 6]], // the court; the market in front of the safe zone
+    entries: [[28, 0, 8, 1], [63, 22, 1, 6], [0, 36, 1, 4]],
+    safe: [4, 70, 56, 10],
+    decor: [['court', 23, 31.5], ['laundry', 8, 22], ['laundry', 9, 36], ['laundry', 10, 54], ['laundry', 47, 36], ['laundry', 49, 46], ['laundry', 20, 15], ['laundry', 20, 45], ['laundry', 42, 10]],
+    zombies: 4600, waves: 10, par: 840, mix: { fast: 1.3, jumper: 1.3, bloater: 1.2 },
   },
   {
-    // The last stand, Shibuya: the safe zone in the middle of the scramble crossing, every road in Shibuya running
+    // Shibuya: the safe zone in the middle of the scramble crossing, every road in Shibuya running
     // into it: Inokashira-dori from the north, Center Gai (on foot) and Meiji-dori on the slant, Bunkamura-dori from
     // the west, Dogenzaka up from the south-west, Miyamasuzaka from the east. Hachiko Square and the station, its
     // tracks on the roof, south of the crossing; video screens on the fronts round it. The horde from every side,
@@ -123,7 +136,7 @@ const PLANS: Plan[] = [
     safe: [44, 44, 8, 8],
     decor: [['scramble', 48, 48], ['rails', 68, 70], ['hachiko', 41, 63], ['tree', 39, 59], ['tree', 39, 66], ['tree', 56, 59], ['tree', 56, 66], ['tree', 47, 66]],
     billboards: 9,
-    zombies: 8000, waves: 12, mix: { screamer: 1.5, hordemother: 1.5, armored: 1.2, intelligent: 1.2 },
+    zombies: 6800, waves: 11, par: 1290, mix: { screamer: 1.5, hordemother: 1.5, armored: 1.2, intelligent: 1.2 },
   },
 ];
 
@@ -137,7 +150,7 @@ const rng = (seed: number) => () => {
 const seedOf = (id: string) => [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) | 0, 7);
 const WALK = '.,ptlSE';
 const GROUND = '.,ptl'; // open ground: road, plaza, park, tree, lawn
-const BUILDINGS = 'boghmwars';
+const BUILDINGS = 'boghmwarskzyxc';
 
 function draw(p: Plan) {
   const r = rng(seedOf(p.id)), T = 16;
@@ -295,14 +308,20 @@ function waves(p: Plan) {
 }
 
 const plans = JSON.parse(readFileSync('src/data/waves.json', 'utf8'));
+/** How long a normal zombie takes to walk the longest way in, in seconds. */
+const walk = (m: Parameters<typeof upscale>[0]) => { const w = new World(m, { gap: 0, waves: [] }); return (Math.max(...w.grid.spawns.map((i) => w.flow[i])) * w.grid.tile) / 14; };
 for (const p of PLANS) {
-  const map = draw(p), plan = waves(p), fight = plan.waves.reduce((t, w) => t + w.duration, 0) + plan.gap * (plan.waves.length - 1);
+  const small = draw(p), plan = waves(p), map = upscale(small);
   if (plan.waves.some((w) => Object.keys(w.spawn).some((z) => !ZOMBIE_KINDS.includes(z)))) throw new Error('unknown zombie');
-  map.par = Math.round((fight * 1.35) / 30) * 30;
+  const world = new World(map, { gap: 0, waves: [] });
+  if (world.roadblocks.length !== map.props!.length) throw new Error(`${p.id}: a prop does not fit on the bigger map`);
+  for (const i of world.grid.spawns) if (!Number.isFinite(world.flow[i])) throw new Error(`${p.id}: no way in from ${i % world.grid.w},${Math.floor(i / world.grid.w)} on the bigger map`);
+  map.par = Math.round((p.par + walk(map) - walk(small)) / 30) * 30;
   plans[p.id] = plan;
   writeFileSync(`src/data/maps/${p.id}.json`, JSON.stringify(map));
-  console.log(`${p.id}: ${p.w}x${p.h}, ${map.slots.length} windows, ${map.props.length} props, ${map.decor.length} decor, ${p.zombies} zombies in ${p.waves} waves, par ${map.par}`);
+  console.log(`${p.id}: ${p.w * 2}x${p.h * 2}, ${map.slots!.length} windows, ${map.props!.length} props, ${map.decor!.length} decor, ${p.zombies} zombies in ${p.waves} waves, par ${map.par}`);
 }
+for (const gone of ['queens', 'central-park']) delete plans[gone]; // now Manila and Mexico City
 // Written as before: a wave per line.
 const line = (v: unknown) => JSON.stringify(v).replace(/":/g, '": ').replace(/,"/g, ', "').replace(/\{"/g, '{ "').replace(/\}/g, ' }');
 const blocks = Object.entries(plans as Record<string, { gap: number; waves: unknown[] }>).map(([id, pl]) =>
