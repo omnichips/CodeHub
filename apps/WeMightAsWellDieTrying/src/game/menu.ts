@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, lastPlayed, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
 import { NODES } from '../meta/progress.ts';
+import notes from '../data/patchnotes.json' with { type: 'json' };
 import { Grid, type MapData } from '../sim/grid.ts';
 import { BODIES, exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
@@ -13,7 +14,7 @@ import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
 import { music, play, retune } from './sound.ts';
 import { skillWeb } from './tree.ts';
 
-export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug';
+export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
@@ -32,6 +33,17 @@ const button = (text: string, onclick: () => void, className = '') => el('button
 const LEVELS = NODES.reduce((n, x) => n + x.max, 0);
 const summary = (s: Save) => `${s.chips} chips · ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities · ${Object.values(s.skills).reduce((a, b) => a + b, 0)}/${LEVELS} skills`;
 const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+/** The newest patch notes this device has opened (their date), so the icon can show when there are new ones. */
+const SEEN = 'dietrying.notesSeen';
+const seen = () => { try { return localStorage.getItem(SEEN) ?? ''; } catch { return ''; } };
+const NEWEST = notes[0]?.date ?? '';
+/** A page of notes, drawn in the text colour. */
+function notesIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.innerHTML = '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 3v4h4M9 11h7M9 14.5h7M9 18h5" fill="none" stroke="currentColor" stroke-width="2"/>';
+  return svg;
+}
 const clock = (t: number) => `${Math.floor(t / 3600)}h ${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}m`;
 
 export class Menu extends Phaser.Scene {
@@ -81,7 +93,7 @@ export class Menu extends Phaser.Scene {
 
   show(screen: Screen): void {
     if (screen === 'tree') return skillWeb(this, this.root, () => this.show('save'));
-    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug() }[screen]();
+    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes() }[screen]();
     this.root.replaceChildren(...[panel].flat()); // each panel slides in (CSS)
   }
 
@@ -96,15 +108,24 @@ export class Menu extends Phaser.Scene {
     return el('div', { className: 'head' }, button('Back', () => this.show(back)), el('h2', {}, title));
   }
 
-  main(): HTMLElement {
-    const all = saves(), k = lastPlayed(all), last = all[k];
-    return el('div', { className: 'panel main' },
+  main(): HTMLElement[] {
+    const all = saves(), k = lastPlayed(all), last = all[k], unread = NEWEST > seen();
+    const icon = el('button', { type: 'button', className: 'icon', title: 'Patch notes', ariaLabel: unread ? 'Patch notes: something new' : 'Patch notes', onclick: () => this.show('notes') }, notesIcon());
+    if (unread) icon.append(el('i', { className: 'dot' }));
+    return [el('div', { className: 'corner' }, icon), el('div', { className: 'panel main' },
       el('h1', {}, 'We Might As Well', el('br'), el('span', {}, 'Die Trying')),
       // Straight back into the save played last.
       ...(last ? [el('button', { type: 'button', className: 'slot go', onclick: () => { open(k); this.show('save'); } }, `Continue: ${last.name}`, el('small', {}, summary(last)))] : []),
       el('div', { className: 'pair' }, button('New save', () => this.show('new'), last ? '' : 'go'), button('Load save', () => this.show('load'))),
       button('Settings', () => { this.settingsFrom = 'menu'; this.show('settings'); }),
-    );
+    )];
+  }
+
+  /** What changed in each update, newest first. Opening them clears the icon's dot. */
+  notes(): HTMLElement {
+    try { localStorage.setItem(SEEN, NEWEST); } catch { /* storage blocked: the dot stays */ }
+    return el('div', { className: 'panel notes' }, this.head('Patch notes', 'menu'),
+      ...notes.map((n) => el('section', {}, el('h3', {}, n.title), el('small', {}, `${n.date} PHT`), el('ul', {}, ...n.notes.map((line) => el('li', {}, line))))));
   }
 
   /** The slots, to start a new save in or to load one from. Loading also offers export, delete and import. */

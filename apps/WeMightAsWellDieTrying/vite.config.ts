@@ -56,5 +56,5 @@ self.addEventListener('fetch', (e) => {
   },
 });
 
-// When the game was built, for crash reports.
-export default defineConfig({ plugins: [atlas(), serviceWorker()], define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) } });
+// When the game was built, in Philippine time: shown in Settings and in crash reports.
+export default defineConfig({ plugins: [atlas(), serviceWorker()], define: { __BUILD__: JSON.stringify(`${new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Manila' }).slice(0, 16)} PHT`) } });

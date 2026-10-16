@@ -1,0 +1,71 @@
+[
+  {
+    "date": "2026-10-16 14:55",
+    "title": "Patch notes",
+    "notes": [
+      "Patch notes, right here: the icon in the top right of the main menu, with a red dot when there is something new.",
+      "The build line in Settings now shows Philippine time."
+    ]
+  },
+  {
+    "date": "2026-10-16 14:48",
+    "title": "iPhone fixes",
+    "notes": [
+      "The bottom of the map can be reached again on iPhones: Safari no longer zooms the page itself on a pinch.",
+      "The view measures the screen again after the phone turns."
+    ]
+  },
+  {
+    "date": "2026-10-16 14:35",
+    "title": "Music",
+    "notes": [
+      "Music: The Last Floorboard over a city in panic on the menu, the city in panic in a fight, crossfading between them.",
+      "Sound now works on phones, and on an iPhone with the silent switch on.",
+      "Music volume in Settings.",
+      "Lighter menu; New save and Load save side by side; Statistics moved into Settings.",
+      "Zoomed out, the bottom of the map always clears the bar."
+    ]
+  },
+  {
+    "date": "2026-10-16 14:13",
+    "title": "Bigger maps, new cities",
+    "notes": [
+      "Every map is twice as big: room for the horde.",
+      "Queens is now Manila's slums, Brooklyn is Chicago, Central Park is Mexico City; the White House is bigger, its lawn longer.",
+      "Fire, smoke and steam on the maps; the menu is a ruined city, burning.",
+      "Phones: tap a unit, then tap the map; dragged things sit above your finger; a Map button to see the whole city.",
+      "Speeds: 1/2, 1, 2 and 5 (the old 5x is the new 1x). Zombies have 20% more HP. Fewer chips, dearer skills.",
+      "Continue in the main menu; Settings from the city list, with a storage bar.",
+      "Fixed a crowd of zombies freezing in place."
+    ]
+  },
+  {
+    "date": "2026-10-16 00:35",
+    "title": "Skill tree and four new cities",
+    "notes": [
+      "The skill web is now a tree of cards; a soldier's card has an eye to watch him fight.",
+      "The cities are a grid of cards with pictures of their maps.",
+      "London, the White House, Rome and Tokyo replace four New York maps."
+    ]
+  },
+  {
+    "date": "2026-10-15 18:05",
+    "title": "Six new maps",
+    "notes": ["Six new maps, recorded sounds, and fixes for the freeze at 10x."]
+  },
+  {
+    "date": "2026-10-15 14:46",
+    "title": "Sound and a playtest pass",
+    "notes": ["Sound, three maps, the levelled skill web and a big round of fixes from playtesting."]
+  },
+  {
+    "date": "2026-10-15 11:38",
+    "title": "Skills, saves and New York",
+    "notes": ["The skill web, chips, save slots, the menu and settings, the New York map; install it as an app."]
+  },
+  {
+    "date": "2026-10-15 01:23",
+    "title": "The first build",
+    "notes": ["The game: the art, the engine, every soldier and zombie, structures and strikes."]
+  }
+]
