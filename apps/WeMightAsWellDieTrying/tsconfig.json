@@ -16,5 +16,5 @@
     "isolatedModules": true
   },
   "include": ["src", "scripts", "vite.config.ts"],
-  "exclude": ["scripts/voices.ts"]
+  "exclude": ["scripts/voices.ts", "scripts/storyvoices.ts"]
 }
