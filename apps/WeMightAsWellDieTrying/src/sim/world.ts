@@ -63,7 +63,7 @@ export interface StructStats {
 export interface UsableStats {
   name: string; charges: number; cooldown: number; delay: number; blast?: number; damage?: number; length?: number; width?: number;
   speed?: number; radius?: number; time?: number; burn?: { dps: number; time: number }; slow?: number; shells?: number; spread?: number;
-  sound?: number; // how long before it lands its recording starts (the missile's whoosh, then its boom on the landing)
+  sound?: number; // how long before it lands its recording starts (the missile's launch: as it is called in)
 }
 export const ROADBLOCKS = structures.roadblocks as Record<BlockKind, { name: string; hp: number; length: number; width?: number; detour: number; fixed?: boolean }>;
 export const STRUCTS = structures.structures as Record<StructKind, StructStats>;
@@ -1226,9 +1226,9 @@ export class World {
       const u = this.stats.usables[s.kind], was = s.t;
       s.t += dt;
       this.by = s.kind;
-      if (u.sound !== undefined && was <= u.delay - u.sound && s.t > u.delay - u.sound) this.noise(s.kind, s.x, s.y); // its recording carries the boom too
+      if (u.sound !== undefined && was <= u.delay - u.sound && s.t > u.delay - u.sound) this.noise(s.kind, s.x, s.y); // its recording: the A-10's pass, the missile's launch
       let done = s.t >= u.delay;
-      if (done && s.kind === 'missile') this.explode(s.x, s.y, u.blast!, u.damage!, false, '');
+      if (done && s.kind === 'missile') this.explode(s.x, s.y, u.blast!, u.damage!, false, 'blast'); // the launch was its recording; this is the landing
       else if (done && s.kind === 'napalm') {
         this.blasts.push({ x: s.x, y: s.y, r: u.radius!, age: 0, bile: false });
         this.noise('napalm', s.x, s.y, u.radius!);

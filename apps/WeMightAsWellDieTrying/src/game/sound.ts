@@ -1,7 +1,8 @@
-// Sound. Shots and small explosions are made by code like the art: each a short buffer of shaped noise and a falling
-// tone, built once. The rest are recordings (src/sounds): the A-10, the missile, big blasts, the wave alarm, and the
-// soldiers' voice lines over the radio when one is picked (scripts/voices.ts), and the
-// zombies, whose groans, death rattles and the horde's growl underneath it all. Anti-noise rules keep a big fight from turning into a roar:
+// Sound. Most is recorded (src/sounds): the guns, blasts, the A-10, the missile's launch, the wave alarm, the soldiers'
+// voice lines over the radio when one is picked (scripts/voices.ts), and the zombies: groans, death rattles, and the
+// horde's growl and footsteps underneath it all. The pistol, machine guns, grenade launcher and napalm are still made by
+// code like the art: each a short buffer of shaped noise and a falling tone, built once. Each city has its own sound
+// under a fight, and each cutscene backdrop its own (wind, rain, trains, crowds), streamed like the music. Anti-noise rules keep a big fight from turning into a roar:
 //  - same-class shots close together merge into the one already playing, which gets a little louder instead;
 //  - a cap on how many copies of one sound, and how many sounds in all, play at once;
 //  - every copy plays slightly higher or lower;
@@ -18,7 +19,35 @@ import panic from '../sounds/city-panic.mp3';
 import explosion from '../sounds/explosion.mp3';
 import horde from '../sounds/horde.mp3';
 import floorboard from '../sounds/last-floorboard.mp3';
-import missile from '../sounds/missile.mp3';
+import boatHorn from '../sounds/boat-horn.mp3';
+import bells from '../sounds/church-bells.mp3';
+import crowd from '../sounds/crowd.mp3';
+import crowdPanic from '../sounds/crowd-panic.mp3';
+import death1 from '../sounds/soldier-death-1.mp3';
+import death2 from '../sounds/soldier-death-2.mp3';
+import distant from '../sounds/distant-explosion.mp3';
+import flamer from '../sounds/flamethrower.mp3';
+import footsteps from '../sounds/zombie-footsteps.mp3';
+import heli from '../sounds/helicopter.mp3';
+import launch from '../sounds/missile-launch.mp3';
+import mortar from '../sounds/mortar.mp3';
+import nylon from '../sounds/broken-nylon-prayer.mp3';
+import peaceful from '../sounds/peaceful-city.mp3';
+import police from '../sounds/police-beep.mp3';
+import rain from '../sounds/rain.mp3';
+import revolver from '../sounds/revolver-click.mp3';
+import rifle from '../sounds/rifle.mp3';
+import river from '../sounds/river.mp3';
+import roadblock from '../sounds/roadblock-break.mp3';
+import rocket from '../sounds/rocket-launcher.mp3';
+import shotgun from '../sounds/shotgun.mp3';
+import small from '../sounds/small-explosion.mp3';
+import sniper from '../sounds/sniper.mp3';
+import train from '../sounds/train.mp3';
+import wind1 from '../sounds/wind-1.mp3';
+import wind2 from '../sounds/wind-2.mp3';
+import wind3 from '../sounds/wind-3.mp3';
+import winter from '../sounds/winter-on-the-wire.mp3';
 import call from '../sounds/zombie-call.mp3';
 import dying from '../sounds/zombie-dying.mp3';
 import groan from '../sounds/zombie-groan.mp3';
@@ -41,18 +70,10 @@ interface Recipe {
 }
 
 const RECIPES: Record<string, Recipe> = {
-  rifle: { len: 0.25, cut: 0.35, decay: 0.045, tone: [180, 60], toneAmp: 0.5, toneDecay: 0.03, gain: 0.45, window: 0.06, voices: 4 },
   pistol: { len: 0.18, cut: 0.5, decay: 0.03, tone: [260, 120], toneAmp: 0.4, toneDecay: 0.02, gain: 0.3, window: 0.06, voices: 3 },
   mg: { len: 0.15, cut: 0.4, decay: 0.03, tone: [150, 70], toneAmp: 0.5, toneDecay: 0.025, gain: 0.35, window: 0.05, voices: 4 },
-  crack: { len: 0.6, cut: 0.6, decay: 0.09, tone: [120, 40], toneAmp: 0.6, toneDecay: 0.12, gain: 0.6, window: 0.1, voices: 3 },
-  shotgun: { len: 0.4, cut: 0.25, decay: 0.08, tone: [110, 45], toneAmp: 0.8, toneDecay: 0.06, gain: 0.55, window: 0.08, voices: 3 },
-  flame: { len: 0.45, cut: 0.12, decay: 0.25, attack: 0.08, gain: 0.3, window: 0.15, voices: 2 },
-  rocket: { len: 0.6, cut: 0.15, decay: 0.3, attack: 0.04, tone: [220, 420], toneAmp: 0.25, gain: 0.4, window: 0.1, voices: 3 },
   thunk: { len: 0.3, cut: 0.08, decay: 0.06, tone: [140, 60], toneAmp: 1, toneDecay: 0.08, gain: 0.45, window: 0.08, voices: 3 },
-  boom: { len: 1.6, cut: 0.035, decay: 0.45, tone: [65, 28], toneAmp: 0.9, toneDecay: 0.6, gain: 0.85, window: 0.08, voices: 4 },
   napalm: { len: 1.8, cut: 0.06, decay: 0.7, attack: 0.1, tone: [50, 30], toneAmp: 0.6, gain: 0.75, window: 0.2, voices: 2 },
-  smash: { len: 0.8, cut: 0.45, decay: 0.16, tone: [95, 38], toneAmp: 0.8, toneDecay: 0.2, gain: 0.75, window: 0.25, voices: 2 }, // a roadblock giving way
-  cry: { len: 0.75, cut: 0, decay: 1, gain: 0.6, window: 0.4, voices: 2 }, // a soldier hit and falling: its buffer is made by cry()
   // The story's: a letter typed, a burst of radio static, a far-off thud.
   tick: { len: 0.03, cut: 0.9, decay: 0.006, tone: [1900, 1400], toneAmp: 0.3, toneDecay: 0.004, gain: 0.1, window: 0.025, voices: 2 },
   static: { len: 0.5, cut: 0.95, decay: 0.22, gain: 0.16, window: 0.4, voices: 1 },
@@ -65,7 +86,7 @@ const RECIPES: Record<string, Recipe> = {
 interface Clip { takes: [string, number, number][]; gain: number; window: number; voices: number; fade?: number }
 const CLIPS: Record<string, Clip> = {
   a10: { takes: [[a10, 0, 3.06]], gain: 0.8, window: 2.5, voices: 1 }, // the cannon over the strafe, then the jet
-  missile: { takes: [[missile, 0.4, 3.02]], gain: 0.9, window: 0.3, voices: 2 }, // its boom is 1.4 s in: lands as the missile does, 1 s after the call
+  missile: { takes: [[launch, 0, 2.02]], gain: 0.9, window: 0.3, voices: 2 }, // the launch, as it is called in; it lands as a 'blast'
   blast: { takes: [[explosion, 0.12, 2.6]], gain: 0.75, window: 0.12, voices: 3 },
   alarm: { takes: [[alarm, 0.15, 3.6]], gain: 0.4, window: 5, voices: 1, fade: 1 },
   scream: { takes: [[scream, 0.2, 3.2]], gain: 0.5, window: 2, voices: 1, fade: 0.8 },
@@ -74,52 +95,45 @@ const CLIPS: Record<string, Clip> = {
     takes: [[call, 0.6, 1.08], [call, 1.26, 1.78], [call, 2.16, 2.56], [call, 2.9, 3.3], [call, 3.68, 4.2], [call, 4.46, 5.28], [groan, 0.08, 1.2], [groan, 1.66, 2.76], [groan, 3.08, 3.94]],
     gain: 0.35, window: 0.9, voices: 2,
   },
+  // The soldiers' guns, by kind (the world's noise is the soldier's kind). A recording too long for one shot is cut short and faded.
+  rifleman: { takes: [[rifle, 0, 2]], gain: 0.45, window: 0.06, voices: 4, fade: 0.6 }, // the file's first 2 s
+  marksman: { takes: [[sniper, 0, 2.5]], gain: 0.55, window: 0.1, voices: 3, fade: 0.6 },
+  sniper: { takes: [[sniper, 0, 2.5]], gain: 0.65, window: 0.1, voices: 3, fade: 0.6 },
+  shotgunner: { takes: [[shotgun, 0, 2.23]], gain: 0.55, window: 0.08, voices: 3, fade: 0.5 },
+  flamethrower: { takes: [1, 4, 7, 10, 13, 16, 19, 22, 25].map((t): [string, number, number] => [flamer, t, t + 1.2]), gain: 0.35, window: 0.3, voices: 2, fade: 0.4 }, // slices of one long burn
+  bazooka: { takes: [[rocket, 0, 2]], gain: 0.5, window: 0.1, voices: 3, fade: 0.8 },
+  mortar: { takes: [[mortar, 0, 0.47]], gain: 0.55, window: 0.08, voices: 3 },
+  boom: { takes: [[small, 0, 2.9]], gain: 0.6, window: 0.08, voices: 3, fade: 0.6 }, // a small blast: grenades, shells, rockets landing
+  broken: { takes: [[roadblock, 0, 5.07]], gain: 0.7, window: 0.25, voices: 2, fade: 1.5 }, // a roadblock giving way
+  fallen: { takes: [[death1, 0, 1.58], [death2, 0, 2.09]], gain: 0.6, window: 0.4, voices: 2 }, // a soldier hit and falling
+  // Now and then under a city's fight, and in the cutscenes.
+  police: { takes: [[police, 0, 0.38]], gain: 0.3, window: 0.5, voices: 1 }, // the radio's beep before Nora or JEC speaks
+  bells: { takes: [[bells, 0, 17.04]], gain: 0.35, window: 15, voices: 1, fade: 3 },
+  horn: { takes: [[boatHorn, 0, 3.84]], gain: 0.4, window: 5, voices: 1 },
+  crash: { takes: [[distant, 0, 6.86]], gain: 0.6, window: 3, voices: 1 }, // far off: a helicopter going down, a bridge blown
+  click: { takes: [[revolver, 0.96, 1.2]], gain: 0.5, window: 0.05, voices: 2, fade: 0.08 }, // a revolver's hammer, any button pressed: only the click (the file is silent until 0.8 s, its click at 1 s)
+  heli: { takes: [[heli, 0, 10.03]], gain: 0.4, window: 8, voices: 1, fade: 2 },
   die: { takes: [[dying, 0.3, 1.04], [dying, 1.16, 2.62], [dying, 2.94, 4.26], [dying, 4.4, 5.42]], gain: 0.45, window: 0.35, voices: 2 },
 };
 // What each soldier says when picked: 'say-rifleman' and so on, one of his lines at random.
 for (const [kind, takes] of Object.entries(lines)) CLIPS[`say-${kind}`] = { takes: takes.map(([from, to]): [string, number, number] => [radio, from, to]), gain: 0.85, window: 0.5, voices: 1 };
 /** Which recipe each noise from the world uses: soldiers by kind, the rest by name. */
 const USES: Record<string, string> = {
-  rifleman: 'rifle', shield: 'pistol', machinegunner: 'mg', operator: 'mg', turret: 'mg', marksman: 'crack', sniper: 'crack',
-  shotgunner: 'shotgun', flamethrower: 'flame', bazooka: 'rocket', mortar: 'thunk', grenadier: 'thunk', boom: 'boom', napalm: 'napalm', broken: 'smash', fallen: 'cry',
+  shield: 'pistol', machinegunner: 'mg', operator: 'mg', turret: 'mg', grenadier: 'thunk', napalm: 'napalm', // the rest are CLIPS
   tick: 'tick', static: 'static', thud: 'thud', paper: 'paper', // the story's
 };
 const MAX_VOICES = 16;
 
-let ctx: AudioContext | undefined, bus: GainNode, bed: GainNode | undefined;
+let ctx: AudioContext | undefined, bus: GainNode;
+/** The horde underneath it all, as loud as hordeLevel() says: its growl and its feet, each at its own share. */
+const BED: [string, number][] = [[horde, 0.3], [footsteps, 0.25]];
+const bed: GainNode[] = [];
 const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession; // Safari's say over the phone's audio
 const buffers: Record<string, AudioBuffer> = {};
 const files: Record<string, AudioBuffer> = {}; // recordings by url, once decoded
 const playing: Record<string, number> = {};
 const latest: Record<string, { at: number; gain: GainNode; base: number; n: number }> = {};
 let voices = 0, heat = 0, heatAt = 0;
-
-/** A man's cry of pain, "aah" falling away: a buzz at the pitch of a voice, through the three resonances of an open
- *  vowel, with breath in it. */
-function cry(c: AudioContext) {
-  const rate = c.sampleRate, n = Math.ceil(0.75 * rate), b = c.createBuffer(1, n, rate), d = b.getChannelData(0);
-  const formants = [[730, 90, 1], [1090, 110, 0.5], [2440, 170, 0.25]].map(([f, bw, amp]) => {
-    const r = Math.exp((-Math.PI * bw) / rate);
-    return { a1: 2 * r * Math.cos((2 * Math.PI * f) / rate), a2: -r * r, amp, y1: 0, y2: 0 };
-  });
-  let phase = 0, peak = 1e-6;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate, pitch = 190 * Math.exp(-t * 0.9) * (1 + 0.03 * Math.sin(t * 38) + (Math.random() - 0.5) * 0.02);
-    phase = (phase + pitch / rate) % 1;
-    const source = (phase < 0.4 ? Math.sin((phase / 0.4) * Math.PI) : 0) + (Math.random() - 0.5) * 0.35; // a glottal pulse, and breath
-    let v = 0;
-    for (const f of formants) {
-      const y = source * (1 - f.a1 - f.a2) + f.a1 * f.y1 + f.a2 * f.y2;
-      f.y2 = f.y1;
-      f.y1 = y;
-      v += y * f.amp;
-    }
-    d[i] = v * Math.min(1, t / 0.03) * Math.exp(-t * 3.2);
-    peak = Math.max(peak, Math.abs(d[i]));
-  }
-  for (let i = 0; i < n; i++) d[i] /= peak;
-  return b;
-}
 
 function make(c: AudioContext, r: Recipe) {
   const rate = c.sampleRate, n = Math.ceil(r.len * rate), b = c.createBuffer(1, n, rate), d = b.getChannelData(0);
@@ -155,24 +169,24 @@ function unlock() {
     else if (navigator.maxTouchPoints > 0 && !profile.settings.mix) { const quiet = new Audio(silence()); quiet.setAttribute('playsinline', ''); void quiet.play().catch(() => {}); }
     ctx = new Context();
     // Each track played once inside this tap, so a phone lets it start later without one.
-    if (!profile.settings.mix) for (const url of new Set(Object.values(SCORES).flat().map(([u]) => u))) track(ctx, url);
     const squash = ctx.createDynamicsCompressor();
     bus = ctx.createGain();
     bus.connect(squash).connect(ctx.destination);
+    if (!profile.settings.mix) for (const url of new Set(Object.values(SCORES).flat().map(([u]) => u))) track(ctx, url);
     for (const [name, r] of Object.entries(RECIPES)) buffers[name] = make(ctx, r);
-    buffers.cry = cry(ctx);
     const c = ctx;
-    for (const url of new Set([horde, ...Object.values(CLIPS).flatMap((k) => k.takes.map((t) => t[0]))]))
+    for (const url of new Set([...BED.map(([u]) => u), ...Object.values(CLIPS).flatMap((k) => k.takes.map((t) => t[0]))]))
       void fetch(url).then((r) => r.arrayBuffer()).then((b) => c.decodeAudioData(b)).then((b) => {
         files[url] = b;
-        if (url === horde) {
-          // The horde's growl loops under everything, as loud as hordeLevel() says.
+        const k = BED.findIndex(([u]) => u === url);
+        if (k >= 0) {
+          // The horde's growl and feet loop under everything.
           const src = c.createBufferSource();
-          bed = c.createGain();
-          bed.gain.value = 0;
+          bed[k] = c.createGain();
+          bed[k].gain.value = 0;
           src.buffer = b;
           src.loop = true;
-          src.connect(bed).connect(bus);
+          src.connect(bed[k]).connect(bus);
           src.start();
         }
       }).catch(() => { /* no file, no sound */ });
@@ -183,17 +197,64 @@ function unlock() {
 
 // ---- Music ----
 // Streamed through <audio> elements into the mix, not decoded: minutes of music decoded would fill a phone's memory.
-// The menu has The Last Floorboard over a city in panic (sirens, screaming; the recording's first 5 and last 23 seconds
-// cut); a fight has the city in panic alone, at full volume. Changing screens crossfades from one to the other.
+// The menu has The Last Floorboard over a city in panic (sirens, screaming; the recording's last 5 seconds cut); a fight
+// has Winter on the Wire with the city in panic under it; a cutscene Broken Nylon Prayer. Changing screens crossfades.
+// The ambience (a city's wind and trains under a fight, a cutscene backdrop's crowd) streams the same way, but through
+// the sound-effects bus: it follows the effects volume, not the music's.
 
 /** Each screen's tracks, with each one's share of the music volume. */
-const SCORES = { menu: [[floorboard, 1], [panic, 0.5]], game: [[panic, 1]], story: [] } as const satisfies Record<string, readonly (readonly [string, number])[]>;
+const SCORES = { menu: [[floorboard, 1], [panic, 0.5]], game: [[winter, 1], [panic, 0.35]], story: [[nylon, 0.6]] } as const satisfies Record<string, readonly (readonly [string, number])[]>;
 const tracks = new Map<string, { el: HTMLAudioElement; gain: GainNode }>();
 let score: keyof typeof SCORES | undefined;
 /** Seconds left off the end of a track: the city in panic's last 5. */
 const CUT: Record<string, number> = { [panic]: 5 };
 
-function track(c: AudioContext, url: string) {
+/** Each city's sound under a fight: loops, each at its level, and now and then (every 20 to 60 s) one of `now`. */
+const CITIES: Record<string, { loops: [string, number][]; now?: string[] }> = {
+  'main-street': { loops: [[wind1, 0.5]] },
+  chicago: { loops: [[wind2, 0.5], [train, 0.25]] }, // the L overhead
+  'new-york': { loops: [[wind3, 0.5]] },
+  manila: { loops: [[river, 0.4], [crowd, 0.3]] }, // the canal
+  mexico: { loops: [[crowd, 0.3]], now: ['bells'] }, // the cathedral
+  rome: { loops: [[wind3, 0.5]], now: ['bells'] },
+  tokyo: { loops: [[train, 0.25], [crowd, 0.3]] },
+  london: { loops: [[rain, 0.5], [river, 0.3]], now: ['horn'] },
+  'white-house': { loops: [[heli, 0.35], [wind1, 0.4]], now: ['crash'] },
+};
+/** Each cutscene backdrop's loops: the quiet city before, the crowd panicking at the evacuations. */
+const BACKDROPS: Record<string, [string, number][]> = {
+  'street-night': [[peaceful, 0.4]], 'new-york-avenue': [[peaceful, 0.4]], 'rome-arches': [[peaceful, 0.3]], 'mexico-square': [[peaceful, 0.35]], 'white-house-lawn': [[peaceful, 0.25]],
+  'school-lot': [[crowdPanic, 0.35]], 'chicago-pier': [[crowdPanic, 0.35]], 'new-york-harbor': [[crowdPanic, 0.35]],
+  'manila-river-port': [[crowdPanic, 0.3], [river, 0.3]], 'london-bridge': [[crowdPanic, 0.3], [river, 0.25]], 'tokyo-platform': [[crowdPanic, 0.25], [train, 0.25]],
+  'rome-depot': [[train, 0.3]], 'manila-alley': [[crowd, 0.25]], 'tokyo-crossing': [[crowd, 0.3]],
+};
+let cityLoops: [string, number][] = [], storyLoops: [string, number][] = [], cityTimer = 0;
+/** What is wanted playing: each track's url and its gain. */
+let want = new Map<string, number>();
+
+/** A fight in city `id` began (none: it ended): its loops play under it, and its one-offs now and then. */
+export function city(id?: string) {
+  const c = id ? CITIES[id] : undefined, now = c?.now;
+  cityLoops = c?.loops ?? [];
+  clearTimeout(cityTimer);
+  const next = () => { cityTimer = window.setTimeout(() => { if (now && score === 'game') play(now[(Math.random() * now.length) | 0], 0.6); next(); }, 20000 + Math.random() * 40000); };
+  if (now) next();
+  cue();
+}
+/** A cutscene shot on `name` began (none: the scene ended): that backdrop's loops play under it. */
+export function backdrop(name?: string) {
+  storyLoops = name ? BACKDROPS[name] ?? [] : [];
+  cue();
+}
+let storyQuiet = 1;
+/** A close shot (the radio, Nora, the notebook, the photo): the backdrop's crowd turned well down under it, or back up. */
+export function quietBackdrop(on: boolean) {
+  storyQuiet = on ? 0.25 : 1;
+  cue();
+}
+
+/** A looping <audio> element into the mix: the ambience (`fx`) through the effects bus, the music straight out. */
+function track(c: AudioContext, url: string, fx = false) {
   let t = tracks.get(url);
   if (t) return t;
   const el = new Audio(url), gain = c.createGain();
@@ -204,28 +265,33 @@ function track(c: AudioContext, url: string) {
   el.preload = 'auto';
   el.setAttribute('playsinline', '');
   gain.gain.value = 0;
-  c.createMediaElementSource(el).connect(gain).connect(c.destination);
+  c.createMediaElementSource(el).connect(gain).connect(fx ? bus : c.destination);
   tracks.set(url, (t = { el, gain }));
   void el.play().then(() => { if (!wanted(url)) el.pause(); }, () => {});
   return t;
 }
-const wanted = (url: string) => !!score && !profile.settings.mix && SCORES[score].some(([u]) => u === url);
+const wanted = (url: string) => want.has(url);
 
-/** Plays a screen's music: 'menu', 'game' or 'story' (none: the story has no music) (it starts with the first tap if there has been none yet). */
+/** Plays a screen's music: 'menu', 'game' or 'story' (it starts with the first tap if there has been none yet). */
 export function music(which: keyof typeof SCORES) {
   score = which;
   cue();
 }
 
-/** Fades the wanted tracks in to the music volume and the rest out, pausing them once they are quiet. */
+/** Fades the wanted tracks in (the music to the music volume, the ambience to its level on the effects bus) and the
+ *  rest out, pausing them once they are quiet. With "play over other apps' music" on, neither plays. */
 function cue() {
-  if (!ctx || !score) return;
+  if (!ctx) return;
   const now = ctx.currentTime, { master, music: level, mix } = profile.settings;
   if (session) session.type = mix ? 'ambient' : 'playback';
-  if (!mix) for (const [url] of SCORES[score]) track(ctx, url); // made now if the game started with them off
+  want = new Map();
+  if (!mix && score) {
+    for (const [url, share] of SCORES[score]) { track(ctx, url); want.set(url, master * level * share); } // made now if the game started with them off
+    for (const [url, share] of score === 'game' ? cityLoops : score === 'story' ? storyLoops.map(([u, l]): [string, number] => [u, l * storyQuiet]) : []) { track(ctx, url, true); want.set(url, share); }
+  }
   for (const [url, t] of tracks) {
-    const share = mix ? 0 : SCORES[score].find(([u]) => u === url)?.[1] ?? 0;
-    t.gain.gain.setTargetAtTime(master * level * share, now, share ? 0.8 : 0.5);
+    const share = want.get(url) ?? 0;
+    t.gain.gain.setTargetAtTime(share, now, share ? 0.8 : 0.5);
     if (share && t.el.paused) void t.el.play().catch(() => {});
     if (!share && !t.el.paused) setTimeout(() => { if (!wanted(url)) t.el.pause(); }, 2500);
   }
@@ -235,6 +301,8 @@ function cue() {
 export const retune = () => cue();
 // The events a browser lets start audio: a finger lifting, a click, a key (and a mouse button going down).
 for (const e of ['pointerup', 'touchend', 'click', 'keydown', 'mousedown']) addEventListener(e, unlock, { capture: true });
+// Every button pressed, anywhere (menus, the skill tree, the HUD): the revolver's click.
+addEventListener('click', (e) => { const b = (e.target as Element | null)?.closest?.('button'); if (b && !b.disabled) play('click'); }, { capture: true });
 
 /** Plays the noise `kind` (see World.sounds). `near` is 1 on screen, less the farther off it is; `size` a blast radius. */
 export function play(kind: string, near = 1, size = 0) {
@@ -270,6 +338,7 @@ function clip(name: string, near: number) {
   if (!ctx || ctx.state !== 'running' || !buf || near < 0.05) return;
   const now = ctx.currentTime;
   const talk = name.startsWith('say-');
+  if (talk && profile.settings.voices !== 'acting') return; // the soldiers only talk with Voices on Voice acting
   if (now - (lastClip[name] ?? -1e9) < k.window || (playing[name] ?? 0) >= k.voices || voices >= MAX_VOICES || (talk && now < talking)) return;
   lastClip[name] = now;
   if (talk) talking = now + take[2] - take[1];
@@ -286,11 +355,12 @@ function clip(name: string, near: number) {
   src.start(now, from, to - from);
 }
 
-/** How loud the horde's growl is: 0 when no zombie is near, 1 for a street full of them. */
+/** How loud the horde (its growl and feet) is: 0 when no zombie is near, 1 for a street full of them. */
 export function hordeLevel(level: number) {
-  if (!ctx || !bed) return;
+  if (!ctx) return;
+  const now = ctx.currentTime;
   mix(0);
-  bed.gain.setTargetAtTime(0.3 * Math.max(0, Math.min(1, level)), ctx.currentTime, 0.6);
+  BED.forEach(([, share], k) => bed[k]?.gain.setTargetAtTime(share * Math.max(0, Math.min(1, level)), now, 0.6));
 }
 
 /** Everything goes through the bus: at the volume the settings say, turned down the more is going on (ducking).
@@ -376,3 +446,37 @@ export function hush() {
 export const voicePlaying = () => !!ctx && !!speaking && ctx.currentTime < speaking.until;
 /** The scene is over: its voices are let go. */
 export function dropVoices() { hush(); sceneVoices = undefined; }
+
+// ---- The story's blips (Voices on Blips): a short tone as the words type, each speaker in a key of their own, one of a
+// few notes of it at random, like Undertale's. Radio voices come through a narrow band, as the radio does ----
+const BLIPS: Record<string, [hz: number, wave: OscillatorType, notes: number[], radio?: boolean]> = {
+  Reyes: [140, 'square', [0, 2, 4]], Pike: [200, 'square', [0, 3, 5, 7]], Dunne: [110, 'triangle', [0, 2]],
+  Hollis: [170, 'square', [0, 2, 5]], Okoye: [120, 'triangle', [0, 3, 5]], Vega: [160, 'sawtooth', [0, 2, 4]],
+  Lola: [330, 'triangle', [0, 4, 7]], Vendor: [190, 'sawtooth', [0, 4, 7, 9]], 'Harbor master': [125, 'sawtooth', [0, 1, 3]],
+  Pilot: [180, 'square', [0, 2]], Captain: [130, 'square', [0, 2], true], 'South bank commander': [150, 'square', [0, 2, 3], true],
+  Nora: [300, 'triangle', [0, 2, 4, 7], true], Radio: [260, 'square', [0], true], JEC: [220, 'square', [0], true], Loudspeaker: [180, 'square', [0], true],
+};
+/** Semitones a mood moves a voice: lower when angry or sad, higher when frightened. */
+const MOOD_SHIFT: Record<string, number> = { angry: -2, stern: -1, sad: -3, worried: 2, shocked: 3, happy: 1 };
+let lastBlip = 0;
+/** One blip of `who`'s voice (skipped if the last was a moment ago, so fast typing does not buzz). */
+export function blip(who: string, mood = '') {
+  if (!ctx || ctx.state !== 'running') return;
+  const now = ctx.currentTime;
+  if (now - lastBlip < 0.05) return;
+  lastBlip = now;
+  mix(0);
+  const [hz, wave, notes, radio] = BLIPS[who] ?? BLIPS.Reyes, semis = notes[(Math.random() * notes.length) | 0] + (MOOD_SHIFT[mood] ?? 0);
+  const osc = ctx.createOscillator(), gain = ctx.createGain(), peak = wave === 'triangle' ? 0.16 : 0.07;
+  osc.type = wave;
+  osc.frequency.value = hz * 2 ** (semis / 12);
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(peak, now + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+  let last: AudioNode = osc.connect(gain);
+  if (radio) { const band = ctx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 1400; band.Q.value = 0.9; last = last.connect(band); }
+  last.connect(bus);
+  osc.onended = () => gain.disconnect();
+  osc.start(now);
+  osc.stop(now + 0.07);
+}

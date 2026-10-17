@@ -4,9 +4,10 @@
 // src/sounds/story/<scene>.mp3, with where each page sits in src/data/storyvoices.json.
 // Its packages are not the game's, so install them first, without saving:
 //   npm i --no-save kokoro-js@1.2.1 @breezystack/lamejs@1.2.7
-//   node scripts/storyvoices.ts
+//   node scripts/storyvoices.ts                (every scene)
+//   node scripts/storyvoices.ts after:mexico   (only the scenes named; the rest kept as they are)
 // The first run downloads the model (about 90 MB) to the Hugging Face cache.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { Mp3Encoder } from '@breezystack/lamejs';
 import { KokoroTTS } from 'kokoro-js';
 import data from '../src/data/story.json' with { type: 'json' };
@@ -73,10 +74,12 @@ function speaker(x: Float32Array, sr: number) {
   return level(out);
 }
 
-const all = order(story), index: Record<string, Record<string, [number, number]>> = {};
+const only = process.argv.slice(2), indexUrl = new URL('../src/data/storyvoices.json', import.meta.url);
+const all = order(story), index: Record<string, Record<string, [number, number]>> = only.length ? JSON.parse(readFileSync(indexUrl, 'utf8')) : {};
 mkdirSync(new URL('../src/sounds/story/', import.meta.url), { recursive: true });
 let total = 0;
 for (const sc of story.scenes) {
+  if (only.length && !only.includes(sc.id)) continue;
   const parts: Float32Array<ArrayBufferLike>[] = [], at: Record<string, [number, number]> = {};
   let rate = 24000, length = 0;
   for (const shot of sc.shots)
@@ -107,5 +110,5 @@ for (const sc of story.scenes) {
   writeFileSync(new URL(`../src/sounds/story/${sc.id.replace(':', '-')}.mp3`, import.meta.url), Buffer.concat(mp3));
   total += length / rate;
 }
-writeFileSync(new URL('../src/data/storyvoices.json', import.meta.url), `{\n${Object.entries(index).map(([id, at]) => `  ${JSON.stringify(id)}: {\n${Object.entries(at).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n')}\n  }`).join(',\n')}\n}\n`);
+writeFileSync(indexUrl, `{\n${Object.entries(index).map(([id, at]) => `  ${JSON.stringify(id)}: {\n${Object.entries(at).map(([k, v]) => `    ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n')}\n  }`).join(',\n')}\n}\n`);
 console.log(`${total.toFixed(1)} s of lines in ${story.scenes.length} scenes`);

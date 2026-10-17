@@ -1,5 +1,34 @@
 [
   {
+    "date": "2026-10-18 02:49",
+    "title": "The war room",
+    "notes": [
+      "The cities are now pinned to a war-room board under a hanging lamp: each city a photo on a red string, a map of the world with the route between them, the squad's snapshot with the gone crossed out, the day on a calendar, and Nora's words on a sticky note.",
+      "Hover a city to lift it into the light and read its index card: how it stands, how many zombies per soldier, and its page of the notebook once you have seen it. On a phone, tap once to read it and again to go.",
+      "The skill tree is the requisitions clipboard, the story is Reyes's notebook, and settings is the pink sticky note. The radio answers when pressed.",
+      "Real recordings for the rifle, marksman, sniper, shotgun, flamethrower, bazooka, mortar, small blasts, roadblocks giving way and soldiers going down. The missile launches when called in and lands with a blast.",
+      "New music: Winter on the Wire in the fights, Broken Nylon Prayer in the cutscenes. Every city has its own sound under the fight (wind, rain, trains, a river, crowds), and every cutscene place its own; it drops low on the radio, notebook and photo shots. The horde's footsteps under its growl.",
+      "A beep on the radio before Nora or JEC speaks. A revolver's click on every button.",
+      "A big Continue button after a win: on to the next city.",
+      "New soldiers no longer need other soldiers' upgrades bought first: only the card before them. Every run pays at least 5 chips × the city's number.",
+      "In the skill tree, close a card's description with its ✕ or by tapping outside it, and the description no longer gets squeezed."
+    ]
+  },
+  {
+    "date": "2026-10-17 21:53",
+    "title": "Faces, blips and the photo",
+    "notes": [
+      "The story's text box is bigger, and whoever is talking shows in a framed 32-pixel portrait at its left: head turned toward the words, a bold outline, caps, badges, beards, glasses and all.",
+      "Faces show how a line is said: happy, sad, angry, worried, shocked or stern, with brows, eyes and mouth to match (and a tear, or a bead of sweat). The radio's signal bars drop when the news is bad.",
+      "Settings > Voices: Blips (the new default), Voice acting or Off. Blips gives everyone a voice of their own, a short note a letter as the words type, lower when angry or sad. Voice acting plays the recorded lines, and the soldiers only call out over the radio with it on.",
+      "The little squad figures at the bottom left are gone. After every city, a snapshot of the squad from before it all, fooling about in the station pantry (Pike giving Dunne bunny ears); whoever is gone has a red X over them, the newest drawn in as you watch.",
+      "Letters lost to a bad radio signal no longer stay lost: each crackles for a moment, then the right letter pops in.",
+      "The notebook keeps every city: each page lists all the counts so far, with the new one written in under them.",
+      "The whole story is rewritten: new lines in every scene, said with feeling.",
+      "New in the scenes: a rubber boat heads out from the Chicago pier, a helicopter carries the V.I.P.s out of New York, Pike speaks up before he boards the train in Tokyo, and the Ending has a new moment at the White House's upstairs window."
+    ]
+  },
+  {
     "date": "2026-10-17 09:12",
     "title": "Routes, voices and a living city",
     "notes": [

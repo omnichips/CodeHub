@@ -17,6 +17,7 @@ export interface Settings {
   dust: number; // 0 to 1: how much dust blows across the screen
   mix: boolean; // play alongside other apps' music (Spotify): the game's music off, and on an iPhone its sound follows the silent switch
   story: 'full' | 'short' | 'off'; // the cutscenes: all of them, their words only, or none (their notebook pages are still written)
+  voices: 'blips' | 'acting' | 'off'; // how people sound: a blip a letter in the story, the recorded voices (the story's and the soldiers'), or neither
 }
 export interface Stats {
   runs: number;
@@ -48,7 +49,7 @@ const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
 export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory() });
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full' });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips' });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
@@ -128,6 +129,7 @@ export function settingsFrom(raw: unknown): Settings {
     dust: unit(s.dust, base.dust),
     mix: s.mix === true,
     story: pick(s.story, ['full', 'short', 'off'] as const, base.story),
+    voices: pick(s.voices, ['blips', 'acting', 'off'] as const, base.voices),
   };
 }
 

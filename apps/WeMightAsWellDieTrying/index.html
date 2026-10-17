@@ -71,6 +71,7 @@
       #hud .menu { pointer-events: auto; background: var(--panel); }
       #hud .tip { top: 64px; left: 50%; transform: translateX(-50%); width: min(460px, 70vw); display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--panel); border: 2px solid var(--flash, #c4a058); }
       #hud .tip p { margin: 0; flex: 1; line-height: 1.4; }
+      #hud .end .continue { display: block; width: 100%; min-height: 56px; margin: 0 0 10px; font-size: 18px; }
       #hud .end .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       #hud .end .chips { list-style: none; margin: 0 0 6px; padding: 0; color: var(--dim); line-height: 1.6; }
       #hud .end .total { font-size: 18px; color: var(--ink); }
@@ -103,22 +104,15 @@
       #menu .panel, #menu .panel button { touch-action: pan-y; overscroll-behavior: contain; }
       #menu .go { background: #7d3a33; letter-spacing: 0.06em; text-transform: uppercase; }
       @media (hover: hover) { #menu .go:not(:disabled):hover { background: #9c4f44; } }
-      /* The cities: a grid of cards, each with a picture of its map. The skill tree waits in the top right corner. */
-      #menu:has(.maps) { background: linear-gradient(90deg, rgba(12, 12, 13, 0.97), rgba(12, 12, 13, 0.92) 70%, rgba(12, 12, 13, 0.86)); }
-      #menu .maps { width: min(1040px, 100%); margin: 0 auto; }
-      #menu .maps .head { padding-right: 250px; } /* clear of the corner buttons */
-      #menu .maps .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 10px; padding: 4px 2px 8px; }
-      #menu .map { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 0 8px; min-height: 0; text-align: left; overflow: hidden;
-        background: var(--panel); transition: transform 0.14s ease-out, border-color 0.14s, box-shadow 0.14s; }
-      #menu .map .thumb { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; margin-bottom: 4px; background: #1a1b1c; opacity: 0; transition: opacity 0.3s; }
-      #menu .map .thumb.ready { opacity: 1; }
-      #menu .map b { padding: 0 8px; font-size: 13px; }
-      #menu .map small { padding: 0 8px; color: var(--dim); font-size: 10px; }
-      #menu .map .num { position: absolute; top: 4px; left: 4px; padding: 3px 5px; font: 700 11px/1 ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: var(--ink); background: var(--line); }
-      #menu .map.cleared .num { background: var(--olive-lit); }
-      #menu .map:disabled .thumb { filter: grayscale(1) brightness(0.55); }
-      @media (hover: hover) { #menu .map:not(:disabled):hover { transform: translateY(-3px); background: var(--panel); border-color: #c4a058; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.4); } }
-      #menu .map:active:not(:disabled) { transform: scale(0.97); }
+      /* The cities: the war-room board (game/board.ts), pixel art scaled up whole, its things to press invisible buttons over it. */
+      #menu:has(.board) { padding: 0; background: #0b0907; }
+      #menu .board { position: absolute; inset: 0; display: grid; place-items: center; animation: fade 0.3s ease-out; }
+      #menu .board .stage { position: relative; width: min(100vw, 150vh); aspect-ratio: 3 / 2; }
+      #menu .board canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+      #menu .board .hit { position: absolute; min-width: 0; min-height: 0; padding: 0; background: transparent; border: 0; touch-action: manipulation; }
+      #menu .board .hit:hover, #menu .board .hit:active { background: transparent; transform: none; filter: none; }
+      #menu .board .hit[aria-disabled="true"] { cursor: not-allowed; }
+      #menu .board .hit:focus-visible { outline: 2px solid #f5d27a; outline-offset: 1px; }
       #menu .corner { position: absolute; z-index: 2; top: var(--top); right: var(--right); display: flex; gap: 6px; animation: pop 0.22s ease-out; }
       #menu .corner button { min-height: 44px; }
       /* The patch notes: an icon in the main menu's corner, a red dot on it while there are new ones. */
@@ -193,8 +187,11 @@
       @keyframes spent { to { transform: translateY(-30px); opacity: 0; } }
       #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(600px, calc(100vw - 16px)); box-sizing: border-box;
         display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--panel); border: 2px solid var(--line); }
-      #menu .info img { width: 40px; height: 40px; image-rendering: pixelated; }
-      #menu .info div { flex: 1; }
+      #menu .info img { flex: none; width: 40px; height: 40px; image-rendering: pixelated; }
+      #menu .info div { flex: 1 1 0; min-width: 0; }
+      /* The buy button never squeezes the description: long "Needs ..." text wraps inside it. */
+      #menu .info .go { flex: 0 1 auto; max-width: 40%; padding: 6px 10px; }
+      #menu .info .x { flex: none; align-self: flex-start; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; background: var(--panel); }
       #menu .info p { margin: 2px 0 0; color: var(--dim); line-height: 1.35; }
       #menu .info > p { margin: 0; }
       /* The eye beside a soldier: watch him fight. */

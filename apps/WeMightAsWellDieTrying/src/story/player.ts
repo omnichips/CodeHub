@@ -3,18 +3,19 @@
 // row at its left; ash; a hold anywhere to skip. A map shot leaves its picture clear and the game (or a painted map)
 // shows through. However the scene ends, it is recorded (seen, its notebook page written) before `done` is called.
 import { persist, profile } from '../meta/profile.ts';
-import { dropVoices, hordeLevel, hush, loadVoices, music, play, say, storyBed, voicePlaying } from '../game/sound.ts';
+import { backdrop, quietBackdrop, blip, dropVoices, hordeLevel, hush, loadVoices, music, play, say, storyBed, voicePlaying } from '../game/sound.ts';
 import voiceIndex from '../data/storyvoices.json' with { type: 'json' };
 import { closeup, diorama, notebook, notebookMs, travel } from './art.ts';
-import { glow, portrait, rain, squadFigure, type Act } from './kit.ts';
+import { glow, rain, type Act } from './kit.ts';
+import { portrait, squadPhoto, xAt } from './faces.ts';
 import { BAYER, INK, Pen } from './draw.ts';
 import { FONT, LINE_H, advance as letterWidth, measure, shown } from './font.ts';
 import { record, story } from './record.ts';
 import { STORY } from './storyConfig.ts';
-import { TEXT_X, dropRate, dropout, goneAtStart, letterDelay, order, pagesOf, readTime, shortened, silenceOf, titleCard } from './text.ts';
-import { MEMBERS, mapOf, voiceOf, type Camera, type Member, type Shot, type Voice } from './types.ts';
+import { TEXT_X, dropRate, dropout, goneAtStart, letterDelay, moodAt, order, pagesOf, readTime, shortened, silenceOf, titleCard } from './text.ts';
+import { mapOf, voiceOf, type Camera, type Member, type Mood, type Shot, type Voice } from './types.ts';
 
-const { W, H, BAR } = STORY, PIC_Y = BAR, PIC_H = H - 2 * BAR;
+const { W, H, BAR } = STORY, PIC_Y = STORY.TOP, PIC_H = H - STORY.TOP - BAR;
 const HALF = STORY.dissolve / 2;
 const TITLE = 'WE MIGHT AS WELL DIE TRYING';
 
@@ -22,8 +23,8 @@ const TITLE = 'WE MIGHT AS WELL DIE TRYING';
 export interface View {
   live: boolean;
   /** The camera `p` of the way through the shot, `t` seconds in; `still` holds it (reduced motion). `pictureH` is
-   *  the picture's height in screen pixels. */
-  frame(camera: Camera | undefined, p: number, t: number, still: boolean, pictureH: number): void;
+   *  the picture's height in screen pixels, `lift` how far its middle is above the screen's. */
+  frame(camera: Camera | undefined, p: number, t: number, still: boolean, pictureH: number, lift: number): void;
   /** A painted map draws itself into the picture. */
   draw?(pen: Pen, camera: Camera | undefined, p: number, t: number, still: boolean): void;
   end(): void;
@@ -55,10 +56,10 @@ export function pose(camera: Camera | undefined, p: number, t: number, still: bo
 }
 
 interface PageRun {
-  who: string; voice: Voice; lines: string[]; lost: boolean[][]; text: string; hits: Set<number>; pause: number; gloss?: string;
+  who: string; voice: Voice; lines: string[]; lost: boolean[][]; text: string; hits: Set<number>; pause: number; gloss?: string; moods: [number, Mood][];
   cum: number[]; at?: number; readEnd?: number; typed: number; spoken?: boolean;
 }
-interface ShotRun { s: Shot; k: number; start: number; pages: PageRun[]; pi: number; out?: number; left?: number }
+interface ShotRun { s: Shot; k: number; start: number; pages: PageRun[]; pi: number; out?: number; left?: number; banged?: boolean }
 
 let active: { stop: () => void } | undefined;
 /** Is a scene playing (the game keeps its fight still meanwhile)? */
@@ -70,7 +71,7 @@ export function playScene(o: Options) {
   active?.stop();
   const sc = story.scenes.find((s) => s.id === o.id)!, all = order(story), row = mapOf(o.id, story), mapNo = story.maps.indexOf(row) + 1;
   const shots = o.mode === 'short' ? shortened(sc) : sc.shots.filter((s) => !s.optional || STORY.sting);
-  const instant = o.mode === 'short';
+  const instant = o.mode === 'short', acting = profile.settings.voices === 'acting';
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---- The canvas: whole-number scale, the stage in its middle ----
@@ -122,7 +123,7 @@ export function playScene(o: Options) {
         const cum: number[] = [];
         let n = 0;
         for (const ch of p.text) cum.push((n += letterDelay(ch)));
-        pages.push({ who: l.who, voice, lines: p.lines, lost, text: p.text, hits: d.hits, pause: p.pause, gloss: j === ps.length - 1 ? l.gloss : undefined, cum, typed: 0 });
+        pages.push({ who: l.who, voice, lines: p.lines, lost, text: p.text, hits: d.hits, pause: p.pause, gloss: j === ps.length - 1 ? l.gloss : undefined, moods: p.moods, cum, typed: 0 });
       });
     }
     if (s) beds(s, k);
@@ -132,6 +133,8 @@ export function playScene(o: Options) {
   /** The beds under a shot: a low hum, static under the radio, rain where it rains; nothing in a silence. */
   function beds(s: Shot, k: number) {
     const radio = s.type === 'closeup' && s.object === 'radio', wet = ['manila-alley', 'tokyo-crossing'].includes(s.backdrop ?? '') || (o.id === 'opening' && k <= 1); // the Opening: light rain
+    if (s.backdrop) backdrop(s.backdrop); // the place's own sound, kept through the shots after it until the next place
+    quietBackdrop(['closeup', 'notebook', 'photo'].includes(s.type)); // the radio, the notebook, the photo: the crowd well down under them
     storyBed('hum', s.silence ? 0 : 0.5);
     storyBed('static', radio ? 0.7 : 0);
     storyBed('rain', wet ? 0.7 : 0);
@@ -191,6 +194,7 @@ export function playScene(o: Options) {
     const s = run.s;
     if (!s) return;
     const t = clock - run.start;
+    if (s.bang !== undefined && !run.banged && t >= s.bang * 1000) { run.banged = true; if (!instant) play('shield'); } // the one shot
     if (run.out === undefined) {
       if (t >= HALF + silenceOf(s)) {
         const pg = run.pages[run.pi];
@@ -202,12 +206,14 @@ export function playScene(o: Options) {
             if (s.paper && run.pi > 0 && !instant) { paperUntil = pg.at + 700; pg.at += 700; play('paper'); }
             pg.readEnd = pg.at + (instant ? 0 : pg.cum.at(-1)!) + readTime(pg.text);
             if (pg.voice !== 'person' && !instant) play('static');
+            // Nora or JEC about to speak: the radio's beep, once as each starts (not on every page of a long line).
+            if ((pg.who === 'Nora' || pg.who === 'JEC') && run.pages[run.pi - 1]?.who !== pg.who && !instant) play('police');
           }
           if (clock >= pg.at) {
-            // Its voice, once, as it appears; the page stays up until the voice is done.
+            // Its recorded voice (Voices on Voice acting), once, as it appears; the page stays up until it is done.
             if (!pg.spoken) {
               // Tried again each frame while the words are still typing, in case the scene's voices are still loading.
-              const clip = (voiceIndex as unknown as Record<string, Record<string, [number, number]>>)[o.id]?.[`${pg.who}|${pg.text}`];
+              const clip = acting ? (voiceIndex as unknown as Record<string, Record<string, [number, number]>>)[o.id]?.[`${pg.who}|${pg.text}`] : undefined;
               const secs = clip ? say(clip[0], clip[1]) : 0;
               if (secs || !clip || pg.typed >= pg.text.length) {
                 pg.spoken = true;
@@ -218,7 +224,8 @@ export function playScene(o: Options) {
             const n = instant ? pg.text.length : pg.cum.findIndex((c) => c > clock - pg.at!);
             const typed = n < 0 ? pg.text.length : n;
             for (let k = pg.typed; k < typed; k++) {
-              if (pg.text[k] !== ' ' && !voicePlaying()) play('tick');
+              // A blip of the speaker's voice a letter (Blips), or the typewriter's tick (no recorded voice playing).
+              if (pg.text[k] !== ' ' && !instant && !voicePlaying()) { if (profile.settings.voices === 'blips') blip(pg.who, moodAt(pg.moods, k)); else play('tick'); }
               if (pg.hits.has(k) && (s.dropout || s.motion?.includes('tear'))) tear();
             }
             pg.typed = typed;
@@ -245,11 +252,11 @@ export function playScene(o: Options) {
     sx.clearRect(0, 0, W, H);
     sx.fillStyle = '#000';
     const live = s.type === 'map' && !!o.view?.live;
-    const act: Act = { pen, t, p, dt, shot: s, k: run.k, sceneId: o.id, row, still, line: run.pi, said: run.pi >= run.pages.length, flash: () => { flashUntil = clock + 34; }, tear };
+    const act: Act = { pen, t, p, dt, shot: s, k: run.k, sceneId: o.id, row, still, line: run.pi, said: run.pi >= run.pages.length, flash: () => { flashUntil = clock + 34; }, tear, sound: (kind: string) => { if (!instant) play(kind); } };
 
     // The picture.
     if (s.type === 'map') {
-      if (o.view?.live) { o.view.frame(s.camera, p, t, still, PIC_H * scale); mapBeats(t, p); }
+      if (o.view?.live) { o.view.frame(s.camera, p, t, still, PIC_H * scale, (H / 2 - PIC_Y - PIC_H / 2) * scale); mapBeats(t, p); }
       else if (o.view?.draw) { sx.save(); sx.beginPath(); sx.rect(0, PIC_Y, W, PIC_H); sx.clip(); o.view.draw(pen, s.camera, p, t, still); sx.restore(); }
       else pen.rect(0, PIC_Y, W, PIC_H, 'asphalt0');
       if (s.objective && t > 0.6) objective(s.objective, t);
@@ -258,18 +265,18 @@ export function playScene(o: Options) {
     else if (s.type === 'closeup') closeup(act);
     else if (s.type === 'notebook') notebook(act, instant);
     else if (s.type === 'travel') travel(act);
+    else if (s.type === 'photo') photo(t);
     else titleCard_(t);
 
-    if (s.type !== 'title' && s.type !== 'notebook') ash(dt);
+    if (s.type !== 'title' && s.type !== 'notebook' && s.type !== 'photo') ash(dt);
     if (s.clock?.length) clocks(s.clock, clock - run.start);
     if (clock < flashUntil) pen.lit(0, PIC_Y, W, PIC_H, '#ffffff');
 
-    // The bars, the words, the squad.
+    // The bar over the picture, the text box under it.
     sx.fillStyle = '#000';
-    sx.fillRect(0, 0, W, BAR);
+    sx.fillRect(0, 0, W, PIC_Y);
     sx.fillRect(0, H - BAR, W, BAR);
     words();
-    squad();
 
     // Dissolves: in, out, and the skip's own fade.
     const tIn = clock - run.start, out = run.out === undefined ? 0 : (clock - run.out) / HALF;
@@ -415,33 +422,40 @@ export function playScene(o: Options) {
     pen.text(list[k], 9, PIC_Y + 6, INK.person, 'jec', typed);
   }
 
+  /** The text box: who is speaking in their framed portrait at its left, the face moving with the mood of the words
+   *  and the mouth while they come (or the voice plays); their name over the words. */
   function words() {
-    if (clock < paperUntil) pen.text('*paper*', TEXT_X, H - BAR + 6, INK.gloss);
+    const top = H - BAR;
+    if (clock < paperUntil) pen.text('*paper*', TEXT_X, top + 14, INK.gloss);
     const pg = run.pages[run.pi];
-    if (pg?.at !== undefined && clock >= pg.at) {
-      const y = H - BAR + (pg.lines.length > 1 || pg.gloss ? 1 : 6);
-      let left = pg.typed;
-      pg.lines.forEach((ln, j) => { say_(ln, pg.lost[j], TEXT_X, y + j * LINE_H, INK[pg.voice], pg.voice, left); left -= ln.length + 1; });
-      if (pg.gloss && pg.typed >= pg.text.length) pen.text(`(${pg.gloss})`, TEXT_X, y + LINE_H, INK.gloss);
-    }
-    // Who is speaking: their portrait over the picture's bottom left corner, their name beside it, the mouth moving
-    // while the words come (or the voice plays).
-    if (pg?.at !== undefined && clock >= pg.at) {
-      const talking = pg.typed < pg.text.length || voicing(), y = H - BAR - 26, w = measure(pg.who, 'person') + 6;
-      portrait(pen, pg.who, 3, y, talking && Math.floor(clock / 125) % 2 === 0, clock / 1000, pg.who === 'Reyes' ? row.posture : 1);
-      pen.rect(28, y + 13, w, 11, '#000000');
-      pen.text(pg.who, 31, y + 15, INK.label);
-    }
+    if (pg?.at === undefined || clock < pg.at) return;
+    const talking = pg.typed < pg.text.length || voicing(), mood = moodAt(pg.moods, Math.max(0, pg.typed - 1));
+    const bad = pg.who === 'Nora' && pg.lost.some((l) => l.some(Boolean)), signal = bad ? 1 : mood === 'sad' || mood === 'worried' ? 2 : mood === 'shocked' ? 3 : 4;
+    portrait(pen, pg.who, 4, top + 4, { mood, talk: talking && Math.floor(clock / 125) % 2 === 0, t: clock / 1000, tired: pg.who === 'Reyes' ? row.posture : 1, signal });
+    pen.text(pg.who, TEXT_X, top + 3, INK.label);
+    let left = pg.typed, start = 0;
+    pg.lines.forEach((ln, j) => { say_(ln, pg.lost[j], TEXT_X, top + 14 + j * LINE_H, INK[pg.voice], pg.voice, left, (k) => pg.at! + (instant ? 0 : pg.cum[start + k])); left -= ln.length + 1; start += ln.length + 1; });
+    if (pg.gloss && pg.typed >= pg.text.length) pen.text(`(${pg.gloss})`, TEXT_X, top + 14 + LINE_H, INK.gloss);
   }
 
-  /** A line of words as far as typed, any letter the signal lost drawn as static in its place. */
-  function say_(line: string, lost: boolean[], x: number, y: number, col: string, voice: Voice, upto: number) {
+  /** The squad's snapshot: an X over each one gone, the ones gone in this city marked now, a squeak of the marker each. */
+  const goneBefore = goneAtStart(o.id, story), squeaked = new Set<number>();
+  function photo(t: number) {
+    const fresh = [...gone].filter((m) => !goneBefore.includes(m));
+    fresh.forEach((_, k) => { for (const half of [0, 1]) if (t >= xAt(k) + half * 0.35 && !squeaked.has(k * 2 + half)) { squeaked.add(k * 2 + half); if (!instant) play('paper'); } });
+    squadPhoto(pen, instant ? 99 : t, [...gone], fresh);
+  }
+
+  /** A line of words as far as typed. A letter the signal lost comes up as static, then a moment later the right
+   *  letter pops in through it (white for a blink), so the line can always be read in the end. `typedAt` is when
+   *  each letter of the line was typed. */
+  function say_(line: string, lost: boolean[], x: number, y: number, col: string, voice: Voice, upto: number, typedAt: (k: number) => number) {
     if (!lost.some(Boolean)) { pen.text(line, x, y, col, voice, upto); return; }
     const text = shown(line, voice);
     let at = x;
     for (let k = 0; k < text.length && k < upto; k++) {
-      const w = letterWidth(text[k], voice);
-      if (!lost[k]) pen.text(text[k], at, y, col, voice);
+      const w = letterWidth(text[k], voice), since = clock - typedAt(k);
+      if (!lost[k] || since >= STORY.dropPop) pen.text(text[k], at, y, lost[k] && since < STORY.dropPop + 90 ? '#ffffff' : col, voice);
       else for (let py = 1; py < 7; py++) for (let px = 0; px < w - 1; px++) if (Math.random() < 0.3) { sx.fillStyle = INK.dim; sx.fillRect(at + px, y + py, 1, 1); }
       at += w;
     }
@@ -449,17 +463,6 @@ export function playScene(o: Options) {
 
   /** Is a voice line playing now? */
   function voicing() { return voicePlaying(); }
-
-  /** One small figure a squad member, a gap where one has gone. */
-  function squad() {
-    MEMBERS.forEach((m, k) => {
-      if (gone.has(m)) return;
-      const x = 3 + k * 7, y = H - BAR + 6;
-      squadFigure(pen, m, x, y, m === 'reyes' ? row.posture : 1);
-      const at = leaving.get(m);
-      if (at !== undefined) pen.dither(x - 1, y - 1, 7, 13, (clock - at) / 600);
-    });
-  }
 
   /** The hold-to-skip ring: 12 segments lighting up, from 200 ms into a hold. */
   function skipRing() {
@@ -492,13 +495,15 @@ export function playScene(o: Options) {
     removeEventListener('keyup', onKey, true);
     canvas.remove();
     for (const b of ['hum', 'rain', 'static'] as const) storyBed(b, 0);
+    backdrop();
+    quietBackdrop(false);
     dropVoices();
     o.view?.end();
     active = undefined;
   }
 
   active = { stop };
-  loadVoices(o.id);
+  if (acting) loadVoices(o.id);
   music('story');
   hordeLevel(0);
   raf = requestAnimationFrame(step);

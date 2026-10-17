@@ -130,7 +130,7 @@
       "charges": 2,
       "cooldown": 15,
       "delay": 2.5,
-      "sound": 1,
+      "sound": 2.5,
       "blast": 36,
       "damage": 500
     },

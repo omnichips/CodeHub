@@ -2,20 +2,21 @@
 // overlay. Main: continue the last save, new save or load a save, settings (statistics inside). Inside a save: its cities and its skill tree.
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
-import { MAPS, lastPlayed, open, perSoldier, persist, profile, saves, unlocked } from '../meta/profile.ts';
+import { MAPS, lastPlayed, open, persist, profile, saves } from '../meta/profile.ts';
 import { NODES } from '../meta/progress.ts';
 import notes from '../data/patchnotes.json' with { type: 'json' };
 import { Grid, type MapData } from '../sim/grid.ts';
 import { exportSave, fresh, noStats, parse, remove, type Save, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
 import { ambience } from './ambience.ts';
+import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { drawn, paintMap } from './mapart.ts';
 import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
 import { settingRows } from './settings.ts';
 import { music } from './sound.ts';
 import { skillWeb } from './tree.ts';
-import { noStory, story } from '../story/record.ts';
+import { noStory, record, story } from '../story/record.ts';
 import { playScene, pose } from '../story/player.ts';
 import { order } from '../story/text.ts';
 import { mapOf } from '../story/types.ts';
@@ -167,31 +168,16 @@ export class Menu extends Phaser.Scene {
     return el('div', { className: 'panel slots' }, this.head(mode === 'new' ? 'New save' : 'Load save', 'menu'), ...saves().map(row), file);
   }
 
-  /** Inside a save: its cities as a grid of cards, each with a picture of the map and how many zombies it sends per
-   *  soldier you have; the skill tree in the top right corner. */
-  save(): HTMLElement[] {
-    const s = profile.save, thumbs: [string, HTMLCanvasElement][] = [];
-    const cards = MAPS.map((m, k) => {
-      const open = unlocked(k), thumb = el('canvas', { className: 'thumb', width: THUMB_W, height: THUMB_H });
-      thumbs.push([m.id, thumb]);
-      return el('button', { type: 'button', className: `map${s.cleared[m.id] ? ' cleared' : ''}`, disabled: !open, onclick: () => this.play(m.id) },
-        thumb, el('i', { className: 'num' }, String(k + 1)),
-        el('b', {}, m.name),
-        el('small', {}, open ? `${s.cleared[m.id] ? 'Cleared' : 'Not cleared yet'} · ~${perSoldier(k)} per soldier` : `Clear ${MAPS[k - 1].name} to unlock`));
+  /** Inside a save: its cities on the war-room board (game/board.ts), with the skill tree, the story and settings on it. */
+  save(): HTMLElement {
+    return board({
+      play: (id) => this.play(id),
+      back: () => this.show('menu'),
+      tree: () => this.show('tree'),
+      story: () => this.show('story'),
+      settings: () => { this.settingsFrom = 'save'; this.show('settings'); },
+      thumb: (id) => this.thumbnail(id),
     });
-    // The pictures are painted one a frame, so the screen shows at once and fills in.
-    const next = () => {
-      const [id, cv] = thumbs.shift() ?? [];
-      if (!id || !cv!.isConnected) return;
-      cv!.getContext('2d')!.drawImage(this.thumbnail(id), 0, 0);
-      cv!.classList.add('ready');
-      requestAnimationFrame(next);
-    };
-    requestAnimationFrame(next);
-    return [
-      el('div', { className: 'panel maps' }, this.head(s.name, 'menu'), el('p', { className: 'chips' }, `${s.chips} chips`), el('div', { className: 'grid' }, ...cards)),
-      el('div', { className: 'corner' }, button('Story', () => this.show('story')), button('Settings', () => { this.settingsFrom = 'save'; this.show('settings'); }), button('Skill tree', () => this.show('tree'), 'go')),
-    ];
   }
 
   /** A small picture of a map: painted as in the game, cropped to the stretch where the line gets held, with the
@@ -289,6 +275,8 @@ export class Menu extends Phaser.Scene {
       cheat('Unlock every skill', 'Every skill is owned, every level.', () => (s.skills = Object.fromEntries(NODES.map((n) => [n.id, n.max])))),
       cheat('Unlock every city', 'Every city is cleared.', () => MAPS.forEach((m) => (s.cleared[m.id] = true))),
       cheat('Replay the guided start', 'The guided start will run again on Main Street.', () => (s.tutorialDone = false)),
+      // Every scene seen (in order, so the notebook fills in as it would), all of them to replay from Story.
+      cheat('Unlock every cutscene', 'Every scene can be replayed from Story (they no longer play by themselves in this save).', () => order(story).forEach((id) => record(s.story, id))),
       cheat('Replay the story from the start', 'Every scene will play again, the notebook blank.', () => (s.story = noStory())),
       // The horde's routes: a test map to watch them on, with everything to hand, or drawn on every map this session.
       button('Route test map', () => this.play(DEBUG_MAP.id), 'go'),

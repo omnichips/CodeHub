@@ -21,20 +21,20 @@
         { "type": "closeup", "ms": 12000, "object": "radio", "motion": ["led", "idle2"],
           "beats": "A handset with a red LED. Reyes's hand lifts the mic.",
           "lines": [
-            { "who": "JEC", "pages": ["Officer Reyes, you are the senior officer on the street. By order of the Joint Evacuation Command, you are Commander, Main Street."] },
-            { "who": "Reyes", "pages": ["I'm a patrol officer."] },
-            { "who": "JEC", "pages": ["Not any more."] },
-            { "who": "Nora", "pages": ["Congratulations, Danny. It's a title, not a raise.", "I'm sorry."], "pauseBefore": [1] }
+            { "who": "JEC", "pages": ["Officer Reyes... Do you copy? Our on-site commander is dead. By order of the Joint Evacuation Command, you are Commander. Take control of Main Street."] },
+            { "who": "Reyes", "pages": ["[startled] W-wait, what? I'm just a patrol officer."] },
+            { "who": "JEC", "pages": ["[firmly] Not any more. You. Have. No. Choice."] },
+            { "who": "Nora", "pages": ["[warmly] This is dispatch. Congratulations, Danny. You got a promotion in no time."] },
+            { "who": "Nora", "pages": ["[nervously] I-I'm sorry... Let's get to work."] }
           ] },
         { "type": "diorama", "ms": 9000, "backdrop": "school-lot", "camera": "hold", "motion": ["sway2", "walk4"],
           "beats": "Silhouettes stand in a long line at the buses. Reyes walks along it, cap in hand. Pike falls in two steps behind. Dunne leans on a bus and shrugs.",
           "lines": [
-            { "who": "Pike", "pages": ["How long, sir?"] },
-            { "who": "Reyes", "pages": ["Forty minutes. Then the buses go."] },
-            { "who": "Dunne", "pages": ["That's what they said last time."] }
+            { "who": "Pike", "pages": ["How long before the buses go, sir?"] },
+            { "who": "Reyes", "pages": ["[worried] Forty minutes. Hopefully."] },
+            { "who": "Dunne", "pages": ["[dryly] That's what they said last time."] }
           ] },
-        { "type": "map", "ms": 6000, "camera": "descend", "objective": "HOLD THE STREET · 40 MINUTES",
-          "beats": "Main Street from high up, lowering slowly to play zoom. The red entry arrows pulse once." }
+        { "type": "map", "ms": 6000, "camera": "descend", "objective": "HOLD THE STREET · 40 MINUTES", "beats": "Main Street from high up, lowering slowly to play zoom. The red entry arrows pulse once." }
       ]
     },
     {
@@ -44,19 +44,24 @@
         { "type": "diorama", "ms": 8000, "backdrop": "school-lot", "motion": ["loop3", "sway2"],
           "beats": "Fourteen buses pull away one at a time toward the left edge, headlights shrinking. The crowd on the pavement waves. Reyes stands still at the centre.",
           "lines": [
-            { "who": "Pike", "pages": ["That's all fourteen."] },
-            { "who": "Reyes", "pages": ["That's all fourteen."] }
+            { "who": "Pike", "pages": ["[sighs] That was terrible."] },
+            { "who": "Reyes", "pages": ["[tired] That's all fourteen."] }
           ] },
         { "type": "closeup", "ms": 10000, "object": "radio", "dropout": true, "motion": ["led", "tear"],
           "beats": "The red LED stutters. On each dropped word, the picture tears.",
           "lines": [
-            { "who": "Nora", "pages": ["Danny. The overpass was already down.", "Eleven buses are gone.", "Three turned back. We're going round by the farm road."] },
-            { "who": "Reyes", "pages": ["How many?"] },
-            { "who": "Nora", "pages": ["Two hundred and twelve."] }
+            { "who": "Nora", "pages": ["[sadly] Danny. Bad news. The overpass was already down."] },
+            { "who": "Nora", "pages": ["[sadly] The buses use that route. They're... gone."] },
+            { "who": "Nora", "pages": ["B-but three turned back. [hopeful] They're going round by the farm road."] },
+            { "who": "Reyes", "pages": ["[worried] How many in those buses?"] },
+            { "who": "Nora", "pages": ["[quietly] Two hundred and twelve."] }
           ] },
-        { "type": "notebook", "ms": 8000, "page": "main-street", "beats": "The first page, written stroke by stroke. The 212 is underlined twice.",
-          "lines": [{ "who": "Reyes", "pages": ["Next."] }] },
-        { "type": "travel", "ms": 3000, "vehicle": "army-truck", "from": 1, "to": 3, "sky": "night", "beats": "At night, one dim headlight." }
+        { "type": "notebook", "ms": 8000, "page": "main-street",
+          "beats": "The first page, written stroke by stroke. The 212 is underlined twice.",
+          "lines": [{ "who": "JEC", "pages": ["Commander, you are needed in Chicago."] }] },
+        { "type": "travel", "ms": 3000, "vehicle": "army-truck", "from": 1, "to": 3, "sky": "night", "beats": "At night, one dim headlight." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -66,20 +71,20 @@
         { "type": "diorama", "ms": 9000, "backdrop": "chicago-pier", "camera": "drift-right", "motion": ["loop3", "ripple2", "walk4"],
           "beats": "Grey dawn. A pier with three ferries tied up, funnel smoke. The crowd of 6,000 is a dense field of tiny heads. An elevated train line crosses the backdrop with one stalled car, doors open. The squad climbs down from a truck.",
           "lines": [
-            { "who": "Harbor master", "pages": ["Three ferries. The first loads at six. Hold both roads till the last one's away."] },
-            { "who": "Reyes", "pages": ["How long?"] },
-            { "who": "Harbor master", "pages": ["Six hours."] }
+            { "who": "Harbor master", "pages": ["[desperate] There's only three ferries, sir! We can start loading at six. Please, buy us some time!"] },
+            { "who": "Reyes", "pages": ["[frustrated] Dammit. How long?"] },
+            { "who": "Harbor master", "pages": ["A-at least... six hours."] }
           ] },
-        { "type": "closeup", "ms": 7000, "object": "radio", "motion": ["led"], "beats": "Nora's voice is steadier.",
+        { "type": "closeup", "ms": 7000, "object": "radio", "motion": ["led"],
+          "beats": "Nora's voice is steadier.",
           "lines": [
-            { "who": "Nora", "pages": ["I'm at the evacuation desk now. I've got you three ferries and a harbor master who doesn't like waiting."] },
-            { "who": "Reyes", "pages": ["You got out."] },
-            { "who": "Nora", "pages": ["I got out. Hold the roads, Danny."] }
+            { "who": "Nora", "pages": ["They relocated me to a boat. Good luck, sir."] },
+            { "who": "Reyes", "pages": ["[dryly] Lucky you."] }
           ] },
         { "type": "map", "ms": 6000, "camera": "descend", "objective": "HOLD THE TWO ROADS · 6 HOURS",
           "lines": [
-            { "who": "Pike", "pages": ["Six hours."] },
-            { "who": "Dunne", "pages": ["Seen longer."] }
+            { "who": "Pike", "pages": ["[worried] Six hours, huh. This is going to be hell."] },
+            { "who": "Dunne", "pages": ["[chuckles] Seen longer."] }
           ] }
       ]
     },
@@ -90,27 +95,31 @@
         { "type": "diorama", "ms": 10000, "backdrop": "chicago-pier", "camera": "pull-back", "motion": ["tilt", "loop3", "ripple2"],
           "beats": "Noon. The first ferry fills and lists. The harbor master's whistle puffs steam, the dock gate shuts, and the ferry pulls away. The other two cast off, sail past the breakwater and stop, small and still on the water. The crowd stays on the pier. The camera pulls back until the two ferries are two pixels wide.",
           "lines": [
-            { "who": "Harbor master", "pages": ["Ferries hold offshore until the pier is clear."] },
-            { "who": "Dunne", "pages": ["It won't be clear."] }
+            { "who": "Reyes", "pages": ["[shocked] What are they doing?!"] },
+            { "who": "Harbor master", "pages": ["The boats have to hold offshore until the pier is safe."] },
+            { "who": "Dunne", "pages": ["[angry] It won't be clear!"] }
           ] },
         { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"],
           "lines": [
-            { "who": "Nora", "pages": ["They're not coming back in, Danny."] },
-            { "who": "Reyes", "pages": ["Tell me the number."] },
-            { "who": "Nora", "pages": ["Four hundred and ten."] }
+            { "who": "Nora", "pages": ["[sadly] They're not coming back in, Danny. Best we can do is send a rubber boat."] },
+            { "who": "Reyes", "pages": ["[worried] How many got in, Nora?"] },
+            { "who": "Nora", "pages": ["[quietly] Four hundred and ten."] }
           ] },
         { "type": "diorama", "ms": 9000, "backdrop": "chicago-pier", "camera": "hold", "leaves": "hollis", "motion": ["idle2", "walk4", "dither-out"],
           "beats": "Nine people from the pier stand behind the squad and will not leave. A small child holds Pike's sleeve. Hollis stops at the gate and takes off his cap. In the crowd, a woman raises an arm. Hollis walks into the field of heads and is lost among them.",
           "lines": [
-            { "who": "Hollis", "pages": ["My sister's in that crowd, Commander."] },
-            { "who": "Reyes", "pages": ["Go."] }
+            { "who": "Hollis", "pages": ["[quietly] My sister's in that crowd, Commander."] },
+            { "who": "Reyes", "pages": ["[quietly] I understand."] }
           ] },
-        { "type": "notebook", "ms": 7000, "page": "chicago", "beats": "Below the entry, in smaller writing, the note.",
+        { "type": "notebook", "ms": 7000, "page": "chicago",
+          "beats": "Below the entry, in smaller writing, the note.",
           "lines": [
-            { "who": "Pike", "pages": ["Where to?"] },
-            { "who": "Reyes", "pages": ["Wherever they point."] }
+            { "who": "Pike", "pages": ["[tired] Where to?"] },
+            { "who": "JEC", "pages": ["Head to New York, America is falling back to Washington. You need to escort high-profile personnel out of New York."] }
           ] },
-        { "type": "travel", "ms": 3000, "vehicle": "freight-train", "from": 3, "to": 6, "sky": "dawn", "beats": "Dawn. Nine small figures sit on an open flatcar." }
+        { "type": "travel", "ms": 3000, "vehicle": "freight-train", "from": 3, "to": 6, "sky": "dawn", "beats": "Dawn. Nine small figures sit on an open flatcar." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -119,11 +128,12 @@
         { "type": "title", "ms": 3000 },
         { "type": "diorama", "ms": 9000, "backdrop": "new-york-avenue", "camera": "tilt-up", "motion": ["loop3", "flicker3"],
           "beats": "A street-level canyon at night. Dark towers, a few lit windows blinking slowly. A stalled taxi. Steam from a manhole. The Column, now 14, sits on the kerb passing one canteen from hand to hand. The camera tilts up a tower to a thin orange line on the horizon." },
-        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"], "beats": "JEC speaks directly, in the squared font.",
+        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"],
+          "beats": "JEC speaks directly, in the squared font.",
           "lines": [
-            { "who": "JEC", "pages": ["Eleven thousand at the harbor plaza. The fleet lifts them in three runs. Last run departs 09:00. Hold the three avenues until then."] },
-            { "who": "Dunne", "pages": ["Eleven thousand."] },
-            { "who": "Pike", "pages": ["We always hold, sir."] }
+            { "who": "JEC", "pages": ["Eleven thousand at the harbor plaza. The fleet lifts them in runs. Last run departs 09:00. Hold the three avenues until then."] },
+            { "who": "Dunne", "pages": ["[worried] We can't hold eleven thousand long enough..."] },
+            { "who": "Pike", "pages": ["[firmly] We have to try."] }
           ] },
         { "type": "map", "ms": 5000, "camera": "descend", "objective": "HOLD THE THREE AVENUES · 5 HOURS" }
       ]
@@ -137,19 +147,23 @@
           "lines": [{ "who": "Loudspeaker", "pages": ["ALL VESSELS RETURN TO STATION. FLEET RECALLED."] }] },
         { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"],
           "lines": [
-            { "who": "JEC", "pages": ["Fleet recalled to cover another port. Your orders stand. Thank you for your service."] },
-            { "who": "Reyes", "pages": ["Another port."] },
-            { "who": "Pike", "pages": ["Did they just—"] },
-            { "who": "Reyes", "pages": ["Yes."] }
+            { "who": "JEC", "pages": ["Fleet recalled to cover another port. V.I.P.s have been evacuated. Your orders stand. Thank you for your service."] },
+            { "who": "Reyes", "pages": ["[furious] Another goddamn port?!"] },
+            { "who": "Pike", "pages": ["[shocked] Did they just—"] },
+            { "who": "Reyes", "pages": ["[flatly] Yes."] },
+            { "who": "Pike", "pages": ["[shouting] ELEVEN THOUSAND!"] }
           ] },
         { "type": "diorama", "ms": 6000, "backdrop": "new-york-avenue", "motion": ["idle2"],
           "beats": "Dunne takes off his cap and puts it back on. A child from the Column offers Reyes a piece of bread. He takes it and does not eat it.",
           "lines": [
-            { "who": "Dunne", "pages": ["Forty minutes."] },
-            { "who": "Reyes", "pages": ["I know."] }
+            { "who": "Dunne", "pages": ["[tired] We can only hold for so long..."] },
+            { "who": "Reyes", "pages": ["[quietly] I know."] },
+            { "who": "Pike", "pages": ["[hopeful] Sir, locals mentioned a tunnel network that connects to the port. Boats are heading to Manila."] }
           ] },
         { "type": "notebook", "ms": 7000, "page": "new-york", "beats": "The pencil hovers for two full seconds before the number is written." },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 6, "to": 11, "sky": "grey", "beats": "Crosses a grey sky." }
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 6, "to": 11, "sky": "grey", "beats": "Crosses a grey sky." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -159,17 +173,16 @@
         { "type": "diorama", "ms": 10000, "backdrop": "manila-alley", "camera": "hold", "motion": ["sway2", "idle2"],
           "beats": "Monsoon rain in three layers. Tin roofs glisten. Strings of small bulbs and laundry lines sway. Lola ladles rice from a pot onto a tin plate. Pike takes it and passes half to a child at his knee. A thin cat is chased across the foreground.",
           "lines": [
-            { "who": "Lola", "pages": ["Kain na."], "gloss": "Eat." },
-            { "who": "Dunne", "pages": ["Better than the rations."] }
+            { "who": "Lola", "pages": ["[warmly] Kain na."], "gloss": "Eat." },
+            { "who": "Dunne", "pages": ["[with a laugh] This tastes better than rations!"] }
           ] },
         { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"],
           "lines": [
-            { "who": "Nora", "pages": ["The relief ship docks at the river port at dawn and leaves at seven, full or not. It's five kilometres on foot. Nine thousand people."] },
-            { "who": "Reyes", "pages": ["Through the alleys."] },
-            { "who": "Nora", "pages": ["Through the alleys."] }
+            { "who": "Nora", "pages": ["[warmly] Danny?! Thank God you're safe. We sent relief boats for nine thousand people. [urgent] But a horde is on the way!"] },
+            { "who": "Reyes", "pages": ["[urgent] Quick! Gather the people to the port!"] },
+            { "who": "Nora", "pages": ["[urgent] Go through the alleys!"] }
           ] },
-        { "type": "map", "ms": 7000, "camera": "descend", "objective": "HOLD THE ROADS · UNTIL DAWN",
-          "beats": "Residents along the alleys hold small lights; dots of light appear one by one, tracing a path to the safe zone." }
+        { "type": "map", "ms": 7000, "camera": "descend", "objective": "HOLD THE ROADS · UNTIL DAWN", "beats": "Residents along the alleys hold small lights; dots of light appear one by one, tracing a path to the safe zone." }
       ]
     },
     {
@@ -178,17 +191,22 @@
         { "type": "map", "ms": 5000, "camera": "hold", "silence": true, "beats": "Blue night to a dirty pink-grey dawn over two seconds. The rain thins and stops. Fewer lights dot the path than before." },
         { "type": "diorama", "ms": 10000, "backdrop": "manila-river-port", "motion": ["loop3", "slide"],
           "beats": "A grey ship at the quay, one funnel smoking. The gangway lifts. The horn lets out steam on 3 white frames. The ship leaves and the gap widens 1 px every 4 frames. The line of people reaches the water's edge and stops. Lola is among them, still holding her pot.",
-          "lines": [{ "who": "Captain", "pages": ["I can't wait any longer, Commander. They're at the wall. I'm sorry."] }] },
+          "lines": [
+            { "who": "Captain", "pages": ["[desperate] I can't wait any longer, Commander. We have to go. They're at the wall. I'm sorry."] },
+            { "who": "Reyes", "pages": ["[angry] WHAT?!"] }
+          ] },
         { "type": "closeup", "ms": 5000, "object": "radio", "motion": ["led"],
-          "lines": [{ "who": "Nora", "pages": ["Two thousand one hundred aboard."] }] },
+          "lines": [{ "who": "Nora", "pages": ["[sadly] There's only two thousand one hundred aboard..."] }] },
         { "type": "diorama", "ms": 8000, "backdrop": "manila-river-port", "leaves": "okoye", "motion": ["dither-out"],
           "beats": "Okoye sets his rifle down on the quay and sits beside Lola and the child.",
           "lines": [
-            { "who": "Okoye", "pages": ["I'll stay with them, sir. Somebody should."] },
-            { "who": "Reyes", "pages": ["Stay."] }
+            { "who": "Okoye", "pages": ["[quietly] I'll stay with them, sir. Somebody should."] },
+            { "who": "Reyes", "pages": ["[sadly] Alright..."] }
           ] },
         { "type": "notebook", "ms": 6000, "page": "manila" },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 12, "to": 15, "sky": "pink", "beats": "A pink-grey sky." }
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 12, "to": 15, "sky": "pink", "beats": "A pink-grey sky." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -198,14 +216,14 @@
         { "type": "diorama", "ms": 10000, "backdrop": "mexico-square", "camera": "drift-left", "motion": ["loop3", "idle2", "ripple2"],
           "beats": "Pale, thin morning light. The giant flag ripples. A cathedral bell swings, each swing sending a small flock of pigeons up from the roofs. Thousands sit in blocks on the stones. A coffee vendor pours from a steaming pot. The camera pans right to left along the cathedral front.",
           "lines": [
-            { "who": "Vendor", "pages": ["Café, comandante?"] },
-            { "who": "Reyes", "pages": ["Please."] }
+            { "who": "Vendor", "pages": ["[warmly] Café, comandante?"] },
+            { "who": "Reyes", "pages": ["[warmly] Yes, please."] }
           ] },
         { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"],
           "lines": [
-            { "who": "Nora", "pages": ["Six helicopters. They land in the square from eight o'clock. Mexico City is over two thousand metres up, the air is thin, and they can only carry half."] },
-            { "who": "Dunne", "pages": ["Half of what?"] },
-            { "who": "Nora", "pages": ["Don't."] }
+            { "who": "Nora", "pages": ["[urgent] Six helicopters on the way. A horde is incoming. They land in the square from eight o'clock. Mexico City is over two thousand metres up, the air is thin, and they can only carry half."] },
+            { "who": "Dunne", "pages": ["[flatly] Half of what?"] },
+            { "who": "Nora", "pages": ["[sadly] Don't... You know what I mean."] }
           ] },
         { "type": "map", "ms": 5000, "camera": "descend", "objective": "HOLD THE SQUARE · UNTIL THE LAST LIFT", "beats": "Descends on the square with the flag at its centre." }
       ]
@@ -216,14 +234,17 @@
         { "type": "map", "ms": 4000, "camera": "hold", "silence": true, "beats": "The flag still moves. Pigeons settle on the stones." },
         { "type": "diorama", "ms": 12000, "backdrop": "mexico-square", "motion": ["idle2", "lurch", "flash"],
           "beats": "Six helicopters, rotor blur. One by one they lift with a lurch, thin and labouring. The fourth drifts left, fails to climb and drops behind the cathedral: a single flash behind the roof, ash lifting. The fifth and sixth rotors slow and stop. The pilots climb down and show their palms.",
-          "lines": [{ "who": "Pilot", "pages": ["No fuel, Commander. We're done."] }] },
-        { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"], "beats": "Reyes says nothing for two seconds.",
-          "lines": [{ "who": "Nora", "pages": ["One hundred and forty."] }] },
+          "lines": [{ "who": "Pilot", "pages": ["[sadly] We can only carry your squad, sir. Nothing more."] }] },
+        { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"],
+          "beats": "Reyes says nothing for two seconds.",
+          "lines": [{ "who": "Nora", "pages": ["[firmly] We still need you. You can still save more."] }] },
         { "type": "diorama", "ms": 8000, "backdrop": "mexico-square", "motion": ["slide"],
           "beats": "The vendor lowers the giant flag by hand, folds it into squares and puts it in the Column's cart.",
-          "lines": [{ "who": "Vendor", "pages": ["Better a blanket."] }] },
+          "lines": [{ "who": "Vendor", "pages": ["[sadly] Better a blanket."] }] },
         { "type": "notebook", "ms": 6000, "page": "mexico" },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 15, "to": 21, "sky": "noon", "beats": "Noon, through haze." }
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 15, "to": 21, "sky": "noon", "beats": "Noon, through haze." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -233,14 +254,16 @@
         { "type": "diorama", "ms": 10000, "backdrop": "rome-arches", "camera": "hold", "motion": ["flicker3"],
           "beats": "Night. The Colosseum fills the backdrop, its arches lit by warm lamps flickering out of step. Two cats on a broken column. The Column sleeps in a cart under the folded flag. Pike stands guard and falls asleep standing: his head dips over 3 frames, then jerks up.",
           "lines": [
-            { "who": "Dunne", "pages": ["Sleep. I'll watch."] },
-            { "who": "Pike", "pages": ["I'm awake, Sergeant."] }
+            { "who": "Dunne", "pages": ["[warmly] Go sleep. I'll watch."] },
+            { "who": "Pike", "pages": ["[tired] I'm... awake, Sergeant."] }
           ] },
-        { "type": "closeup", "ms": 10000, "object": "radio", "paper": true, "motion": ["led"], "beats": "Nora's voice is frayed, with long gaps.",
+        { "type": "closeup", "ms": 10000, "object": "radio", "paper": true, "motion": ["led"],
+          "beats": "Nora's voice is frayed, with long gaps.",
           "lines": [
-            { "who": "Nora", "pages": ["A train leaves the depot in two hours. It runs to the coast. JEC says there are ships at the port.", "Please hold the road until it's gone."] },
-            { "who": "Reyes", "pages": ["Have you slept?"] },
-            { "who": "Nora", "pages": ["Not since Manila."] }
+            { "who": "Nora", "pages": ["[tired] A train leaves the depot in two hours. It runs to the coast. JEC says there are ships at the port."] },
+            { "who": "Nora", "pages": ["Please hold the road until it's gone."] },
+            { "who": "Reyes", "pages": ["[worried] Have you slept?"] },
+            { "who": "Nora", "pages": ["[tired] Not since Manila."] }
           ] },
         { "type": "map", "ms": 6000, "camera": "descend", "objective": "HOLD VIA LABICANA · 2 HOURS", "beats": "The road bends into an M, with the train waiting at the dip, windows lit." }
       ]
@@ -251,21 +274,26 @@
         { "type": "map", "ms": 4000, "camera": "follow-tracks", "silence": true, "beats": "The camera follows the train tracks off the edge of the map into black." },
         { "type": "diorama", "ms": 9000, "backdrop": "rome-depot", "motion": ["walk4", "idle2"],
           "beats": "A six-car train with lit windows pulls out. The Column waves. A boy runs beside the last car, slows and stops. The train shrinks into the dark." },
-        { "type": "closeup", "ms": 13000, "clock": ["02:55"], "object": "radio", "motion": ["led"], "beats": "A clock types on the black: 02:55. Reyes's shoulders rise one pixel in relief. A long pause.",
+        { "type": "closeup", "ms": 13000, "clock": ["02:55"], "object": "radio", "motion": ["led"],
+          "beats": "A clock types on the black: 02:55. Reyes's shoulders rise one pixel in relief. A long pause.",
           "lines": [
-            { "who": "Nora", "pages": ["They're there.", "Danny. The port is empty. No ships. No one."], "pauseBefore": [1] },
-            { "who": "Dunne", "pages": ["Three thousand people on a train at an empty dock."] },
-            { "who": "Nora", "pages": ["They're alive. For now."] }
+            { "who": "Nora", "pages": ["[hopeful] They're there."] },
+            { "who": "Nora", "pages": ["[shocked] Danny. The port is empty. No ships. No one."], "pauseBefore": [0] },
+            { "who": "Dunne", "pages": ["[flatly] Three thousand people on a train at an empty dock."] },
+            { "who": "Nora", "pages": ["[sadly] They're alive... For now."] }
           ] },
-        { "type": "diorama", "ms": 7000, "backdrop": "rome-arches", "beats": "Pike sits on the kerb.",
+        { "type": "diorama", "ms": 7000, "backdrop": "rome-arches",
+          "beats": "Pike sits on the kerb.",
           "lines": [
-            { "who": "Pike", "pages": ["Sir, when do we stop?"] },
-            { "who": "Reyes", "pages": ["When it's quiet."] },
-            { "who": "Pike", "pages": ["It's never quiet."] },
-            { "who": "Reyes", "pages": ["No."] }
+            { "who": "Pike", "pages": ["[tired] Sir, I am tired..."] },
+            { "who": "Reyes", "pages": ["[tired] We all are..."] },
+            { "who": "Pike", "pages": ["[frustrated] It's always something."] },
+            { "who": "Nora", "pages": ["I sent a helicopter to fetch you. People need your help in Tokyo."] }
           ] },
         { "type": "notebook", "ms": 7000, "page": "rome", "beats": "The pencil stops after 'got', crosses it out and writes 'alive?'." },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 22, "to": 27, "sky": "dark", "beats": "In the dark." }
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 22, "to": 27, "sky": "dark", "beats": "In the dark." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -275,16 +303,17 @@
         { "type": "diorama", "ms": 11000, "backdrop": "tokyo-crossing", "camera": "hold", "motion": ["loop3", "sway2"],
           "beats": "A raised view of the scramble crossing in rain. Huge screens loop an evacuation pictogram (arrow, door, arrow) in muted blue and amber. Thousands of clear umbrellas in neat lines, each a thin swaying snake, all running toward the station. A small bronze dog statue in the foreground. Reyes takes off his cap and rubs his face.",
           "lines": [
-            { "who": "Pike", "pages": ["At least it's organised."] },
-            { "who": "Reyes", "pages": ["That's the worst part.", "When the last train comes, you take the children on it."], "pauseBefore": [1] },
-            { "who": "Pike", "pages": ["Sir—"] },
-            { "who": "Reyes", "pages": ["That's an order."] }
+            { "who": "Pike", "pages": ["[hopeful] At least it's organised."] },
+            { "who": "Reyes", "pages": ["[firmly] When the last train comes, you take the children on it."], "pauseBefore": [0] },
+            { "who": "Pike", "pages": ["[shocked] Sir—"] },
+            { "who": "Reyes", "pages": ["[firmly] That's an order."] }
           ] },
-        { "type": "closeup", "ms": 8000, "object": "radio", "motion": ["led"], "beats": "JEC, now in the monospace amber voice.",
+        { "type": "closeup", "ms": 8000, "object": "radio", "motion": ["led"],
+          "beats": "JEC, now in the monospace amber voice.",
           "lines": [
             { "who": "JEC", "pages": ["Evacuation trains depart on schedule. Final departure 02:10. Departures will not be held."] },
-            { "who": "Dunne", "pages": ["Not held."] },
-            { "who": "Nora", "pages": ["I tried, Danny. It's automatic."] }
+            { "who": "Dunne", "pages": ["[muttering] Assholes..."] },
+            { "who": "Nora", "pages": ["[sadly] I tried, Danny. It's automatic. Sorry."] }
           ] },
         { "type": "map", "ms": 8000, "camera": "descend", "objective": "HOLD THE CROSSING · UNTIL 02:10", "beats": "Starts very high and descends slowly through the rain onto the lit crossing." }
       ]
@@ -294,19 +323,27 @@
       "shots": [
         { "type": "map", "ms": 4000, "clock": ["02:07"], "camera": "hold", "silence": true, "beats": "A clock types 02:07." },
         { "type": "diorama", "ms": 13000, "backdrop": "tokyo-platform", "camera": "pull-back", "leaves": "pike", "motion": ["flicker3", "dither-out"],
-          "beats": "A long train with lit windows, doors open. A platform clock flips from 02:09 to 02:10; a two-note chime. The doors close slowly. Pike is inside with the children from the Column; he salutes badly through the glass and lowers his hand. Reyes raises a hand halfway and drops it. The train leaves, the platform lights flicker. The queue does not move. The camera pulls back until they are a texture." },
-        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"], "beats": "Static follows and the LED keeps blinking. After a long gap, Nora, quietly.",
+          "beats": "A long train with lit windows, doors open. A platform clock flips from 02:09 to 02:10; a two-note chime. The doors close slowly. Pike is inside with the children from the Column; he salutes badly through the glass and lowers his hand. Reyes raises a hand halfway and drops it. The train leaves, the platform lights flicker. The queue does not move. The camera pulls back until they are a texture.",
+          "lines": [
+            { "who": "Pike", "pages": ["[crying] Sir, I can't do this anymore. I want to stay for these people."] },
+            { "who": "Reyes", "pages": ["[firmly] Someone has to help the people in the train."] }
+          ] },
+        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"],
+          "beats": "Static follows and the LED keeps blinking. After a long gap, Nora, quietly.",
           "lines": [
             { "who": "JEC", "pages": ["Final departure complete. This is the last scheduled transmission of the Joint Evacuation Command. Stay safe."] },
-            { "who": "Nora", "pages": ["Twelve hundred."], "pauseBefore": [0, 0] }
+            { "who": "Nora", "pages": ["[quietly] Only twelve hundred got in..."], "pauseBefore": [0, 0] }
           ] },
         { "type": "diorama", "ms": 5000, "backdrop": "tokyo-platform",
           "lines": [
-            { "who": "Dunne", "pages": ["He'll be all right."] },
-            { "who": "Reyes", "pages": ["Sure."] }
+            { "who": "Dunne", "pages": ["[quietly] Pike will be all right."] },
+            { "who": "Reyes", "pages": ["[firmly] Sure. Now pick up your gun, it's not over yet."] },
+            { "who": "Nora", "pages": ["[tired] Europe has been overrun... They need your help."], "pauseBefore": [0] }
           ] },
         { "type": "notebook", "ms": 8000, "page": "tokyo" },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 28, "to": 34, "sky": "dark", "beats": "Over black water." }
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-plane", "from": 28, "to": 34, "sky": "dark", "beats": "Over black water." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -316,12 +353,14 @@
         { "type": "diorama", "ms": 9000, "backdrop": "london-bridge", "camera": "hold", "motion": ["flicker3", "ripple2"],
           "beats": "Fog as drifting dither noise. A long iron-and-stone bridge into the distance, a stalled red double-decker in the roadway. Lamp posts with dithered halos. The river ripples. The Column (21) and the squad (Reyes, Dunne, Vega) stand at the north end. Far across, a line of tiny yellow headlights: the convoy.",
           "lines": [
-            { "who": "Dunne", "pages": ["I never liked bridges."] },
-            { "who": "Vega", "pages": ["Four thousand to cross. Fifty minutes."] }
+            { "who": "Dunne", "pages": ["[dryly] I never liked bridges."] },
+            { "who": "Vega", "pages": ["[flatly] Four thousand to cross. Fifty minutes."] }
           ] },
-        { "type": "closeup", "ms": 9000, "object": "radio", "paper": true, "motion": ["led"], "beats": "No JEC. Nora reads from handwritten pages. Reyes does not answer.",
+        { "type": "closeup", "ms": 9000, "object": "radio", "paper": true, "motion": ["led"],
+          "beats": "No JEC. Nora reads from handwritten pages. Reyes does not answer.",
           "lines": [
-            { "who": "Nora", "pages": ["South bank says the bridge comes down at four thirty. Four thousand to cross.", "Danny. None of the Tokyo trains have reported in."] }
+            { "who": "Nora", "pages": ["[tired] South bank says the bridge comes down at four thirty. Four thousand to cross."] },
+            { "who": "Nora", "pages": ["[sadly] Danny. None of the Tokyo trains have reported in."] }
           ] },
         { "type": "map", "ms": 7000, "camera": "pan-north", "objective": "HOLD THE BRIDGE · UNTIL 04:30", "beats": "Starts at the south end by the convoy and pans north to where the horde comes in." }
       ]
@@ -332,20 +371,22 @@
         { "type": "map", "ms": 4000, "clock": ["04:18"], "camera": "pan-south", "silence": true, "beats": "The last zombie falls at 04:18. The camera turns toward the south bank." },
         { "type": "diorama", "ms": 13000, "clock": ["04:19"], "backdrop": "london-bridge", "motion": ["ripple2", "walk4", "flash"],
           "beats": "The crowd streams across in a long shuffle; the front has just stepped off the far end, thousands wait on the north approach. Vega walks out among the crossing group to count them. A tiny red light blinks on the middle span. A clock reads 04:19, eleven minutes early. Flash. The middle of the bridge is gone and dust drifts. Nobody is shown on the span. The north approach is full of small figures standing still." },
-        { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"], "beats": "No reply.",
+        { "type": "closeup", "ms": 6000, "object": "radio", "motion": ["led"],
+          "beats": "No reply.",
           "lines": [
-            { "who": "South bank commander", "pages": ["Bridge is down. Contact on the north approach. I'm sorry, Commander."] },
-            { "who": "Reyes", "pages": ["I had eleven minutes."] }
+            { "who": "South bank commander", "pages": ["[urgent] Bridge is down. Contact on the north approach. I'm sorry, Commander."] },
+            { "who": "Reyes", "pages": ["[quietly] I had eleven minutes."] }
           ] },
         { "type": "diorama", "ms": 8000, "backdrop": "london-bridge", "leaves": "vega", "motion": ["idle2", "dither-out"],
           "beats": "Dunne and Reyes stand at the north end looking at the gap. Across the gap Vega raises a hand, then walks off toward the convoy lights.",
           "lines": [
-            { "who": "Dunne", "pages": ["Just us, then."] },
-            { "who": "Reyes", "pages": ["Just us."] }
+            { "who": "Dunne", "pages": ["[sadly] Just us, then."] },
+            { "who": "Reyes", "pages": ["[quietly] Just us."] }
           ] },
-        { "type": "notebook", "ms": 8000, "page": "london", "edit": { "page": "tokyo", "after": "got", "add": "?" },
-          "beats": "Reyes turns back to the Tokyo page and adds a question mark after 1,200." },
-        { "type": "travel", "ms": 3000, "vehicle": "cargo-helicopter", "from": 34, "to": 41, "sky": "grey", "beats": "Low over water." }
+        { "type": "notebook", "ms": 8000, "page": "london", "edit": { "page": "tokyo", "after": "got", "add": "?" }, "beats": "Reyes turns back to the Tokyo page and adds a question mark after 1,200." },
+        { "type": "travel", "ms": 3000, "vehicle": "cargo-helicopter", "from": 34, "to": 41, "sky": "grey", "beats": "Low over water." },
+        { "type": "photo", "ms": 5500,
+          "beats": "The squad's snapshot from before, on a desk. An X in red marker over each one gone; whoever went in this city is crossed out now." }
       ]
     },
     {
@@ -355,15 +396,16 @@
         { "type": "diorama", "ms": 10000, "backdrop": "white-house-lawn", "camera": "hold", "motion": ["loop3", "flicker3"],
           "beats": "Blue pre-dawn. The White House a pale block with a few lit windows. Sprinklers throw arcs of water over the grass; a fountain loops. The helipad lights blink amber. The Column, about 40, sits and lies among the roses. Reyes leans against a lamp post. Dunne opens a can of peaches and offers it. Reyes eats.",
           "lines": [
-            { "who": "Dunne", "pages": ["Last of the peaches."] },
-            { "who": "Reyes", "pages": ["Save it."] },
-            { "who": "Dunne", "pages": ["For what?"] }
+            { "who": "Dunne", "pages": ["[warmly] Last of the peaches."] },
+            { "who": "Reyes", "pages": ["[tired] Save it."] },
+            { "who": "Dunne", "pages": ["[chuckles] For what?"] }
           ] },
-        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"], "beats": "After the last line, a silence of two seconds.",
+        { "type": "closeup", "ms": 9000, "object": "radio", "motion": ["led"],
+          "beats": "After the last line, a silence of two seconds.",
           "lines": [
-            { "who": "Nora", "pages": ["There's a broadcast on the White House frequency. Helicopters from the carrier land on the south lawn at five. They take the last eight hundred.", "Hold the lawn, Danny."] },
-            { "who": "Reyes", "pages": ["Who's it from?"] },
-            { "who": "Nora", "pages": ["It's on the frequency."] }
+            { "who": "Nora", "pages": ["[hopeful] There's a broadcast on the White House frequency. Helicopters from the carrier land on the south lawn at five. They take the last eight hundred."] },
+            { "who": "Nora", "pages": ["[firmly] Hold the lawn, Danny. We have to evacuate the president."] },
+            { "who": "Reyes", "pages": ["[firmly] Copy."] }
           ] },
         { "type": "map", "ms": 7000, "camera": "descend", "objective": "HOLD THE LAWN · UNTIL 05:00", "beats": "Descends onto the long lawn with the helipad at its centre." }
       ]
@@ -375,17 +417,26 @@
         { "type": "diorama", "ms": 13000, "clock": ["05:10", "05:30", "06:00"], "backdrop": "white-house-lawn", "camera": "push-in", "motion": ["idle2"],
           "beats": "Dawn arrives in three palette steps. Everyone on the lawn looks up. The sky stays empty. A clock types 05:10, 05:30, 06:00. The sprinklers keep ticking. The camera pushes in until a paper label on the loudspeaker reads RECORDED DAY 5.",
           "lines": [{ "who": "Loudspeaker", "pages": ["Helicopters will land on the south lawn at 05:00."] }] },
-        { "type": "closeup", "ms": 11000, "object": "radio", "dropout": true, "motion": ["led"], "beats": "Nora, with letters dropping.",
+        { "type": "closeup", "ms": 11000, "object": "radio", "dropout": true, "motion": ["led"],
+          "beats": "Nora, with letters dropping.",
           "lines": [
-            { "who": "Nora", "pages": ["Danny. It's a recording. It's been looping since Day 5.", "I wanted it to be real."] },
-            { "who": "Reyes", "pages": ["It's all right, Nora."] },
-            { "who": "Nora", "pages": ["There's nobody left on the net but me."] },
-            { "who": "Reyes", "pages": ["Stay on it."] }
+            { "who": "Nora", "pages": ["[crying] Danny. It was... a recording. It's been looping since Day 5."] },
+            { "who": "Nora", "pages": ["[crying] I wanted it to be real."] },
+            { "who": "Reyes", "pages": ["[quietly] It's all right, Nora."] },
+            { "who": "Nora", "pages": ["[sadly] There's nobody left on the net but me."] }
           ] },
-        { "type": "diorama", "ms": 9000, "backdrop": "white-house-lawn", "beats": "Dunne and Reyes sit on the grass with the Column asleep behind them.",
-          "lines": [{ "who": "Dunne", "pages": ["So that's that.", "Well. We might as well die trying."], "pauseBefore": [1, 1] }] },
-        { "type": "notebook", "ms": 10000, "page": "names", "beats": "Names written one at a time: Hollis. Okoye. Pike. Vega. Then Dunne. and Reyes. He stops, reads the page, closes the notebook." },
-        { "type": "map", "ms": 9000, "camera": "hold", "overlay": "title", "beats": "The lawn at sunrise; the first light the only warm colour. The title assembles by dither, holds 4 s, then dissolves to the menu." },
+        { "type": "diorama", "ms": 7000, "backdrop": "white-house-lawn", "camera": "hold", "motion": ["flash"], "bang": 3.2,
+          "beats": "Upstairs in the White House, one window still lit, a small figure in it: the president. His arm comes up. A flash, a single shot. The window goes dark. Everyone on the lawn turns to look." },
+        { "type": "diorama", "ms": 9000, "backdrop": "white-house-lawn",
+          "beats": "Dunne and Reyes sit on the grass with the Column asleep behind them.",
+          "lines": [
+            { "who": "Dunne", "pages": ["[quietly] So that's that."] },
+            { "who": "Dunne", "pages": ["[chuckles] Well. We might as well die trying."], "pauseBefore": [0, 0] }
+          ] },
+        { "type": "notebook", "ms": 10000, "page": "names",
+          "beats": "Names written one at a time: Hollis. Okoye. Pike. Vega. Then Dunne. and Reyes. He stops, reads the page, closes the notebook." },
+        { "type": "map", "ms": 9000, "camera": "hold", "overlay": "title",
+          "beats": "The lawn at sunrise; the first light the only warm colour. The title assembles by dither, holds 4 s, then dissolves to the menu." },
         { "type": "title", "ms": 3000, "optional": true, "text": "...anyone...", "beats": "Black. The red LED blinks once. Static, then a faint broken line." }
       ]
     }

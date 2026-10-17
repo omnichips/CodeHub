@@ -6,7 +6,7 @@ import { measure } from './font.ts';
 import { story } from './record.ts';
 import { notebookLine } from './text.ts';
 import { profile } from '../meta/profile.ts';
-import { CITIES } from './cities.ts';
+import { CITIES, once } from './cities.ts';
 import type { Shot } from './types.ts';
 import { LOOKS, PH, PIC, W, bus, crowd, ease, ferry, glow, idle2, lamp, loop3, patrolCar, person, roll, since, sky, skyline, small, steam, truck, walk4, type Act, type Backdrop } from './kit.ts';
 
@@ -149,6 +149,7 @@ const ACTORS: Record<string, Actors> = {
   'after:chicago#1': (a, pen, cx) => {
     const t = a.t, list = Math.min(0.06, t * 0.012), away = Math.max(0, t - 4.5), cast = Math.max(0, t - 3.5);
     crowd(pen, 10 - cx, 86, 322, 36, t, 7);
+    once(a, 'whistle', 2, () => a.sound('horn')); // the harbor master's whistle
     [120, 210].forEach((fx, k) => { const s = Math.max(0.05, 1 - cast * 0.18), x = fx + cast * (60 + k * 30); ferry(pen, Math.min(x, 330 + k * 40) - cx, 80 - Math.min(14, cast * 3), cast > 4.5 ? 0.05 : s, t + fx); });
     pen.c.save();
     pen.c.translate(65 - cx + away * 20, 80 - Math.min(16, away * 3));
@@ -165,6 +166,11 @@ const ACTORS: Record<string, Actors> = {
   'after:chicago#3': (a, pen, cx) => {
     const t = a.t;
     crowd(pen, 10 - cx, 86, 322, 36, t, 7, t > 1.5 ? [262 - cx, 96 + idle2(t)] : undefined);
+    // The rubber boat Nora sent, putting out toward the ferries with two aboard, its wake behind it.
+    const bx = 196 + t * 7 - cx;
+    pen.rect(bx, 76, 13, 3, 'metal1'); pen.rect(bx, 76, 13, 1, 'metal2'); pen.rect(bx - 2, 77, 2, 2, 'outline');
+    for (const hx of [4, 8]) { pen.rect(bx + hx, 73, 2, 3, 'hivis1'); pen.rect(bx + hx, 72, 2, 1, 'skin1'); }
+    for (let k = 1; k < 5; k++) if ((Math.floor(t * 4) + k) % 2) pen.px(bx - 2 - k * 3, 78 + (k & 1), 'snow1');
     pen.rect(332 - cx, 90, 2, 34, 'outline'); for (let k = 0; k < 6; k++) pen.rect(334 - cx + k * 4, 92, 1, 30, 'metal0');
     for (let k = 0; k < 9; k++) small(pen, 418 + (k % 5) * 10 - cx, 108 + Math.floor(k / 5) * 8, 300 + k, { frame: idle2(t, roll(k)), child: k === 6 || k === 7 });
     person(pen, 376 - cx, 112, LOOKS.reyes, { face: -1, posture: a.row.posture });
@@ -287,10 +293,7 @@ export function notebook(a: Act, instant: boolean) {
   pen.rect(0, PIC, W, PH, '#141414');
   let strokes = instant ? Infinity : Math.max(0, Math.floor((a.t - 0.6) * 8));
   // London: its own page, then (a second after it is written) Tokyo's again, a question mark added.
-  const own = a.shot.page!, edit = a.shot.edit, ownLength = pageLength(own);
-  const flipped = !!edit && !instant && strokes > ownLength + 8;
-  const page = flipped ? edit!.page : own;
-  if (flipped) strokes = Math.max(0, strokes - ownLength - 10) + pageLength(page);
+  const page = a.shot.page!, edit = a.shot.edit, ownLength = pageLength(page);
   if (page === 'new-york' && !instant) { const at = notebookLine(story.maps.find((m) => m.id === page)!).indexOf('got ') + 4 + 5; if (strokes > at) strokes = Math.max(at, strokes - 16); } // two seconds' hover
   pen.rect(x0, y0, 232, 124, '#d8d2bf'); pen.rect(x0, y0, 232, 1, '#efe9d6');
   for (let y = y0 + 22; y < y0 + 124; y += 11) pen.rect(x0, y, 232, 1, '#b9bcc4');
@@ -309,17 +312,31 @@ export function notebook(a: Act, instant: boolean) {
   if (page === 'names') {
     ['Hollis.', 'Okoye.', 'Pike.', 'Vega.', 'Dunne.', 'Reyes.'].forEach((n, k) => write(n, x0 + 32, y0 + 13 + k * 11));
   } else {
-    const row = story.maps.find((m) => m.id === page)!, line = notebookLine(row);
+    // Every city so far, a line each: the ones before already written (with any mark added since), this one in pencil
+    // now, its note under it. London's page done, the pencil goes back up to Tokyo's line and adds a question mark.
+    const k = story.maps.findIndex((m) => m.id === page), row = story.maps[k];
+    const marks = new Map<string, string>(); // marks added to earlier lines by pages before this one
+    for (const sc of story.scenes) for (const s of sc.shots) if (s.edit && s.page && story.maps.findIndex((m) => m.id === s.page) < k) marks.set(s.edit.page, s.edit.add);
+    const done = new Map<string, number>(); // where each line ends, for a mark added after it
+    const line = (r: typeof row, y: number, live: boolean) => {
+      const text = notebookLine(r), x = x0 + 32, put = (t: string, tx: number) => (live ? write(t, tx, y) : (pen.text(t, tx, y, ink), true));
+      if (r.got === null) { // Rome: "got" written, crossed out, "alive?" after it
+        const head = text.slice(0, text.lastIndexOf(' got') + 4);
+        if (put(head, x)) { const gx = x + measure(head.slice(0, -3), 'person') + 1; pen.rect(gx, y + 3, measure('got', 'person') + 1, 1, ink); put(r.gotLabel!, gx + measure('got', 'person') + 5); }
+        done.set(r.id, x + measure(head, 'person') + measure(r.gotLabel!, 'person') + 5);
+      } else {
+        const all = put(text, x);
+        if (r.id === 'main-street' && (all || !live)) { const gx = x + measure(text.slice(0, text.indexOf('212')), 'person'); pen.rect(gx, y + 8, 14, 1, ink); pen.rect(gx, y + 10, 14, 1, ink); }
+        done.set(r.id, x + measure(text, 'person') + 3);
+      }
+      if (!live && marks.has(r.id)) pen.text(marks.get(r.id)!, done.get(r.id)!, y, ink);
+    };
     write(`Day ${row.day}`, x0 + 184, y0 + 2);
-    if (row.got === null) { // Rome: "got" written, crossed out, "alive?" after it
-      const head = line.slice(0, line.lastIndexOf(' got') + 4), done = write(head, x0 + 32, y0 + 13);
-      if (done) { const gx = x0 + 32 + measure(head.slice(0, -3), 'person') + 1; pen.rect(gx, y0 + 16, measure('got', 'person') + 1, 1, ink); write(row.gotLabel!, gx + measure('got', 'person') + 5, y0 + 13); }
-    } else {
-      write(line, x0 + 32, y0 + 13);
-      if (page === 'main-street' && strokes >= used + 4) { const gx = x0 + 32 + measure(line.slice(0, line.indexOf('212')), 'person'); pen.rect(gx, y0 + 21, 14, 1, ink); pen.rect(gx, y0 + 23, 14, 1, ink); }
-      if (flipped) write(edit!.add, x0 + 32 + measure(line, 'person') + 3, y0 + 13); // after the number
-    }
-    if (row.note && row.note !== 'names') write(row.note, x0 + 40, y0 + 24);
+    story.maps.slice(0, k).forEach((r, j) => line(r, y0 + 13 + j * 11, false));
+    const y = y0 + 13 + k * 11;
+    line(row, y, true);
+    if (row.note && row.note !== 'names') write(row.note, x0 + 40, y + 11);
+    if (edit && !instant ? strokes > ownLength + 8 : !!edit) { const j = story.maps.findIndex((m) => m.id === edit!.page); write(edit!.add, done.get(edit!.page)!, y0 + 13 + j * 11); }
   }
   if (!instant && strokes < used) { pen.rect(px, py - 6, 2, 8, 'hivis2'); pen.rect(px, py + 2, 2, 1, 'khaki2'); pen.px(px, py + 3, 'outline'); } // the pencil
   // The last page: he reads it, and the cover comes down over it in two frames.

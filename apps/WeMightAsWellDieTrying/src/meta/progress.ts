@@ -96,12 +96,16 @@ export function build(owned: Levels): Build {
   return { stats, loadout, speeds: SPEEDS, chipGain };
 }
 
-export interface RunResult { kills: number; leaks: number; leakLimit: number; time: number; par: number; won: boolean; firstClear: boolean; chipGain: number }
-export interface Payout { total: number; base: number; timeBonus: number; leakBonus: number; firstClear: number }
+export interface RunResult { kills: number; leaks: number; leakLimit: number; time: number; par: number; won: boolean; firstClear: boolean; chipGain: number; level?: number }
+export interface Payout { total: number; base: number; timeBonus: number; leakBonus: number; firstClear: number; minimum?: number }
 
 /** chips = ⌊kills / 15⌋ × (1 + time bonus + leak bonus) + first-clear bonus; a loss keeps half the kill chips.
  *  Chip gain from the skill web multiplies everything but the first-clear bonus. All numbers in economy.json. */
 export function payout(r: RunResult): Payout {
+  const p = pay(r), minimum = 5 * (r.level ?? 0); // every run pays at least 5 chips × the map's number, score or no score
+  return p.total < minimum ? { ...p, total: minimum, minimum } : p;
+}
+function pay(r: RunResult): Payout {
   const e = economy, base = Math.floor(r.kills / e.killsPerChip);
   if (!r.won) return { total: Math.floor(base * e.lossKeeps * r.chipGain), base, timeBonus: 0, leakBonus: 0, firstClear: 0 };
   const clamp = (v: number) => Math.max(0, Math.min(1, v));

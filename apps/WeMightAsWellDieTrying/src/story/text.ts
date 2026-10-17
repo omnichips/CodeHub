@@ -3,10 +3,10 @@
 // title cards and notebook text from the map rows, and who is still in the squad. Pure, so the tests use it too.
 import { wrap } from './font.ts';
 import { STORY } from './storyConfig.ts';
-import { DEPARTURES, MEMBERS, mapOf, sceneIds, voiceOf, type Line, type Member, type MapRow, type Scene, type Shot, type Story, type Voice } from './types.ts';
+import { DEPARTURES, MEMBERS, TAG_MOODS, mapOf, sceneIds, voiceOf, type Line, type Member, type MapRow, type Mood, type Scene, type Shot, type Story, type Voice } from './types.ts';
 
-/** The squad row takes the bar's left end; text runs from here to the right edge, less a margin. */
-export const TEXT_X = 48;
+/** The speaker's portrait takes the bar's left end; text runs from here to the right edge, less a margin. */
+export const TEXT_X = 46;
 export const TEXT_W = STORY.W - TEXT_X - 4;
 
 const SENTENCE = /(?<=[.!?…—])\s+/;
@@ -30,11 +30,33 @@ export const letterDelay = (ch: string) => 1000 / STORY.cps + (ch === ',' ? STOR
 export const typeTime = (text: string) => [...text].reduce((n, ch) => n + letterDelay(ch), 0);
 export const readTime = (text: string) => STORY.readBase + STORY.readPerChar * text.length;
 
-/** Every page a line is shown in, with the pause before it. */
+/** A page without its [tags], and the mood each tag sets, by the letter it comes before. */
+export function untag(page: string) {
+  const tags: string[] = [], moods: [number, Mood][] = [];
+  let text = '';
+  for (const ch of page.replace(/\s*\[([^\]]*)\]\s*/g, (_, tag: string) => (tags.push(tag.trim().toLowerCase()), '\u0001'))) {
+    if (ch !== '\u0001') { text += ch; continue; }
+    if (text) text += ' ';
+    moods.push([text.length, TAG_MOODS[tags[moods.length]] ?? 'neutral']);
+  }
+  return { text: text.trimEnd(), moods };
+}
+/** The face at letter `k` of a page. */
+export const moodAt = (moods: [number, Mood][], k: number): Mood => moods.reduce<Mood>((m, [at, mood]) => (at <= k ? mood : m), 'neutral');
+
+/** Every page a line is shown in, with the pause before it and its moods (a page's tags, carried on to the next of
+ *  the same page's parts). */
 export function pagesOf(line: Line, voice: Voice) {
   return line.pages.flatMap((p, k) => {
-    const pause = (line.pauseBefore ?? []).filter((i) => i === k).length * STORY.pause;
-    return fit(p, voice).map((lines, j) => ({ lines, text: lines.join(' '), pause: j ? 0 : pause }));
+    const pause = (line.pauseBefore ?? []).filter((i) => i === k).length * STORY.pause, u = untag(p);
+    let start = 0, carry: Mood = 'neutral';
+    return fit(u.text, voice).map((lines, j) => {
+      const text = lines.join(' '), end = start + text.length;
+      const moods: [number, Mood][] = [[0, carry], ...u.moods.filter(([at]) => at >= start && at <= end).map(([at, m]): [number, Mood] => [at - start, m])];
+      carry = moods.at(-1)![1];
+      start = end + 1;
+      return { lines, text, pause: j ? 0 : pause, moods };
+    });
   });
 }
 
@@ -71,8 +93,8 @@ export function dropout(text: string, rate: number) {
 const num = (n: number) => n.toLocaleString('en-US');
 /** A map's tally: "Chicago: 410 / 6,000", or Rome's "Rome: 3,000 alive?". */
 export const tally = (m: MapRow) => (m.got === null ? `${m.short}: ${num(m.needed)} ${m.gotLabel}` : `${m.short}: ${num(m.got)} / ${num(m.needed)}`);
-/** A notebook page's line: "CHICAGO needed 6,000. got 410." (Rome's has no number: see the notebook shot). */
-export const notebookLine = (m: MapRow) => `${m.short.toUpperCase()} needed ${num(m.needed)}. got ${m.got === null ? m.gotLabel : `${num(m.got)}.`}`;
+/** A notebook page's line: "CHICAGO had 6,000. got 410." (Rome's has no number: see the notebook shot). */
+export const notebookLine = (m: MapRow) => `${m.short.toUpperCase()} had ${num(m.needed)}. got ${m.got === null ? m.gotLabel : `${num(m.got)}.`}`;
 /** A title card: "DAY 3 · 05:10 · CHICAGO", and under it the tally of the map before (none for the Opening). */
 export function titleCard(sc: Scene, story: Story) {
   const m = mapOf(sc.id, story), k = story.maps.indexOf(m);
@@ -90,6 +112,7 @@ export function shortened(sc: Scene): Shot[] {
   return sc.shots.flatMap((s): Shot[] => {
     if (s.type === 'title') return [{ ...s, ms: 1500 }];
     if (s.type === 'notebook') return [{ ...s, ms: 2500 }];
+    if (s.type === 'photo') return [{ ...s, ms: 3000 }]; // the squad's snapshot stays, quicker
     return s.lines?.length ? [{ type: 'title', ms: 0, lines: s.lines, leaves: s.leaves, dropout: s.dropout, text: '' }] : [];
   });
 }

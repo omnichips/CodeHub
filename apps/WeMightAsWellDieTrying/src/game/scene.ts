@@ -16,7 +16,7 @@ import {
 } from '../sim/world.ts';
 import { Hud, el, type Group } from './hud.ts';
 import { settingRows } from './settings.ts';
-import { hordeLevel, music, play } from './sound.ts';
+import { city, hordeLevel, music, play } from './sound.ts';
 import { pose, runScene, stopScene, unseen, type View } from '../story/player.ts';
 import { LOST_LINES } from '../story/storyConfig.ts';
 
@@ -168,13 +168,19 @@ export class Game extends Phaser.Scene {
       speed: (n) => (this.speed = n),
       action: (a) => this.act(a),
       again: () => this.afterStory(() => this.scene.restart()),
+      next: () => this.afterStory(() => {
+        const k = MAPS.findIndex((m) => m.id === this.mapId);
+        if (k >= 0 && k < MAPS.length - 1) this.scene.restart({ map: MAPS[k + 1].id });
+        else this.leave('menu'); // the last city: back to the board
+      }),
       menu: (to) => this.afterStory(() => this.leave(to)),
       retreat: () => this.retreat(),
       skip: () => this.endTutorial(),
     });
-    this.events.once('shutdown', () => { stopScene(); this.hud.destroy(); hordeLevel(0); });
+    this.events.once('shutdown', () => { stopScene(); this.hud.destroy(); hordeLevel(0); city(); });
     this.setZoom(this.cameras.main.zoom); // again, now the bars can be measured
     music('game');
+    city(this.mapId);
     this.input.keyboard?.on('keydown-R', () => {
       if (this.drag?.kind === 'place') this.turned = !this.turned;
       else if (this.canTurn) this.act('Turn');
@@ -232,12 +238,13 @@ export class Game extends Phaser.Scene {
     const cam = this.cameras.main, home = { x: cam.midPoint.x, y: cam.midPoint.y, z: cam.zoom }, now = { x: home.x, y: home.y, z: home.z };
     return {
       live: true,
-      frame: (camera, p, t, still, pictureH) => {
+      frame: (camera, p, t, still, pictureH, lift) => {
         const at = pose(camera, p, t, still, home, pictureH / home.z, this.mapH);
-        Object.assign(now, { x: at.x, y: at.y, z: home.z * at.f });
+        const z = home.z * at.f;
+        Object.assign(now, { x: at.x, y: at.y + lift / z, z }); // the shot's point in the picture's middle, not the screen's
         cam.removeBounds();
         cam.setZoom(now.z);
-        cam.centerOn(at.x, at.y);
+        cam.centerOn(now.x, now.y);
       },
       project: (x, y) => [(x - now.x) * now.z + cam.width / 2, (y - now.y) * now.z + cam.height / 2],
       points: () => this.storyPoints(),
@@ -328,7 +335,7 @@ export class Game extends Phaser.Scene {
     if (this.paid || (w.phase !== 'won' && w.phase !== 'lost')) return;
     if (this.debug) { this.paid = { total: 0, base: 0, timeBonus: 0, leakBonus: 0, firstClear: 0 }; return; } // a test: nothing paid or kept
     const won = w.phase === 'won';
-    this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain });
+    this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain, level: MAPS.findIndex((x) => x.id === this.mapId) + 1 });
     save.chips += this.paid.total;
     if (won) save.cleared[this.mapId] = true;
     else this.lostLine = LOST_LINES[Math.floor(Math.random() * LOST_LINES.length)];
@@ -1072,7 +1079,7 @@ export class Game extends Phaser.Scene {
         ...(isBlock(sel) && sel.prop ? ['Turn'] : []),
         ...(planning && sel && !(isBlock(sel) && sel.prop) ? ['Remove'] : []),
       ],
-      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers() },
+      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won' },
       tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : '',
     });
   }
@@ -1093,6 +1100,7 @@ export class Game extends Phaser.Scene {
       ...(p.timeBonus ? [`Time bonus ${pc(p.timeBonus)}`] : []),
       ...(p.leakBonus ? [`Few leaks ${pc(p.leakBonus)}`] : []),
       ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
+      ...(p.minimum ? [`Minimum pay: ${p.minimum} chips`] : []),
       ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
     ];
   }

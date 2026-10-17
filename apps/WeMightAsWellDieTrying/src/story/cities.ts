@@ -19,7 +19,7 @@ function sitting(pen: Pen, x: number, y: number, seed: number, o: { asleep?: boo
 }
 /** Seconds since `at` the first time `at` passed in this shot: a one-off thing (a flash) fires once. */
 const fired = new Set<string>();
-function once(a: Act, key: string, at: number, act: () => void) {
+export function once(a: Act, key: string, at: number, act: () => void) {
   const k = `${a.sceneId}#${a.k}#${key}`;
   if (a.t < at) { fired.delete(k); return; }
   if (!fired.has(k)) { fired.add(k); act(); }
@@ -223,6 +223,8 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
     },
     // The third run's ships come in, large and slow, and mid-harbor turn round. The crowd lifts its arms, and lowers them.
     'after:new-york#1': (a, pen, cx) => {
+      // Far off over the towers, the helicopter with the V.I.P.s in it climbs away.
+      if (a.t > 0.8) { const q = a.t - 0.8, hx = 70 - q * 7 - cx * 0.3, hy = 34 - q * 2.5; if (hy > -4) { pen.rect(hx, hy, 5, 2, 'outline'); pen.rect(hx + 5, hy, 4, 1, 'outline'); if (idle2(a.t * 6)) pen.rect(hx - 2, hy - 1, 9, 1, 'outline'); } }
       for (let k = 0; k < 3; k++) {
         const ph = a.t - k * 0.8, turn = 4.6 + k * 0.4;
         if (ph < 0) continue;
@@ -253,6 +255,7 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
       const t = a.t, x = 150 + Math.max(0, t - 4) * 15;
       ship(pen, x - cx, 100, 1, 1, t, 'metal1');
       if (t > 3.2 && t < 3.45) pen.lit(x + 14 - cx, 40, 8, 6, '#dcddd3'); // the horn's steam, on 3 white frames
+      once(a, 'horn', 3.2, () => a.sound('horn'));
       const lift = Math.min(1, Math.max(0, (t - 1) / 2));
       if (x < 160) for (let k = 0; k < 14; k++) pen.px(132 + k - cx, 100 - Math.round(k * (0.6 + lift * 1.4)), 'metal2');
       for (let k = 0; k < 12; k++) {
@@ -276,6 +279,7 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
     // blocks; the coffee vendor pouring.
     'before:mexico#1': (a, pen, cx) => {
       const t = a.t;
+      once(a, 'bells', 0.5, () => a.sound('bells'));
       flag(pen, 242 - cx, 10, t, 0);
       const swing = idle2(t * 0.5);
       pen.rect(308 + swing * 2 - cx, 22, 8, 7, 'khaki1'); pen.rect(311 + swing * 2 - cx, 29, 2, 2, 'khaki0');
@@ -291,12 +295,13 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
     // run out. The pilots climb down.
     'after:mexico#1': (a, pen, cx) => {
       const t = a.t;
+      once(a, 'rotors', 0, () => a.sound('heli'));
       flag(pen, 242 - cx, 10, t, 0);
       for (let k = 0; k < 6; k++) {
         const bx = 30 + k * 58, start = 1 + k * 1.4, up = Math.max(0, t - start);
         if (k === 3) {
           if (up < 3) heli(pen, bx - up * 22 - cx, 74 - up * 8 + (idle2(t * 2) ? 2 : 0), t, 1);
-          once(a, 'down', start + 3, () => a.flash());
+          once(a, 'down', start + 3, () => { a.flash(); a.sound('crash'); });
           if (up > 3) pen.dither(70 - cx, 6 - (up - 3) * 4, 20, 16, Math.max(0, 0.5 - (up - 3) * 0.1), '#5c6064');
           continue;
         }
@@ -388,7 +393,7 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
     // The crowd crossing; Vega among them counting. A red light on the middle span. A flash, and the middle is gone.
     'after:london#1': (a, pen, cx) => {
       const t = a.t, gone = t > 7.5;
-      once(a, 'blast', 7.5, () => a.flash());
+      once(a, 'blast', 7.5, () => { a.flash(); a.sound('blast'); });
       bridge(a, pen, cx, gone);
       for (let k = 0; k < 90; k++) {
         const x = (k * 13 + t * 6) % 480;
@@ -420,8 +425,22 @@ export const CITIES: { backdrops: Record<string, Backdrop>; actors: Record<strin
     },
     // Dawn comes in three steps; everyone looks up; the sky stays empty; the camera closes on the loudspeaker's label.
     'ending#1': (a, pen, cx) => { dawn(pen, a.t < 4 ? 0 : a.t < 8 ? 1 : 2); lawn(a, pen, cx, true); loudspeaker(pen, 252 - cx, 50); pen.rect(232 - cx, 70, 46, 21, 'snow2'); pen.rect(232 - cx, 70, 46, 1, '#efe9d6'); pen.text('RECORDED', 235 - cx, 71, '#4a4d52'); pen.text('DAY 5', 242 - cx, 81, '#4a4d52'); },
+    // Upstairs, one window still lit, the president in it against the light. His arm comes up; a flash, the one shot;
+    // the window goes dark, and everyone on the lawn turns to look.
+    'ending#3': (a, pen, cx) => {
+      const t = a.t, bang = a.shot.bang ?? 3.2, wx = 108 - Math.round(cx * 0.7), wy = 44, after = t > bang + 0.3;
+      dawn(pen, 2);
+      lawn(a, pen, cx, after);
+      if (t < bang + 0.1) {
+        pen.lit(wx, wy, 6, 9, '#c8a860'); glow(pen, wx + 3, wy + 4, 7, '#c8a860', 0.25);
+        pen.rect(wx + 2, wy + 2, 2, 2, 'outline'); pen.rect(wx + 1, wy + 4, 4, 5, 'outline'); // head and shoulders
+        if (t > bang - 0.9) pen.rect(wx + 4, wy + 2, 1, 3, 'outline'); // his arm up
+      } else pen.rect(wx, wy, 6, 9, 'navy0');
+      if (t >= bang && t < bang + 0.09) { pen.led(wx + 3, wy + 1, 3, 3, '#fff2c0'); glow(pen, wx + 4, wy + 2, 9, '#fff2c0', 0.8); }
+      person(pen, 150 - cx, 100, LOOKS.dunne, { up: after }); person(pen, 168 - cx, 100, LOOKS.reyes, { up: after, posture: a.row.posture, face: -1 });
+    },
     // Dunne and Reyes on the grass, the Column asleep behind them.
-    'ending#3': (_a, pen, cx) => {
+    'ending#4': (_a, pen, cx) => {
       dawn(pen, 2);
       for (let k = 0; k < 30; k++) sitting(pen, 10 + (k % 15) * 20 - cx, 94 + Math.floor(k / 15) * 12 + (k % 2) * 3, 1100 + k, { lie: true });
       person(pen, 150 - cx, 100, LOOKS.dunne, { sit: true }); person(pen, 168 - cx, 100, LOOKS.reyes, { sit: true, posture: 3 });

@@ -19,7 +19,7 @@ export interface HudState {
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
-  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[] };
+  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean };
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
@@ -33,6 +33,7 @@ interface Handlers {
   speed(n: number): void;
   action(name: string): void;
   again(): void;
+  next(): void; // won: on to the next city (the board, after the last)
   menu(to: 'menu' | 'tree'): void;
   retreat(): void;
   skip(): void; // skips the guided start
@@ -210,6 +211,7 @@ export class Hud {
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),
           ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : [])),
+        ...(s.end.won ? [el('button', { type: 'button', className: 'go continue', textContent: 'Continue', onclick: () => this.on.next() })] : []),
         el('div', { className: 'row' },
           el('button', { type: 'button', textContent: 'Menu', onclick: () => this.on.menu('menu') }),
           el('button', { type: 'button', textContent: 'Skill tree', onclick: () => this.on.menu('tree') }),

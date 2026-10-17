@@ -1,7 +1,7 @@
 // The skill tree: one category at a time, laid out left to right as a tree of cards: Command on the left, each node's
 // upgrades in the column after it, joined by square-cornered lines. Drag to look around, pinch or scroll to zoom, tap
 // a card to see it and buy its next level (most take up to 3). Some also need other cards fully bought first (a new
-// soldier three). A soldier's card has an eye: a demo of him fighting.
+// soldier only his parent). A soldier's card has an eye: a demo of him fighting.
 import type Phaser from 'phaser';
 import { icon } from '../art/atlas.ts';
 import { persist, profile } from '../meta/profile.ts';
@@ -162,8 +162,11 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
     const levels = (n.max > 1 ? ` Level ${lv} of ${n.max}.` : '') + (n.needs ? ` Needs ${list(n.needs)} fully bought.` : '');
     const unit = soldierOf(n);
     const eye = unit && el('button', { type: 'button', className: 'eye', title: `Watch a ${UNITS[unit].name} fight`, ariaLabel: `Watch a ${UNITS[unit].name} fight`, onclick: () => show(unit) }, eyeIcon());
-    info.replaceChildren(el('img', { src: pic(n.icon), alt: '' }), ...(eye ? [eye] : []), el('div', {}, el('b', {}, n.name), el('p', {}, n.desc + levels)), buy);
+    const x = el('button', { type: 'button', className: 'x', textContent: '✕', title: 'Close', ariaLabel: 'Close', onclick: deselect });
+    info.replaceChildren(el('img', { src: pic(n.icon), alt: '' }), ...(eye ? [eye] : []), el('div', {}, el('b', {}, n.name), el('p', {}, n.desc + levels)), buy, x);
   }
+
+  function deselect() { if (!selected) return; selected = undefined; refresh(); }
 
   /** Just bought: the card pops and flashes, the chips spent float up off it, the lines to what it opened draw in. */
   function bought(n: Node, cost: number) {
@@ -244,6 +247,8 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
     if (travel > TAP && !view.hasPointerCapture(e.pointerId)) view.setPointerCapture(e.pointerId);
     pts.set(e.pointerId, now);
   });
+  // A tap on the empty space around the cards (not a drag) closes the description.
+  view.addEventListener('click', (e) => { if (travel <= TAP && !(e.target as Element).closest('.node')) deselect(); });
   const lift = (e: PointerEvent) => pts.delete(e.pointerId);
   view.addEventListener('pointerup', lift);
   view.addEventListener('pointercancel', lift);

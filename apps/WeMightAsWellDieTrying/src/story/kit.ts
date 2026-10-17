@@ -2,9 +2,9 @@
 // shape of a backdrop. Shared by every city's pictures (art.ts, cities.ts).
 import { BAYER, Pen } from './draw.ts';
 import { STORY } from './storyConfig.ts';
-import type { MapRow, Member, Shot } from './types.ts';
+import type { MapRow, Shot } from './types.ts';
 
-export const W = STORY.W, PIC = STORY.BAR, PH = STORY.H - 2 * STORY.BAR;
+export const W = STORY.W, PIC = STORY.TOP, PH = STORY.H - STORY.TOP - STORY.BAR;
 
 /** What a picture is drawn from, each frame. */
 export interface Act {
@@ -12,6 +12,7 @@ export interface Act {
   line: number; // the line being said (an index into the shot's pages), or past the last once all are said
   said: boolean; // every line of the shot has been said
   flash(): void; tear(): void;
+  sound(kind: string): void; // a recorded one-off (game/sound.ts), not when the scene is played short
 }
 
 // ---- Motion: frames by the clock ----
@@ -106,16 +107,6 @@ export function crowd(pen: Pen, x0: number, y0: number, w: number, h: number, t:
       if (row < h / 3) pen.px(x, y + 3, 'outline');
     }
   if (raise) { const [rx, ry] = raise; pen.rect(rx, ry - 4, 1, 4, 'maroon1'); pen.rect(rx, ry - 5, 1, 1, 'skin1'); } // a raised arm
-}
-
-/** One small figure in the squad row: 5 × 11. */
-export function squadFigure(pen: Pen, m: Member, x: number, y: number, posture: number) {
-  const l = LOOKS[m], slump = posture >= 3 ? 1 : 0;
-  pen.rect(x, y + 4, 5, 4, l.coat); pen.rect(x, y + 4, 1, 4, l.dark);
-  pen.rect(x + 1, y + 8, 1, 3, l.legs); pen.rect(x + 3, y + 8, 1, 3, l.legs);
-  pen.rect(x + 1 + slump, y + 1 + slump, 3, 3, l.skin);
-  if (l.cap) pen.rect(x + 1 + slump, y + slump, 4, 1, l.cap); else pen.rect(x + 1 + slump, y + slump, 3, 1, l.hair);
-  if (posture === 4) pen.rect(x + 5, y + 2, 1, 9, 'metal1'); // leaning on something
 }
 
 // ---- Vehicles, side on ----
@@ -249,64 +240,3 @@ export function steam(pen: Pen, x: number, y: number, t: number, size = 4, col =
   }
 }
 
-// ---- Portraits: who is speaking, a 24 × 24 bust in a frame, the mouth moving while they talk ----
-interface Face { skin: string; hair: string; coat: string; cap?: string; band?: string; knit?: string; helmet?: string; badge?: boolean; mustache?: string; beard?: string; stubble?: boolean; old?: boolean; bun?: boolean }
-const FACES: Record<string, Face | 'radio' | 'seal' | 'horn'> = {
-  Reyes: { skin: 'skin1', hair: 'brown0', coat: 'navy1', cap: 'navy0', band: 'outline', badge: true, stubble: true },
-  Pike: { skin: 'skin2', hair: 'brown1', coat: 'navy2', cap: 'navy1', band: 'outline', badge: true },
-  Dunne: { skin: 'skin1', hair: 'snow0', coat: 'navy1', cap: 'navy0', band: 'outline', badge: true, mustache: 'snow1', old: true },
-  Hollis: { skin: 'skin2', hair: 'khaki1', coat: 'cloth1', cap: 'cloth0', band: 'outline', badge: true },
-  Okoye: { skin: 'skin0', hair: 'outline', coat: 'cloth1', cap: 'cloth0', band: 'outline', badge: true },
-  Vega: { skin: 'skin1', hair: 'outline', coat: 'cloth1', badge: true, stubble: true },
-  Lola: { skin: 'skin1', hair: 'snow1', coat: 'maroon1', old: true, bun: true },
-  Vendor: { skin: 'skin0', hair: 'outline', coat: 'snow1', mustache: 'outline' },
-  'Harbor master': { skin: 'skin1', hair: 'snow0', coat: 'hivis1', knit: 'red1', beard: 'snow0', old: true },
-  Pilot: { skin: 'skin1', hair: 'brown0', coat: 'olive1', helmet: 'olive0' },
-  Nora: 'radio', Radio: 'radio', Captain: 'radio', 'South bank commander': 'radio', JEC: 'seal', Loudspeaker: 'horn',
-};
-/** The speaker's portrait at (x, y): `talk` opens the mouth (or lights the radio), `tired` 1 to 4 (Reyes's posture). */
-export function portrait(pen: Pen, who: string, x: number, y: number, talk: boolean, t: number, tired = 1) {
-  const f = FACES[who] ?? 'radio', P = (lx: number, ly: number, w: number, h: number, col: string) => pen.rect(x + 1 + lx, y + 1 + ly, w, h, col);
-  pen.rect(x, y, 24, 24, 'outline'); pen.rect(x, y, 24, 1, 'metal2'); pen.rect(x, y, 1, 24, 'metal2');
-  P(0, 0, 22, 22, typeof f === 'string' ? '#141a1e' : '#1b1d20');
-  if (f === 'radio') { // a handset: grille, talk switch, the LED lit while the voice comes through
-    P(7, 2, 9, 17, 'outline'); P(8, 3, 7, 15, 'metal0'); P(8, 3, 7, 1, 'metal1');
-    for (let k = 0; k < 4; k++) P(9, 6 + k * 2, 5, 1, 'outline');
-    P(16, 7, 1, 5, 'metal1');
-    if (talk && idle2(t * 2)) pen.led(x + 13, y + 4, 2, 2, '#ff5040'); else P(12, 3, 2, 2, 'maroon0');
-    for (let k = 0; k < 4; k++) P(10 + (k & 1), 19 + (k >> 1), 2, 1, 'metal1');
-    return;
-  }
-  if (f === 'seal') { // the Joint Evacuation Command's seal: a ring, a star
-    for (let ly = 0; ly < 18; ly++) { const w = Math.round(2 * Math.sqrt(81 - (ly - 8.5) ** 2)); P(11 - w / 2, 2 + ly, w, 1, ly === 0 || ly === 17 ? 'flash0' : 'navy1'); }
-    P(3, 9, 16, 1, 'navy2');
-    for (const [sx, sy, w] of [[10, 6, 2], [9, 8, 4], [7, 9, 8], [9, 10, 4], [8, 12, 2], [12, 12, 2]]) P(sx, sy, w, 2, talk && idle2(t * 2) ? 'flash1' : 'snow1');
-    return;
-  }
-  if (f === 'horn') { // a loudspeaker horn, sound coming off it
-    P(3, 8, 4, 6, 'metal1');
-    for (let k = 0; k < 9; k++) P(7 + k, 8 - Math.floor(k / 2), 1, 6 + Math.floor(k / 2) * 2, k === 8 ? 'metal2' : 'metal1');
-    if (talk) for (let k = 0; k < 3; k++) if ((Math.floor(t * 6) + k) % 3 !== 0) P(18 + k, 7 - k, 1, 8 + k * 2, 'snow0');
-    return;
-  }
-  // A face: shoulders, neck, head, then hair or a cap, eyes, brows, nose, mouth.
-  P(2, 17, 18, 5, f.coat); P(2, 17, 18, 1, f.coat === 'snow1' ? 'snow2' : 'metal2');
-  if (f.badge) P(14, 19, 2, 2, 'flash0');
-  P(9, 15, 4, 2, 'skin0');
-  [8, 10, 12, 12, 12, 12, 12, 12, 12, 10, 10, 8].forEach((w, k) => { P(11 - w / 2, 4 + k, w, 1, f.skin); P(11 - w / 2, 4 + k, 1, 1, 'skin0'); });
-  P(4, 9, 1, 3, f.skin); P(17, 9, 1, 3, f.skin);
-  if (f.cap) { P(4, 1, 14, 4, f.cap); P(4, 4, 14, 1, f.band ?? f.cap); P(5, 5, 12, 1, 'outline'); if (f.badge) P(10, 2, 2, 2, 'flash0'); P(5, 6, 1, 2, f.hair); P(16, 6, 1, 2, f.hair); }
-  else if (f.knit) { P(5, 1, 12, 5, f.knit); for (let k = 0; k < 6; k++) P(6 + k * 2, 2, 1, 4, 'red0'); }
-  else if (f.helmet) { P(4, 1, 14, 6, f.helmet); P(5, 6, 12, 2, 'navy0'); P(6, 6, 4, 1, 'navy2'); }
-  else { P(5, 2, 12, 3, f.hair); P(5, 5, 1, 4, f.hair); P(16, 5, 1, 4, f.hair); if (f.bun) P(8, 0, 6, 3, f.hair); }
-  const brow = f.old ? 'snow1' : f.hair === 'outline' ? 'outline' : f.hair;
-  if (!f.helmet) { P(7, 8, 2, 1, brow); P(13, 8, 2, 1, brow); }
-  P(7, 9, 2, 1, 'outline'); P(13, 9, 2, 1, 'outline');
-  if (tired >= 2) { P(7, 10, 2, 1, 'skin0'); P(13, 10, 2, 1, 'skin0'); } // the weeks under his eyes
-  if (f.old) { P(6, 7, 1, 1, 'skin0'); P(15, 7, 1, 1, 'skin0'); P(7, 12, 1, 1, 'skin0'); P(14, 12, 1, 1, 'skin0'); }
-  P(10, 11, 2, 1, 'skin0');
-  if (f.beard) P(6, 13, 10, 3, f.beard);
-  if (f.stubble) for (const [sx, sy] of [[7, 14], [9, 15], [12, 15], [14, 14], [8, 13], [13, 13]]) P(sx, sy, 1, 1, 'skin0');
-  if (f.mustache) P(8, 12, 6, 1, f.mustache);
-  if (talk) P(9, 13, 4, 2, 'maroon0'); else P(9, 13, 4, 1, 'maroon0');
-}

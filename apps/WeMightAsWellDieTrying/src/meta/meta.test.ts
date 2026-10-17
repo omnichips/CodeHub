@@ -46,11 +46,11 @@ test('every level of every node can be bought, starting from nothing but the sta
   assert.ok(spent > 50000 && spent < 70000, `everything costs ${spent} chips: a long campaign`);
 });
 
-test('a new soldier needs three other skills fully bought, not just his parent', () => {
-  const owned: Levels = { ...STARTING, 'rifleman.more': 2, 'rifleman.damage': 3 };
-  assert.equal(state(owned, 'shotgunner'), 'locked', 'rifleman.rate still to buy');
-  assert.equal(state({ ...owned, 'rifleman.rate': 2 }, 'shotgunner'), 'locked', 'a level short');
-  assert.equal(state({ ...owned, 'rifleman.rate': 3 }, 'shotgunner'), 'open');
+test('a new soldier needs only his parent, no upgrades of other soldiers', () => {
+  assert.equal(state(STARTING, 'shotgunner'), 'open', 'the rifleman is owned from the start');
+  assert.equal(state(STARTING, 'flamethrower'), 'locked', 'the shotgunner not bought yet');
+  assert.equal(state({ ...STARTING, shotgunner: 1 }, 'flamethrower'), 'open');
+  assert.ok(NODES.filter((n) => n.cat === 'soldiers' && n.effects.some((e) => 'unlock' in e)).every((n) => !n.needs), 'no soldier unlock has needs');
   assert.ok(NODES.every((n) => (n.needs ?? []).every((k) => NODE.has(k))), 'every need is a real node');
   const deep = NODE.get('mortar.hp')!, first = NODE.get('rifleman.range')!;
   assert.ok(deep.cost[2] > first.cost[2] * 5, 'deep in the tree costs far more');

@@ -26,6 +26,9 @@ export function settingRows(again: () => void): HTMLElement[] {
     choice('Quality', 'quality', ['low', 'medium', 'high']),
     // The story between cities: every scene, only their words, or none (the notebook still fills in).
     choice('Story scenes', 'story', ['full', 'short', 'off']),
+    // How people sound: a blip a letter as the story's words type (each speaker their own), the recorded voices (the
+    // story's lines and the soldiers' radio calls), or neither.
+    seg('Voices', ([['Blips', 'blips'], ['Voice acting', 'acting'], ['Off', 'off']] as const).map(([text, v]): [string, () => boolean, () => void] => [text, () => s.voices === v, () => set('voices', v)])),
     // Fewer bodies lying about is lighter on a slow device.
     seg('Dead bodies', BODIES.map((n) => [n ? String(n) : 'None', () => s.bodies === n, () => set('bodies', n)])),
     seg('Left-handed', [['Off', () => !s.lefty, () => set('lefty', false)], ['On', () => s.lefty, () => set('lefty', true)]]),

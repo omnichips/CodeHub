@@ -3,8 +3,20 @@
 
 export type Voice = 'person' | 'radio' | 'loudspeaker' | 'jec';
 export type Camera = 'hold' | 'drift-left' | 'drift-right' | 'tilt-up' | 'pan-north' | 'pan-south' | 'descend' | 'pull-back' | 'push-in' | 'follow-tracks';
-export type ShotType = 'title' | 'map' | 'diorama' | 'closeup' | 'notebook' | 'travel';
+export type ShotType = 'title' | 'map' | 'diorama' | 'closeup' | 'notebook' | 'travel' | 'photo'; // photo: the squad's snapshot, an X on whoever is gone
 export type Member = 'reyes' | 'pike' | 'dunne' | 'hollis' | 'okoye' | 'vega';
+/** How a speaker's face looks while they talk. */
+export type Mood = 'neutral' | 'happy' | 'sad' | 'angry' | 'worried' | 'shocked' | 'stern';
+/** The tags a page may carry ("[sighs] That was terrible."): how it is said, never shown. Each sets the face from there on. */
+export const TAG_MOODS: Record<string, Mood> = {
+  angry: 'angry', furious: 'angry', frustrated: 'angry', shouting: 'angry', mad: 'angry',
+  firmly: 'stern', dryly: 'stern', muttering: 'stern', flatly: 'stern',
+  sad: 'sad', sadly: 'sad', quietly: 'sad', sighs: 'sad', crying: 'sad', tired: 'sad',
+  startled: 'shocked', shocked: 'shocked', gasps: 'shocked',
+  warmly: 'happy', chuckles: 'happy', 'with a laugh': 'happy', laughs: 'happy', hopeful: 'happy',
+  nervously: 'worried', desperate: 'worried', urgent: 'worried', worried: 'worried', whispers: 'worried',
+  neutral: 'neutral', calm: 'neutral',
+};
 
 export interface Line { who: string; voice?: Voice; pages: string[]; gloss?: string; pauseBefore?: number[] } // pauseBefore: page indices, a [pause] each (twice for a long one)
 export interface Shot {
@@ -29,6 +41,7 @@ export interface Shot {
   to?: number;
   sky?: Sky;
   text?: string; // a title card's own text (the sting)
+  bang?: number; // seconds in: a single gunshot (the Ending's)
   clock?: string[]; // times typed over the picture one after another (HH:MM)
   beats?: string; // what happens, for whoever stages it; never shown
 }
@@ -39,7 +52,7 @@ export interface MapRow {
 }
 export interface Story { maps: MapRow[]; scenes: Scene[] }
 
-export const SHOTS: ShotType[] = ['title', 'map', 'diorama', 'closeup', 'notebook', 'travel'];
+export const SHOTS: ShotType[] = ['title', 'map', 'diorama', 'closeup', 'notebook', 'travel', 'photo'];
 export const CAMERAS: Camera[] = ['hold', 'drift-left', 'drift-right', 'tilt-up', 'pan-north', 'pan-south', 'descend', 'pull-back', 'push-in', 'follow-tracks'];
 export const MOTIONS = ['idle2', 'walk4', 'loop3', 'ripple2', 'sway2', 'tilt', 'lurch', 'slide', 'flicker3', 'led', 'tear', 'flash', 'dither-out', 'silence'];
 export const BACKDROPS = ['street-night', 'school-lot', 'chicago-pier', 'new-york-avenue', 'new-york-harbor', 'manila-alley', 'manila-river-port', 'mexico-square', 'rome-arches', 'rome-depot', 'tokyo-crossing', 'tokyo-platform', 'london-bridge', 'white-house-lawn'];
@@ -102,7 +115,8 @@ export function validate(story: Story, mapIds: string[]): string[] {
       if (s.leaves && !(DEPARTURES as readonly string[]).includes(s.leaves)) err(at, `leaves ${s.leaves}`);
       for (const l of s.lines ?? []) {
         if (!(l.who in SPEAKERS)) err(at, `speaker ${l.who}`);
-        if (!l.pages?.length || l.pages.some((p) => typeof p !== 'string' || !p.trim())) err(at, `${l.who}: empty page`);
+        if (!l.pages?.length || l.pages.some((p) => typeof p !== 'string' || !p.replace(/\[[^\]]*\]/g, '').trim())) err(at, `${l.who}: empty page`);
+        for (const p of l.pages ?? []) for (const [, tag] of p.matchAll(/\[([^\]]*)\]/g)) if (!(tag.trim().toLowerCase() in TAG_MOODS)) err(at, `${l.who}: tag [${tag}]`);
         if (l.pauseBefore?.some((i) => !(i >= 0 && i < l.pages.length))) err(at, `${l.who}: pause before no page`);
       }
     });

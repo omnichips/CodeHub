@@ -6,7 +6,7 @@ import voices from '../data/storyvoices.json' with { type: 'json' };
 import { missing } from './font.ts';
 import { noStory, record, story } from './record.ts';
 import { STORY } from './storyConfig.ts';
-import { goneAtStart, notebookLine, order, pagesOf, planned, sceneLength, shortened, tally, titleCard } from './text.ts';
+import { goneAtStart, moodAt, notebookLine, order, pagesOf, planned, sceneLength, shortened, tally, titleCard, untag } from './text.ts';
 import { DEPARTURES, sceneIds, validate, voiceOf } from './types.ts';
 
 const ids = MAPS.map((m) => m.id), all = order(story);
@@ -17,7 +17,7 @@ test('story.json has a scene for every map, and nothing in it is unknown', () =>
   assert.deepEqual(story.scenes.map((s) => s.id), sceneIds(ids), 'in the order they play');
 });
 
-test('no scene runs past 75 seconds (and those well past their plan are reported)', () => {
+test('no scene runs past 90 seconds (and those well past their plan are reported)', () => {
   const over: string[] = [];
   for (const sc of story.scenes) {
     const len = sceneLength(sc, all), plan = planned(sc);
@@ -33,7 +33,7 @@ test('every page fits two lines of the font, in its voice, with a glyph for ever
       for (const l of s.lines ?? []) {
         const v = voiceOf(l, sc.id, all);
         for (const p of pagesOf(l, v)) assert.ok(p.lines.length <= 2, `${sc.id}: "${p.text}" takes ${p.lines.length} lines`);
-        assert.deepEqual(missing(l.pages.join(' ') + (l.gloss ?? '')), [], `${sc.id}: ${l.who}`);
+        assert.deepEqual(missing(l.pages.map((p) => untag(p).text).join(' ') + (l.gloss ?? '')), [], `${sc.id}: ${l.who}`);
       }
   for (const sc of story.scenes) assert.deepEqual(missing(titleCard(sc, story).text + titleCard(sc, story).tally), []);
 });
@@ -72,14 +72,14 @@ test('title cards, tallies and notebook lines come from the map rows', () => {
   assert.equal(at('before:tokyo').tally, 'Rome: 3,000 alive?');
   const row = (id: string) => story.maps.find((m) => m.id === id)!;
   assert.equal(tally(row('tokyo')), 'Tokyo: 1,200 / 30,000');
-  assert.equal(notebookLine(row('chicago')), 'CHICAGO needed 6,000. got 410.');
-  assert.equal(notebookLine(row('rome')), 'ROME needed 3,000. got alive?');
+  assert.equal(notebookLine(row('chicago')), 'CHICAGO had 6,000. got 410.');
+  assert.equal(notebookLine(row('rome')), 'ROME had 3,000. got alive?');
 });
 
-test('the Short setting plays no map, diorama, close-up or travel shot, and keeps every line', () => {
+test('the Short setting plays no map, diorama, close-up or travel shot (the squad photo stays), and keeps every line', () => {
   for (const sc of story.scenes) {
     const short = shortened(sc);
-    assert.ok(short.every((s) => s.type === 'title' || s.type === 'notebook'), sc.id);
+    assert.ok(short.every((s) => s.type === 'title' || s.type === 'notebook' || s.type === 'photo'), sc.id);
     assert.deepEqual(short.flatMap((s) => s.lines ?? []), sc.shots.flatMap((s) => s.lines ?? []), `${sc.id}: lines`);
   }
 });
@@ -104,4 +104,20 @@ test('every page of every scene has its line voiced (run scripts/storyvoices.ts 
           const clip = index[sc.id]?.[`${l.who}|${p.text}`];
           assert.ok(clip && clip[1] > clip[0], `${sc.id}: no voice for ${l.who}: ${p.text}`);
         }
+});
+
+test('a page\'s [tags] are never shown or spoken, and set the face from where they stand', () => {
+  const u = untag('B-but three turned back. [hopeful] They\'re going round.');
+  assert.equal(u.text, 'B-but three turned back. They\'re going round.');
+  assert.deepEqual(u.moods, [[25, 'happy']]);
+  assert.equal(moodAt(u.moods, 3), 'neutral');
+  assert.equal(moodAt(u.moods, 30), 'happy');
+  assert.deepEqual(untag('[angry] WHAT?!'), { text: 'WHAT?!', moods: [[0, 'angry']] });
+  for (const sc of story.scenes)
+    for (const s of sc.shots)
+      for (const l of s.lines ?? []) for (const p of pagesOf(l, voiceOf(l, sc.id, all))) assert.ok(!/[[\]]/.test(p.text), `${sc.id}: ${p.text}`);
+});
+
+test('every After scene ends on the squad photo', () => {
+  for (const sc of story.scenes) if (sc.id.startsWith('after:')) assert.equal(sc.shots.at(-1)!.type, 'photo', sc.id);
 });
