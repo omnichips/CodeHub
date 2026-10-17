@@ -5,6 +5,7 @@ import structures from '../data/structures.json' with { type: 'json' };
 import unitData from '../data/units.json' with { type: 'json' };
 import zombieData from '../data/zombies.json' with { type: 'json' };
 import { Grid, distanceField, downhill, type MapData } from './grid.ts';
+import { routesOf, type Routes } from './routes.ts';
 
 export const STEP = 1 / 60;
 export const DIRS = 8; // soldier sprites face 8 ways: 0 = east, then clockwise
@@ -14,6 +15,9 @@ const SPACE = 1.25; // zombies keep apart by their drawn size, a bit more than t
 /** How many cells out a zombie looks for neighbours to keep apart from: a cell is a tile, and two of the common ones
  *  (radius 6) need 15 px, inside one cell; anything bigger looks two out. */
 const reachOf = (r: number) => (r * SPACE > 7.5 ? 2 : 1);
+const ROUTE_NEAR = 3; // tiles (times the map's scale) from its route a zombie still counts as on it
+const FOLLOW = 0.8; // off its route, a zombie following one nearer the route keeps this much of that one's link
+const ALONE = 0.3; // below this much link it stops following and makes for the route by itself
 const MOB = 50; // a wave comes as mobs of about this many, each pouring in at one place
 const SHOT_LIFE = 0.06; // seconds a tracer stays on screen
 const BLAST_LIFE = 0.35;
@@ -59,6 +63,7 @@ export interface StructStats {
 export interface UsableStats {
   name: string; charges: number; cooldown: number; delay: number; blast?: number; damage?: number; length?: number; width?: number;
   speed?: number; radius?: number; time?: number; burn?: { dps: number; time: number }; slow?: number; shells?: number; spread?: number;
+  sound?: number; // how long before it lands its recording starts (the missile's whoosh, then its boom on the landing)
 }
 export const ROADBLOCKS = structures.roadblocks as Record<BlockKind, { name: string; hp: number; length: number; width?: number; detour: number; fixed?: boolean }>;
 export const STRUCTS = structures.structures as Record<StructKind, StructStats>;
@@ -154,7 +159,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export class World {
   readonly grid: Grid;
   readonly stats: Stats;
-  readonly leakLimit: number;
+  leakLimit: number; // lifted by the debug switch for unlimited leaks
   phase: 'plan' | 'wave' | 'won' | 'lost' = 'plan';
   time = 0;
   kills = 0;
@@ -165,6 +170,9 @@ export class World {
   wave = 0;
   flow!: Float32Array;
   private readonly flowFree: Float32Array; // ignores roadblocks: the way a zombie goes until one is close ahead
+  /** The horde's routes (sim/routes.ts), and how near one a zombie counts as on it, in px. */
+  readonly routes: Routes;
+  readonly routeNear: number;
 
   // Zombies live in parallel arrays, one slot each; a dead zombie's slot is reused, so a big fight makes no garbage.
   n = 0;
@@ -184,6 +192,9 @@ export class World {
   readonly zboostBy = new Float32Array(CAP);
   readonly zclock = new Float32Array(CAP); // countdown to a screamer's scream or a hordemother's brood
   readonly zkind = new Uint8Array(CAP);
+  readonly zroute = new Int16Array(CAP); // the route it keeps to, -1 for none yet
+  readonly zprog = new Int32Array(CAP); // how far along it, in its tiles
+  readonly zlink = new Float32Array(CAP); // 1 on its route, less for each zombie it follows back to it, 0 making for it alone
   readonly alive = new Uint8Array(CAP);
   private free: number[] = [];
 
@@ -205,7 +216,7 @@ export class World {
   deaths: { x: number; y: number; kind: number; angle: number }[] = [];
   /** What made a noise since the screen last looked: a soldier's kind when he fires, 'boom' (a small blast, size = its
    *  radius), 'blast' (a big one: mines, explosives, artillery), 'missile' (called in), 'napalm', 'a10', 'scream' (a
-   *  screamer) or 'boss' (a brute or hordemother arriving). The screen turns these into sound and empties the list. */
+   *  screamer), 'boss' (a brute or hordemother arriving) or 'broken' (a roadblock giving way). The screen turns these into sound and empties the list. */
   sounds: { kind: string; x: number; y: number; size: number }[] = [];
   private noise(kind: string, x: number, y: number, size = 0) { if (this.sounds.length < 512) this.sounds.push({ kind, x, y, size }); }
   private byId = new Map<number, Roadblock>();
@@ -216,6 +227,7 @@ export class World {
   private waveClock = 0;
   private mobAt = 0; // the spawn tile the current mob pours in at
   private mob = -1; // which mob of the wave that is
+  private mobRoute = -1; // the route that mob takes
   private queue: number[] = [];
   private spawned = 0;
   private full = 0; // seconds the current mob has found its way in full
@@ -248,6 +260,8 @@ export class World {
     this.structAt = new Int32Array(this.grid.w * this.grid.h);
     const { wall } = this.grid;
     this.flowFree = distanceField(this.grid, this.grid.goals, (i) => (wall[i] ? Infinity : 1));
+    this.routes = routesOf(map, this.grid, map.scale ?? 1);
+    this.routeNear = ROUTE_NEAR * (map.scale ?? 1) * map.tile;
     this.reflow();
     // Cars, a bus and barricades already in the street: roadblocks you do not own, that a soldier can move.
     for (const pr of map.props ?? []) {
@@ -629,7 +643,6 @@ export class World {
       shells.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r, at: u.delay + (k * u.spread!) / u.shells! });
     }
     this.strikes.push({ kind, x, y, angle, t: 0, hit: new Set(), shells });
-    if (kind === 'missile') this.noise('missile', x, y); // its recording carries the boom too
     return true;
   }
 
@@ -659,6 +672,9 @@ export class World {
     this.zhit[i] = this.zburn[i] = this.zboost[i] = 0;
     this.zclock[i] = z.scream?.every ?? z.brood?.every ?? 0;
     this.zkind[i] = kind;
+    this.zroute[i] = -1;
+    this.zprog[i] = 0;
+    this.zlink[i] = 1;
     this.alive[i] = 1;
     this.living++;
     if (z.smash || z.brood) this.noise('boss', x, y);
@@ -712,6 +728,7 @@ export class World {
       if (Math.floor(this.spawned / size) !== this.mob) {
         this.mob = Math.floor(this.spawned / size);
         this.mobAt = spawns[(this.random() * spawns.length) | 0];
+        this.mobRoute = this.pickRoute(this.mobAt);
       }
       const ax = this.mobAt % w, ay = (this.mobAt - ax) / w, close = spawns.filter((s) => Math.abs((s % w) - ax) <= 2 && Math.abs(Math.floor(s / w) - ay) <= 2);
       for (let tries = 0; tries < 6; tries++) {
@@ -721,7 +738,10 @@ export class World {
         // one keeps 60% of its size clear: a normal one 3.6 px, a brute 7, so the big ones do not wedge at a way in.
         if (taken(x, y, ZOMBIES[this.queue[this.spawned]].radius * 0.6)) continue;
         const i = this.spawn(this.queue[this.spawned++], x, y);
-        if (i >= 0) fresh.push(i);
+        if (i >= 0) {
+          fresh.push(i);
+          this.zroute[i] = this.mobRoute;
+        }
         this.full = 0;
         continue spawning;
       }
@@ -730,6 +750,7 @@ export class World {
       if ((this.full += dt) > 2) {
         this.full = 0;
         this.mobAt = spawns[(this.random() * spawns.length) | 0];
+        this.mobRoute = this.pickRoute(this.mobAt);
       }
       break;
     }
@@ -862,9 +883,9 @@ export class World {
         dx = (lure.x - x) / d;
         dy = (lure.y - y) / d;
       } else {
-        // The way the street goes, as if no roadblock stood in it; only when one is close ahead does a zombie take the
-        // way round it (or through it). A jumper never turns: it goes over.
-        if (downhill(this.grid, this.flowFree, x, y, this.dir) && (z.jumps || !this.blockAhead(x, y, this.dir.x, this.dir.y))) {
+        // Along its route (past its end, the way to the safe zone), as if no roadblock stood in it; only when one is
+        // close ahead does a zombie take the way round it (or through it). A jumper never turns: it goes over.
+        if ((this.routeWay(i, x, y) || downhill(this.grid, this.flowFree, x, y, this.dir)) && (z.jumps || !this.blockAhead(x, y, this.dir.x, this.dir.y))) {
           dx = this.dir.x;
           dy = this.dir.y;
         } else if (downhill(this.grid, this.flow, x, y, this.dir)) {
@@ -912,9 +933,77 @@ export class World {
       this.zclock[i] = z.brood.every;
       for (let k = 0; k < z.brood.count; k++) {
         const a = this.random() * Math.PI * 2;
-        this.spawn(ZOMBIE_KINDS.indexOf(z.brood.kind), x + Math.cos(a) * (z.radius + 6), y + Math.sin(a) * (z.radius + 6));
+        const j = this.spawn(ZOMBIE_KINDS.indexOf(z.brood.kind), x + Math.cos(a) * (z.radius + 6), y + Math.sin(a) * (z.radius + 6));
+        if (j >= 0) { this.zroute[j] = this.zroute[i]; this.zprog[j] = this.zprog[i]; } // her brood goes her way
       }
     }
+  }
+
+  /** The route a new mob from spawn tile `at` takes: one of those from its way in, any of them alike. */
+  private pickRoute(at: number) {
+    const entry = this.routes.entryOf[at], ways = this.routes.list.flatMap((r, k) => (r.entry === entry ? [k] : []));
+    return ways.length ? ways[(this.random() * ways.length) | 0] : -1;
+  }
+
+  /** Points this.dir the way zombie i walks to keep to its route; false when it has none (none on this map) or has
+   *  come to its end, and it goes for the safe zone. Within routeNear of its route it walks along it, drawn a little
+   *  toward the line. Farther off it goes the way a zombie beside it goes, one that is nearer the route, with a bit
+   *  less link than that one has; once its link is too low (or no one is there to follow) it makes for the route by
+   *  itself, the shortest way, and takes up the route it comes to. */
+  private routeWay(i: number, x: number, y: number): boolean {
+    const { list, toRoute } = this.routes, g = this.grid, T = g.tile, w = g.w, near = this.routeNear;
+    if (!list.length) return false;
+    const centre = (t: number) => [((t % w) + 0.5) * T, (Math.floor(t / w) + 0.5) * T];
+    for (let tries = 0; tries < 2 && this.zroute[i] >= 0; tries++) {
+      const { tiles, ahead } = list[this.zroute[i]], p = this.zprog[i];
+      let best = Infinity, k = p;
+      for (let q = Math.max(0, p - 4); q < Math.min(tiles.length, p + 16); q++) {
+        const [cx, cy] = centre(tiles[q]), d = (cx - x) ** 2 + (cy - y) ** 2;
+        if (d < best) { best = d; k = q; }
+      }
+      if (best <= near * near) {
+        this.zprog[i] = k;
+        this.zlink[i] = 1;
+        if (k >= tiles.length - 2) return false;
+        const [ax, ay] = centre(tiles[k]), [bx, by] = centre(tiles[ahead[k]]), len = Math.hypot(bx - ax, by - ay) || 1;
+        const dx = (bx - ax) / len + ((ax - x) * 0.25) / near, dy = (by - ay) / len + ((ay - y) * 0.25) / near, l = Math.hypot(dx, dy) || 1;
+        this.dir.x = dx / l;
+        this.dir.y = dy / l;
+        return true;
+      }
+      if (tries || !this.adopt(i, x, y)) break; // far from where it was along its route: the nearest route tile, if near
+    }
+    // Off it: the zombie beside it, nearer the route, with the most link to pass on.
+    const here = g.at(x, y), mine = here < 0 ? Infinity : toRoute[here];
+    let lead = -1, link = ALONE / FOLLOW;
+    for (const j of this.near(x - T * 1.5, y - T * 1.5, x + T * 1.5, y + T * 1.5)) {
+      const t = g.at(this.zx[j], this.zy[j]);
+      if (j !== i && t >= 0 && this.zlink[j] >= link && toRoute[t] < mine) { lead = j; link = this.zlink[j]; }
+    }
+    if (lead >= 0) {
+      this.zlink[i] = link * FOLLOW;
+      this.dir.x = this.zdx[lead];
+      this.dir.y = this.zdy[lead];
+      return true;
+    }
+    this.zlink[i] = 0;
+    if (this.adopt(i, x, y)) return this.routeWay(i, x, y);
+    return downhill(g, toRoute, x, y, this.dir);
+  }
+
+  /** Puts zombie i on the route tile nearest it, if one is within routeNear. */
+  private adopt(i: number, x: number, y: number) {
+    const { at, idx } = this.routes, g = this.grid, T = g.tile, reach = Math.ceil(this.routeNear / T), tx = Math.floor(x / T), ty = Math.floor(y / T);
+    let best = (this.routeNear / T) ** 2, tile = -1;
+    for (let dy = -reach; dy <= reach; dy++)
+      for (let dx = -reach; dx <= reach; dx++) {
+        const nx = tx + dx, ny = ty + dy, d = dx * dx + dy * dy;
+        if (nx >= 0 && ny >= 0 && nx < g.w && ny < g.h && at[ny * g.w + nx] >= 0 && d <= best) { best = d; tile = ny * g.w + nx; }
+      }
+    if (tile < 0 || (at[tile] === this.zroute[i] && Math.abs(idx[tile] - this.zprog[i]) < 4)) return false;
+    this.zroute[i] = at[tile];
+    this.zprog[i] = idx[tile];
+    return true;
   }
 
   /** A roadblock on the line ahead within BLOCK_LOOK, or on the tile underfoot. */
@@ -1049,6 +1138,7 @@ export class World {
     const eng = this.soldiers.find((s) => !s.dead && this.stats.units[s.kind].harden && Math.hypot(s.x - x, s.y - y) <= this.stats.units[s.kind].range);
     if ((rb.hp -= amount * (eng ? this.stats.units[eng.kind].harden! : 1)) <= 0) {
       this.removeBlock(rb);
+      this.noise('broken', x, y);
     }
   }
 
@@ -1136,6 +1226,7 @@ export class World {
       const u = this.stats.usables[s.kind], was = s.t;
       s.t += dt;
       this.by = s.kind;
+      if (u.sound !== undefined && was <= u.delay - u.sound && s.t > u.delay - u.sound) this.noise(s.kind, s.x, s.y); // its recording carries the boom too
       let done = s.t >= u.delay;
       if (done && s.kind === 'missile') this.explode(s.x, s.y, u.blast!, u.damage!, false, '');
       else if (done && s.kind === 'napalm') {
@@ -1148,17 +1239,20 @@ export class World {
         for (const sh of s.shells) if (sh.at > was && sh.at <= s.t) this.explode(sh.x, sh.y, u.blast!, u.damage!, false, 'blast');
         done = s.shells.every((sh) => sh.at <= s.t);
       } else if (done && s.kind === 'a10') {
-        // Strafing: everything under the plane's path takes one heavy burst.
-        const [px, py] = this.planeAt(s);
-        for (const j of this.within(px, py, u.width! / 2))
-          if (!s.hit.has(j)) {
-            s.hit.add(j);
-            this.damage(j, u.damage!, 'splash');
-          }
-        const a = this.random() * Math.PI * 2, r = this.random() * u.width!;
-        this.noise('a10', px, py);
-        this.shots.push({ x1: px - Math.cos(s.angle) * 40, y1: py - Math.sin(s.angle) * 40, x2: px + Math.cos(a) * r, y2: py + Math.sin(a) * r, age: 0, heavy: true });
-        done = (s.t - u.delay) * u.speed! > u.length!;
+        // Strafing along its run: everything under the plane's path takes one heavy burst. Past the run's end it flies
+        // on, out of sight, before the strike is over.
+        const [px, py] = this.planeAt(s), along = (s.t - u.delay) * u.speed!;
+        if (along <= u.length!) {
+          for (const j of this.within(px, py, u.width! / 2))
+            if (!s.hit.has(j)) {
+              s.hit.add(j);
+              this.damage(j, u.damage!, 'splash');
+            }
+          const a = this.random() * Math.PI * 2, r = this.random() * u.width!;
+          this.noise('a10', px, py);
+          this.shots.push({ x1: px - Math.cos(s.angle) * 40, y1: py - Math.sin(s.angle) * 40, x2: px + Math.cos(a) * r, y2: py + Math.sin(a) * r, age: 0, heavy: true });
+        }
+        done = along > u.length! + 1500;
       }
       if (!done) this.strikes[n++] = s;
     }

@@ -43,7 +43,17 @@ test('every level of every node can be bought, starting from nothing but the sta
     for (const n of NODES) if (state(owned, n.id) === 'open') { spent += nextCost(owned, n.id)!; owned[n.id] = level(owned, n.id) + 1; grew = true; }
   }
   assert.ok(NODES.every((n) => level(owned, n.id) === n.max));
-  assert.ok(spent > 12000 && spent < 20000, `everything costs ${spent} chips: tens of runs, not hundreds`);
+  assert.ok(spent > 50000 && spent < 70000, `everything costs ${spent} chips: a long campaign`);
+});
+
+test('a new soldier needs three other skills fully bought, not just his parent', () => {
+  const owned: Levels = { ...STARTING, 'rifleman.more': 2, 'rifleman.damage': 3 };
+  assert.equal(state(owned, 'shotgunner'), 'locked', 'rifleman.rate still to buy');
+  assert.equal(state({ ...owned, 'rifleman.rate': 2 }, 'shotgunner'), 'locked', 'a level short');
+  assert.equal(state({ ...owned, 'rifleman.rate': 3 }, 'shotgunner'), 'open');
+  assert.ok(NODES.every((n) => (n.needs ?? []).every((k) => NODE.has(k))), 'every need is a real node');
+  const deep = NODE.get('mortar.hp')!, first = NODE.get('rifleman.range')!;
+  assert.ok(deep.cost[2] > first.cost[2] * 5, 'deep in the tree costs far more');
 });
 
 test('chips: kills/15 with time and leak bonuses on a win, half the kill chips on a loss', () => {
@@ -80,7 +90,7 @@ test('a save from a file is never trusted: junk is dropped, bad numbers reset', 
 test('a save from before the skill web had levels gets back every chip it spent, and keeps its cities', () => {
   // Version 1 (before slots) and version 2 owned nodes of the old web: 'sniper' cost 50, 'leak1' 15.
   const s = parse(JSON.stringify({ version: 1, chips: 40, owned: ['command', 'rifleman', 'sniper', 'leak1'], cleared: { 'new-york': true }, tutorialDone: true, settings: { gore: 'some' } }))!;
-  assert.equal(s.version, 4);
+  assert.equal(s.version, 5);
   assert.equal(s.chips, 40 + 50 + 15);
   assert.deepEqual(s.skills, { ...STARTING }, 'the new web starts afresh');
   assert.equal(s.name, 'Save');

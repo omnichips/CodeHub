@@ -92,7 +92,9 @@ const PLANS: Plan[] = [
     // Via Labicana bent into an M: up from both feet at the bottom, over the two peaks and down into the safe zone
     // where they meet in the middle. The Colosseum and its pines sit between the peaks. Jumpers and clever ones.
     id: 'rome', name: 'Rome', w: 72, h: 64, kinds: 'bbaahh', trees: 0.3,
-    paths: [[[[10, 64], [16, 9], [36, 38], [56, 9], [62, 64]], 7]],
+    // The park runs on down into the V under the Colosseum, and a walk paved along the park side of the road
+    // (grass meeting the road on the slant leaves stray steps of both).
+    paths: [[[[36, 20], [36, 31]], 12, 'p'], [[[21, 8], [36, 30.9], [51, 8]], 3, ','], [[[10, 64], [16, 9], [36, 38], [56, 9], [62, 64]], 7]],
     parks: [[22, 0, 28, 24]],
     roads: [[15, 46, 8, 3], [49, 46, 8, 3]],
     plazas: [[23, 44, 6, 7], [43, 44, 6, 7]],
@@ -110,8 +112,8 @@ const PLANS: Plan[] = [
     water: [[0, 52, 64, 4]], // the estero
     roads: [[28, 0, 8, 66], [36, 22, 28, 6], [0, 36, 28, 4]],
     paths: [
-      [[[6, 4], [10, 16], [6, 28], [12, 44], [8, 62]], 2], [[[44, 30], [50, 40], [46, 48], [52, 63]], 2], // alleys, footbridges over the estero
-      [[[10, 16], [28, 14]], 2], [[[12, 44], [28, 46]], 2], [[[36, 40], [46, 41]], 2], [[[50, 12], [36, 9]], 2], [[[52, 63], [52, 66]], 2],
+      [[[6, 4], [10, 16], [6, 28], [12, 44], [8, 62]], 2], [[[44, 27], [44, 30], [50, 40], [46, 48], [52, 63]], 2], // alleys (the east one up into the east street), footbridges over the estero
+      [[[10, 16], [28, 14]], 2], [[[12, 44], [28, 46]], 2], [[[36, 40], [46, 41]], 2], [[[50, 12], [36, 9]], 2], [[[52, 63], [52, 66]], 2], [[[8, 62], [8, 66]], 2], // both alleys on into the market
     ],
     plazas: [[18, 28, 10, 7], [4, 64, 56, 6]], // the court; the market in front of the safe zone
     entries: [[28, 0, 8, 1], [63, 22, 1, 6], [0, 36, 1, 4]],

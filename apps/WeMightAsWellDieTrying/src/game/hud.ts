@@ -1,4 +1,5 @@
-// The controls over the map, in HTML so they stay sharp: status, Start (and Last setup) and the time controls, the bar
+// The controls over the map, in HTML so they stay sharp: Menu and Settings, status, Start (and Last setup) and the time
+// controls, a Debug button (the horde's routes on or off), the bar
 // you drag soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start
 // tip, notices when a soldier falls, and the end-of-run panel with the chips the run paid and who made the kills.
 export type Group = 'units' | 'build' | 'strikes';
@@ -13,16 +14,20 @@ export interface HudState {
   restore: boolean; // a setup kept from last time can be put down
   speed: number;
   armed: string; // the bar item tapped, waiting for a tap on the map
-  overview: boolean; // the whole map is in view
+  routes: boolean; // the horde's routes are shown
+  unlimited: boolean; // leaks never lose the fight (debug)
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
-  end?: { title: string; detail: string; chips: string[]; total: number; killers: string[] };
+  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[] };
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
   arm(id: string): void; // a finger tapped a bar item: the next tap on the map puts it down
-  fit(): void; // out to the whole map, or back
+  settings(): void;
+  routes(): void; // the horde's routes shown, or not
+  win(): void; // debug: the fight is won now
+  leaks(): void; // debug: unlimited leaks, or not
   start(): void;
   setup(): void; // puts down the setup kept from last time
   speed(n: number): void;
@@ -49,7 +54,7 @@ export class Hud {
   private readonly restore: HTMLButtonElement;
   private readonly notices: HTMLElement;
   private readonly speeds: HTMLElement;
-  private readonly fit: HTMLButtonElement;
+  private readonly debug: HTMLElement;
   private readonly speedList: number[];
   private readonly tabs: HTMLButtonElement[];
   private readonly items = new Map<string, { button: HTMLElement; count: HTMLElement; group: Group }>();
@@ -73,7 +78,12 @@ export class Hud {
     root.classList.toggle('lefty', lefty);
     this.status = [el('span'), el('span'), el('span')];
     const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : (this.confirm.hidden = false)) });
-    this.fit = el('button', { type: 'button', className: 'menu', textContent: 'Map', title: 'See the whole map (and back)', onclick: () => on.fit() });
+    const settings = el('button', { type: 'button', className: 'menu', textContent: 'Settings', onclick: () => on.settings() });
+    const routes = el('button', { type: 'button', textContent: 'Routes', title: 'Show the lines the horde keeps to', onclick: () => on.routes() });
+    const win = el('button', { type: 'button', textContent: 'Win now', title: 'End the fight as won', onclick: () => on.win() });
+    const leaks = el('button', { type: 'button', className: 'leaks', textContent: 'Unlimited leaks', title: 'Leaks never lose the fight', onclick: () => on.leaks() });
+    const panel = el('div', { className: 'panel', hidden: true }, el('small', {}, 'Debug'), routes, win, leaks);
+    this.debug = el('div', { className: 'debug' }, panel, el('button', { type: 'button', className: 'menu', textContent: 'Debug', onclick: () => (panel.hidden = !panel.hidden) }));
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
     this.restore = el('button', { type: 'button', textContent: 'Last setup', title: 'Put everything back where it was last time', onclick: () => on.setup() });
     this.notices = el('div', { className: 'notices' });
@@ -121,8 +131,8 @@ export class Hud {
     this.end = el('div', { className: 'end', hidden: true });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
-      el('div', { className: 'status' }, menu, this.fit, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.confirm, this.end, this.hint, this.banners,
+      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.debug, this.confirm, this.end, this.hint, this.banners,
     );
   }
 
@@ -165,13 +175,14 @@ export class Hud {
 
   update(s: HudState) {
     this.planning = s.planning;
-    s.status.forEach((t, i) => text(this.status[i], t));
+    s.status.forEach((t, i) => { text(this.status[i], t); this.status[i].hidden = !t; });
     this.status[1].classList.toggle('warn', s.warn);
     this.start.hidden = !s.planning;
     this.restore.hidden = !s.planning || !s.restore;
     this.speeds.hidden = s.planning;
     [...this.speeds.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i] === s.speed)));
-    this.fit.setAttribute('aria-pressed', String(s.overview));
+    this.debug.querySelector('.panel button')!.setAttribute('aria-pressed', String(s.routes));
+    this.debug.querySelector('.leaks')!.setAttribute('aria-pressed', String(s.unlimited));
     this.tabs.forEach((t) => t.setAttribute('aria-pressed', String(TABS.find(([, l]) => l === t.textContent)?.[0] === this.group)));
     for (const [id, { button, count, group }] of this.items) {
       button.hidden = group !== this.group;
@@ -194,7 +205,7 @@ export class Hud {
     if (s.end && !this.end.childElementCount) {
       this.confirm.hidden = true;
       this.end.append(
-        el('h2', {}, s.end.title), el('p', {}, s.end.detail),
+        el('h2', {}, s.end.title), ...(s.end.quote ? [el('p', { className: 'quote' }, `“${s.end.quote}”`)] : []), el('p', {}, s.end.detail),
         // What the run paid, and beside it who made the kills.
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),

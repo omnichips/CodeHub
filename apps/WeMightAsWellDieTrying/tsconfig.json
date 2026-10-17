@@ -15,5 +15,6 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src", "scripts", "vite.config.ts"]
+  "include": ["src", "scripts", "vite.config.ts"],
+  "exclude": ["scripts/voices.ts"]
 }

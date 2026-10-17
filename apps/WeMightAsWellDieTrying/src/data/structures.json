@@ -129,7 +129,8 @@
       "name": "Missile",
       "charges": 2,
       "cooldown": 15,
-      "delay": 1,
+      "delay": 2.5,
+      "sound": 1,
       "blast": 36,
       "damage": 500
     },
@@ -137,7 +138,7 @@
       "name": "A-10 run",
       "charges": 1,
       "cooldown": 40,
-      "delay": 1.5,
+      "delay": 3,
       "length": 360,
       "width": 24,
       "damage": 220,
@@ -147,7 +148,7 @@
       "name": "Napalm",
       "charges": 1,
       "cooldown": 30,
-      "delay": 1,
+      "delay": 3,
       "radius": 44,
       "time": 6,
       "burn": {

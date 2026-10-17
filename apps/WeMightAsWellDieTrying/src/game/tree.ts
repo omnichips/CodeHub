@@ -1,10 +1,11 @@
 // The skill tree: one category at a time, laid out left to right as a tree of cards: Command on the left, each node's
 // upgrades in the column after it, joined by square-cornered lines. Drag to look around, pinch or scroll to zoom, tap
-// a card to see it and buy its next level (most take up to 3). A soldier's card has an eye: a demo of him fighting.
+// a card to see it and buy its next level (most take up to 3). Some also need other cards fully bought first (a new
+// soldier three). A soldier's card has an eye: a demo of him fighting.
 import type Phaser from 'phaser';
 import { icon } from '../art/atlas.ts';
 import { persist, profile } from '../meta/profile.ts';
-import { NODE, NODES, level, nextCost, state, type Category, type Node } from '../meta/progress.ts';
+import { NODE, NODES, level, missing, nextCost, state, type Category, type Node } from '../meta/progress.ts';
 import { UNITS, type UnitKind } from '../sim/world.ts';
 import { stopWatching, watch } from './demo.ts';
 import { el } from './hud.ts';
@@ -92,11 +93,26 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       b.onpointerleave = () => trail(n, false);
       cards.set(id, b);
     }
+    // A card it needs besides its parent, in an earlier column, joins the same way (into the line from its parent). One
+    // in the same or a later column is only named on the card.
+    joins.length = 0;
+    for (const [id, p] of shape.at)
+      for (const from of NODE.get(id)!.needs ?? []) {
+        const q = shape.at.get(from);
+        if (!q || from === NODE.get(id)!.parent || q.x + CARD_W > p.x) continue;
+        const path = document.createElementNS(SVG, 'path'), mid = p.x - (COL - CARD_W) / 2;
+        path.setAttribute('d', `M${q.x + CARD_W} ${q.y + CARD_H / 2}H${mid}V${p.y + CARD_H / 2}H${p.x}`);
+        svg.prepend(path);
+        joins.push({ to: id, path });
+      }
     plane.replaceChildren(svg, ...cards.values());
     refresh();
   }
+  const joins: { to: string; path: SVGPathElement }[] = [];
 
   function trail(n: Node, on: boolean) {
+    for (const k of n.needs ?? []) cards.get(k)?.classList.toggle('trail', on); // what it needs, wherever it is
+    for (const j of joins) if (j.to === n.id) j.path.classList.toggle('trail', on);
     for (let k: Node | undefined = n; k; k = k.parent ? NODE.get(k.parent) : undefined) {
       cards.get(k.id)?.classList.toggle('trail', on && k !== n);
       lines.get(k.id)?.classList.toggle('trail', on);
@@ -124,15 +140,16 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       b.classList.toggle('afford', s === 'open' && save.chips >= cost);
       b.classList.toggle('picked', n === selected);
       const pips = n.max > 1 ? `${'■'.repeat(lv)}${'□'.repeat(n.max - lv)} ` : '';
-      b.querySelector('small')!.textContent = s === 'owned' ? `${pips}owned` : s === 'locked' ? `${pips}locked` : `${pips}${cost} chips`;
+      b.querySelector('small')!.textContent = s === 'owned' ? `${pips}owned` : s === 'locked' ? `${pips}${n.parent && level(owned, n.parent) > 0 ? `needs ${missing(owned, id).length} more` : 'locked'}` : `${pips}${cost} chips`;
       lines.get(id)?.setAttribute('class', `${s}${lines.get(id)!.classList.contains('trail') ? ' trail' : ''}`);
     }
+    for (const j of joins) j.path.setAttribute('class', `${state(owned, j.to)}${j.path.classList.contains('trail') ? ' trail' : ''}`);
     const n = selected;
     if (!n) return info.replaceChildren(el('p', {}, 'Tap a skill to see it. Drag to look around; pinch or scroll to zoom.'));
     const s = state(owned, n.id), lv = level(owned, n.id), cost = nextCost(owned, n.id), short = cost - save.chips;
     const buy = el('button', { type: 'button', className: 'go' }), next = n.max > 1 ? `level ${lv + 1}` : 'it';
     if (s === 'owned') Object.assign(buy, { textContent: n.max > 1 ? 'All levels owned' : 'Owned', disabled: true });
-    else if (s === 'locked') Object.assign(buy, { textContent: `Needs ${NODE.get(n.parent!)!.name}`, disabled: true });
+    else if (s === 'locked') Object.assign(buy, { textContent: `Needs ${list([...(level(owned, n.parent!) ? [] : [n.parent!]), ...missing(owned, n.id)])}`, disabled: true });
     else if (short > 0) Object.assign(buy, { textContent: `${cost} chips (${short} short)`, disabled: true });
     else Object.assign(buy, { textContent: `Buy ${next}: ${cost} chips`, onclick: () => {
       if (state(save.skills, n.id) !== 'open' || save.chips < cost) return;
@@ -142,7 +159,7 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       refresh();
       bought(n, cost);
     } });
-    const levels = n.max > 1 ? ` Level ${lv} of ${n.max}.` : '';
+    const levels = (n.max > 1 ? ` Level ${lv} of ${n.max}.` : '') + (n.needs ? ` Needs ${list(n.needs)} fully bought.` : '');
     const unit = soldierOf(n);
     const eye = unit && el('button', { type: 'button', className: 'eye', title: `Watch a ${UNITS[unit].name} fight`, ariaLabel: `Watch a ${UNITS[unit].name} fight`, onclick: () => show(unit) }, eyeIcon());
     info.replaceChildren(el('img', { src: pic(n.icon), alt: '' }), ...(eye ? [eye] : []), el('div', {}, el('b', {}, n.name), el('p', {}, n.desc + levels)), buy);
@@ -239,6 +256,9 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
   draw();
   fit();
 }
+
+/** 'A', 'A and B', 'A, B and C': the names of nodes. */
+const list = (ids: string[]) => ids.map((id) => NODE.get(id)!.name).join(', ').replace(/, ([^,]*)$/, ' and $1');
 
 /** An open eye, drawn in the text colour. */
 function eyeIcon() {

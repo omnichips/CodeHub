@@ -7,8 +7,8 @@ import { USABLES, baseStats, type StructStats, type UsableStats, type Stats, typ
 export type Category = 'soldiers' | 'structures' | 'usables' | 'base';
 /** What owning a node does. `unlock`/`add` give items (for strikes, uses per run); `stat` raises one item's stat. */
 export interface Effect { unlock?: string; add?: string; count?: number; stat?: string; of?: string; by?: number; leakLimit?: number; chipGain?: number }
-/** `cost[k]` is the price of level k + 1; `max` levels in all. */
-export interface Node { id: string; name: string; cat: Category; cost: number[]; max: number; parent: string | null; start?: boolean; x: number; y: number; icon: string; desc: string; effects: Effect[] }
+/** `cost[k]` is the price of level k + 1; `max` levels in all. `needs`: other nodes that must be fully bought first. */
+export interface Node { id: string; name: string; cat: Category; cost: number[]; max: number; parent: string | null; needs?: string[]; start?: boolean; x: number; y: number; icon: string; desc: string; effects: Effect[] }
 export type Levels = Readonly<Record<string, number>>;
 
 export const NODES = tree.nodes as Node[];
@@ -17,11 +17,14 @@ export const NODE = new Map(NODES.map((n) => [n.id, n]));
 export const STARTING: Levels = Object.fromEntries(NODES.filter((n) => n.start).map((n) => [n.id, n.max]));
 
 export const level = (owned: Levels, id: string) => owned[id] ?? 0;
-/** Fully bought, buyable (its parent has at least one level, and it has levels left) or locked. */
+/** Fully bought, buyable (its parent has at least one level, every node it needs is fully bought, and it has levels
+ *  left) or locked. */
 export function state(owned: Levels, id: string): 'owned' | 'open' | 'locked' {
   const n = NODE.get(id)!;
-  return level(owned, id) >= n.max ? 'owned' : !n.parent || level(owned, n.parent) > 0 ? 'open' : 'locked';
+  return level(owned, id) >= n.max ? 'owned' : (!n.parent || level(owned, n.parent) > 0) && missing(owned, id).length === 0 ? 'open' : 'locked';
 }
+/** The nodes a node needs that are not fully bought yet. */
+export const missing = (owned: Levels, id: string) => (NODE.get(id)!.needs ?? []).filter((k) => level(owned, k) < NODE.get(k)!.max);
 /** What the next level of a node costs (undefined once it is fully bought). */
 export const nextCost = (owned: Levels, id: string) => NODE.get(id)!.cost[level(owned, id)];
 
@@ -81,8 +84,14 @@ export function build(owned: Levels): Build {
     }
   }
   for (const k of Object.keys(USABLES) as UsableKind[]) {
-    stats.usables[k].charges = loadout[k] ?? 0;
+    const u = stats.usables[k];
+    u.charges = loadout[k] ?? 0;
     delete loadout[k];
+    // A strike plays out in real time, as it did before the fight ran PACE times faster: its recordings (the
+    // missile's boom, the A-10's pass) are timed to that. So its waits and how long it lasts are PACE times longer
+    // in fight time, and a plane flies PACE times slower.
+    for (const f of ['delay', 'cooldown', 'time', 'spread', 'sound'] as const) if (u[f]) u[f] *= PACE;
+    if (u.speed) u.speed /= PACE;
   }
   return { stats, loadout, speeds: SPEEDS, chipGain };
 }

@@ -1,5 +1,6 @@
 // Sound. Shots and small explosions are made by code like the art: each a short buffer of shaped noise and a falling
 // tone, built once. The rest are recordings (src/sounds): the A-10, the missile, big blasts, the wave alarm, and the
+// soldiers' voice lines over the radio when one is picked (scripts/voices.ts), and the
 // zombies, whose groans, death rattles and the horde's growl underneath it all. Anti-noise rules keep a big fight from turning into a roar:
 //  - same-class shots close together merge into the one already playing, which gets a little louder instead;
 //  - a cap on how many copies of one sound, and how many sounds in all, play at once;
@@ -7,7 +8,9 @@
 //  - the more is going on, the more everything is turned down (ducking), and a compressor catches the peaks.
 // Browsers only start audio from a tap or a key, so nothing is made until the first one. A phone counts a tap when the
 // finger lifts, not when it lands. An iPhone's web audio obeys its ring/silent switch, so the game asks for the media
-// channel instead (like a video): sound plays with the switch on silent.
+// channel instead (like a video): sound plays with the switch on silent. That channel stops other apps' music, so with
+// "play over other apps' music" set it asks for the ambient one (mixed in, obeying the switch) and plays no music of
+// its own: a media element playing takes a phone's audio from Spotify and the like.
 import { profile } from '../meta/profile.ts';
 import a10 from '../sounds/a10.mp3';
 import alarm from '../sounds/alarm.mp3';
@@ -21,6 +24,8 @@ import dying from '../sounds/zombie-dying.mp3';
 import groan from '../sounds/zombie-groan.mp3';
 import scream from '../sounds/zombie-scream.mp3';
 import screech from '../sounds/zombie-screech.mp3';
+import radio from '../sounds/voices.mp3';
+import lines from '../data/voices.json' with { type: 'json' };
 
 interface Recipe {
   len: number; // seconds
@@ -46,6 +51,13 @@ const RECIPES: Record<string, Recipe> = {
   thunk: { len: 0.3, cut: 0.08, decay: 0.06, tone: [140, 60], toneAmp: 1, toneDecay: 0.08, gain: 0.45, window: 0.08, voices: 3 },
   boom: { len: 1.6, cut: 0.035, decay: 0.45, tone: [65, 28], toneAmp: 0.9, toneDecay: 0.6, gain: 0.85, window: 0.08, voices: 4 },
   napalm: { len: 1.8, cut: 0.06, decay: 0.7, attack: 0.1, tone: [50, 30], toneAmp: 0.6, gain: 0.75, window: 0.2, voices: 2 },
+  smash: { len: 0.8, cut: 0.45, decay: 0.16, tone: [95, 38], toneAmp: 0.8, toneDecay: 0.2, gain: 0.75, window: 0.25, voices: 2 }, // a roadblock giving way
+  cry: { len: 0.75, cut: 0, decay: 1, gain: 0.6, window: 0.4, voices: 2 }, // a soldier hit and falling: its buffer is made by cry()
+  // The story's: a letter typed, a burst of radio static, a far-off thud.
+  tick: { len: 0.03, cut: 0.9, decay: 0.006, tone: [1900, 1400], toneAmp: 0.3, toneDecay: 0.004, gain: 0.1, window: 0.025, voices: 2 },
+  static: { len: 0.5, cut: 0.95, decay: 0.22, gain: 0.16, window: 0.4, voices: 1 },
+  paper: { len: 0.3, cut: 0.55, decay: 0.09, gain: 0.14, window: 0.2, voices: 1 },
+  thud: { len: 1.2, cut: 0.03, decay: 0.4, tone: [55, 30], toneAmp: 0.8, toneDecay: 0.5, gain: 0.45, window: 0.3, voices: 1 },
 };
 /** A recording: `takes` are [file, from, to] in seconds, one picked at random each time (a file can hold several
  *  groans). Repeats within `window` are dropped, not merged: a recording already says it all. `fade` ends a take
@@ -64,19 +76,50 @@ const CLIPS: Record<string, Clip> = {
   },
   die: { takes: [[dying, 0.3, 1.04], [dying, 1.16, 2.62], [dying, 2.94, 4.26], [dying, 4.4, 5.42]], gain: 0.45, window: 0.35, voices: 2 },
 };
+// What each soldier says when picked: 'say-rifleman' and so on, one of his lines at random.
+for (const [kind, takes] of Object.entries(lines)) CLIPS[`say-${kind}`] = { takes: takes.map(([from, to]): [string, number, number] => [radio, from, to]), gain: 0.85, window: 0.5, voices: 1 };
 /** Which recipe each noise from the world uses: soldiers by kind, the rest by name. */
 const USES: Record<string, string> = {
   rifleman: 'rifle', shield: 'pistol', machinegunner: 'mg', operator: 'mg', turret: 'mg', marksman: 'crack', sniper: 'crack',
-  shotgunner: 'shotgun', flamethrower: 'flame', bazooka: 'rocket', mortar: 'thunk', grenadier: 'thunk', boom: 'boom', napalm: 'napalm',
+  shotgunner: 'shotgun', flamethrower: 'flame', bazooka: 'rocket', mortar: 'thunk', grenadier: 'thunk', boom: 'boom', napalm: 'napalm', broken: 'smash', fallen: 'cry',
+  tick: 'tick', static: 'static', thud: 'thud', paper: 'paper', // the story's
 };
 const MAX_VOICES = 16;
 
 let ctx: AudioContext | undefined, bus: GainNode, bed: GainNode | undefined;
+const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession; // Safari's say over the phone's audio
 const buffers: Record<string, AudioBuffer> = {};
 const files: Record<string, AudioBuffer> = {}; // recordings by url, once decoded
 const playing: Record<string, number> = {};
 const latest: Record<string, { at: number; gain: GainNode; base: number; n: number }> = {};
 let voices = 0, heat = 0, heatAt = 0;
+
+/** A man's cry of pain, "aah" falling away: a buzz at the pitch of a voice, through the three resonances of an open
+ *  vowel, with breath in it. */
+function cry(c: AudioContext) {
+  const rate = c.sampleRate, n = Math.ceil(0.75 * rate), b = c.createBuffer(1, n, rate), d = b.getChannelData(0);
+  const formants = [[730, 90, 1], [1090, 110, 0.5], [2440, 170, 0.25]].map(([f, bw, amp]) => {
+    const r = Math.exp((-Math.PI * bw) / rate);
+    return { a1: 2 * r * Math.cos((2 * Math.PI * f) / rate), a2: -r * r, amp, y1: 0, y2: 0 };
+  });
+  let phase = 0, peak = 1e-6;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate, pitch = 190 * Math.exp(-t * 0.9) * (1 + 0.03 * Math.sin(t * 38) + (Math.random() - 0.5) * 0.02);
+    phase = (phase + pitch / rate) % 1;
+    const source = (phase < 0.4 ? Math.sin((phase / 0.4) * Math.PI) : 0) + (Math.random() - 0.5) * 0.35; // a glottal pulse, and breath
+    let v = 0;
+    for (const f of formants) {
+      const y = source * (1 - f.a1 - f.a2) + f.a1 * f.y1 + f.a2 * f.y2;
+      f.y2 = f.y1;
+      f.y1 = y;
+      v += y * f.amp;
+    }
+    d[i] = v * Math.min(1, t / 0.03) * Math.exp(-t * 3.2);
+    peak = Math.max(peak, Math.abs(d[i]));
+  }
+  for (let i = 0; i < n; i++) d[i] /= peak;
+  return b;
+}
 
 function make(c: AudioContext, r: Recipe) {
   const rate = c.sampleRate, n = Math.ceil(r.len * rate), b = c.createBuffer(1, n, rate), d = b.getChannelData(0);
@@ -108,16 +151,16 @@ function unlock() {
     // Older iPhones only have the prefixed one; with neither, the game is silent.
     const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Context) return;
-    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
-    if (session) session.type = 'playback';
-    else if (navigator.maxTouchPoints > 0) { const quiet = new Audio(silence()); quiet.setAttribute('playsinline', ''); void quiet.play().catch(() => {}); }
+    if (session) session.type = profile.settings.mix ? 'ambient' : 'playback';
+    else if (navigator.maxTouchPoints > 0 && !profile.settings.mix) { const quiet = new Audio(silence()); quiet.setAttribute('playsinline', ''); void quiet.play().catch(() => {}); }
     ctx = new Context();
     // Each track played once inside this tap, so a phone lets it start later without one.
-    for (const url of new Set(Object.values(SCORES).flat().map(([u]) => u))) track(ctx, url);
+    if (!profile.settings.mix) for (const url of new Set(Object.values(SCORES).flat().map(([u]) => u))) track(ctx, url);
     const squash = ctx.createDynamicsCompressor();
     bus = ctx.createGain();
     bus.connect(squash).connect(ctx.destination);
     for (const [name, r] of Object.entries(RECIPES)) buffers[name] = make(ctx, r);
+    buffers.cry = cry(ctx);
     const c = ctx;
     for (const url of new Set([horde, ...Object.values(CLIPS).flatMap((k) => k.takes.map((t) => t[0]))]))
       void fetch(url).then((r) => r.arrayBuffer()).then((b) => c.decodeAudioData(b)).then((b) => {
@@ -144,15 +187,20 @@ function unlock() {
 // cut); a fight has the city in panic alone, at full volume. Changing screens crossfades from one to the other.
 
 /** Each screen's tracks, with each one's share of the music volume. */
-const SCORES = { menu: [[floorboard, 1], [panic, 0.5]], game: [[panic, 1]] } as const satisfies Record<string, readonly (readonly [string, number])[]>;
+const SCORES = { menu: [[floorboard, 1], [panic, 0.5]], game: [[panic, 1]], story: [] } as const satisfies Record<string, readonly (readonly [string, number])[]>;
 const tracks = new Map<string, { el: HTMLAudioElement; gain: GainNode }>();
 let score: keyof typeof SCORES | undefined;
+/** Seconds left off the end of a track: the city in panic's last 5. */
+const CUT: Record<string, number> = { [panic]: 5 };
 
 function track(c: AudioContext, url: string) {
   let t = tracks.get(url);
   if (t) return t;
   const el = new Audio(url), gain = c.createGain();
   el.loop = true;
+  // A track that should end early goes back to its start that much before the end of its file.
+  const cut = CUT[url];
+  if (cut) el.addEventListener('timeupdate', () => { if (el.duration && el.currentTime >= el.duration - cut) el.currentTime = 0; });
   el.preload = 'auto';
   el.setAttribute('playsinline', '');
   gain.gain.value = 0;
@@ -161,9 +209,9 @@ function track(c: AudioContext, url: string) {
   void el.play().then(() => { if (!wanted(url)) el.pause(); }, () => {});
   return t;
 }
-const wanted = (url: string) => !!score && SCORES[score].some(([u]) => u === url);
+const wanted = (url: string) => !!score && !profile.settings.mix && SCORES[score].some(([u]) => u === url);
 
-/** Plays a screen's music: 'menu' or 'game' (it starts with the first tap if there has been none yet). */
+/** Plays a screen's music: 'menu', 'game' or 'story' (none: the story has no music) (it starts with the first tap if there has been none yet). */
 export function music(which: keyof typeof SCORES) {
   score = which;
   cue();
@@ -172,9 +220,11 @@ export function music(which: keyof typeof SCORES) {
 /** Fades the wanted tracks in to the music volume and the rest out, pausing them once they are quiet. */
 function cue() {
   if (!ctx || !score) return;
-  const now = ctx.currentTime, { master, music: level } = profile.settings;
+  const now = ctx.currentTime, { master, music: level, mix } = profile.settings;
+  if (session) session.type = mix ? 'ambient' : 'playback';
+  if (!mix) for (const [url] of SCORES[score]) track(ctx, url); // made now if the game started with them off
   for (const [url, t] of tracks) {
-    const share = SCORES[score].find(([u]) => u === url)?.[1] ?? 0;
+    const share = mix ? 0 : SCORES[score].find(([u]) => u === url)?.[1] ?? 0;
     t.gain.gain.setTargetAtTime(master * level * share, now, share ? 0.8 : 0.5);
     if (share && t.el.paused) void t.el.play().catch(() => {});
     if (!share && !t.el.paused) setTimeout(() => { if (!wanted(url)) t.el.pause(); }, 2500);
@@ -214,12 +264,15 @@ export function play(kind: string, near = 1, size = 0) {
 }
 
 const lastClip: Record<string, number> = {};
+let talking = 0; // until when a soldier is talking: one at a time, never two over each other
 function clip(name: string, near: number) {
   const k = CLIPS[name], take = k.takes[(Math.random() * k.takes.length) | 0], buf = ctx && files[take[0]];
   if (!ctx || ctx.state !== 'running' || !buf || near < 0.05) return;
   const now = ctx.currentTime;
-  if (now - (lastClip[name] ?? -1e9) < k.window || (playing[name] ?? 0) >= k.voices || voices >= MAX_VOICES) return;
+  const talk = name.startsWith('say-');
+  if (now - (lastClip[name] ?? -1e9) < k.window || (playing[name] ?? 0) >= k.voices || voices >= MAX_VOICES || (talk && now < talking)) return;
   lastClip[name] = now;
+  if (talk) talking = now + take[2] - take[1];
   mix(1);
   const src = ctx.createBufferSource(), gain = ctx.createGain(), [, from, to] = take, rate = 1 + (Math.random() * 2 - 1) * 0.05;
   src.buffer = buf;
@@ -255,3 +308,71 @@ addEventListener('visibilitychange', () => {
   void (document.hidden ? ctx.suspend() : ctx.resume()).catch(() => {});
   for (const [url, t] of tracks) if (document.hidden) t.el.pause(); else if (wanted(url)) void t.el.play().catch(() => {});
 });
+
+// ---- The story's beds: a low hum, rain, radio static, looping under a scene as loud as storyBed() says ----
+const beds: Record<string, GainNode> = {};
+/** A loop of noise or hum, made once. */
+function bedLoop(c: AudioContext, kind: 'hum' | 'rain' | 'static') {
+  const rate = c.sampleRate, n = rate * 2, b = c.createBuffer(1, n, rate), d = b.getChannelData(0);
+  let lp = 0, peak = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate, white = Math.random() * 2 - 1;
+    lp += (white - lp) * (kind === 'rain' ? 0.35 : 0.9);
+    // Whole cycles in the 2 s loop (55 and 110 Hz) so the hum joins up without a click.
+    d[i] = kind === 'hum' ? Math.sin(2 * Math.PI * 55 * t) * 0.7 + Math.sin(2 * Math.PI * 110 * t) * 0.3 + white * 0.03
+      : kind === 'rain' ? lp * (0.7 + 0.3 * Math.sin(t * 9)) : (white - lp) * (Math.random() < 0.002 ? 4 : 1);
+    peak = Math.max(peak, Math.abs(d[i]));
+  }
+  for (let i = 0; i < n; i++) d[i] /= peak;
+  const src = c.createBufferSource(), gain = c.createGain();
+  src.buffer = b;
+  src.loop = true;
+  gain.gain.value = 0;
+  src.connect(gain).connect(bus);
+  src.start();
+  return gain;
+}
+/** Sets a story bed's level, 0 to 1 (0 stops it being heard). */
+export function storyBed(kind: 'hum' | 'rain' | 'static', level: number) {
+  if (!ctx || ctx.state !== 'running') return;
+  if (!beds[kind] && level <= 0) return;
+  const g = (beds[kind] ??= bedLoop(ctx, kind));
+  g.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * { hum: 0.2, rain: 0.25, static: 0.08 }[kind], ctx.currentTime, 0.4);
+}
+
+// ---- The story's voices: one file a scene (src/sounds/story, made by scripts/storyvoices.ts), decoded when the scene
+// starts and let go when it ends, so only one scene's lines are ever held ----
+const storyFiles = import.meta.glob('../sounds/story/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+let sceneVoices: { id: string; loading: boolean; buf?: AudioBuffer } | undefined;
+let speaking: { src: AudioBufferSourceNode; until: number } | undefined;
+/** Starts fetching a scene's voices (again, if the first tap came after it began). */
+export function loadVoices(sceneId: string) {
+  const url = storyFiles[`../sounds/story/${sceneId.replace(':', '-')}.mp3`];
+  if (sceneVoices?.id !== sceneId) sceneVoices = { id: sceneId, loading: false };
+  if (!ctx || !url || sceneVoices.loading || sceneVoices.buf) return;
+  sceneVoices.loading = true;
+  const c = ctx, want = sceneVoices;
+  void fetch(url).then((r) => r.arrayBuffer()).then((b) => c.decodeAudioData(b)).then((b) => { want.buf = b; }).catch(() => { want.loading = false; });
+}
+/** Says the stretch of the scene's file from `from` to `to` seconds; returns how long it takes, or 0 if it cannot yet. */
+export function say(from: number, to: number) {
+  hush();
+  if (!ctx || ctx.state !== 'running' || !sceneVoices) return 0;
+  if (!sceneVoices.buf) { loadVoices(sceneVoices.id); return 0; }
+  const src = ctx.createBufferSource(), gain = ctx.createGain();
+  src.buffer = sceneVoices.buf;
+  gain.gain.value = 1.1;
+  src.connect(gain).connect(bus);
+  src.onended = () => gain.disconnect();
+  src.start(0, from, to - from);
+  speaking = { src, until: ctx.currentTime + to - from };
+  return to - from;
+}
+/** Stops the line being said. */
+export function hush() {
+  try { speaking?.src.stop(); } catch { /* already over */ }
+  speaking = undefined;
+}
+export const voicePlaying = () => !!ctx && !!speaking && ctx.currentTime < speaking.until;
+/** The scene is over: its voices are let go. */
+export function dropVoices() { hush(); sceneVoices = undefined; }

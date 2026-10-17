@@ -1,16 +1,16 @@
 {
-  "rifleman": { "name": "Rifleman", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "bullet", "range": 150, "damage": 51, "fireRate": 4.5, "pierce": 1 },
-  "sniper": { "name": "Sniper", "hp": 80, "radius": 6, "speed": 55, "aimSpeed": 30, "weapon": "sniper", "range": 280, "damage": 240, "fireRate": 1.05, "pierce": 4, "cone": {"widest": 25, "narrowest": 2, "handleMin": 24, "handleMax": 120} },
-  "machinegunner": { "name": "Machine gunner", "hp": 120, "radius": 10, "speed": 50, "aimSpeed": 25, "weapon": "bullet", "range": 125, "damage": 21, "fireRate": 15, "pierce": 1 },
-  "flamethrower": { "name": "Flamethrower", "hp": 120, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "flame", "range": 56, "damage": 8, "fireRate": 12, "burn": {"dps": 16, "time": 3}, "cone": {"widest": 35, "narrowest": 10, "handleMin": 24, "handleMax": 80} },
-  "bazooka": { "name": "Bazooka", "hp": 100, "radius": 6, "speed": 50, "aimSpeed": 30, "weapon": "rocket", "range": 170, "damage": 165, "fireRate": 0.9, "blast": 30, "projectileSpeed": 240 },
-  "shield": { "name": "Shield", "hp": 450, "radius": 9, "speed": 45, "aimSpeed": 35, "weapon": "bullet", "range": 50, "damage": 23, "fireRate": 3, "pierce": 1, "taunt": 40, "outdoor": true },
-  "mortar": { "name": "Mortar", "hp": 90, "radius": 6, "speed": 40, "aimSpeed": 0, "weapon": "shell", "range": 320, "minRange": 80, "damage": 165, "fireRate": 0.6, "blast": 40, "scatter": 24, "flight": 1.6 },
+  "rifleman": { "name": "Rifleman", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "bullet", "range": 150, "damage": 38, "fireRate": 0.9, "pierce": 1 },
+  "sniper": { "name": "Sniper", "hp": 80, "radius": 6, "speed": 55, "aimSpeed": 30, "weapon": "sniper", "range": 280, "damage": 180, "fireRate": 0.21, "pierce": 4, "cone": {"widest": 25, "narrowest": 2, "handleMin": 24, "handleMax": 120} },
+  "machinegunner": { "name": "Machine gunner", "hp": 120, "radius": 10, "speed": 50, "aimSpeed": 25, "weapon": "bullet", "range": 125, "damage": 16, "fireRate": 3, "pierce": 1 },
+  "flamethrower": { "name": "Flamethrower", "hp": 120, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "flame", "range": 56, "damage": 6, "fireRate": 2.4, "burn": {"dps": 12, "time": 3}, "cone": {"widest": 35, "narrowest": 10, "handleMin": 24, "handleMax": 80} },
+  "bazooka": { "name": "Bazooka", "hp": 100, "radius": 6, "speed": 50, "aimSpeed": 30, "weapon": "rocket", "range": 170, "damage": 124, "fireRate": 0.18, "blast": 30, "projectileSpeed": 240 },
+  "shield": { "name": "Shield", "hp": 450, "radius": 9, "speed": 45, "aimSpeed": 35, "weapon": "bullet", "range": 50, "damage": 17, "fireRate": 0.6, "pierce": 1, "taunt": 40, "outdoor": true },
+  "mortar": { "name": "Mortar", "hp": 90, "radius": 6, "speed": 40, "aimSpeed": 0, "weapon": "shell", "range": 320, "minRange": 80, "damage": 124, "fireRate": 0.12, "blast": 40, "scatter": 24, "flight": 1.6 },
   "medic": { "name": "Medic", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 60, "weapon": "heal", "range": 70, "heal": 12 },
-  "marksman": { "name": "Marksman", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "bullet", "range": 220, "damage": 113, "fireRate": 2.25, "pierce": 1 },
-  "shotgunner": { "name": "Shotgunner", "hp": 110, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "pellets", "range": 64, "damage": 33, "fireRate": 2.1, "pellets": 6, "knockback": 10, "cone": {"widest": 40, "narrowest": 15, "handleMin": 24, "handleMax": 90} },
+  "marksman": { "name": "Marksman", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 35, "weapon": "bullet", "range": 220, "damage": 85, "fireRate": 0.45, "pierce": 1 },
+  "shotgunner": { "name": "Shotgunner", "hp": 110, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "pellets", "range": 64, "damage": 25, "fireRate": 0.42, "pellets": 6, "knockback": 10, "cone": {"widest": 40, "narrowest": 15, "handleMin": 24, "handleMax": 90} },
   "engineer": { "name": "Engineer", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 60, "weapon": "repair", "range": 64, "repair": 25, "harden": 0.6 },
-  "grenadier": { "name": "Grenadier", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 30, "weapon": "shell", "range": 160, "minRange": 40, "damage": 105, "fireRate": 1.05, "blast": 28, "scatter": 16, "flight": 0.9 },
-  "operator": { "name": "Sentry operator", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "bullet", "range": 110, "damage": 27, "fireRate": 3, "pierce": 1, "turrets": 1 },
-  "turret": { "name": "Sentry turret", "hp": 160, "radius": 7, "speed": 0, "aimSpeed": 0, "weapon": "bullet", "range": 150, "damage": 27, "fireRate": 6, "pierce": 1, "fixed": true, "outdoor": true }
+  "grenadier": { "name": "Grenadier", "hp": 100, "radius": 6, "speed": 55, "aimSpeed": 30, "weapon": "shell", "range": 160, "minRange": 40, "damage": 79, "fireRate": 0.21, "blast": 28, "scatter": 16, "flight": 0.9 },
+  "operator": { "name": "Sentry operator", "hp": 100, "radius": 6, "speed": 60, "aimSpeed": 40, "weapon": "bullet", "range": 110, "damage": 20, "fireRate": 0.6, "pierce": 1, "turrets": 1 },
+  "turret": { "name": "Sentry turret", "hp": 160, "radius": 7, "speed": 0, "aimSpeed": 0, "weapon": "bullet", "range": 150, "damage": 20, "fireRate": 1.2, "pierce": 1, "fixed": true, "outdoor": true }
 }

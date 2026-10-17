@@ -6,15 +6,21 @@ import { MAPS, lastPlayed, open, perSoldier, persist, profile, saves, unlocked }
 import { NODES } from '../meta/progress.ts';
 import notes from '../data/patchnotes.json' with { type: 'json' };
 import { Grid, type MapData } from '../sim/grid.ts';
-import { BODIES, exportSave, fresh, noStats, parse, remove, type Save, type Settings, type Stats } from '../meta/save.ts';
+import { exportSave, fresh, noStats, parse, remove, type Save, type Stats } from '../meta/save.ts';
 import { el } from './hud.ts';
 import { ambience } from './ambience.ts';
+import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { drawn, paintMap } from './mapart.ts';
 import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
-import { music, play, retune } from './sound.ts';
+import { settingRows } from './settings.ts';
+import { music } from './sound.ts';
 import { skillWeb } from './tree.ts';
+import { noStory, story } from '../story/record.ts';
+import { playScene, pose } from '../story/player.ts';
+import { order } from '../story/text.ts';
+import { mapOf } from '../story/types.ts';
 
-export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes';
+export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'story';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
@@ -32,7 +38,6 @@ interface Walker { s: Phaser.GameObjects.Sprite; lane: number[]; t: number; spee
 const button = (text: string, onclick: () => void, className = '') => el('button', { type: 'button', textContent: text, className, onclick });
 const LEVELS = NODES.reduce((n, x) => n + x.max, 0);
 const summary = (s: Save) => `${s.chips} chips · ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities · ${Object.values(s.skills).reduce((a, b) => a + b, 0)}/${LEVELS} skills`;
-const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 /** The newest patch notes this device has opened (their date), so the icon can show when there are new ones. */
 const SEEN = 'dietrying.notesSeen';
 const seen = () => { try { return localStorage.getItem(SEEN) ?? ''; } catch { return ''; } };
@@ -93,7 +98,7 @@ export class Menu extends Phaser.Scene {
 
   show(screen: Screen): void {
     if (screen === 'tree') return skillWeb(this, this.root, () => this.show('save'));
-    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes() }[screen]();
+    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog() }[screen]();
     this.root.replaceChildren(...[panel].flat()); // each panel slides in (CSS)
   }
 
@@ -185,7 +190,7 @@ export class Menu extends Phaser.Scene {
     requestAnimationFrame(next);
     return [
       el('div', { className: 'panel maps' }, this.head(s.name, 'menu'), el('p', { className: 'chips' }, `${s.chips} chips`), el('div', { className: 'grid' }, ...cards)),
-      el('div', { className: 'corner' }, button('Settings', () => { this.settingsFrom = 'save'; this.show('settings'); }), button('Skill tree', () => this.show('tree'), 'go')),
+      el('div', { className: 'corner' }, button('Story', () => this.show('story')), button('Settings', () => { this.settingsFrom = 'save'; this.show('settings'); }), button('Skill tree', () => this.show('tree'), 'go')),
     ];
   }
 
@@ -211,6 +216,49 @@ export class Menu extends Phaser.Scene {
     return out;
   }
 
+  /** Every scene of the story in order; the ones this save has seen can be played again. */
+  storyLog(): HTMLElement {
+    const seen = new Set(profile.save.story.seen);
+    const name = (id: string) => {
+      const m = MAPS.find((x) => x.id === mapOf(id, story).id)!;
+      return id === 'opening' ? `Opening · ${m.name}` : id === 'ending' ? `Ending · ${m.name}` : `${m.name} · ${id.startsWith('before:') ? 'Before' : 'After'}`;
+    };
+    const rows = order(story).map((id) => {
+      const sc = story.scenes.find((x) => x.id === id)!;
+      return el('button', { type: 'button', className: 'slot', disabled: !seen.has(id), onclick: () => this.replay(id) },
+        seen.has(id) ? name(id) : 'Not seen yet', el('small', {}, seen.has(id) ? `Day ${sc.day} · ${sc.time}` : 'Clear the city before it to see it'));
+    });
+    return el('div', { className: 'panel story' }, this.head('Story', 'save'), el('div', { className: 'list' }, ...rows));
+  }
+
+  /** Plays a scene again from the Story log, its map shots over a painting of the city (half size, as the cards). */
+  replay(id: string) {
+    const m = MAPS.find((x) => x.id === mapOf(id, story).id)!, blood = profile.settings.gore !== 'none', key = `story-${m.id}`;
+    const needs = story.scenes.find((x) => x.id === id)!.shots.some((s) => s.type === 'map');
+    let art: HTMLCanvasElement | undefined, grid: Grid | undefined;
+    if (needs) { const data = half(m.data); grid = new Grid(data); paintMap(this, data, grid, key, blood); art = this.textures.get(key).getSourceImage() as HTMLCanvasElement; }
+    const T = grid?.tile ?? 16, g = grid?.goals ?? [], gw = grid?.w ?? 1;
+    const home = { x: ((g.reduce((n, i) => n + (i % gw), 0) / Math.max(1, g.length) + 0.5) * T + (art?.width ?? 0) / 2) / 2, y: ((g.reduce((n, i) => n + Math.floor(i / gw), 0) / Math.max(1, g.length) + 0.5) * T + (art?.height ?? 0) / 2) / 2 };
+    const VIEW = 180; // map pixels the picture shows at rest: as much as the fight shows, at this half size
+    this.root.hidden = true;
+    playScene({
+      id, mode: profile.settings.story === 'short' ? 'short' : 'full',
+      view: art && {
+        live: false,
+        frame: () => {},
+        draw: (pen, camera, p, t, still) => {
+          const at = pose(camera, p, t, still, home, VIEW, art!.height), vh = VIEW / at.f, vw = (vh * 320) / 136;
+          pen.rect(0, 22, 320, 136, '#000000');
+          pen.c.imageSmoothingEnabled = true;
+          pen.c.drawImage(art!, at.x - vw / 2, at.y - vh / 2, vw, vh, 0, 22, 320, 136);
+          pen.c.imageSmoothingEnabled = false;
+        },
+        end: () => { if (this.textures.exists(key)) this.textures.remove(key); },
+      },
+      done: () => { this.root.hidden = false; music('menu'); this.show('story'); },
+    });
+  }
+
   stats(): HTMLElement {
     const all = saves().flatMap((s) => (s ? [[s.name, s.stats] as const] : [])), total = noStats(), both = all.length > 1;
     for (const [, st] of all) for (const [f] of STATS) total[f] += st[f];
@@ -222,53 +270,13 @@ export class Menu extends Phaser.Scene {
   }
 
   settings(): HTMLElement {
-    const s = profile.settings, again = () => this.show('settings');
-    const set = <K extends keyof Settings>(k: K, v: Settings[K]) => { s[k] = v; persist(); again(); };
-    const choice = (label: string, k: 'gore' | 'quality', options: string[]) =>
-      el('div', { className: 'row' }, el('span', {}, label), el('div', { className: 'seg' },
-        ...options.map((o) => el('button', { type: 'button', textContent: o[0].toUpperCase() + o.slice(1), ariaPressed: String(s[k] === o), onclick: () => set(k, o as never) }))));
-    const volume = (label: string, k: 'master' | 'sfx' | 'music') => {
-      const input = el('input', { type: 'range', min: '0', max: '100', value: String(Math.round(s[k] * 100)), ariaLabel: label });
-      input.oninput = () => { s[k] = Number(input.value) / 100; retune(); }; // the music follows the slider
-      input.onchange = () => { s[k] = Number(input.value) / 100; persist(); retune(); if (k !== 'music') play('rifleman'); }; // a shot to hear the level by
-      return el('div', { className: 'row' }, el('span', {}, label), input);
-    };
     return el('div', { className: 'panel settings' },
       this.head('Settings', this.settingsFrom),
-      choice('Gore', 'gore', ['none', 'some', 'normal']),
-      choice('Quality', 'quality', ['low', 'medium', 'high']),
-      // Fewer bodies lying about is lighter on a slow device.
-      el('div', { className: 'row' }, el('span', {}, 'Dead bodies'), el('div', { className: 'seg' },
-        ...BODIES.map((n) => el('button', { type: 'button', textContent: n ? String(n) : 'None', ariaPressed: String(s.bodies === n), onclick: () => set('bodies', n) })))),
-      el('div', { className: 'row' }, el('span', {}, 'Left-handed'), el('div', { className: 'seg' },
-        el('button', { type: 'button', textContent: 'Off', ariaPressed: String(!s.lefty), onclick: () => set('lefty', false) }),
-        el('button', { type: 'button', textContent: 'On', ariaPressed: String(s.lefty), onclick: () => set('lefty', true) }))),
-      volume('Master volume', 'master'),
-      volume('Effects volume', 'sfx'),
-      volume('Music volume', 'music'),
-      this.storage(),
+      ...settingRows(() => this.show('settings')),
       el('div', { className: 'row' }, el('span', {}, 'Every save, side by side'), el('div', { className: 'seg' }, button('Statistics', () => this.show('stats')))),
       el('div', { className: 'row' }, el('span', {}, 'Cheats for testing'), el('div', { className: 'seg' }, button('Debug', () => { this.note = ''; this.show('debug'); }))),
       el('p', { className: 'note' }, `Build ${__BUILD__}`), // which version this device is running
     );
-  }
-
-  /** How much this device keeps for the game: the saves and settings, in browser storage that holds about 5 MB (the
-   *  bar), and everything else besides once it is installed (its offline copy), as far as the browser says. */
-  storage(): HTMLElement {
-    const LIMIT = 5 * 1024 * 1024;
-    let bytes = 0;
-    try {
-      for (let k = 0; k < localStorage.length; k++) {
-        const key = localStorage.key(k)!;
-        if (key.startsWith('dietrying.')) bytes += (key.length + (localStorage.getItem(key)?.length ?? 0)) * 2; // two bytes a character
-      }
-    } catch { /* storage blocked: nothing is kept */ }
-    const fill = el('i'), text = el('small', {}, `Saves ${size(bytes)} of about 5 MB`);
-    fill.style.width = `${Math.min(100, Math.max(1, (bytes / LIMIT) * 100))}%`;
-    fill.classList.toggle('full', bytes > LIMIT * 0.8);
-    navigator.storage?.estimate?.().then(({ usage }) => { if (usage) text.textContent += ` · ${size(usage)} in all on this device`; }, () => {});
-    return el('div', { className: 'row storage' }, el('span', {}, 'Storage'), el('div', { className: 'meter', role: 'img', ariaLabel: text.textContent ?? '' }, fill), text);
   }
 
   /** Cheats, for testing: they change the save in use. */
@@ -281,6 +289,11 @@ export class Menu extends Phaser.Scene {
       cheat('Unlock every skill', 'Every skill is owned, every level.', () => (s.skills = Object.fromEntries(NODES.map((n) => [n.id, n.max])))),
       cheat('Unlock every city', 'Every city is cleared.', () => MAPS.forEach((m) => (s.cleared[m.id] = true))),
       cheat('Replay the guided start', 'The guided start will run again on Main Street.', () => (s.tutorialDone = false)),
+      cheat('Replay the story from the start', 'Every scene will play again, the notebook blank.', () => (s.story = noStory())),
+      // The horde's routes: a test map to watch them on, with everything to hand, or drawn on every map this session.
+      button('Route test map', () => this.play(DEBUG_MAP.id), 'go'),
+      el('div', { className: 'row' }, el('span', {}, 'Show routes on every map'), el('div', { className: 'seg' },
+        ...[false, true].map((on) => el('button', { type: 'button', textContent: on ? 'On' : 'Off', ariaPressed: String(debugView.routes === on), onclick: () => { debugView.routes = on; this.show('debug'); } })))),
       el('p', { className: 'note' }, this.note),
     );
   }

@@ -53,7 +53,7 @@ test('a rifleman shoots what is in his cone and nothing behind him', () => {
   w.spawn(0, 240, 80);
   w.spawn(0, 80, 80);
   w.start();
-  run(w, 2);
+  run(w, 4);
   assert.equal(w.alive[0], 0, 'the zombie in front is dead');
   assert.equal(w.alive[1], 1, 'the one behind is untouched');
   assert.equal(w.kills, 1);
@@ -201,9 +201,9 @@ test('strikes: one missile at a time, each charge used once; a flare pulls zombi
   w.start();
   const z = w.spawn(kind('normal'), 100, 100);
   w.zhp[w.spawn(kind('brute'), 300, 20)] = 1e6; // keeps the run going
-  assert.ok(w.callStrike('missile', 100, 100));
-  assert.ok(!w.callStrike('missile', 100, 100), 'cooling down');
-  run(w, 2);
+  assert.ok(w.callStrike('missile', 100, 120)); // where it will have walked to when the missile lands
+  assert.ok(!w.callStrike('missile', 100, 120), 'cooling down');
+  run(w, 3);
   assert.equal(w.alive[z], 0);
   w.time += 20;
   assert.ok(w.callStrike('missile', 50, 50));
@@ -227,7 +227,7 @@ test('a soldier at a window is never attacked, cannot die, and shoots out into t
   assert.equal(w.placeSoldier('shield', 2 * 16 + 8, 7 * 16 + 8), undefined, 'one soldier per window, and no shields indoors');
   w.aim(s, s.x, 0);
   const z = w.spawn(ZOMBIE_KINDS.indexOf('normal'), s.x, 16);
-  w.zhp[z] = 60;
+  w.zhp[z] = 20; // one shot
   w.start();
   run(w, 4);
   assert.equal(w.alive[z], 0, 'shot through the window');
@@ -266,8 +266,9 @@ test('soldiers aim at a zombie anywhere in their cone, not just down the middle'
   const s = w.placeSoldier('rifleman', 100, 160)!;
   w.aim(s, 130, 160); // handle close in: the widest cone, pointing east
   w.spawn(0, 200, 125); // about 20 degrees off the middle
+  w.zhp[0] = 30; // one shot
   w.start();
-  run(w, 1.5);
+  run(w, 2);
   assert.equal(w.alive[0], 0);
   assert.ok(Math.abs(s.shot) > 0.1, 'he turned to his mark');
 });
@@ -289,6 +290,7 @@ test('a soldier in a window can shoot down the street, almost along the front of
   assert.ok(s.indoor, 'he is in the window');
   w.aim(s, 400, 40);
   w.spawn(0, 150, 40); // down the street, about 8 degrees off the building front
+  w.zhp[0] = 20; // one shot
   w.start();
   run(w, 2);
   assert.equal(w.alive[0], 0, 'the building he is in does not stop his shots');
@@ -307,16 +309,37 @@ test('a soldier in a window still cannot shoot through his building to the stree
   assert.equal(w.zhp[0], full('normal'), 'untouched: the walls stopped every shot');
 });
 
-test('a zombie keeps to its lane until a roadblock is close, then goes round it', () => {
-  // A street 10 wide; a barricade blocks the left side far down it, the right side is open.
+test('a zombie keeps to its route until a roadblock is close, then goes round it', () => {
+  // A street 10 wide, its route down the middle (column 4); a barricade across the middle far down it.
   const w = world(['SSSSSSSSSS', ...Array(28).fill('..........'), 'EEEEEEEEEE']);
-  w.placeBlock('wood', 2, 22, false); // tiles 1 to 3 of row 22
-  w.spawn(0, 40, 8); // above the barricade, column 2
+  assert.deepEqual(w.routes.list.map((r) => r.tiles[10] % 10), [4], 'one route: the street has no other way');
+  w.placeBlock('wood', 4, 22, false); // tiles 3 to 5 of row 22
+  w.spawn(0, 72, 8);
   w.start();
   let atHalfway = -1;
   run(w, 60, () => { if (atHalfway < 0 && w.zy[0] > 14 * 16) atHalfway = w.zx[0]; });
-  assert.ok(Math.abs(atHalfway - 40) < 8, `still in its lane 8 tiles before the barricade (x ${atHalfway.toFixed(0)}, started at 40)`);
+  assert.ok(Math.abs(atHalfway - 72) < 8, `still on its route 8 tiles before the barricade (x ${atHalfway.toFixed(0)}, started at 72)`);
   assert.equal(w.leaks, 1, 'and it still got round');
+});
+
+test('routes: a long way round gets one too; a zombie off its route follows one nearer it, or makes for it alone', () => {
+  // In at the top left, the safe zone bottom left: a short way down the middle, a long way round by the right.
+  const rows = Array.from({ length: 40 }, (_, y) => [...Array(50)].map((_, x) => {
+    if (x === 0 && y < 4) return 'S';
+    if (x === 0 && y >= 36) return 'E';
+    return y < 4 || y >= 36 || (x >= 20 && x < 24) || x >= 46 ? '.' : '#';
+  }).join(''));
+  const w = world(rows), [short, long] = w.routes.list;
+  assert.equal(w.routes.list.length, 2);
+  assert.ok(short.tiles.some((t) => t % 50 === 21 || t % 50 === 22) && long.tiles.some((t) => t % 50 >= 46), 'the middle street, then the far one');
+  // Alone and off any route, in the far street's top: it makes for a route; one beside it, nearer, it follows.
+  const a = w.spawn(0, 47.5 * 16, 30 * 16), b = w.spawn(0, 47.5 * 16, 31.2 * 16);
+  w.zroute[a] = 1; w.zprog[a] = long.tiles.findIndex((t) => Math.floor(t / 50) === 30 && t % 50 >= 46);
+  w.zroute[b] = -1; w.zprog[b] = 0;
+  w.start();
+  w.step();
+  assert.equal(w.zlink[a], 1, 'on its route');
+  assert.ok(w.zlink[b] > 0, 'following the one on its route');
 });
 
 test('a car covers 2 by 3 tiles and a bus 2 by 5, and a placed car turns', () => {

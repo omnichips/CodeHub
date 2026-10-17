@@ -1,0 +1,155 @@
+{
+  "opening": {
+    "Radio|All units. Chief Albright is not responding.": [0,3.95],
+    "JEC|Officer Reyes, you are the senior officer on the street.": [4.25,8.1],
+    "JEC|By order of the Joint Evacuation Command, you are Commander, Main Street.": [8.4,13.525],
+    "Reyes|I'm a patrol officer.": [13.825,16.475],
+    "JEC|Not any more.": [16.775,18.575],
+    "Nora|Congratulations, Danny. It's a title, not a raise.": [18.875,22.85],
+    "Nora|I'm sorry.": [23.15,24.775],
+    "Pike|How long, sir?": [25.075,26.6],
+    "Reyes|Forty minutes. Then the buses go.": [26.9,30.4],
+    "Dunne|That's what they said last time.": [30.7,33.775]
+  },
+  "after:main-street": {
+    "Pike|That's all fourteen.": [0,1.675],
+    "Reyes|That's all fourteen.": [1.975,4.325],
+    "Nora|Danny. The overpass was already down.": [4.625,7.625],
+    "Nora|Eleven buses are gone.": [7.925,10.125],
+    "Nora|Three turned back. We're going round by the farm road.": [10.425,14.025],
+    "Reyes|How many?": [14.325,16.1],
+    "Nora|Two hundred and twelve.": [16.4,18.35],
+    "Reyes|Next.": [18.65,20.175]
+  },
+  "before:chicago": {
+    "Harbor master|Three ferries. The first loads at six. Hold both roads till the last one's away.": [0,5.775],
+    "Reyes|How long?": [6.075,7.8],
+    "Harbor master|Six hours.": [8.1,9.625],
+    "Nora|I'm at the evacuation desk now. I've got you three ferries and a harbor master who doesn't like waiting.": [9.925,16.7],
+    "Reyes|You got out.": [17,18.9],
+    "Nora|I got out. Hold the roads, Danny.": [19.2,21.9],
+    "Pike|Six hours.": [22.2,23.65],
+    "Dunne|Seen longer.": [23.95,25.8]
+  },
+  "after:chicago": {
+    "Harbor master|Ferries hold offshore until the pier is clear.": [0,3],
+    "Dunne|It won't be clear.": [3.3,5.55],
+    "Nora|They're not coming back in, Danny.": [5.85,8.175],
+    "Reyes|Tell me the number.": [8.475,10.4],
+    "Nora|Four hundred and ten.": [10.7,12.725],
+    "Hollis|My sister's in that crowd, Commander.": [13.025,15.875],
+    "Reyes|Go.": [16.175,17.675],
+    "Pike|Where to?": [17.975,19.275],
+    "Reyes|Wherever they point.": [19.575,21.8]
+  },
+  "before:new-york": {
+    "JEC|Eleven thousand at the harbor plaza. The fleet lifts them in three runs. Last run departs 09:00.": [0,7.575],
+    "JEC|Hold the three avenues until then.": [7.875,10.875],
+    "Dunne|Eleven thousand.": [11.175,13.45],
+    "Pike|We always hold, sir.": [13.75,15.5]
+  },
+  "after:new-york": {
+    "Loudspeaker|ALL VESSELS RETURN TO STATION. FLEET RECALLED.": [0,4.41],
+    "JEC|Fleet recalled to cover another port. Your orders stand. Thank you for your service.": [4.71,10.41],
+    "Reyes|Another port.": [10.71,12.635],
+    "Pike|Did they just—": [12.935,14.385],
+    "Reyes|Yes.": [14.685,16.185],
+    "Dunne|Forty minutes.": [16.485,18.435],
+    "Reyes|I know.": [18.735,20.385]
+  },
+  "before:manila": {
+    "Lola|Kain na.": [0,1.8],
+    "Dunne|Better than the rations.": [2.1,4.725],
+    "Nora|The relief ship docks at the river port at dawn and leaves at seven, full or not.": [5.025,10.275],
+    "Nora|It's five kilometres on foot. Nine thousand people.": [10.575,14.45],
+    "Reyes|Through the alleys.": [14.75,16.8],
+    "Nora|Through the alleys.": [17.1,18.8]
+  },
+  "after:manila": {
+    "Captain|I can't wait any longer, Commander. They're at the wall. I'm sorry.": [0,4.2],
+    "Nora|Two thousand one hundred aboard.": [4.5,6.975],
+    "Okoye|I'll stay with them, sir. Somebody should.": [7.275,10.625],
+    "Reyes|Stay.": [10.925,12.45]
+  },
+  "before:mexico": {
+    "Vendor|Café, comandante?": [0,2.275],
+    "Reyes|Please.": [2.575,4.225],
+    "Nora|Six helicopters. They land in the square from eight o'clock.": [4.525,8.575],
+    "Nora|Mexico City is over two thousand metres up, the air is thin, and they can only carry half.": [8.875,15.3],
+    "Dunne|Half of what?": [15.6,17.525],
+    "Nora|Don't.": [17.825,19.2]
+  },
+  "after:mexico": {
+    "Pilot|No fuel, Commander. We're done.": [0,2.95],
+    "Nora|One hundred and forty.": [3.25,5.375],
+    "Vendor|Better a blanket.": [5.675,7.075]
+  },
+  "before:rome": {
+    "Dunne|Sleep. I'll watch.": [0,2.25],
+    "Pike|I'm awake, Sergeant.": [2.55,4.3],
+    "Nora|A train leaves the depot in two hours. It runs to the coast. JEC says there are ships at the port.": [4.6,12],
+    "Nora|Please hold the road until it's gone.": [12.3,14.925],
+    "Reyes|Have you slept?": [15.225,17.175],
+    "Nora|Not since Manila.": [17.475,19.25]
+  },
+  "after:rome": {
+    "Nora|They're there.": [0,1.55],
+    "Nora|Danny. The port is empty. No ships. No one.": [1.85,5.6],
+    "Dunne|Three thousand people on a train at an empty dock.": [5.9,10.675],
+    "Nora|They're alive. For now.": [10.975,13.125],
+    "Pike|Sir, when do we stop?": [13.425,15.1],
+    "Reyes|When it's quiet.": [15.4,17.4],
+    "Pike|It's never quiet.": [17.7,19.325],
+    "Reyes|No.": [19.625,21.1]
+  },
+  "before:tokyo": {
+    "Pike|At least it's organised.": [0,1.75],
+    "Reyes|That's the worst part.": [2.05,4.3],
+    "Reyes|When the last train comes, you take the children on it.": [4.6,9.075],
+    "Pike|Sir—": [9.375,10.525],
+    "Reyes|That's an order.": [10.825,12.925],
+    "JEC|Evacuation trains depart on schedule. Final departure 02:10.": [13.225,18.85],
+    "JEC|Departures will not be held.": [19.15,21.9],
+    "Dunne|Not held.": [22.2,23.925],
+    "Nora|I tried, Danny. It's automatic.": [24.225,26.95]
+  },
+  "after:tokyo": {
+    "JEC|Final departure complete.": [0,2.7],
+    "JEC|This is the last scheduled transmission of the Joint Evacuation Command. Stay safe.": [3,9],
+    "Nora|Twelve hundred.": [9.3,11],
+    "Dunne|He'll be all right.": [11.3,13.4],
+    "Reyes|Sure.": [13.7,15.175]
+  },
+  "before:london": {
+    "Dunne|I never liked bridges.": [0,2.475],
+    "Vega|Four thousand to cross. Fifty minutes.": [2.775,5.6],
+    "Nora|South bank says the bridge comes down at four thirty. Four thousand to cross.": [5.9,11.05],
+    "Nora|Danny. None of the Tokyo trains have reported in.": [11.35,14.775]
+  },
+  "after:london": {
+    "South bank commander|Bridge is down. Contact on the north approach. I'm sorry, Commander.": [0,5.35],
+    "Reyes|I had eleven minutes.": [5.65,8.175],
+    "Dunne|Just us, then.": [8.475,10.65],
+    "Reyes|Just us.": [10.95,12.7]
+  },
+  "before:white-house": {
+    "Dunne|Last of the peaches.": [0,2.375],
+    "Reyes|Save it.": [2.675,4.3],
+    "Dunne|For what?": [4.6,6.175],
+    "Nora|There's a broadcast on the White House frequency.": [6.475,9.75],
+    "Nora|Helicopters from the carrier land on the south lawn at five. They take the last eight hundred.": [10.05,16.15],
+    "Nora|Hold the lawn, Danny.": [16.45,18.3],
+    "Reyes|Who's it from?": [18.6,20.4],
+    "Nora|It's on the frequency.": [20.7,22.625]
+  },
+  "ending": {
+    "Loudspeaker|Helicopters will land on the south lawn at 05:00.": [0,5.11],
+    "Nora|Danny. It's a recording. It's been looping since Day 5.": [5.41,9.335],
+    "Nora|I wanted it to be real.": [9.635,11.71],
+    "Reyes|It's all right, Nora.": [12.01,14.31],
+    "Nora|There's nobody left on the net but me.": [14.61,17.36],
+    "Reyes|Stay on it.": [17.66,19.46],
+    "Dunne|So that's that.": [19.76,21.76],
+    "Dunne|Well. We might as well die trying.": [22.06,25.46]
+  }
+}

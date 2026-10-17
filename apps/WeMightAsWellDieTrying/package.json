@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "icons": "node scripts/icons.ts",
-    "test": "node --test src/art/pixels.test.ts src/sim/sim.test.ts src/meta/meta.test.ts"
+    "test": "node --test src/art/pixels.test.ts src/sim/sim.test.ts src/meta/meta.test.ts src/story/story.test.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"

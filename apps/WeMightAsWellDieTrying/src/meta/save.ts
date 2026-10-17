@@ -4,6 +4,7 @@
 import oldCosts from '../data/skilltree-v2-costs.json' with { type: 'json' };
 import { PRIORITIES, ROADBLOCKS, STRUCTS, UNITS, type Setup } from '../sim/world.ts';
 import { NODE, STARTING } from './progress.ts';
+import { fromCleared, noStory, storyFrom, type StoryState } from '../story/record.ts';
 
 export interface Settings {
   gore: 'none' | 'some' | 'normal';
@@ -13,6 +14,9 @@ export interface Settings {
   master: number; // 0 to 1
   sfx: number;
   music: number;
+  dust: number; // 0 to 1: how much dust blows across the screen
+  mix: boolean; // play alongside other apps' music (Spotify): the game's music off, and on an iPhone its sound follows the silent switch
+  story: 'full' | 'short' | 'off'; // the cutscenes: all of them, their words only, or none (their notebook pages are still written)
 }
 export interface Stats {
   runs: number;
@@ -23,7 +27,7 @@ export interface Stats {
   time: number; // seconds of fighting
 }
 export interface Save {
-  version: 4;
+  version: 5;
   name: string;
   chips: number;
   skills: Record<string, number>; // skill web node: levels bought
@@ -32,18 +36,19 @@ export interface Save {
   stats: Stats;
   setups: Record<string, Setup>; // each city's defence as it was last started, to put down again
   played: number; // when it was last opened, ms since 1970
+  story: StoryState; // scenes seen and the notebook's pages
 }
 
 export const SLOTS = 3;
 /** The choices for how many dead bodies may lie about at once. */
 export const BODIES = [0, 50, 150, 300];
-export const VERSION = 4;
+export const VERSION = 5;
 const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.save'); // slot 1 keeps the key of the days before slots
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now() });
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6 });
+export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory() });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full' });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
@@ -104,6 +109,8 @@ export function parse(text: string): Save | undefined {
     setups: r.version < 4 ? {} : Object.fromEntries(Object.entries(r.setups && typeof r.setups === 'object' ? r.setups : {}).slice(0, 50).map(([id, v]) => [id, setupFrom(v)])),
     stats: { runs: count(st.runs), wins: count(st.wins), kills: count(st.kills), leaks: count(st.leaks), chips: count(st.chips), time: count(st.time) },
     played: count(r.played) || Date.now(), // version 1 never said
+    // The story came in version 5: a city cleared before it counts its scenes as seen.
+    story: r.version < 5 ? fromCleared(cleared) : storyFrom(r.story),
   };
 }
 
@@ -118,6 +125,9 @@ export function settingsFrom(raw: unknown): Settings {
     master: unit(s.master, base.master),
     sfx: unit(s.sfx, base.sfx),
     music: unit(s.music, base.music),
+    dust: unit(s.dust, base.dust),
+    mix: s.mix === true,
+    story: pick(s.story, ['full', 'short', 'off'] as const, base.story),
   };
 }
 

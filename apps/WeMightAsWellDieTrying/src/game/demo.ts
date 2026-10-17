@@ -5,7 +5,7 @@ import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
 import { bake, load } from '../art/atlas.ts';
 import { profile } from '../meta/profile.ts';
-import { build } from '../meta/progress.ts';
+import { PACE, build } from '../meta/progress.ts';
 import { Grid, type MapData } from '../sim/grid.ts';
 import { STEP, World, type UnitKind, type WavePlan } from '../sim/world.ts';
 import { paintMap } from './mapart.ts';
@@ -19,11 +19,11 @@ const MAP: MapData = {
   rows: Array.from({ length: 12 }, (_, y) => (y < 3 ? BUILT[0] : y > 8 ? BUILT[1] : `EE${'.'.repeat(W - 3)}S`)),
   decor: Array.from({ length: 4 }, (_, k) => [{ kind: 'lamp', x: (5 + k * 6.5) * T, y: 3.5 * T }, { kind: 'lamp', x: (8 + k * 6.5) * T, y: 8.5 * T }]).flat(),
 };
-/** How many come every 5 seconds: more for those who mow crowds down, or who need a crowd to show what they do. */
+/** How many come every 30 seconds of fight (6 on screen, at the game's 1x): more for those who mow crowds down, or who need a crowd to show what they do. */
 const PRESSURE: Partial<Record<UnitKind, number>> = { machinegunner: 12, flamethrower: 10, mortar: 10, grenadier: 10, bazooka: 10, shotgunner: 9, shield: 9, medic: 10, engineer: 10 };
 const plan = (unit: UnitKind): WavePlan => ({
   gap: 0.5,
-  waves: Array.from({ length: 400 }, (_, k) => ({ duration: 5, spawn: { normal: PRESSURE[unit] ?? 6, fast: 1, ...(k % 3 === 2 ? { armored: 1 } : {}) } })),
+  waves: Array.from({ length: 400 }, (_, k) => ({ duration: 30, spawn: { normal: PRESSURE[unit] ?? 6, fast: 1, ...(k % 3 === 2 ? { armored: 1 } : {}) } })),
 });
 
 class Demo extends Game {
@@ -84,7 +84,8 @@ class Demo extends Game {
 
   update(_time: number, delta: number) {
     const w = this.world;
-    this.acc += Math.min(delta, 100) / 1000;
+    this.acc += (Math.min(delta, 100) / 1000) * PACE; // as brisk as the game at 1x
+    this.anims.globalTimeScale = PACE;
     while (this.acc >= STEP) {
       w.step(STEP);
       this.acc -= STEP;

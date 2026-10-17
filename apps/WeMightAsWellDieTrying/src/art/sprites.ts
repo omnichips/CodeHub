@@ -345,6 +345,29 @@ const PROPS: Record<string, [number, Part[]]> = {
     c('plane', [-2, -19], 2.4, 3, 1, [-1, 19]), c('plane', [-15, -6], 1.4, 3, 1, [-15, 6]), c('plane', [-16, 0], 2.6, 4, 2, [16, 0]),
     c('metal', [-9, -4.5], 1.9, 5, 1.5, [-5, -4.5]), c('metal', [-9, 4.5], 1.9, 5, 1.5, [-5, 4.5]), c('lens', [11, 0], 1.4, 6.5, 1),
   ]],
+  // Strikes in flight, about to scale (a car, 4.5 m long, is 48 px: about 10 px to the metre).
+  /** The A-10 from above, nose east: 16 m long, 17.5 m across its straight wings; the two engines high on the back,
+   *  the twin tail fins, bombs under the wings, the cannon in the nose. */
+  jet: [192, [
+    c('plane', [4, -86], 8, 3, 1, [4, 86]), c('plane', [6, -32], 12, 3.4, 1.2, [6, 32]), // the wings, thicker at the root
+    ...[-1, 1].flatMap((s) => [c('metal', [8, s * 70], 4.5, 4.4, 0.4, [2, s * 48]), c('metal', [-3, s * 34], 4, 4.8, 0.4, [6, s * 22])]), // grey camouflage
+    ...[-1, 1].map((s) => c('black', [-3, s * 84], 0.6, 4.5, 0, [-3, s * 50])), // the ailerons' seams
+    c('plane', [-82, -30], 5, 3.6, 1, [-82, 30]), c('plane', [-88, -30], 2.4, 6.5, 1, [-70, -30]), c('plane', [-88, 30], 2.4, 6.5, 1, [-70, 30]), // the tail and its two fins
+    c('plane', [-84, 0], 7, 4, 1.5, [76, 0]), c('plane', [76, 0], 5, 4, 1.2, [86, 0]), c('metal', [-70, 0], 1, 6, 0, [40, 0]), // the fuselage, its nose, its spine
+    c('plane', [-52, -15], 6.5, 6.5, 2.5, [-24, -15]), c('plane', [-52, 15], 6.5, 6.5, 2.5, [-24, 15]), // the engines, high on the back
+    c('hole', [-23, -15], 4.4, 10), c('hole', [-23, 15], 4.4, 10), c('black', [-55, -15], 4, 9.5), c('black', [-55, 15], 4, 9.5), c('metal', [-36, -8], 1.2, 6, 0, [-36, 8]), // intakes, exhausts, the pylons
+    c('lens', [54, 0], 5, 6.2, 1.5, [68, 0]), c('metal', [86, 0], 1.3, 4.6, 0, [93, 0]), // the canopy, the gun
+  ]],
+  /** A cruise missile coming in, 4 m long: white body, red nose, fins, its motor burning. */
+  'missile-fly': [BIG, [
+    c('fire', [-24, 0], 2.4, 5), c('flash', [-25, 0], 1.3, 6),
+    c('metal', [-18, 0], 0.9, 3, 0, [-23, -6]), c('metal', [-18, 0], 0.9, 3, 0, [-23, 6]), c('metal', [2, 0], 0.7, 3, 0, [-2, -7]), c('metal', [2, 0], 0.7, 3, 0, [-2, 7]),
+    c('snow', [-20, 0], 2.7, 3.5, 1.5, [14, 0]), c('cross', [17, 0], 2.2, 3.6, 1),
+  ]],
+  /** A napalm canister, 3.5 m long: a fat finless tank with a cap at the nose, tumbling as it falls. */
+  'napalm-can': [BIG, [c('tank', [-14, 0], 5.2, 3, 2, [11, 0]), c('metal', [13, 0], 4, 3.4, 1.5), c('metal', [-14, 0], 3.4, 3.4, 1), ...[-6, 3].map((x) => c('black', [x, -5], 0.8, 3.6, 0, [x, 5]))]],
+  /** A 155 mm shell, under a metre long. */
+  shell: [SIZE, [c('brass', [-5, 0], 1.7, 2, 1, [2, 0]), c('metal', [2, 0], 1.6, 2.2, 1, [5, 0]), c('metal', [6, 0], 0.9, 2.4, 1)]],
   napalm: [SIZE, [c('tank', [-6, 0], 4, 2, 2, [5, 0]), c('metal', [-2, -4], 0.6, 4.4, 0, [-2, 4]), c('metal', [2, -4], 0.6, 4.4, 0, [2, 4]), c('fire', [9, 0], 2.2, 6), c('flash', [9.5, 0], 1, 7)]],
   smoke: [SIZE, [c('mask', [-6, 0], 3.2, 2, 2, [2, 0]), c('metal', [3.5, 0], 1.3, 3.5), c('smoke', [7, -3], 3, 4, 2), c('smoke', [9, 2.5], 2.4, 4, 2)]],
   artillery: [SIZE, [c('brass', [-9, 0], 2.6, 2, 1.5, [3, 0]), c('metal', [3, 0], 2.4, 2.2, 1.5, [8, 0]), c('metal', [9, 0], 1.4, 2.4, 1)]],
