@@ -212,7 +212,7 @@ const CUT: Record<string, number> = { [panic]: 5 };
 /** Each city's sound under a fight: loops, each at its level, and now and then (every 20 to 60 s) one of `now`. */
 const CITIES: Record<string, { loops: [string, number][]; now?: string[] }> = {
   'main-street': { loops: [[wind1, 0.5]] },
-  chicago: { loops: [[wind2, 0.5], [train, 0.25]] }, // the L overhead
+  chicago: { loops: [[wind2, 0.5]] },
   'new-york': { loops: [[wind3, 0.5]] },
   manila: { loops: [[river, 0.4], [crowd, 0.3]] }, // the canal
   mexico: { loops: [[crowd, 0.3]], now: ['bells'] }, // the cathedral

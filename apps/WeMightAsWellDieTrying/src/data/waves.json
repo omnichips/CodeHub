@@ -1,6 +1,6 @@
 {
   "main-street": {
-    "gap": 7,
+    "gap": 75,
     "waves": [
       { "duration": 25, "spawn": { "normal": 125 } },
       { "duration": 28, "spawn": { "normal": 188, "fast": 38 } },
@@ -10,7 +10,7 @@
     ]
   },
   "chicago": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 30, "spawn": { "normal": 225, "fast": 30 } },
       { "duration": 32, "spawn": { "normal": 270, "fast": 45, "jumper": 15 } },
@@ -23,7 +23,7 @@
     ]
   },
   "new-york": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 30, "spawn": { "normal": 200, "fast": 30 } },
       { "duration": 32, "spawn": { "normal": 250, "fast": 40, "jumper": 10 } },
@@ -38,7 +38,7 @@
     ]
   },
   "london": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 352, "fast": 28 } },
       { "duration": 36, "spawn": { "normal": 391, "fast": 35 } },
@@ -55,7 +55,7 @@
     ]
   },
   "white-house": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 401, "fast": 24 } },
       { "duration": 36, "spawn": { "normal": 447, "fast": 30 } },
@@ -72,7 +72,7 @@
     ]
   },
   "rome": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 305, "fast": 22 } },
       { "duration": 36, "spawn": { "normal": 329, "fast": 29, "jumper": 13 } },
@@ -88,7 +88,7 @@
     ]
   },
   "tokyo": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 350, "fast": 21 } },
       { "duration": 36, "spawn": { "normal": 383, "fast": 27, "jumper": 10 } },
@@ -104,7 +104,7 @@
     ]
   },
   "mexico": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 300, "fast": 18 } },
       { "duration": 37, "spawn": { "normal": 332, "fast": 24, "jumper": 9 } },
@@ -119,7 +119,7 @@
     ]
   },
   "manila": {
-    "gap": 8,
+    "gap": 75,
     "waves": [
       { "duration": 34, "spawn": { "normal": 256, "fast": 20 } },
       { "duration": 37, "spawn": { "normal": 280, "fast": 27, "jumper": 10 } },

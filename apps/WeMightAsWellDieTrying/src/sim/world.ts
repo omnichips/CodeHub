@@ -111,7 +111,30 @@ export interface Soldier {
   indoor: boolean; // at a window or on a roof: cannot die, never targeted, longer range, less damage
   kills: number; // zombies he has killed this run (his shots, his shells, the fires he lit)
   leaving?: boolean; // pulled out mid-wave: walking back to the safe zone, then back in the bar
+  name: string; // his surname, for his card and the memorial
 }
+
+/** Surnames for the squad, one each, none twice in a fight. */
+const NAMES = ['Alvarez', 'Reyes', 'Okafor', 'Novak', 'Tanaka', 'Murphy', 'Santos', 'Kowalski', 'Haddad', 'Mendoza', 'Brennan', 'Castillo', 'Nguyen',
+  'Ibarra', 'Lindqvist', 'Abara', 'Dela Cruz', 'Moreau', 'Petrov', 'Garza', 'Hale', 'Kim', 'Bautista', 'Rossi', 'Adeyemi', 'Walsh', 'Ortega', 'Fischer',
+  'Silva', 'Navarro', 'Duarte', 'Yamada', "O'Neil", 'Romero', 'Quinn', 'Mercado', 'Jensen', 'Sato', 'Villanueva', 'Brooks', 'Aquino', 'Marino', 'Kaur',
+  'Delgado', 'Hayes', 'Torres', 'Volkov', 'Mensah', 'Pacheco', 'Ward', 'Lim', 'Esposito', 'Cruz', 'Bishop', 'Salazar', 'Ito', 'Grady', 'Ferreira'];
+/** Someone left in a building: a soldier holds its door a while (`CIVILIAN_HOLD`) to bring them out, then they are
+ *  walked to the safe zone like a soldier. Zombies that reach one hurt them. */
+export interface Civilian {
+  id: number;
+  x: number; // where they stand (in the street at the door, until brought out)
+  y: number;
+  door: number; // the building tile they are in (-1: hiding in an abandoned car instead, on a map with few buildings)
+  state: 'inside' | 'out' | 'saved' | 'dead';
+  held: number; // seconds of fight a soldier has held the door
+  hp: number;
+  walking: boolean;
+  dest?: { x: number; y: number; field: Float32Array };
+}
+export const CIVILIAN_HOLD = 15; // seconds of fight a soldier must hold the door: 3 s at 1× (PACE 5)
+const CIVILIAN = { hp: 60, speed: 34, radius: 4, reach: 22 }; // reach: how near the door a soldier must stand
+
 /** Anything built that is not a roadblock: towers, ammo, mines, wire, puddles and the rest. Sits on whole tiles. */
 export interface Structure {
   id: number;
@@ -164,6 +187,7 @@ export class World {
   leakLimit: number; // lifted by the debug switch for unlimited leaks
   hpBy = 1; // the save's difficulty: every zombie's health times this
   countBy = 1; // and every wave's numbers
+  sightBy = 1; // the weather: rain and fog cut every soldier's range by a few percent
   phase: 'plan' | 'wave' | 'won' | 'lost' = 'plan';
   time = 0;
   kills = 0;
@@ -171,6 +195,7 @@ export class World {
   killsBy: Record<string, number> = {};
   private by: string | Soldier = ''; // who is dealing the damage being done right now: a soldier, or what else by name
   leaks = 0;
+  leakAt: { x: number; y: number }[] = []; // where they got through (the first 300), for the report's sketch
   wave = 0;
   flow!: Float32Array;
   private readonly flowFree: Float32Array; // ignores roadblocks: the way a zombie goes until one is close ahead
@@ -203,6 +228,7 @@ export class World {
   private free: number[] = [];
 
   soldiers: Soldier[] = [];
+  civilians: Civilian[] = [];
   roadblocks: Roadblock[] = [];
   shots: Shot[] = [];
   blasts: Blast[] = [];
@@ -332,6 +358,17 @@ export class World {
   }
 
   placeSoldier(kind: UnitKind, x: number, y: number, owner?: Soldier): Soldier | undefined {
+    const s = this.ghost(kind, x, y, owner);
+    if (!s) return;
+    const taken = new Set(this.soldiers.map((o) => o.name)), free = NAMES.filter((n) => !taken.has(n));
+    s.name = free.length ? free[(this.random() * free.length) | 0] : NAMES[(this.random() * NAMES.length) | 0];
+    this.soldiers.push(s);
+    if (!owner) this.count(kind, 1);
+    return s;
+  }
+
+  /** The soldier `placeSoldier` would put down at (x, y), not put down: for showing his cone before he is dropped. */
+  ghost(kind: UnitKind, x: number, y: number, owner?: Soldier): Soldier | undefined {
     const spot = this.spotFor(kind, x, y);
     if (!spot) return;
     ({ x, y } = spot);
@@ -340,10 +377,8 @@ export class World {
     const s: Soldier = {
       kind, x, y, hp: u.hp, dead: false, angle: north, reach, cooldown: 0, firedAt: -1, shot: north, walking: false, heading: north,
       facing: facingOf(north), priority: 'nearest', turrets: u.turrets ?? 0, owner, rangeBy: 1, rateBy: 1, incendiary: false, cover: 1,
-      indoor: spot.indoor, kills: 0,
+      indoor: spot.indoor, kills: 0, name: '',
     };
-    this.soldiers.push(s);
-    if (!owner) this.count(kind, 1);
     return s;
   }
 
@@ -398,6 +433,73 @@ export class World {
     s.dest = { x, y, field: distanceField(this.grid, [home], (i) => (wall[i] || block[i] ? Infinity : 1)) };
     s.leaving = true;
     return true;
+  }
+
+  /** Puts `n` civilians in buildings along the streets: doors partway down the horde's way (not at its ways in nor
+   *  beside the safe zone), spread apart, the same doors every time on a map. */
+  placeCivilians(n: number) {
+    const { w, h, wall, goal, tile: T } = this.grid, flow = this.flowFree;
+    const far = Math.max(...this.grid.spawns.map((i) => flow[i]).filter(Number.isFinite));
+    const spots: { street: number; door: number; k: number }[] = [];
+    for (let i = 0; i < w * h; i++) {
+      if (wall[i] || goal[i] || !Number.isFinite(flow[i]) || flow[i] < far * 0.3 || flow[i] > far * 0.75) continue;
+      const x = i % w, door = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w].find((j) => j >= 0 && j < w * h && wall[j] === 1);
+      if (door !== undefined) spots.push({ street: i, door, k: Math.imul(i + 1, 2654435761) >>> 0 });
+    }
+    // A map with few buildings along the way (a bridge, a lawn): some hide in the abandoned cars in the street instead.
+    for (const rb of this.roadblocks.filter((o) => o.prop)) {
+      const [cx, cy] = this.blockCentre(rb), around = [[0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => this.grid.at(cx + dx * T * 1.5, cy + dy * T * 1.5));
+      const street = around.find((i) => i >= 0 && !wall[i] && !goal[i] && !this.grid.block[i] && Number.isFinite(flow[i]) && flow[i] > far * 0.25 && flow[i] < far * 0.8);
+      if (street !== undefined) spots.push({ street, door: -1, k: Math.imul(street + 7, 2654435761) >>> 0 });
+    }
+    spots.sort((a, b) => (a.door < 0 ? 1 : 0) - (b.door < 0 ? 1 : 0) || a.k - b.k); // a building's door first, a car only if need be
+    const picked: typeof spots = [], dist = (p: (typeof spots)[number], s: (typeof spots)[number]) => Math.hypot((p.street % w) - (s.street % w), Math.floor(p.street / w) - Math.floor(s.street / w));
+    for (let apart = Math.max(w, h) / 5; apart >= 2 && picked.length < n; apart /= 2) // spread apart, closer if they will not fit
+      for (const s of spots) if (picked.length < n && !picked.includes(s) && picked.every((p) => dist(p, s) > apart)) picked.push(s);
+    this.civilians = picked.map((s, id) => ({ id, x: ((s.street % w) + 0.5) * T, y: (Math.floor(s.street / w) + 0.5) * T, door: s.door, state: 'inside', held: 0, hp: CIVILIAN.hp, walking: false }));
+  }
+
+  /** Walks a civilian who is out toward (x, y): anywhere open, the safe zone too. */
+  moveCivilian(c: Civilian, x: number, y: number) {
+    const i = this.grid.at(x, y);
+    if (c.state !== 'out' || i < 0 || this.grid.wall[i] || this.grid.block[i]) return false;
+    const { wall, block } = this.grid;
+    c.dest = { x, y, field: distanceField(this.grid, [i], (j) => (wall[j] || block[j] ? Infinity : 1)) };
+    return true;
+  }
+
+  get saved() { return this.civilians.filter((c) => c.state === 'saved').length; }
+
+  /** Each step: a soldier standing at a door brings its civilian out; those out walk where they were sent, are hurt
+   *  by zombies touching them, and are safe once in the safe zone. */
+  private updateCivilians(dt: number) {
+    for (const c of this.civilians) {
+      if (c.state === 'inside') {
+        const guard = this.soldiers.some((s) => !s.dead && !s.owner && !s.walking && Math.hypot(s.x - c.x, s.y - c.y) <= CIVILIAN.reach);
+        c.held = guard ? c.held + dt : Math.max(0, c.held - dt * 2);
+        if (c.held >= CIVILIAN_HOLD) c.state = 'out';
+        continue;
+      }
+      if (c.state !== 'out') continue;
+      c.walking = false;
+      if (c.dest) {
+        const { x, y, field } = c.dest, d = Math.hypot(x - c.x, y - c.y);
+        if (d < 1) c.dest = undefined;
+        else {
+          let dx = (x - c.x) / d, dy = (y - c.y) / d;
+          if (!this.clearLine(c.x, c.y, x, y) && downhill(this.grid, field, c.x, c.y, this.dir)) { dx = this.dir.x; dy = this.dir.y; }
+          const step = Math.min(d, CIVILIAN.speed * dt);
+          this.pushOut(c.x + dx * step, c.y + dy * step, CIVILIAN.radius);
+          c.x = this.px;
+          c.y = this.py;
+          c.walking = true;
+        }
+      }
+      for (const j of this.within(c.x, c.y, CIVILIAN.radius + 2)) c.hp -= ZOMBIES[this.zkind[j]].dps * dt;
+      const i = this.grid.at(c.x, c.y);
+      if (c.hp <= 0) c.state = 'dead';
+      else if (i >= 0 && this.grid.goal[i]) { c.state = 'saved'; c.dest = undefined; }
+    }
   }
 
   /** The defence as it stands while planning, to keep for next time. */
@@ -462,7 +564,7 @@ export class World {
   }
 
   /** How far a soldier reaches, a watchtower or a window included. */
-  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * (s.indoor ? this.stats.indoor.rangeBy : 1); }
+  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * this.sightBy * (s.indoor ? this.stats.indoor.rangeBy : 1); }
 
   /** What one hit of his does: less from indoors. */
   private damageOf(s: Soldier) { return this.stats.units[s.kind].damage! * (s.indoor ? this.stats.indoor.damageBy : 1); }
@@ -797,13 +899,14 @@ export class World {
     this.separate();
     this.collide(dt);
     this.updateSoldiers(dt);
+    this.updateCivilians(dt);
     this.hauls();
     this.updateStructures(dt);
     this.updateStrikes(dt);
     this.flyProjectiles(dt);
     this.age(dt);
     if (this.leaks >= this.leakLimit) this.phase = 'lost';
-    else if (this.spawningDone && this.living === 0) this.phase = 'won';
+    else if (this.spawningDone && this.living === 0 && !this.civilians.some((c) => c.state === 'out' && c.dest)) this.phase = 'won'; // a civilian on the way gets there first
   }
 
   private age(dt: number) {
@@ -1094,6 +1197,7 @@ export class World {
       if (t >= 0 && g.goal[t]) {
         this.kill(i);
         this.leaks += z.leak;
+        if (this.leakAt.length < 300) this.leakAt.push({ x, y });
       }
     }
   }

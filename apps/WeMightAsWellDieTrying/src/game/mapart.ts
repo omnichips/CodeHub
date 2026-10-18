@@ -7,7 +7,7 @@
 // a map always looks the same.
 import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
-import { BUILDING, type Grid, type MapData } from '../sim/grid.ts';
+import { BUILDING, distanceField, type Grid, type MapData } from '../sim/grid.ts';
 
 const P = palette;
 const LANES = 10; // the most lanes a road can have; wider than that both ways is a crossing
@@ -15,7 +15,7 @@ const SHADE = { rgb: [0, 0, 0], most: 1, over: 5 }; // roofs deep inside a block
 /** Each shanty and each casita its own colour: tin, rust, tarp; ochre, rose, teal. */
 const PATCHES = { y: ['#6a5444', '#5b6970', '#7a4a3a', '#5f6a4f', '#857f73', '#3f5a7a', '#8a6a3a'], x: ['#b0704f', '#c49a4a', '#b06a78', '#4f8a86', '#8a9a4a', '#c08a5a'] };
 type Front = 'brick' | 'glass' | 'shop' | 'deck' | 'clinic' | 'metal' | 'stone' | 'shack' | 'stucco';
-interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' | 'tin' }
+interface Roof { base: string; dark: string; light: string; front: Front; texture: 'gravel' | 'panels' | 'deck' | 'clean' | 'ribs' | 'tin' | 'tiles' }
 /** Each kind of building: its roof and the wall it shows the street. */
 const ROOFS: Record<string, Roof> = {
   b: { base: '#3d3634', dark: '#2d2827', light: '#4d4441', front: 'brick', texture: 'gravel' }, // brownstones
@@ -33,6 +33,14 @@ const ROOFS: Record<string, Roof> = {
   x: { base: '#a8664a', dark: '#8a5039', light: '#c07a5a', front: 'stucco', texture: 'clean' }, // casitas, painted every colour
   c: { base: '#6b4a40', dark: '#563a32', light: '#82594c', front: 'stone', texture: 'gravel' }, // colonial red stone (tezontle)
   '#': { base: '#3b3d3f', dark: '#2c2e30', light: '#4c4e50', front: 'brick', texture: 'gravel' },
+};
+
+/** Each city's own look (by its name): every roof one kind (keeping each building's own wall), every roof a patch of
+ *  its own colour, the ground cobbled or wet, and the street things only it has (see `cityProps` in paintMap). */
+const LOOKS: Record<string, { roof?: Omit<Roof, 'front'>; patchy?: boolean; ground?: 'cobbles' | 'wet' }> = {
+  Rome: { roof: { base: '#a4573a', dark: '#7a3c26', light: '#c8754e', texture: 'tiles' }, ground: 'cobbles' }, // terracotta, cobblestones
+  Manila: { roof: { base: '#6a5444', dark: '#4e3d31', light: '#87705c', texture: 'tin' }, patchy: true }, // tin roofs, every one its own colour
+  London: { ground: 'wet' }, // rain on the asphalt
 };
 
 /** A random stream seeded by a tile, so each tile looks the same every time it is painted. */
@@ -140,12 +148,32 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const same = (x: number, y: number, x2: number, y2: number) => built(x2, y2) && (x2 < 0 || y2 < 0 || x2 >= w || y2 >= h || lot(x, y) === lot(x2, y2));
 
   // ---- The tiles ----
+  const look = LOOKS[map.name] ?? {};
+  /** Cobblestones: rounded setts in offset rows, worn lighter on top. */
+  const cobbles = (px: number, py: number, r: () => number, tone: string, dark: string) => {
+    rect(dark, px, py, T, T);
+    for (let k = 0; k < T; k += 4) for (let j = (((py + k) / 4) % 2) * 2 - 2; j < T; j += 4) {
+      rect(tone, px + j, py + k, 3, 3);
+      if (r() < 0.5) dot('rgba(255,240,220,0.12)', px + j, py + k);
+    }
+  };
   const asphalt = (px: number, py: number, r: () => number) => {
+    if (look.ground === 'cobbles') return cobbles(px, py, r, '#5a5650', '#3a3834');
+    if (look.ground === 'wet') {
+      // Wet asphalt: darker and blue, the sky in long streaks on it, now and then a puddle with a bright edge.
+      rect('#262b31', px, py, T, T);
+      for (let k = 0; k < 10; k++) dot(k % 2 ? '#1d2126' : '#30363d', px + r() * T, py + r() * T);
+      if (r() < 0.5) rect('rgba(150,175,200,0.13)', px + ((r() * 14) | 0), py + ((r() * 6) | 0), 1, 6 + ((r() * 8) | 0));
+      if (r() < 0.02) { disc('rgba(120,150,180,0.14)', px + 8, py + 8, 4 + r() * 2); rect('rgba(220,235,245,0.3)', px + 5, py + 5, 4, 1); }
+      return;
+    }
     rect(P.asphalt1, px, py, T, T);
     if (r() < 0.35) rect('rgba(0,0,0,0.08)', px + ((r() * 6) | 0), py + ((r() * 6) | 0), 6 + ((r() * 6) | 0), 6 + ((r() * 6) | 0)); // a darker patch
     for (let k = 0; k < 14; k++) dot(k % 3 ? P.asphalt0 : P.asphalt2, px + r() * T, py + r() * T);
   };
   const paveSlabs = (px: number, py: number, r: () => number, big: boolean) => {
+    if (look.ground === 'cobbles' && big) return cobbles(px, py, r, '#8a7f6c', '#5e5648'); // Rome's piazze
+    if (look.ground === 'wet') { rect(P.pave0, px, py, T, T); rect('#5c5f60', px + 1, py + 1, T - 2, T - 2); if (r() < 0.2) rect('rgba(150,175,200,0.15)', px + 3, py + 3, 6, 1); return; } // wet slabs
     rect(P.pave0, px, py, T, T);
     if (big) rect(P.pave1, px + 1, py + 1, T - 2, T - 2);
     else { rect(P.pave1, px + 1, py + 1, 7, 7); rect(P.pave1, px + 9, py + 1, 6, 7); rect(P.pave1, px + 1, py + 9, 7, 6); rect(P.pave1, px + 9, py + 9, 6, 6); }
@@ -194,7 +222,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     for (let k = 0; k < 3; k++) dot(P.olive2, px + 2 + r() * (T - 4), py + 2 + r() * 5);
   };
   const roofTile = (x: number, y: number, px: number, py: number, r: () => number) => {
-    const t = ch(x, y), roof = ROOFS[t] ?? ROOFS['#'], base = t === 'y' || t === 'x' ? patch(x, y, PATCHES[t]) : roof.base;
+    const t = ch(x, y), own = ROOFS[t] ?? ROOFS['#'], roof: Roof = look.roof ? { ...look.roof, front: own.front } : own;
+    const base = t === 'y' || t === 'x' ? patch(x, y, PATCHES[t]) : look.patchy ? patch(x, y, PATCHES.y) : roof.base;
     rect(base, px, py, T, T);
     if ((lot(x, y) * 37) % 5 === 1) rect('rgba(90,60,50,0.1)', px, py, T, T); // lots differ a little
     if (roof.texture === 'gravel') for (let k = 0; k < 20; k++) dot(r() < 0.55 ? roof.dark : roof.light, px + r() * T, py + r() * T);
@@ -208,6 +237,14 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       if (r() < 0.08) { disc(P.outline, px + 4 + r() * 8, py + 4 + r() * 8, 3); } // a tyre holding it down
       else if (r() < 0.1) dot(P.pave1, px + 3 + r() * 10, py + 3 + r() * 10, 2); // a stone
       if (r() < 0.06) rect([P.navy1, P.teal1, P.red1, P.flash1][(r() * 4) | 0], px + r() * 6, py + r() * 6, 6 + r() * 6, 5 + r() * 6); // a tarp
+    }
+    else if (roof.texture === 'tiles') {
+      // Terracotta: rows of curved tiles, each row's lip in shadow, the joints offset row to row.
+      for (let k = 0; k < T; k += 4) {
+        rect(roof.dark, px, py + k + 3, T, 1);
+        for (let j = ((y * T + k) / 4) % 2 ? 0 : 2; j < T; j += 4) { rect(roof.light, px + j, py + k, 1, 3); rect(roof.dark, px + j + 3, py + k + 1, 1, 2); }
+      }
+      if (r() < 0.06) rect('rgba(60,40,30,0.3)', px + r() * 10, py + r() * 10, 4, 3); // a tile cracked or slipped
     }
     else for (let k = 0; k < T; k += 3) { rect(roof.light, px + k, py, 1, T); rect(roof.dark, px + k + 1, py, 1, T); } // corrugated ribs
     const edgeN = !same(x, y, x, y - 1), edgeS = !same(x, y, x, y + 1), edgeW = !same(x, y, x - 1, y), edgeE = !same(x, y, x + 1, y);
@@ -357,10 +394,10 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         if (ch(x, y - 1) === '~') { rect(P.outline, px, py, T, 3); rect(P.cream, px, py, T, 2); }
         if (ch(x, y + 1) === '~') { rect(P.outline, px, py + T - 3, T, 3); rect(P.pave1, px, py + T - 2, T, 2); }
       }
-      // Buildings and trees throw shade down and to the right, onto the tile beside them.
+      // Buildings and trees throw shade down and to the right, onto the tile beside them: dark close by, softer out.
       if (!wall[i]) {
-        if (built(x - 1, y)) rect('rgba(0,0,0,0.3)', px, py, 5, T);
-        if (built(x, y - 1)) rect('rgba(0,0,0,0.3)', px, py, T, 4);
+        if (built(x - 1, y)) { rect('rgba(0,0,0,0.32)', px, py, 6, T); rect('rgba(0,0,0,0.14)', px + 6, py, 5, T); }
+        if (built(x, y - 1)) { rect('rgba(0,0,0,0.32)', px, py, T, 5); rect('rgba(0,0,0,0.14)', px, py + 5, T, 4); }
         if (ch(x - 1, y) === 't' && t !== 't') rect('rgba(0,0,0,0.18)', px, py + 4, 2, 9);
       }
       // Litter, and old blood if gore is on.
@@ -981,8 +1018,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   };
   const shown: Drawn[] = [];
   drawn.set(key, shown);
-  /** Things drawn at a size of their own (the grounds' furniture: fountains, beds, the court, the L) grow with the map. */
-  const GROWS = ['fountain', 'flowers', 'helipad', 'flag', 'court', 'laundry', 'el'];
+  /** Things drawn at a size of their own (the grounds' furniture: fountains, beds, the court) grow with the map. */
+  const GROWS = ['fountain', 'flowers', 'helipad', 'flag', 'court', 'laundry'];
   const one = (d: { kind: string; x: number; y: number }) => {
     const { x, y } = d, r = rng(seedOf(x, y, 3));
     // Landmarks, drawn whole wherever they are.
@@ -1086,15 +1123,6 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       // A car burned out where it stopped in the street.
       disc('rgba(10,10,10,0.45)', x, y, 16);
       stamp(`car/${(x + y) % 3}`, x, y, r() * 0.8 - 0.4 + (r() < 0.5 ? 0 : Math.PI / 2), 0.66);
-    } else if (d.kind === 'el') {
-      // A stretch of Chicago's elevated railway over the street: its shadow, the steel deck, sleepers and rails, and a
-      // pillar under every other stretch.
-      const len = 2 * T;
-      rect('rgba(0,0,0,0.3)', x - len / 2 + 6, y - 7, len, 22);
-      rect(P.outline, x - len / 2, y - 11, len, 22); rect(P.metal0, x - len / 2, y - 10, len, 20);
-      for (let k = x - len / 2; k < x + len / 2; k += 3) rect(P.brown0, k, y - 9, 2, 18);
-      for (const dy of [-7, -3, 3, 7]) rect(P.metal2, x - len / 2, y + dy, len, 1);
-      if (Math.round(x / len) % 2 === 0) { rect(P.outline, x - 3, y + 11, 6, 3); rect(P.metal1, x - 2, y + 11, 4, 2); }
     } else if (d.kind === 'laundry') {
       // Washing hung on a line across an alley.
       rect('rgba(0,0,0,0.25)', x - 14, y + 2, 30, 1); rect(P.metal2, x - 15, y, 30, 1);
@@ -1129,6 +1157,9 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     }
   }
 
+  cityProps();
+  storytelling();
+
   // Traffic lights at the junctions' corners: a dark three-light head on its post (lit by game/mapanims.ts).
   for (const s of signals) {
     if (fadeAt(s.x, s.y) > 0.4) continue;
@@ -1143,6 +1174,119 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   c.lineWidth = 1;
   c.strokeStyle = 'rgba(196,160,88,0.55)';
   for (const [x, y] of map.slots ?? []) { c.beginPath(); c.arc((x + 0.5) * T, (y + 0.5) * T, 5.5, 0, 7); c.stroke(); }
+  // The city goes on past the map's edges: they fade into the dark rather than stop.
+  const edge = 3 * T * S;
+  for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, edge, 0, 0, 0, edge, H], [W, 0, W - edge, 0, W - edge, 0, edge, H], [0, 0, 0, edge, 0, 0, W, edge], [0, H, 0, H - edge, 0, H - edge, W, edge]]) {
+    const g = c.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, 'rgba(6,7,8,0.85)');
+    g.addColorStop(1, 'rgba(6,7,8,0)');
+    c.fillStyle = g;
+    c.fillRect(rx, ry, rw, rh);
+  }
   tex.refresh();
   return key;
+
+  /** What only this city has in its streets: Tokyo's vending machines and neon signs, London's red phone boxes,
+   *  Manila's jeepneys, Mexico City's papel picado over the Zocalo. Placed by the tile, the same every time. */
+  function cityProps() {
+    const city = map.name, open = (x: number, y: number) => fade(x, y) < 0.4;
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x, r = rng(seedOf(x, y, 77)), px = x * T, py = y * T;
+        if (!open(x, y)) continue;
+        // Against a building's wall, on the sidewalk below it.
+        const underWall = side[i] && built(x, y - 1);
+        if (city === 'Tokyo' && underWall && r() < 0.05) {
+          const col = ['#c9473a', '#e2dccb', '#3f5a7a', '#4f8a86'][(r() * 4) | 0];
+          box(px + 3, py + 1, 9, 6, col, '#f2f2ea'); rect('#9ad0e0', px + 4, py + 2, 7, 2); for (let k = 0; k < 4; k++) dot(['#f0c860', '#c9473a', '#4f8a86', '#e2dccb'][k], px + 4 + k * 2, py + 5);
+        }
+        if (city === 'London' && underWall && r() < 0.025) {
+          box(px + 5, py + 1, 6, 6, '#b8322b', '#e05a4c'); rect('#7a2620', px + 6, py + 3, 4, 1); rect('#e2dccb', px + 6, py + 5, 4, 1);
+        }
+        // On a building's front, facing the street: a sign lit up in neon.
+        if (city === 'Tokyo' && wall[i] && !built(x, y + 1) && r() < 0.1) {
+          const col = ['#ff4fa0', '#4fe0ff', '#ffd040', '#a060ff', '#60ff90'][(r() * 5) | 0];
+          rect(P.outline, px + 2, py + T - 9, 12, 4); rect(col, px + 3, py + T - 8, 10, 2);
+          shown.push({ kind: 'neon', x: px + 8, y: py + T - 7, n: parseInt(col.slice(1), 16) });
+        }
+        // In the road, along it: a jeepney left where it stopped.
+        if (city === 'Manila' && road[i] && r() < 0.006) {
+          const [a, b] = runX(x, y), along = b - a > 4 * S; // which way the road runs
+          jeepney(px + T / 2, py + T / 2, along ? 0 : Math.PI / 2, r);
+        }
+      }
+    // Mexico City: strings of papel picado across the Zocalo, every few rows of it.
+    if (city === 'Mexico City')
+      for (let y = 2; y < h - 2; y += 5 * S)
+        for (let x = 0; x < w; x++) {
+          if (ch(x, y) !== ',' || ch(x - 1, y) === ',' || !open(x, y)) continue;
+          let e = x;
+          while (ch(e + 1, y) === ',') e++;
+          if (e - x < 4) continue;
+          const y0 = y * T + T / 2, x0 = x * T, x1 = (e + 1) * T, F = 3 * S; // each paper flag F pixels across
+          rect(P.metal2, x0, y0, x1 - x0, 1);
+          for (let k = x0 + 2, n = 0; k < x1 - F; k += F + 2, n++) {
+            const col = ['#e05a8a', '#f0c860', '#4fb0e0', '#60c070', '#f08a40', '#a060d0'][n % 6];
+            rect('rgba(0,0,0,0.22)', k + 2, y0 + 4, F, F); // its shadow on the paving
+            rect(col, k, y0 + 1, F, F); rect(col, k + 1, y0 + 1 + F, F - 2, 1); rect(col, k + 2, y0 + 2 + F, F - 4, 1); // cut to a point
+            rect('rgba(255,255,255,0.45)', k + 1, y0 + 3, F - 2, 1); dot('rgba(0,0,0,0.25)', k + F / 2, y0 + 2 + F / 2, 1); // cut-outs
+          }
+          x = e;
+        }
+  }
+
+  /** A jeepney from above: long, painted loud, chrome on the bonnet, a roof rack. */
+  function jeepney(x: number, y: number, a: number, r: () => number) {
+    const L = 22, B = 9, body = ['#c9473a', '#3f5a7a', '#f0c860', '#4f8a86', '#e2dccb'][(r() * 5) | 0];
+    c.save(); c.translate(x, y); c.rotate(a);
+    rect('rgba(0,0,0,0.35)', -L / 2 + 2, -B / 2 + 2, L, B);
+    rect(P.outline, -L / 2 - 1, -B / 2 - 1, L + 2, B + 2);
+    rect(body, -L / 2, -B / 2, L, B);
+    rect('#dcddd3', L / 2 - 5, -B / 2, 5, B); rect('#9aa0a4', L / 2 - 4, -B / 2 + 1, 3, B - 2); // the chrome bonnet
+    rect('#2c2e30', -L / 2 + 2, -B / 2 + 1, L - 9, B - 2); for (let k = -L / 2 + 3; k < L / 2 - 8; k += 3) rect('#5a6064', k, -B / 2 + 1, 1, B - 2); // the roof rack
+    for (let k = -L / 2; k < L / 2 - 5; k += 4) dot(['#f0c860', '#c9473a', '#4fb0e0'][(k + 20) % 3], k, -B / 2); // its stripes
+    c.restore();
+  }
+
+  /** What people left as they ran: cars with their doors hanging open, suitcases dropped short of the camp, chalk
+   *  arrows pointing the way to it, and (with gore on) blood trailing off the map. */
+  function storytelling() {
+    const way = distanceField(grid, grid.goals, (i) => (wall[i] ? Infinity : 1));
+    const next = (x: number, y: number) => [[1, 0], [-1, 0], [0, 1], [0, -1]].reduce((b, [dx, dy]) => (x + dx >= 0 && y + dy >= 0 && x + dx < w && y + dy < h && way[(y + dy) * w + x + dx] < way[(y + b[1]) * w + x + b[0]] ? [dx, dy] : b), [0, 0]);
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x, r = rng(seedOf(x, y, 91)), px = x * T, py = y * T, cx = px + T / 2, cy = py + T / 2;
+        if (wall[i] || goal[i] || fade(x, y) > 0.4 || !Number.isFinite(way[i])) continue;
+        // A car left in the road, a door open, something spilled from it.
+        if (road[i] && r() < 0.0025) {
+          const across = runX(x, y)[1] - runX(x, y)[0] > 4 * S, ang = across ? 0 : Math.PI / 2;
+          stamp(`car/${(x * 7 + y) % 3}`, cx, cy, ang + (r() < 0.5 ? 0 : Math.PI), 0.25);
+          c.save(); c.translate(cx, cy); c.rotate(ang);
+          rect(P.outline, -1, 4, 6, 4); rect(P.metal1, 0, 5, 5, 2); // the door, swung out
+          c.restore();
+          dot(P.cloth2, cx + 7, cy + 7, 2); dot(P.khaki1, cx + 9, cy + 5);
+        }
+        // Suitcases dropped a few tiles short of the camp.
+        if (way[i] > 2 && way[i] < 6 * S && r() < 0.035) {
+          const col = [P.navy1, P.brown1, P.maroon2, P.olive1][(r() * 4) | 0], sx = px + 2 + r() * 8, sy = py + 2 + r() * 8;
+          box(sx, sy, 6, 4, col, 'rgba(255,255,255,0.25)'); rect(P.outline, sx + 2, sy - 1, 2, 1);
+        }
+        // A chalk arrow on the road, the way to the camp.
+        if (road[i] && way[i] > 8 * S && r() < 0.004) {
+          const [dx, dy] = next(x, y), ang = Math.atan2(dy, dx);
+          c.save(); c.translate(cx, cy); c.rotate(ang);
+          rect('rgba(234,232,220,0.7)', -6, -1, 10, 2); for (let k = 0; k < 4; k++) { rect('rgba(234,232,220,0.7)', 4 - k, -1 - k, 1, 1); rect('rgba(234,232,220,0.7)', 4 - k, k, 1, 1); }
+          c.restore();
+        }
+      }
+    // Blood trailing off the edge of the map, where someone was dragged away.
+    if (blood)
+      for (let k = 0; k < 4; k++) {
+        const r = rng(seedOf(k, w, 13)), along = (0.15 + r() * 0.7), side4 = k % 4;
+        let x = side4 < 2 ? along * W : side4 === 2 ? 4 * T : W - 4 * T, y = side4 >= 2 ? along * H : side4 === 0 ? 4 * T : H - 4 * T;
+        const [dx, dy] = [[0, -1], [0, 1], [-1, 0], [1, 0]][side4], tx = Math.floor(x / T), ty = Math.floor(y / T);
+        if (tx < 0 || ty < 0 || tx >= w || ty >= h || wall[ty * w + tx] || goal[ty * w + tx]) continue;
+        for (let s = 0; s < 18; s++) { disc(r() < 0.5 ? P.blood0 : P.blood1, x + (r() - 0.5) * 3, y + (r() - 0.5) * 3, 0.8 + r() * 1.4); x += dx * 3.5 + (r() - 0.5) * 2; y += dy * 3.5 + (r() - 0.5) * 2; }
+      }
+  }
 }

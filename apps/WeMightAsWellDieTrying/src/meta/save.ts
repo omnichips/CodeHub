@@ -19,6 +19,7 @@ export interface Settings {
   story: 'full' | 'short' | 'off'; // the cutscenes: all of them, their words only, or none (their notebook pages are still written)
   voices: 'blips' | 'acting' | 'off'; // how the story sounds: a blip a letter, or the recorded voices; the soldiers' calls play with either, Off is neither
   shake: boolean; // the screen shakes at big blasts and when a soldier falls
+  haptics: boolean; // a phone buzzes at big blasts and when a soldier falls
   colorblind: boolean; // blue and orange where the map says good and bad, not green and red
   ui: number; // the fight's controls, this times their size (UI_SCALE)
   text: number; // all text, this times its size (TEXT_SIZE)
@@ -58,14 +59,17 @@ export interface Save {
   difficulty: Difficulty; // chosen when the save is started
   medals: Record<string, number>; // medals earned (game/medals.ts), and when, ms since 1970
   met: string[]; // the zombies and soldiers met in a fight, for the field manual
+  fallen: Fallen[]; // the soldiers lost, for the field manual's memorial (the most recent MEMORIAL)
 }
+export interface Fallen { name: string; kind: string; kills: number; city: string; at: number }
+export const MEMORIAL = 200;
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 /** What each difficulty does to a fight: zombie health and numbers, how many leaks lose it, the chips it pays. */
-export const DIFFICULTY: Record<Difficulty, { name: string; hp: number; count: number; leaks: number; chips: number; desc: string }> = {
-  easy: { name: 'Easy', hp: 0.75, count: 1, leaks: 1.5, chips: 0.8, desc: 'Weaker zombies, more leaks allowed, fewer chips.' },
-  normal: { name: 'Normal', hp: 1, count: 1, leaks: 1, chips: 1, desc: 'The fight as it was meant.' },
-  hard: { name: 'Hard', hp: 1.3, count: 1.25, leaks: 0.75, chips: 1.25, desc: 'Tougher zombies, more of them, fewer leaks allowed, more chips.' },
+export const DIFFICULTY: Record<Difficulty, { name: string; hp: number; count: number; leaks: number; chips: number; weather: number; desc: string }> = {
+  easy: { name: 'Easy', hp: 0.75, count: 1, leaks: 1.5, chips: 0.8, weather: 0.03, desc: 'Weaker zombies, more leaks allowed, fewer chips.' },
+  normal: { name: 'Normal', hp: 1, count: 1, leaks: 1, chips: 1, weather: 0.05, desc: 'The fight as it was meant.' },
+  hard: { name: 'Hard', hp: 1.3, count: 1.25, leaks: 0.75, chips: 1.25, weather: 0.07, desc: 'Tougher zombies, more of them, fewer leaks allowed, more chips.' },
 };
 
 export const SLOTS = 3;
@@ -76,9 +80,9 @@ const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [] });
+export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [], fallen: [] });
 export const defaultKeys = () => Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k])) as Record<KeyAction, string>;
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips', shake: true, colorblind: false, ui: 1, text: 1, keys: defaultKeys() });
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips', shake: true, haptics: true, colorblind: false, ui: 1, text: 1, keys: defaultKeys() });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
@@ -145,6 +149,8 @@ export function parse(text: string): Save | undefined {
     difficulty: pick(r.difficulty, ['easy', 'normal', 'hard'] as const, 'normal'), // saves from before difficulty were Normal
     medals: Object.fromEntries(Object.entries(r.medals && typeof r.medals === 'object' ? r.medals : {}).filter(([, v]) => typeof v === 'number' && Number.isFinite(v)).slice(0, 100)) as Record<string, number>,
     met: (Array.isArray(r.met) ? r.met : []).filter((v): v is string => typeof v === 'string').slice(0, 100),
+    fallen: list(r.fallen).filter((o) => typeof o.name === 'string' && typeof o.kind === 'string' && typeof o.city === 'string' && finite(o, 'kills', 'at')).slice(-MEMORIAL)
+      .map((o) => ({ name: (o.name as string).slice(0, 24), kind: o.kind as string, kills: count(o.kills), city: (o.city as string).slice(0, 24), at: o.at as number })),
   };
 }
 
@@ -164,6 +170,7 @@ export function settingsFrom(raw: unknown): Settings {
     story: pick(s.story, ['full', 'short', 'off'] as const, base.story),
     voices: pick(s.voices, ['blips', 'acting', 'off'] as const, base.voices),
     shake: s.shake !== false,
+    haptics: s.haptics !== false,
     colorblind: s.colorblind === true,
     ui: within(s.ui, UI_SCALE, base.ui),
     text: within(s.text, TEXT_SIZE, base.text),

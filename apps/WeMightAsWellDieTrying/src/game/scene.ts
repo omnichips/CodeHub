@@ -3,19 +3,20 @@ import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
 import { NODE, NODES, PACE, payout, build, type Build, type Payout } from '../meta/progress.ts';
-import { MAPS, persist, profile } from '../meta/profile.ts';
-import { DIFFICULTY, KEY_ACTIONS, type KeyAction } from '../meta/save.ts';
+import { MAPS, blinds, persist, profile, weatherOf } from '../meta/profile.ts';
+import { DIFFICULTY, KEY_ACTIONS, MEMORIAL, type KeyAction } from '../meta/save.ts';
 import { keyName } from './settings.ts';
 import { award } from '../meta/medals.ts';
 import type { MapData } from '../sim/grid.ts';
 import { ambience } from './ambience.ts';
+import { atmosphere, type Atmosphere } from './atmosphere.ts';
 import { DEBUG_EACH, DEBUG_MAP, DEBUG_STRIKES, debugView } from './debugmap.ts';
 import { Flames } from './flame.ts';
 import { mapAnims } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
 import {
-  PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
-  type BlockKind, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
+  CIVILIAN_HOLD, PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
+  type BlockKind, type Civilian, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
 import { Hud, type Group } from './hud.ts';
 import { settingsSheet } from './settings.ts';
@@ -43,6 +44,7 @@ const MAX_ZOOM = 4;
 const HUD_TOP = 56, HUD_BOTTOM = 104; // screen pixels the status row and the bar cover, until the HUD is there to measure
 const LIFT = 36; // a finger drags things this far above itself, so it does not hide where they go
 const GRAB = { touch: 34, mouse: 22 }; // how near (screen pixels) a soldier or his handle has to be to pick it up
+const PENCIL = 0xe8e2cc; // the soldiers' cones, sketched in pencil
 const ZOMBIES_BY = Object.fromEntries(ZOMBIE_KINDS.map((k, i) => [k, ZOMBIES[i]]));
 const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
 const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'police', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
@@ -57,6 +59,10 @@ const nameOf = (id: string) => (isUnit(id) ? UNITS[id] : isUsable(id) ? USABLES[
 const hex = (c: string) => Phaser.Display.Color.HexStringToColor(c).color;
 /** What the bar and hovering say about something: the line from its skill web node. */
 const describe = (id: string) => NODE.get(id)?.desc ?? (id === 'generator' ? 'Powers electric puddles nearby. Goes inside a building.' : '');
+/** A soldier's rank, by the kills he has made this fight. */
+const rank = (kills: number) => (kills >= 400 ? 'Lt.' : kills >= 150 ? 'Sgt.' : kills >= 50 ? 'Cpl.' : 'Pvt.');
+/** A buzz on a phone that can (a blast, a soldier falling), unless the setting is off. */
+const buzz = (pattern: number | number[]) => { if (profile.settings.haptics) try { navigator.vibrate?.(pattern); } catch { /* not allowed here */ } };
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
 type Drag =
@@ -64,6 +70,7 @@ type Drag =
   | { kind: 'pinch'; dist: number; zoom: number; x: number; y: number }
   | { kind: 'aim'; s: Soldier }
   | { kind: 'move'; s: Soldier; x: number; y: number; moved: boolean }
+  | { kind: 'civ'; c: Civilian; x: number; y: number; moved: boolean }
   | { kind: 'shift'; o: Roadblock | Structure; x: number; y: number; moved: boolean }
   | { kind: 'place'; id: string }
   | { kind: 'strike' };
@@ -94,8 +101,13 @@ export class Game extends Phaser.Scene {
   loadout: Record<string, number> = {};
   ids: string[] = [];
   paid?: Payout; // the chips this run paid, once it is over
+  sketch?: string; // the report's sketch of the fight, drawn once it is over
   diffChips = 0; // of which the save's difficulty added (or took off, on Easy)
   medals: string[] = []; // medals this fight earned
+  civ?: Civilian; // the civilian picked (out of their building), to walk to the safe zone
+  civState = new Map<Civilian, string>(); // each civilian's state last frame, to notice a change
+  civChips = 0; // what the civilians saved paid
+  atmos!: Atmosphere; // the weather and the light (game/atmosphere.ts)
   gray?: Phaser.FX.ColorMatrix; // drains the colour as leaks mount
   grayAt = 0; // how drained it is now, 0 to 1
   peak = 0; // the most soldiers standing at once this fight, for the red at the screen's edges
@@ -147,8 +159,10 @@ export class Game extends Phaser.Scene {
     this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
     this.world.hpBy = diff.hp;
     this.world.countBy = diff.count;
+    if (blinds(weatherOf(m.id))) this.world.sightBy = 1 - diff.weather;
+    if (!this.debug) this.world.placeCivilians(3);
     if (this.unlimited) this.world.leakLimit = Infinity;
-    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, diffChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
+    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, diffChips: 0, civ: undefined, civState: new Map(), civChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
     this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
@@ -161,6 +175,7 @@ export class Game extends Phaser.Scene {
     this.add.image(0, 0, art).setOrigin(0);
     ambience(this, drawn.get(art) ?? [], Math.round(24 * QUALITY[profile.settings.quality].particles));
     this.animate = mapAnims(this, m.data, this.world.grid, drawn.get(art) ?? [], QUALITY[profile.settings.quality].particles, { scare: (x, y) => this.scare(x, y), planning: () => this.world.phase === 'plan' });
+    this.atmos = atmosphere(this, weatherOf(m.id), drawn.get(art) ?? [], this.world.grid.w * this.world.grid.tile, this.world.grid.h * this.world.grid.tile, QUALITY[profile.settings.quality].particles);
     this.floor = this.add.graphics().setDepth(1);
     this.top = this.add.graphics().setDepth(10);
     this.entries = this.findEntries();
@@ -333,7 +348,27 @@ export class Game extends Phaser.Scene {
         this.time.delayedCall(500, () => play('police'));
         this.time.delayedCall(900, () => play('say-down'));
       }
-      this.hud.notice(`${this.world.stats.units[s.kind].name} down`, () => this.cameras.main.pan(s.x, s.y, 350, 'Sine.easeInOut'));
+      buzz([60, 40, 60]);
+      this.hud.notice(`${rank(s.kills)} ${s.name} down`, () => this.cameras.main.pan(s.x, s.y, 350, 'Sine.easeInOut'));
+      if (!this.debug && !s.owner) { // on the memorial
+        const f = profile.save.fallen;
+        f.push({ name: s.name, kind: s.kind, kills: s.kills, city: this.mapData.name, at: Date.now() });
+        if (f.length > MEMORIAL) f.splice(0, f.length - MEMORIAL);
+        persist();
+      }
+    }
+  }
+
+  /** A civilian brought out, killed or safe: a notice (tap it to look), and the radio for one brought out. */
+  watchCivilians() {
+    for (const c of this.world.civilians) {
+      const was = this.civState.get(c);
+      this.civState.set(c, c.state);
+      if (was === undefined || was === c.state) continue;
+      const look = () => this.cameras.main.pan(c.x, c.y, 350, 'Sine.easeInOut');
+      if (c.state === 'out') { this.hud.notice('A civilian is out: walk them to the safe zone', look); if (!this.muted) play('police'); this.civ = c; this.selected = undefined; }
+      if (c.state === 'dead') { this.hud.notice('A civilian was killed', look); buzz(80); if (this.civ === c) this.civ = undefined; }
+      if (c.state === 'saved') { this.hud.notice(`Civilian safe: ${this.world.saved}/${this.world.civilians.length}`, look); if (this.civ === c) this.civ = undefined; }
     }
   }
 
@@ -400,6 +435,8 @@ export class Game extends Phaser.Scene {
     this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain, level: MAPS.findIndex((x) => x.id === this.mapId) + 1 });
     this.diffChips = Math.round(this.paid.total * (DIFFICULTY[save.difficulty].chips - 1)); // the difficulty's share, on top or taken off
     this.paid.total += this.diffChips;
+    this.civChips = Math.round(this.paid.base * 0.1 * w.saved); // each civilian saved: a tenth of the kills' chips
+    this.paid.total += this.civChips;
     save.chips += this.paid.total;
     if (won) save.cleared[this.mapId] = true;
     else this.lostLine = LOST_LINES[Math.floor(Math.random() * LOST_LINES.length)];
@@ -407,7 +444,7 @@ export class Game extends Phaser.Scene {
     Object.assign(st, { runs: st.runs + 1, wins: st.wins + (won ? 1 : 0), kills: st.kills + w.kills, leaks: st.leaks + w.leaks, chips: st.chips + this.paid.total, time: st.time + Math.round(w.time) });
     this.medals = award({
       won, map: this.mapId, last: this.mapId === MAPS.at(-1)!.id, leaks: w.leaks, leakLimit: w.leakLimit, fallen: this.fallen.size,
-      best: Math.max(0, ...w.soldiers.map((s) => s.kills)), timeBonus: this.paid.timeBonus > 0,
+      best: Math.max(0, ...w.soldiers.map((s) => s.kills)), timeBonus: this.paid.timeBonus > 0, saved: w.saved, civilians: w.civilians.length,
     }, save);
     if (this.medals.length) this.time.delayedCall(600, () => play('thud', 0.5));
     persist();
@@ -558,6 +595,14 @@ export class Game extends Phaser.Scene {
       const [hx, hy] = this.handle(sel);
       if (Math.hypot(hx - wx, hy - wy) < grab) { this.drag = { kind: 'aim', s: sel }; return; }
     }
+    // A civilian out of their building: picked up to walk somewhere (the safe zone).
+    const civ = this.world.civilians.find((c) => c.state === 'out' && Math.hypot(c.x - wx, c.y - wy) < grab);
+    if (civ) {
+      this.civ = civ;
+      this.selected = undefined;
+      this.drag = { kind: 'civ', c: civ, x: p.x, y: p.y, moved: false };
+      return;
+    }
     let s: Soldier | undefined, best = grab;
     for (const o of this.world.soldiers) {
       const d = Math.hypot(o.x - wx, o.y - wy);
@@ -565,6 +610,7 @@ export class Game extends Phaser.Scene {
     }
     if (s) {
       this.selected = s;
+      this.civ = undefined;
       this.drag = { kind: 'move', s, x: p.x, y: p.y, moved: false };
       return;
     }
@@ -615,15 +661,17 @@ export class Game extends Phaser.Scene {
     this.drag = undefined;
     const [wx, wy] = this.toWorld(p.x, p.y - this.lift(p, d)), [tx, ty] = this.tileOf(wx, wy);
     if (d.kind === 'pan' && d.travel < 8) {
-      // A tap on empty ground: puts down what the bar holds, or lets go of the selection.
+      // A tap on empty ground: puts down what the bar holds, sends the civilian picked there, or lets go of the selection.
       if (this.armed) this.put(this.armed, p.x, p.y);
-      else this.selected = undefined;
+      else if (this.civ?.state === 'out') this.world.moveCivilian(this.civ, wx, wy);
+      else this.selected = this.civ = undefined;
     }
     if (d.kind === 'strike' && this.aimRun(p)) { // let go: called in, flying the way it was dragged
       this.world.callStrike('a10', this.strikeAim!.x, this.strikeAim!.y, this.strikeAim!.angle);
       this.strikeAim = undefined;
     }
     if (d.kind === 'move' && d.moved) this.world.moveSoldier(d.s, wx, wy);
+    if (d.kind === 'civ' && d.moved) this.world.moveCivilian(d.c, wx, wy);
     if (d.kind === 'shift' && d.moved) {
       if (isBlock(d.o)) {
         if (d.o.prop) this.world.haulProp(d.o, tx, ty);
@@ -634,7 +682,7 @@ export class Game extends Phaser.Scene {
   }
 
   /** How far above a finger the thing it drags is held (none for a mouse, or for panning and aiming). */
-  lift(p: Phaser.Input.Pointer, d: Drag) { return p.wasTouch && (d.kind === 'move' || d.kind === 'shift') ? LIFT : 0; }
+  lift(p: Phaser.Input.Pointer, d: Drag) { return p.wasTouch && (d.kind === 'move' || d.kind === 'shift' || d.kind === 'civ') ? LIFT : 0; }
 
   /** Puts down (or calls in) a bar item at a point on the screen. */
   put(id: string, x: number, y: number) {
@@ -760,11 +808,13 @@ export class Game extends Phaser.Scene {
     }
     this.anims.globalTimeScale = w.phase === 'wave' ? this.speed * PACE : 1;
     this.animate(Math.min(delta, 100) / 1000);
+    this.atmos.step(Math.min(delta, 100) / 1000);
     if (this.strikeAim && !w.strikeReady('a10')) this.strikeAim = undefined; // cooling down after all, or the fight is over
     this.settle();
     this.spill();
     this.reportFallen();
     this.meet();
+    this.watchCivilians();
     if (this.tutorial >= 0) this.stepTutorial();
     const sel = this.selected;
     if (sel && (isSoldier(sel) ? sel.dead || !w.soldiers.includes(sel) : isBlock(sel) ? !w.roadblocks.includes(sel) : !w.structures.includes(sel))) this.selected = undefined;
@@ -799,7 +849,12 @@ export class Game extends Phaser.Scene {
     const w = this.world, fighting = w.phase === 'wave';
     for (const s of w.sounds) {
       play(s.kind, this.near(s.x, s.y), s.size);
-      if (!this.muted && (s.kind === 'blast' || s.kind === 'a10' || s.kind === 'napalm') && this.near(s.x, s.y) > 0.6) this.shake(200, 0.005);
+      // The light of it, and what it leaves on the street.
+      if (s.kind in UNITS) this.atmos.flash(s.x, s.y);
+      else if (s.kind === 'boom') this.atmos.scar('crater', s.x, s.y, Math.max(8, s.size));
+      else if (s.kind === 'blast') this.atmos.scar('scorch', s.x, s.y, Math.max(24, s.size));
+      else if (s.kind === 'broken') this.atmos.scar('debris', s.x, s.y, 14);
+      if (!this.muted && (s.kind === 'blast' || s.kind === 'a10' || s.kind === 'napalm') && this.near(s.x, s.y) > 0.6) { this.shake(200, 0.005); buzz(40); }
     }
     w.sounds.length = 0;
     hordeLevel(fighting ? this.seen / 120 : 0);
@@ -956,13 +1011,45 @@ export class Game extends Phaser.Scene {
     }
 
     // On the ground: each soldier's cone, a mortar's landing zone, a medic's or engineer's reach. The selected one brighter.
-    for (const s of w.soldiers) {
-      if (s.dead) continue;
-      const u = this.world.stats.units[s.kind], alpha = s === sel ? 0.18 : 0.07;
+    const cone = (s: Soldier, alpha: number, picked: boolean) => {
+      const u = this.world.stats.units[s.kind];
       if (support(u)) {
-        if (s === sel) floor.fillStyle(hex(palette.rot2), 0.12).fillCircle(s.x, s.y, u.range);
-      } else if (indirect(u)) floor.fillStyle(paint, alpha).fillCircle(...w.aimPoint(s), u.scatter! + u.blast!);
-      else floor.fillStyle(paint, alpha).slice(s.x, s.y, w.rangeOf(s), s.angle - w.spread(s), s.angle + w.spread(s), false).fillPath();
+        if (picked) floor.fillStyle(hex(palette.rot2), 0.12).fillCircle(s.x, s.y, u.range);
+      } else if (indirect(u)) {
+        const [ax, ay] = w.aimPoint(s), R = u.scatter! + u.blast!;
+        floor.fillStyle(paint, alpha * 0.7).fillCircle(ax, ay, R).lineStyle(1 / z, PENCIL, alpha * 3).strokeCircle(ax, ay, R).strokeCircle(ax + 0.6 / z, ay, R - 0.6 / z);
+      } else {
+        // Sketched in pencil on the tactical map: a light wash, its edges drawn twice a little apart, hatched across.
+        const R = w.rangeOf(s), a0 = s.angle - w.spread(s), a1 = s.angle + w.spread(s), at = (a: number, r: number): [number, number] => [s.x + Math.cos(a) * r, s.y + Math.sin(a) * r];
+        floor.fillStyle(paint, alpha * 0.7).slice(s.x, s.y, R, a0, a1, false).fillPath();
+        floor.lineStyle(1 / z, PENCIL, Math.min(0.8, alpha * 3));
+        for (const j of [0, 0.7 / z]) floor.beginPath().moveTo(s.x + j, s.y + j).lineTo(...at(a0, R - j)).arc(s.x + j, s.y + j, R - j, a0, a1).lineTo(s.x + j, s.y + j).strokePath();
+        floor.lineStyle(1 / z, PENCIL, Math.min(0.5, alpha * 1.8));
+        for (let k = 1; k < 5; k++) floor.lineBetween(...at(a0, (R * k) / 5), ...at(a1, (R * (k + 0.6)) / 5));
+      }
+    };
+    for (const s of w.soldiers) if (!s.dead) cone(s, s === sel ? 0.18 : 0.07, s === sel);
+    // A soldier being dragged from the bar: his cone where he would stand, before he is dropped.
+    if (d?.kind === 'place' && isUnit(d.id) && this.pointer.x >= 0) {
+      const gs = w.ghost(d.id, ...this.toWorld(this.pointer.x, this.pointer.y));
+      if (gs) cone(gs, 0.14, true);
+    }
+
+    // People left in buildings: a light at the door, filling round as a soldier holds it; those brought out, small
+    // figures to walk to the safe zone.
+    for (const c of w.civilians) {
+      if (c.state === 'inside') {
+        const glow = 0.55 + 0.35 * Math.sin(this.time.now / 220 + c.id);
+        top.fillStyle(hex(palette.flash1), glow).fillCircle(c.x, c.y, 3).lineStyle(1.5 / z, hex(palette.flash1), glow).strokeCircle(c.x, c.y, 9);
+        if (c.held > 0) top.lineStyle(3 / z, good, 1).beginPath().arc(c.x, c.y, 9, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * c.held) / CIVILIAN_HOLD).strokePath();
+      } else if (c.state === 'out') {
+        if (c === this.civ) {
+          top.lineStyle(1.5 / z, light, 0.9).strokeCircle(c.x, c.y, 8);
+          if (c.dest) top.lineStyle(1 / z, light, 0.5).lineBetween(c.x, c.y, c.dest.x, c.dest.y);
+        }
+        top.fillStyle(dark, 1).fillCircle(c.x, c.y + 1, 4.2).fillStyle(0x4f8a86, 1).fillCircle(c.x, c.y + 1, 3.4).fillStyle(0xd9a77a, 1).fillCircle(c.x, c.y - 2, 2);
+        if (c.hp < 60) { top.fillStyle(dark, 1).fillRect(c.x - 6, c.y - 9, 12, 2); top.fillStyle(bad, 1).fillRect(c.x - 6, c.y - 9, (12 * c.hp) / 60, 2); }
+      }
     }
     if (isSoldier(sel)) {
       const u = this.world.stats.units[sel.kind];
@@ -1094,6 +1181,7 @@ export class Game extends Phaser.Scene {
         if (w.spotFor(kind, (sx + 0.5) * T, (sy + 0.5) * T, d.kind === 'move' ? d.s : undefined)?.indoor && (d.kind === 'place' || w.phase === 'plan'))
           top.lineStyle(1.5 / z, light, 0.7).strokeRect(sx * T + 2, sy * T + 2, T - 4, T - 4);
       }
+    if (d.kind === 'civ' && d.moved) top.lineStyle(1.5 / z, light, 0.9).lineBetween(d.c.x, d.c.y, wx, wy).strokeCircle(wx, wy, 6);
     if (d.kind === 'move' && d.moved) {
       top.lineStyle(1.5 / z, w.spotFor(d.s.kind, wx, wy, d.s) ? light : bad, 0.9).lineBetween(d.s.x, d.s.y, wx, wy).strokeCircle(wx, wy, 6);
     } else if (d.kind === 'shift' && d.moved) {
@@ -1125,6 +1213,7 @@ export class Game extends Phaser.Scene {
     if (this.strikeAim) selection = 'Drag from the mark the way the A-10 flies';
     else if (this.pending) selection = 'Tap where the turret goes';
     else if (this.armed) selection = `Tap the map: ${nameOf(this.armed)}`;
+    else if (this.civ?.state === 'out') selection = `Civilian · ${Math.ceil(this.civ.hp)} HP · ${this.civ.walking ? 'on the way' : 'tap or drag to send them to the safe zone'}`;
     else if (isSoldier(sel)) selection = ''; // he has his card instead (below)
     else if (isBlock(sel)) selection = `${this.world.stats.roadblocks[sel.kind].name} · ${sel.prop ? (sel.haul ? 'a soldier is on his way' : 'drag it: a soldier moves it') : `${Math.ceil(sel.hp)} HP`}`;
     else if (sel) selection = this.world.stats.structs[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
@@ -1162,22 +1251,47 @@ export class Game extends Phaser.Scene {
       ],
       progress: waving ? { wave: Math.min(w.wave + 1, w.waves), waves: w.waves, done: w.kills + w.leaks, left: w.left } : undefined,
       card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? this.cardOf(sel) : undefined,
-      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals },
+      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals, sketch: (this.sketch ??= this.sketchMap()) },
       tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : '',
     });
   }
 
   /** The picked soldier's card: his photo, health, kills, where he stands and his class's upgrades bought. */
   cardOf(s: Soldier) {
-    const u = this.world.stats.units[s.kind], owned = this.debug ? {} : profile.save.skills;
-    const upgrades = NODES.filter((n) => n.id.startsWith(`${s.kind}.`) && !n.id.endsWith('.more') && (owned[n.id] ?? 0) > 0)
-      .map((n) => `${n.name.replace(/^[^:]*:s*/, '')} ${owned[n.id]}/${n.max}`);
+    const w = this.world, u = w.stats.units[s.kind], n = (v: number) => (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
+    // What he does in numbers, as he stands (upgrades, a tower or ammo near him, indoors, the weather all counted).
+    const stats = u.weapon === 'heal' ? [`Heals ${n(u.heal! * PACE)} HP/s`, `Reach ${n(u.range)}`]
+      : u.weapon === 'repair' ? [`Repairs ${n(u.repair! * PACE)} HP/s`, `Reach ${n(u.range)}`]
+      : [`Damage ${n(u.damage! * (s.indoor ? w.stats.indoor.damageBy : 1))}`, `Range ${n(indirect(u) ? u.range : w.rangeOf(s))}`, `Fire rate ${n(u.fireRate! * s.rateBy * PACE)}/s`];
     return {
-      kind: s.kind, name: u.name, icon: (this.icons[s.kind] ??= icon(this, `${s.kind}-idle-6/0`)), hp: s.indoor ? u.hp : s.hp, max: u.hp, kills: s.kills,
-      where: s.leaving ? 'falling back' : s.indoor ? 'indoors, safe' : `${Math.ceil(s.hp)} HP`, upgrades,
+      kind: s.kind, name: `${rank(s.kills)} ${s.name}`, role: u.name, icon: (this.icons[s.kind] ??= icon(this, `${s.kind}-idle-6/0`)), hp: s.indoor ? u.hp : s.hp, max: u.hp, kills: s.kills,
+      where: s.leaving ? 'falling back' : s.indoor ? 'indoors, safe' : `${Math.ceil(s.hp)} HP`, stats,
     };
   }
   icons: Record<string, string> = {}; // each soldier's photo for his card, made once
+
+  /** The report's sketch: the city in pencil on paper (buildings shaded in, the camp hatched, the ways in red), red
+   *  dots where zombies got through, black crosses where soldiers fell, a ring for each civilian saved. */
+  sketchMap() {
+    const w = this.world, g = w.grid, T = g.tile, k = Math.min(240 / g.w, 160 / g.h), cv = document.createElement('canvas'), c = cv.getContext('2d')!;
+    cv.width = Math.round(g.w * k); cv.height = Math.round(g.h * k);
+    c.fillStyle = '#efe9d6'; c.fillRect(0, 0, cv.width, cv.height);
+    for (let i = 0; i < g.w * g.h; i++) {
+      const x = (i % g.w) * k, y = Math.floor(i / g.w) * k;
+      const col = g.wall[i] === 1 ? 'rgba(46,42,34,0.55)' : g.wall[i] ? 'rgba(63,90,122,0.35)' : g.goal[i] ? ((i + Math.floor(i / g.w)) % 2 ? 'rgba(79,138,134,0.55)' : 'rgba(79,138,134,0.25)') : '';
+      if (col) { c.fillStyle = col; c.fillRect(x, y, k + 0.5, k + 0.5); }
+    }
+    c.fillStyle = 'rgba(178,58,48,0.6)';
+    for (const i of g.spawns) c.fillRect((i % g.w) * k, Math.floor(i / g.w) * k, k + 0.5, k + 0.5);
+    const at = (x: number, y: number) => [(x / T) * k, (y / T) * k];
+    c.fillStyle = '#b23a30';
+    for (const l of w.leakAt) { const [x, y] = at(l.x, l.y); c.beginPath(); c.arc(x, y, 2, 0, 7); c.fill(); }
+    c.strokeStyle = '#141516'; c.lineWidth = 1.5;
+    for (const s of w.soldiers) if (s.dead) { const [x, y] = at(s.x, s.y); c.beginPath(); c.moveTo(x - 3, y - 3); c.lineTo(x + 3, y + 3); c.moveTo(x + 3, y - 3); c.lineTo(x - 3, y + 3); c.stroke(); }
+    c.strokeStyle = '#2f6a3a';
+    for (const cv2 of w.civilians) if (cv2.state === 'saved') { const [x, y] = at(cv2.x, cv2.y); c.beginPath(); c.arc(x, y, 3, 0, 7); c.stroke(); }
+    return cv.toDataURL();
+  }
 
   /** Who made the kills, most first: each soldier class (how many of them), structure and strike. */
   killers() {
@@ -1197,6 +1311,7 @@ export class Game extends Phaser.Scene {
       ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
       ...(p.minimum ? [`Minimum pay: ${p.minimum} chips`] : []),
       ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
+      ...(this.civChips ? [`Civilians saved ${this.world.saved}: +${this.civChips}`] : []),
       ...(this.diffChips ? [`${DIFFICULTY[profile.save.difficulty].name}: ${this.diffChips > 0 ? '+' : ''}${this.diffChips}`] : []),
     ];
   }

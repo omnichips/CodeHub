@@ -22,8 +22,8 @@ export interface HudState {
   actions: string[];
   tip: string; // the guided start's current step, or ''
   progress?: { wave: number; waves: number; done: number; left: number }; // during a wave: how far through the horde
-  card?: { kind: string; name: string; icon: string; hp: number; max: number; kills: number; where: string; upgrades: string[] }; // the soldier picked
-  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[] };
+  card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[] }; // the soldier picked
+  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string };
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
@@ -185,7 +185,8 @@ export class Hud {
 
   /** A big title across the screen that fades in and out by itself: the city at the start, each wave as it comes. */
   banner(title: string, sub: string) {
-    this.banners.replaceChildren(el('div', {}, el('h2', {}, title), el('p', {}, sub))); // a new child restarts the animation
+    // A telegram, typed and stamped: "WAVE 3 OF 11 — MORE OF THEM STOP".
+    this.banners.replaceChildren(el('div', { className: 'telegram' }, el('small', {}, 'TELEGRAM · URGENT'), el('h2', {}, `${title}${sub ? ` — ${sub}` : ''} STOP`), el('span', { className: 'stampmark' }, 'RECEIVED'))); // a new child restarts the animation
   }
 
   /** A short line under the status, gone after a few seconds; tapping it calls `tap` (look at where it happened). */
@@ -245,11 +246,12 @@ export class Hud {
     this.card.hidden = !s.card || !!s.end;
     if (s.card) {
       const c = s.card;
-      if (c.kind !== this.cardKind) {
-        this.cardKind = c.kind;
+      const key = `${c.kind}|${c.name}|${c.stats.join()}`;
+      if (key !== this.cardKind) {
+        this.cardKind = key;
         this.card.replaceChildren(
           el('div', { className: 'photo' }, el('img', { src: c.icon, alt: '' })),
-          el('div', { className: 'body' }, el('b', {}, c.name), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, c.upgrades.join(' · ') || 'No upgrades yet')));
+          el('div', { className: 'body' }, el('b', {}, c.name), el('small', { className: 'role' }, c.role), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, ...c.stats.map((t) => el('span', {}, t)))));
       }
       const hp = this.card.querySelector('.hp i') as HTMLElement | null;
       if (hp) { hp.style.transform = `scaleX(${Math.max(0, c.hp / c.max)})`; hp.classList.toggle('low', c.hp / c.max <= 0.5); }
@@ -262,6 +264,9 @@ export class Hud {
     if (s.end && !this.end.childElementCount) {
       this.end.append(
         el('h2', {}, s.end.title), ...(s.end.quote ? [el('p', { className: 'quote' }, `“${s.end.quote}”`)] : []), el('p', {}, s.end.detail),
+        // The fight in pencil: where they got through, where soldiers fell.
+        el('figure', { className: 'sketch' }, el('img', { src: s.end.sketch, alt: 'A sketch of the city: red dots where zombies got through, crosses where soldiers fell' }),
+          el('figcaption', {}, el('span', { className: 'k-leak' }, 'got through'), el('span', { className: 'k-fell' }, 'fell'), el('span', { className: 'k-saved' }, 'saved'))),
         // What the run paid, and beside it who made the kills.
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),

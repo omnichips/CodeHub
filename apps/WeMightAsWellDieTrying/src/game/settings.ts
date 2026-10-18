@@ -45,7 +45,7 @@ export function settingsSheet(o: { back: () => void; again: () => void; tags?: [
       return b;
     }));
   const choice = (label: string, k: 'gore' | 'quality' | 'story', options: string[]) => boxes(label, options.map((v) => [v[0].toUpperCase() + v.slice(1), () => s[k] === v, () => set(k, v as never)]));
-  const onOff = (label: string, k: 'lefty' | 'mix' | 'shake' | 'colorblind') => boxes(label, [['Off', () => !s[k], () => set(k, false)], ['On', () => s[k], () => set(k, true)]]);
+  const onOff = (label: string, k: 'lefty' | 'mix' | 'shake' | 'colorblind' | 'haptics') => boxes(label, [['Off', () => !s[k], () => set(k, false)], ['On', () => s[k], () => set(k, true)]]);
 
   const tabs = TABS.map(([t, label, col, dark]) => { const [w, h, d] = indexTab(label.toUpperCase(), col, dark, () => tab === t); const b = pixelButton(label, w, h, d, () => { if (tab !== t) { tab = t; o.again(); } }, 'tab'); b.setAttribute('aria-pressed', String(tab === t)); return b; });
   const rows: Record<Tab, () => HTMLElement[]> = {
@@ -76,6 +76,7 @@ export function settingsSheet(o: { back: () => void; again: () => void; tags?: [
     // Left-handed, and the keyboard's shortcuts: the cheat sheet, each one's key pressed to change it.
     controls: () => [
       row('Left-handed', onOff('Left-handed', 'lefty')),
+      row('Vibration', onOff('Vibration', 'haptics')), // a phone buzzes at big blasts and when a soldier falls
       el('div', { className: 'keys', role: 'list', ariaLabel: 'Keyboard shortcuts' }, ...(Object.keys(KEY_ACTIONS) as KeyAction[]).map((a) => el('div', { className: 'key', role: 'listitem' },
         el('span', {}, KEY_ACTIONS[a][1]),
         el('button', { type: 'button', className: listening === a ? 'listening' : '', textContent: listening === a ? 'Press a key…' : keyName(s.keys[a]), onclick: () => { listening = listening === a ? undefined : a; o.again(); } })))),

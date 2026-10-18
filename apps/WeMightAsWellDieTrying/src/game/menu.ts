@@ -14,11 +14,13 @@ import { ask } from './dialog.ts';
 import { el } from './hud.ts';
 import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
+import { atmosphere } from './atmosphere.ts';
+import { weatherOf } from '../meta/profile.ts';
 import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { HELI_RES, mapAnims, textures } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
-import { clipping, dossier, manualNote, medalNote, folder, filmFrame, medal, noteTag, pixelButton, pixelCanvas, slotFolder, stickyNote } from './paper.ts';
+import { clipping, dossier, indexTab, manualNote, medalNote, folder, filmFrame, medal, noteTag, pixelButton, pixelCanvas, slotFolder, stickyNote } from './paper.ts';
 import { MEDALS } from '../meta/medals.ts';
 import { icon } from '../art/atlas.ts';
 import { UNITS, ZOMBIES, ZOMBIE_KINDS } from '../sim/world.ts';
@@ -81,6 +83,11 @@ function standing(s: Save | undefined) {
   return { next, day: row.day, squad: row.squad, behind };
 }
 
+/** The binder's pages, in order, and each one's index tab: its label and colours. */
+const BINDER = ['settings', 'medals', 'manual'] as const;
+type Page = (typeof BINDER)[number];
+const BINDER_TABS: Record<Page, [string, string, string]> = { settings: ['SETTINGS', '#f2b8c2', '#d68794'], medals: ['MEDALS', '#e0cc62', '#cbb84e'], manual: ['FIELD MANUAL', '#b8d89a', '#94b878'] };
+
 /** A post-it to press (Export, Delete, Medals and the like). */
 const tagNote = (label: string, col: string, dark: string, ink: string, press: () => void) => { const [w, h, draw] = noteTag(label, col, dark, ink); return pixelButton(label, w, h, draw, press, 'tag'); };
 
@@ -138,6 +145,7 @@ export class Menu extends Phaser.Scene {
   routes: number[][] = [];
   squad: Gunner[] = [];
   animate?: (dt: number) => void;
+  air?: import('./atmosphere.ts').Atmosphere; // the city's weather and light
   home = { x: 0, y: 0 };
   mapW = 1;
   mapH = 1;
@@ -150,8 +158,7 @@ export class Menu extends Phaser.Scene {
   shots: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
   root!: HTMLElement;
   note = ''; // a line saying what the last cheat did
-  bookFrom: Screen = 'menu'; // where the medals and the field manual go back to
-  settingsFrom: Screen = 'menu'; // where Settings goes back to: the main menu or a save's cities
+  binderFrom: Screen = 'menu'; // where the binder (settings, medals, field manual) goes back to: the main menu or a save's cities
   intro = true; // the first time the main menu shows: the title stamped on, the rest after it
 
   constructor() { super('menu'); }
@@ -173,6 +180,8 @@ export class Menu extends Phaser.Scene {
     this.mapW = grid.w * T;
     this.mapH = grid.h * T;
     ambience(this, decor, 24);
+    const air = atmosphere(this, weatherOf(m.id), decor, grid.w * T, grid.h * T, profile.settings.quality === 'low' ? 0.4 : 1);
+    this.air = air;
     this.animate = mapAnims(this, { ...m.data, slots: [] }, grid, decor, profile.settings.quality === 'low' ? 0.4 : 1, { scare: () => undefined, planning: () => false });
     // Where the view drifts round: halfway between the middle of the map and the safe zone, where the line is held.
     const g = grid.goals;
@@ -233,6 +242,7 @@ export class Menu extends Phaser.Scene {
     const fit = (c: number, view: number, size: number) => (view >= size ? size / 2 : Math.max(view / 2, Math.min(size - view / 2, c)));
     cam.setZoom(z).centerOn(fit(this.home.x + Math.sin(t / 23) * 180, vw, this.mapW), fit(this.home.y + Math.cos(t / 31) * 120, vh, this.mapH));
     this.animate?.(dt);
+    this.air?.step(dt);
     const T = this.tile, w = this.gw, centre = (i: number) => [((i % w) + 0.5) * T, (Math.floor(i / w) + 0.5) * T];
     const again = (z2: Walker) => { z2.route = this.routes[(Math.random() * this.routes.length) | 0]; z2.p = 0; };
     for (const z2 of this.walkers) {
@@ -314,7 +324,7 @@ export class Menu extends Phaser.Scene {
   show(screen: Screen): void {
     const was = this.current;
     this.current = screen;
-    if (was && was !== screen && screen !== 'tree' && !loadingActive() && this.root.childElementCount) wipe(() => this.showNow(screen));
+    if (was && was !== screen && screen !== 'tree' && !(BINDER.includes(was as Page) && BINDER.includes(screen as Page)) && !loadingActive() && this.root.childElementCount) wipe(() => this.showNow(screen));
     else this.showNow(screen);
   }
   current?: Screen;
@@ -324,7 +334,21 @@ export class Menu extends Phaser.Scene {
     if ((screen === 'new' || screen === 'load') && !loadingActive() && saves().some((s) => s && !THUMBS.has(`${cityOf(s).id}-${profile.settings.gore !== 'none'}`)))
       return whileLoading(() => this.showNow(screen));
     const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
-    this.root.replaceChildren(...[panel].flat()); // each panel slides in (CSS)
+    this.root.replaceChildren(...[BINDER.includes(screen as Page) ? this.binder(screen as Page, panel as HTMLElement) : panel].flat()); // each panel slides in (CSS)
+  }
+
+  /** The binder: Settings, Medals and the Field manual as pages behind index tabs, rings down its spine. */
+  binder(page: Page, inner: HTMLElement) {
+    const [bw, bh, bd] = noteTag('BACK', '#c9a86a', '#9c7f48', '#2e2a22');
+    const tabs = BINDER.map((p) => {
+      const [label, col, dark] = BINDER_TABS[p], [w, h, d] = indexTab(label, col, dark, () => p === page), b = pixelButton(label, w, h, d, () => this.show(p), 'tab');
+      b.setAttribute('aria-pressed', String(p === page));
+      return b;
+    });
+    return el('div', { className: 'binder', ariaLabel: 'Binder' },
+      el('div', { className: 'rings', ariaHidden: 'true' }, ...Array.from({ length: 5 }, () => el('i'))),
+      el('div', { className: 'bhead' }, pixelButton('Back', bw, bh, bd, () => this.show(this.binderFrom), 'tag'), el('div', { className: 'tabs' }, ...tabs)),
+      el('div', { className: 'page' }, inner));
   }
 
   /** Fades the menu out and the city in. */
@@ -355,10 +379,10 @@ export class Menu extends Phaser.Scene {
         pixelButton('Load save', 94, 44, folder('LOAD SAVE', '#2f3a54', '#1c2333', 8), () => this.show('load'))),
       // Settings, and beside it the last save's medals and field manual as post-its.
       el('div', { className: 'tags' },
-        pixelButton('Settings', 58, 48, stickyNote(), () => { this.settingsFrom = 'menu'; this.show('settings'); }, 'sticky'),
+        pixelButton('Settings', 58, 48, stickyNote(), () => { this.binderFrom = 'menu'; this.show('settings'); }, 'sticky'),
         ...(last ? [
-          pixelButton('Medals', ...medalNote(), () => { open(k); this.bookFrom = 'menu'; this.show('medals'); }, 'sticky'),
-          pixelButton('Field manual', ...manualNote(), () => { open(k); this.bookFrom = 'menu'; this.show('manual'); }, 'sticky')] : [])),
+          pixelButton('Medals', ...medalNote(), () => { open(k); this.binderFrom = 'menu'; this.show('medals'); }, 'sticky'),
+          pixelButton('Field manual', ...manualNote(), () => { open(k); this.binderFrom = 'menu'; this.show('manual'); }, 'sticky')] : [])),
     );
     [...panel.children].forEach((c, i) => (c as HTMLElement).style.setProperty('--i', String(i)));
     if (intro) setTimeout(() => play('thud', 0.5), 700); // the title landing
@@ -447,8 +471,8 @@ export class Menu extends Phaser.Scene {
       back: () => this.show('menu'),
       tree: () => this.show('tree'),
       story: () => this.show('story'),
-      settings: () => { this.settingsFrom = 'save'; this.show('settings'); },
-      manual: () => { this.bookFrom = 'save'; this.show('manual'); },
+      settings: () => { this.binderFrom = 'save'; this.show('settings'); },
+      manual: () => { this.binderFrom = 'save'; this.show('manual'); },
       thumb: (id) => this.thumbnail(id),
     });
   }
@@ -481,7 +505,7 @@ export class Menu extends Phaser.Scene {
     const rows = MEDALS.map((m) => el('div', { className: `entry${got[m.id] ? '' : ' locked'}` },
       pixelCanvas(9, 13, (p) => medal(p, 1, 0, m.ribbon, !!got[m.id])),
       el('div', {}, el('b', {}, m.name), el('p', {}, m.desc), el('small', {}, got[m.id] ? `Earned ${new Date(got[m.id]).toISOString().slice(0, 10)}` : 'Not yet'))));
-    return el('div', { className: 'panel book' }, this.head(`Medals · ${Object.keys(got).length}/${MEDALS.length}`, this.bookFrom), el('div', { className: 'entries' }, ...rows));
+    return el('div', { className: 'panel book' }, el('h2', {}, `Medals · ${Object.keys(got).length}/${MEDALS.length}`), el('div', { className: 'entries' }, ...rows));
   }
 
   /** The save's field manual: a page for every zombie and soldier, filled in once met in a fight. */
@@ -492,8 +516,11 @@ export class Menu extends Phaser.Scene {
       el('div', {}, el('b', {}, met.has(id) ? name : 'Not met yet'), ...(met.has(id) ? [el('small', {}, stats), el('p', {}, note)] : [el('p', {}, 'Meet it in a fight to fill in this page.')])));
     const zombies = ZOMBIE_KINDS.map((k, i) => { const z = ZOMBIES[i]; return page(k, `${k}-walk/0`, z.name, `HP ${z.hp} · speed ${z.speed} · a leak costs ${z.leak}`, ZOMBIE_NOTES[k] ?? ''); });
     const soldiers = Object.entries(UNITS).filter(([k]) => k !== 'turret').map(([k, u]) => page(k, `${k}-idle-6/0`, u.name, `HP ${u.hp}${u.range ? ` · range ${u.range}` : ''}${u.damage ? ` · damage ${u.damage}` : ''}`, NODE.get(k)?.desc ?? ''));
-    return el('div', { className: 'panel book' }, this.head(`Field manual · ${zombies.concat(soldiers).filter((e) => !e.classList.contains('locked')).length}/${zombies.length + soldiers.length}`, this.bookFrom),
-      el('h3', {}, 'The horde'), el('div', { className: 'entries' }, ...zombies), el('h3', {}, 'Your soldiers'), el('div', { className: 'entries' }, ...soldiers));
+    // The memorial: everyone lost, the latest first.
+    const fallen = [...profile.save.fallen].reverse().map((f) => el('li', {}, el('b', {}, f.name), ` · ${UNITS[f.kind as keyof typeof UNITS]?.name ?? f.kind} · ${f.kills} kill${f.kills === 1 ? '' : 's'} · ${f.city}, ${new Date(f.at).toISOString().slice(0, 10)}`));
+    return el('div', { className: 'panel book' }, el('h2', {}, `Field manual · ${zombies.concat(soldiers).filter((e) => !e.classList.contains('locked')).length}/${zombies.length + soldiers.length}`),
+      el('h3', {}, 'The horde'), el('div', { className: 'entries' }, ...zombies), el('h3', {}, 'Your soldiers'), el('div', { className: 'entries' }, ...soldiers),
+      el('h3', {}, `The fallen · ${profile.save.fallen.length}`), fallen.length ? el('ul', { className: 'memorial' }, ...fallen) : el('p', {}, 'Nobody yet.'));
   }
 
   /** Every scene of the story in order; the ones this save has seen can be played again. */
@@ -547,7 +574,7 @@ export class Menu extends Phaser.Scene {
   }
 
   settings(): HTMLElement {
-    return settingsSheet({ back: () => this.show(this.settingsFrom), again: () => this.show('settings'), tags: [['Statistics', () => this.show('stats')], ['Debug', () => { this.note = ''; this.show('debug'); }]] });
+    return settingsSheet({ back: () => this.show(this.binderFrom), again: () => this.show('settings'), tags: [['Statistics', () => this.show('stats')], ['Debug', () => { this.note = ''; this.show('debug'); }]] });
   }
 
   /** Cheats, for testing: they change the save in use. */

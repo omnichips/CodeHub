@@ -19,6 +19,10 @@ const TIPS = [
   'Retreat pays half the chips from your kills. Losing pays the same.',
   'Clear a city to open the next. Every city cleared pays a bonus once.',
   'Tap a soldier in a fight to see his kills and pull him out.',
+  'A light at a door means someone is inside. Hold the door with a soldier for 3 seconds to bring them out.',
+  'Each civilian you get to the safe zone pays a tenth of your kill chips again.',
+  "Rain and fog cut every soldier's range a little. Plan your cones shorter.",
+  'The break between waves is the time to bring civilians out.',
 ];
 let since = 0, timer = 0, active = false;
 

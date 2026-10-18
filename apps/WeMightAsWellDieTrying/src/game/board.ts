@@ -127,7 +127,9 @@ export function board(act: BoardActions): HTMLElement {
     c.clearRect(0, 0, BW, BH);
     c.drawImage(fixed, 0, 0);
     route(t);
-    c.drawImage(light, 0, 0);
+    // The lamp swings a little on its cord: its pool of light (and so every shadow on the board) sways with it.
+    const swing = Math.sin(t * 0.9) * 0.05 + Math.sin(t * 2.3) * 0.008, sway = swing * 120;
+    c.drawImage(light, -LIGHT_PAD + sway, -LIGHT_PAD + Math.abs(swing) * 20);
     if (flicker > 0) pen.dither(0, 0, BW, BH, 0.25, '#060403');
     // Everything that cannot be pressed sits under a dark veil; what can be pressed is drawn over it, so it stands out.
     c.fillStyle = 'rgba(6, 4, 3, 0.2)';
@@ -141,7 +143,9 @@ export function board(act: BoardActions): HTMLElement {
     const litCity = lit ? MAPS.findIndex((m) => m.id === lit.id) : -1;
     if (lit) { lit.draw(pen, lift.get(lit.id)!, t); if (litCity >= 0) { strings(t, litCity); indexCard(litCity); } }
     if (current >= 0 && lit?.id !== MAPS[current].id) { card(pen, current, lift.get(MAPS[current].id)!, t, true); strings(t, current); }
+    c.save(); c.translate(270, 0); c.rotate(swing); c.translate(-270, 0); // swung from where its cord hangs
     lamp(flicker > 0);
+    c.restore();
     if (Math.floor(t * 1.4) % 2 === 0) { pen.led(474 + 46, 262 + 9, 3, 2, '#ff3b2e'); pen.led(474 + 47, 262 + 9, 1, 1, '#ffb0a0'); }
     for (const m of motes) {
       m.y = (m.y + m.v * dt) % 1;
@@ -607,13 +611,15 @@ function small(src: HTMLCanvasElement, grey: boolean) {
 }
 
 /** The lamp's light: bright under it, falling off to the board's edges, in ordered-dither steps like the art. */
+const LIGHT_PAD = 16; // the light's picture is this much bigger each way, so it can sway without its edge showing
 function paintLight() {
-  const cv = el('canvas', { width: BW, height: BH }), g = cv.getContext('2d')!, img = g.createImageData(BW, BH), d = img.data;
-  for (let y = 0; y < BH; y++)
-    for (let x = 0; x < BW; x++) {
-      const r = Math.hypot((x - 270) / 360, (y - 120) / 270), dark = Math.max(0, Math.min(1, (r - 0.35) / 0.8));
+  const LW = BW + 2 * LIGHT_PAD, LH = BH + 2 * LIGHT_PAD;
+  const cv = el('canvas', { width: LW, height: LH }), g = cv.getContext('2d')!, img = g.createImageData(LW, LH), d = img.data;
+  for (let y = 0; y < LH; y++)
+    for (let x = 0; x < LW; x++) {
+      const r = Math.hypot((x - LIGHT_PAD - 270) / 360, (y - LIGHT_PAD - 120) / 270), dark = Math.max(0, Math.min(1, (r - 0.35) / 0.8));
       const steps = 7, f = dark * steps, lo = Math.floor(f), level = (lo + (BAYER[(x & 3) + (y & 3) * 4] < (f - lo) * 16 ? 1 : 0)) / steps;
-      const i = (y * BW + x) * 4;
+      const i = (y * LW + x) * 4;
       if (level > 0) { d[i] = 8; d[i + 1] = 5; d[i + 2] = 3; d[i + 3] = Math.round(level * 0.6 * 255); }
       else { d[i] = 255; d[i + 1] = 214; d[i + 2] = 140; d[i + 3] = Math.round(Math.max(0, 0.3 - r) * 0.5 * 255); } // warm right under the lamp
     }

@@ -1,5 +1,23 @@
 [
  {
+  "date": "2026-10-18 18:25",
+  "title": "Get them out",
+  "notes": [
+   "Civilians: three in every city, hiding in buildings (or abandoned cars where there are few). Hold a door with a soldier for 3 seconds to bring one out, then tap or drag them to the safe zone. Zombies can kill them. Each one saved pays a tenth of your kill chips, and saving all three earns a medal.",
+   "The break between waves is now 15 seconds at 1×, to bring civilians out. Par times grew to match.",
+   "Weather: rain in London, fog in Chicago, night in Tokyo, dusk in Rome, haze in Manila, dust in Mexico City. Rain and fog cut range by 3% on Easy, 5% on Normal, 7% on Hard.",
+   "Each city looks its own: Rome's terracotta roofs and cobblestones, Manila's patchwork tin roofs and jeepneys, Tokyo's neon and vending machines, London's wet streets and red phone boxes, papel picado over the Zócalo.",
+   "Street lamps cast pools of light, fires and burnt cars glow orange, and gunfire lights the ground. Buildings throw longer shadows and the map fades into the dark at its edges.",
+   "Abandoned cars with their doors open, suitcases dropped short of the camp, chalk arrows to it. Blasts leave scorch marks, shells leave craters, broken roadblocks leave debris.",
+   "Chicago's elevated train is gone from the top street.",
+   "Soldiers have names and ranks on their cards, with damage, range and fire rate in numbers. The fallen are listed in the field manual's memorial.",
+   "Dragging a soldier from the bar shows his cone before you drop him. Cones are sketched in pencil.",
+   "Waves arrive as telegrams. The end-of-fight report has a sketch of where zombies got through and where soldiers fell.",
+   "Bigger photos in the bar on phones, each count a red stamp. Phones buzz at big blasts and when a soldier falls (Settings, Controls).",
+   "Settings, Medals and the Field Manual are pages of one binder. The lamp over the war-room board swings."
+  ]
+ },
+ {
   "date": "2026-10-18 17:43",
   "title": "Folders in the field",
   "notes": [

@@ -306,7 +306,7 @@ function waves(p: Plan) {
     spawn.normal = total - Object.values(spawn).reduce((a, b) => a + b, 0);
     out.push({ duration: Math.round(34 + 24 * f), spawn: Object.fromEntries(['normal', ...Object.keys(spawn).filter((z) => z !== 'normal')].map((z) => [z, spawn[z]])) });
   }
-  return { gap: 8, waves: out };
+  return { gap: 75, waves: out }; // 15 s between waves at 1× (PACE 5): time to bring civilians out
 }
 
 const plans = JSON.parse(readFileSync('src/data/waves.json', 'utf8'));

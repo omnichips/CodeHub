@@ -525,3 +525,22 @@ test('big zombies squeezed against a flat wall at the end of a street still walk
   run(w, 60);
   assert.equal(w.living, 0);
 });
+
+test('a soldier holding a door brings a civilian out, who is safe once walked into the safe zone', () => {
+  const rows = ['S'.repeat(12), ...Array(5).fill('.'.repeat(12)), '#'.repeat(6) + '.'.repeat(6), ...Array(5).fill('.'.repeat(12)), 'E'.repeat(12)];
+  const w = new World({ name: 't', tile: 16, par: 60, rows }, noWaves);
+  w.placeCivilians(3);
+  const c = w.civilians[0];
+  assert.ok(c && c.state === 'inside', 'someone is in a building');
+  assert.equal(w.grid.wall[c.door], 1, 'behind a door in a wall');
+  w.placeSoldier('rifleman', c.x, c.y);
+  const tick = (seconds: number) => { for (let k = 0; k < seconds * 60; k++) { w.phase = 'wave'; w.step(); } };
+  tick(10);
+  assert.equal(c.state, 'inside', 'not out before the door is held long enough');
+  tick(6);
+  assert.equal(c.state, 'out');
+  assert.ok(w.moveCivilian(c, 6 * 16 + 8, 12 * 16 + 8));
+  tick(20);
+  assert.equal(c.state, 'saved');
+  assert.equal(w.saved, 1);
+});

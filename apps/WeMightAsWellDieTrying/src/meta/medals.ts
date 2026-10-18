@@ -11,6 +11,8 @@ export interface Fight {
   fallen: number; // soldiers killed
   best: number; // the most kills one soldier made
   timeBonus: boolean; // won fast enough for the time bonus
+  saved: number; // civilians brought to the safe zone
+  civilians: number; // of how many
 }
 
 /** id, name, what earns it, its colour (the ribbon), and the test. */
@@ -21,6 +23,7 @@ export const MEDALS: { id: string; name: string; desc: string; ribbon: [string, 
   { id: 'nobody', name: 'Nobody Left Behind', desc: 'Win a fight without losing a soldier.', ribbon: ['#48512f', '#c4a058'], test: (f) => f.won && f.fallen === 0 },
   { id: 'close', name: 'Close Call', desc: 'Win with the leaks one short of losing.', ribbon: ['#c9473a', '#141516'], test: (f) => f.won && Number.isFinite(f.leakLimit) && f.leaks === f.leakLimit - 1 },
   { id: 'quick', name: 'Ahead of Schedule', desc: 'Win fast enough for the time bonus.', ribbon: ['#d6a23e', '#7a5a20'], test: (f) => f.won && f.timeBonus },
+  { id: 'rescue', name: 'Get Them Out', desc: 'Bring every civilian in a city to the safe zone.', ribbon: ['#f2e6d6', '#4f8a86'], test: (f) => f.civilians > 0 && f.saved === f.civilians },
   { id: 'army', name: 'One-Man Army', desc: 'One soldier makes 300 kills in a fight.', ribbon: ['#5e1d18', '#f0c860'], test: (f) => f.best >= 300 },
   { id: 'body-count', name: 'Body Count', desc: '1,000 kills in all.', ribbon: ['#3a3d40', '#9aa0a4'], test: (_, s) => s.stats.kills >= 1000 },
   { id: 'exterminator', name: 'Exterminator', desc: '10,000 kills in all.', ribbon: ['#141516', '#c9473a'], test: (_, s) => s.stats.kills >= 10000 },
