@@ -15,8 +15,6 @@ Oct 14, 2026 · @mj
 - **Plan, then adapt.** Set up before the wave, then pause, reposition, and call in strikes during it.
 - **Steady progression.** Every run pays chips, even a loss, spent in one big skill web.
 
-**First milestone scope:** all soldier classes, all zombie classes, all structures and usables, one map (New York), and the full skill tree. More maps (target: at least 8) come after.
-
 ## Core gameplay and rules
 
 A run is: plan the defence, press Start, survive short gapped waves, then collect chips win or lose.
@@ -59,7 +57,7 @@ A run is: plan the defence, press Start, survive short gapped waves, then collec
 - Zombies attack a roadblock only when it is directly in front of them. Those behind push forward; others step around it.
 - A roadblock takes damage in proportion to how many zombies press on it.
 
-**Time controls:** pause (orders can be given while paused), plus 1x, 2x and 3x speed.
+**Time controls:** pause (orders can be given while paused) and the speeds in Decisions.
 
 **Controls (touch and mouse)**
 
@@ -73,7 +71,7 @@ A run is: plan the defence, press Start, survive short gapped waves, then collec
 
 ## Soldier classes
 
-Thirteen classes, all in the first milestone. Ratings are relative starting points (1 low, 5 high) to be tuned in play; exact numbers live in `units.json`.
+Thirteen classes. The ratings are the original design intent (1 low, 5 high); the numbers in `units.json` are what the game uses.
 
 | Class | Role | Range | Damage | Fire rate | Special |
 | --- | --- | --- | --- | --- | --- |
@@ -158,30 +156,7 @@ Every run pays **chips**, spent in one big skill web; cleared maps can be replay
 - Bought once, kept forever. Dead soldiers return free next run.
 - Starting unlocks (proposed): 4 Riflemen, plastic and wood roadblocks, 1 Missile.
 
-**Chips formula** (all numbers in `economy.json`)
-
-```latex
-\text{chips} = \left\lfloor \frac{\text{kills}}{15} \right\rfloor \times (1 + \text{time bonus} + \text{leak bonus}) + \text{first-clear bonus}
-```
-
-- **Time bonus:** up to +30% for finishing under the map's par time, scaled linearly.
-- **Leak bonus:** +25% for zero leaks, falling linearly to 0% at the leak limit.
-- **First-clear bonus:** a flat +100 the first time a map is won.
-- **Loss:** keep 50% of the kill chips, with no time, leak or first-clear bonus.
-
-## Map: New York
-
-The first map is a Manhattan-style street grid, laid out the way a real top-down view of the city looks, not randomly.
-
-- **Layout:** long north–south avenues crossed by short east–west streets, giving rectangular blocks. One diagonal avenue (Broadway-style) cuts across for a varied choke point.
-- **Flow:** zombies enter from the north edge along two or three avenues and head south to the safe zone (a barricaded plaza and evacuation point).
-- **Size:** larger than one screen; the camera scrolls and zooms.
-- **Buildings:** brownstones, office towers, a parking garage, shops and a small park. Each building defines its indoor slots (windows and roof spots), so the designer controls how many indoor soldiers fit.
-- **Pre-placed props:** abandoned cars, taxis, bus, sandbags and a police barricade that soldiers can be ordered to move into place as roadblocks.
-- **Details:** crosswalks, sidewalks, manholes, street lamps, trees, rubble and burned cars for atmosphere.
-- **Par time and waves** are set in the map's data file.
-
-**Later maps (target 8+):** nine maps are built: Main Street, Chicago, New York, Manila, Mexico City, Rome, Tokyo, London and the White House, all in the New York tileset for now (see Decisions).
+**Chips:** kills ÷ `killsPerChip`, times (1 + time bonus + leak bonus), times chip gain, plus a flat base pay of 8 × the map's number and the first-clear bonus. A loss pays the kill chips only, with no bonuses. The numbers are in `economy.json` and the formula is in `payout()` in `src/meta/progress.ts`; trust those over this document.
 
 ## Art, audio and settings
 
@@ -200,15 +175,7 @@ All art is pixel art drawn by code from pixel grids, in a muted palette, viewed 
 
 **Audio**
 
-- First version: shooting and explosion sounds only. Music and other sounds come later.
 - Anti-noise rules: a cap on how many copies of one sound play at once, same-class shots merged into one sound per short window, slight pitch variation, and overall volume ducking in huge firefights.
-
-**Settings**
-
-- Gore: None, Some, Normal (blood splatter and corpses; corpses fade out to save performance).
-- Volume: master and sound effects.
-- Graphics quality: low, medium, high (particle and corpse limits).
-- Left-handed UI.
 
 ## Technical plan
 
@@ -227,7 +194,7 @@ The game is a static web app built with Phaser 3, Vite and TypeScript, installed
 - **Spatial grid:** soldiers check only zombies in nearby grid cells, so cone checks stay cheap.
 - **Caps:** limits on particles, corpses and blood decals, scaled by the graphics setting.
 - **Batching:** sprite atlases so thousands of sprites draw in few calls.
-- **Fixed-timestep simulation:** steady results at 1x, 2x and 3x speed.
+- **Fixed-timestep simulation:** steady results at every game speed.
 
 **Data files** (all balance lives here, not in code)
 
@@ -238,7 +205,7 @@ The game is a static web app built with Phaser 3, Vite and TypeScript, installed
 | `zombies.json` | Zombie stats, leak costs, behaviours |
 | `structures.json` | Structure and usable stats |
 | `waves.json` | Wave mixes per map |
-| `maps/new-york.json` | Tile layout, spawn edges, indoor slots, props, par time |
+| `maps/*.json` | Tile layout, spawn edges, indoor slots, props, par time, one file per map |
 | `skilltree.json` | Nodes, links, costs, descriptions, categories |
 | `economy.json` | Chips formula values |
 
@@ -247,33 +214,14 @@ The game is a static web app built with Phaser 3, Vite and TypeScript, installed
 - Local save on the device (browser storage), with a version number so old saves upgrade cleanly.
 - Export and import buttons, since clearing browser data would wipe progress.
 
-## Roadmap and open questions
-
-Build in seven phases, each ending with something playable or viewable.
-
-1. **Art style test:** one Rifleman (idle, walk, shoot in 8 directions) and one Normal zombie (2-frame walk) in the muted palette.
-2. **Core engine:** scrolling map, flow-field zombies, cone shooting, roadblocks, leaks, pause and speed.
-3. **All soldier and zombie classes.**
-4. **All structures and usables.**
-5. **Skill tree, chips and saving.**
-6. **New York map, tutorial, settings, PWA install, Vercel deploy.**
-7. **Sound:** shooting and explosions with anti-noise rules.
-
-**Open questions**
-
-- [ ] Soldier and zombie HP and damage: placeholders now, tuned by playing.
-- [x] Starting unlocks: 4 Riflemen, plastic and wood roadblocks and 1 Missile (decided, see below).
-- [x] Cone trade-off: narrow lines do not dominate (see Decisions), so none is added.
-- [x] How many waves and how many zombies in total on New York? 4,000 in 10 waves (see Decisions).
-
 ## Decisions
 
-Settled while building; not to be reopened without playtesting a reason.
+A log of choices made while building, newest thinking not always last. Where a number or rule here disagrees with the data files or the code, the data files and the code are right.
 
 - **Starting loadout:** 4 Riflemen, 3 plastic and 2 wooden roadblocks, 1 Missile.
 - **Time controls:** Pause, ½×, 1×, 2× and 5×, all from the start (5× added back in October 2026). 1× runs the fight five times faster than real time (what was 5×; 2× is the old 10×), so a city takes minutes, not a quarter of an hour (October 2026; before that 1×, 2×, 4×, 5× and 10×, and before that skill web unlocks). Bodies stay on screen as long as before.
-- **Skill web:** rebuilt in October 2026 with levelled nodes: each node can be bought up to 3 times (a cost per level, about 1.5x the last), so there are fewer nodes on screen but more to buy (167 nodes, 364 levels; every cost was raised 1.5× in October 2026, rounded to 5; on 17 October 2026 each cost was multiplied by 1.2 for every step deeper than the first and by 1.2 for each level after the first, so everything costs 42,845 chips and the deepest levels about 5× what they did). Since 17 October 2026 nodes can need others fully bought (`needs`): a new soldier class three (its parent class's +1 and two stats; for the first classes, Rifleman's), a structure or strike unlock its parent's two upgrades, each class's second +1 its damage (or work) and fire rate (or range), and each perk the second +1 and toughness. Each soldier class: unlock, then +1 (2 levels), then range, damage and fire rate (3 each), then +1 again (2) off damage, then toughness (3) and the class's perk. Medic and Engineer have their work stat in place of damage and fire rate. Structures and strikes: unlock, +1 or +1 use (2), then power or toughness (3). Saves from the old web get every chip they spent back. One category is shown at a time (Soldiers, Build, Strikes, Base), each hanging off the Command node. Since October 2026 it is a skill tree: cards laid out left to right, a column per depth, each parent level with the middle of its children, joined by square-cornered lines; a mouse over a card lights the way back to Command. A soldier's card (his unlock or one more of him) has an eye: a demo of him, with your upgrades, holding a short street of his own (the medic and the engineer with riflemen to keep up, the shield in front of one), round after round.
-- **Chips:** kills/15 (kills/10 before October 2026). The time bonus reaches its full +30% at 75% of par (par 420). Leak bonus +25% at zero leaks, falling to 0 at the limit. First clear +100 (was +200). A loss, retreat included, keeps half the kill chips.
+- **Skill web:** a tree of cards, left to right, one category at a time (Soldiers, Build, Strikes, Base) hanging off the Command node. Each node can be bought up to 3 times; some need other nodes fully bought (`needs`). Nodes, prices and effects are in `skilltree.json`; the screen is `game/tree.ts`. A soldier's card has an eye that opens a demo of him (`game/demo.ts`).
+- **Chips:** see Progression. A loss, retreat included, keeps the kill chips; every run adds a flat base pay. The time bonus reaches its full +30% at 75% of par; the leak bonus is +25% at zero leaks, falling to 0 at the limit.
 - **Aiming:** soldiers auto-aim at a zombie inside their cone (the nearest, or by the priority set: the Sniper has that button), with a little scatter; pellets scatter wider. The flamethrower burns its whole cone. Mortar and Grenadier aim at a point. The A-10 flies the way your finger was moving when you let go. The rigged car's direction is chosen while planning.
 - **Generator:** powers puddles within 220 px.
 - **Friendly fire:** mines and explosives are the only things that hurt your own soldiers.
@@ -281,14 +229,14 @@ Settled while building; not to be reopened without playtesting a reason.
 - **Map dressing:** decor (trees, lamps, wrecks) is only drawn and never collides, so it stays off the streets; New York's burned wrecks sit on the parking garage roof. The plaza in front of the safe zone is its own tile (`,`), walked like a street and paved.
 - **Install:** the game is a PWA scoped to its own folder; a cache-first service worker, renamed on every build, keeps it playable offline. Landscape only: a phone held upright is asked to turn sideways.
 - **Sound:** gunfire, rockets, shells, small blasts and napalm are made in code like the art: shaped noise and falling tones, one recipe per weapon family. The rest are recordings in `src/sounds` (October 2026): the A-10 (cannon, then the jet, once per run), the missile (its whoosh and boom, started 0.4 s in so the boom lands on impact), big blasts (mines, explosives, artillery), a few seconds of military alarm as each wave starts, the screamer's scream, a screech when a brute or hordemother arrives, single groans now and then and death rattles cut from longer takes, and the horde's growl looping underneath, louder the more zombies are on screen. A recording repeated within its window is dropped, not merged. There is no music yet. Anti-noise numbers: repeats of one sound within 50-250 ms merge into the playing copy (louder, up to 2x), 1-4 copies per sound and 16 in all, ±6% pitch, ducking once more than about 6 sounds a second are playing, and a compressor on the output. Off-screen sounds fade with distance. Volume is master × effects. A hidden tab goes silent.
-- **Soldier strength:** base damage and fire rate of every class raised 1.5× after playtesting (October 2026). When 1× became five times faster than real time, guns sped up with it; that was not meant (only the zombies were to be faster), so on 17 October 2026 every fire rate was divided by 5 (a gun fires as often in real time as its card says) and damage cut 25% (burn too). Unbalanced since: the user balances it and wants to be asked before any balance testing.
+- **Balance:** damage, fire rate, speed, HP and prices are tuned by the user over time, in `units.json`, `structures.json`, `zombies.json` and `skilltree.json`. Ask before any balance testing.
 - **Routes (17 October 2026):** zombies keep to invisible routes, not the shortest way. sim/routes.ts makes them from the map: for each way in, the shortest route down the middle of the streets, then up to two more found with the streets near the routes taken made dearer, each kept if at most twice as long and mostly a different way (a parallel lane of one street is no other way). Each mob takes one of its way in's routes. A zombie within 3 tiles (times the map's scale) of its route walks along it; farther off it follows a neighbour nearer the route, keeping 0.8 of that one's link; below 0.3, or alone, it makes for the nearest route the shortest way and takes that one up. Roadblocks are dealt with as before. Settings > Debug has a route test map (every soldier, build and strike, nothing paid) and a switch to draw the routes on every map.
 - **Voices:** a soldier picked says one of three lines over the radio, one soldier at a time. Made with Kokoro (open-weight TTS, Apache 2.0) by scripts/voices.ts into src/sounds/voices.mp3.
-- **Map life:** game/mapanims.ts: lamps (some blinking), traffic lights at junction corners, video screens, water ripples, fountain spray, trees stirring, the Zocalo flag flying, litter, birds that fly off from zombies and gunfire. Corners (17 October 2026): where kinds of ground meet (buildings as one kind), a staircase edge (steps of up to 2S tiles each way) is cut along each step on one side only (by rank: building, green, sidewalk, plaza, road; the lower gives way), so it reads as one straight slant; a lone jog (one short edge, then a long one: a street shifting sideways, as in Rome) is cut on the slant from the jog's length along both, on both sides of the street; a real corner is cut S tiles back on the slant, or a building's rounded (drawn only; it still collides square). A cut is filled as the neighbouring tile is drawn (a lawn keeps its stripes). Roads whose edges step (on the slant) are left unmarked. The map's big landmarks (station, cathedral, Colosseum...) are painted before the roof shade too. Each soldier class (17 October 2026): unlock, +1, range / damage / fire rate (Medic healing, Engineer repairs, each with range), +1 needing all three fully bought, the same set again (named II, two steps deeper so dearer), toughness needing all of set II, then the perk; every level half its old strength (range +4%, damage +8%, fire rate +6%, healing and repairs +10%). The tree draws a card's needs that sit in an earlier column as lines into it like its parent's; others are only named on the card. The tree costs 60,695 chips in all (204 nodes). Strikes are drawn to scale in flight (about 10 px to the metre: the A-10 175 px across, a 4 m missile, a 3.5 m napalm canister, a 155 mm shell), each raised over its shadow, and take their time: the missile 2.5 s (its recording starts 1 s before it lands: `sound` in structures.json), the A-10 3 s flying in along its run and on out after it (it only shoots along the run), napalm 3 s (a jet over the mark, two canisters tumbling down the last 1.2 s), the barrage's shells dropping in over their last 0.7 s. The A-10 is put down, then dragged the way it flies (let go to call it in, Cancel to drop it). The fight's music (city in panic) jumps back to its start 5 s before the end of its file. Strikes run in real time at 1× as before the speed-up (build() multiplies their delay, cooldown, effect time and shell spread by PACE and divides the A-10's speed by it), so the recordings line up. Roads are marked as two-way: an even number of lanes, a double yellow line down the middle, white dashes between lanes, nothing on an alley under two lanes wide. Trees are two tiles across (one crown per 2 by 2 of tree tiles). About 12% of buildings (not landmarks) are burned: 5% still burning (fire, smoke and a glow live), the rest burned out. Landmarks (towers, the hospital cross) are painted before the shade, so deep in a block they are dark too. Safe zones are camps: a chain-link fence where they meet the street, rows of tents, a pad with a Chinook (two rotors, turning opposite ways) that lifts off now and then (after 50 s parked), flies straight off the map east or north (each camp its own way), comes back in from the far edge the same way and lands (not on the White House). A few dead civilians and soldiers lie about (gore on only; they are painted, not counted as bodies). Window and roof spots have a pulsing amber reticle. Dust blows across the screen (Settings slider). Settings open during a fight (it pauses); the in-game Map button and the 'Plan your defence' tag were removed (17 October 2026); a Debug button in the corner toggles the routes. 'Play over other apps' music' (Settings) asks iPhones for the ambient audio session and plays no music of its own, so Spotify keeps playing; on an iPhone the game's sound then obeys the silent switch. A soldier dying cries out (made in code from a vocal-tract model) and someone calls 'Man down!' on the radio (Kokoro); a roadblock giving way crunches. The flamethrower's flame is Doom's fire algorithm in the cone's frame (game/flame.ts).
+- **Map life:** game/mapanims.ts: lamps (some blinking), traffic lights at junction corners, video screens, water ripples, fountain spray, trees stirring, the Zocalo flag flying, litter, birds that fly off from zombies and gunfire. Corners (17 October 2026): where kinds of ground meet (buildings as one kind), a staircase edge (steps of up to 2S tiles each way) is cut along each step on one side only (by rank: building, green, sidewalk, plaza, road; the lower gives way), so it reads as one straight slant; a lone jog (one short edge, then a long one: a street shifting sideways, as in Rome) is cut on the slant from the jog's length along both, on both sides of the street; a real corner is cut S tiles back on the slant, or a building's rounded (drawn only; it still collides square). A cut is filled as the neighbouring tile is drawn (a lawn keeps its stripes). Roads whose edges step (on the slant) are left unmarked. The map's big landmarks (station, cathedral, Colosseum...) are painted before the roof shade too. Strikes are drawn to scale in flight (about 10 px to the metre: the A-10 175 px across, a 4 m missile, a 3.5 m napalm canister, a 155 mm shell), each raised over its shadow, and take their time: the missile 2.5 s (its recording starts 1 s before it lands: `sound` in structures.json), the A-10 3 s flying in along its run and on out after it (it only shoots along the run), napalm 3 s (a jet over the mark, two canisters tumbling down the last 1.2 s), the barrage's shells dropping in over their last 0.7 s. The A-10 is put down, then dragged the way it flies (let go to call it in, Cancel to drop it). The fight's music (city in panic) jumps back to its start 5 s before the end of its file. Strikes run in real time at 1× as before the speed-up (build() multiplies their delay, cooldown, effect time and shell spread by PACE and divides the A-10's speed by it), so the recordings line up. Roads are marked as two-way: an even number of lanes, a double yellow line down the middle, white dashes between lanes, nothing on an alley under two lanes wide. Trees are two tiles across (one crown per 2 by 2 of tree tiles). About 12% of buildings (not landmarks) are burned: 5% still burning (fire, smoke and a glow live), the rest burned out. Landmarks (towers, the hospital cross) are painted before the shade, so deep in a block they are dark too. Safe zones are camps: a chain-link fence where they meet the street, rows of tents, a pad with a Chinook (two rotors, turning opposite ways) that lifts off now and then (after 50 s parked), flies straight off the map east or north (each camp its own way), comes back in from the far edge the same way and lands (not on the White House). A few dead civilians and soldiers lie about (gore on only; they are painted, not counted as bodies). Window and roof spots have a pulsing amber reticle. Dust blows across the screen (Settings slider). Settings open during a fight (it pauses); the in-game Map button and the 'Plan your defence' tag were removed (17 October 2026); a Debug button in the corner toggles the routes. 'Play over other apps' music' (Settings) asks iPhones for the ambient audio session and plays no music of its own, so Spotify keeps playing; on an iPhone the game's sound then obeys the silent switch. A soldier dying cries out (made in code from a vocal-tract model) and someone calls 'Man down!' on the radio (Kokoro); a roadblock giving way crunches. The flamethrower's flame is Doom's fire algorithm in the cone's frame (game/flame.ts).
 - **The horde:** zombies keep apart by their drawn size (1.25× the body they are hit by), so a crowd is a carpet of zombies shoulder to shoulder, never stacked, and each wave arrives as mobs of about 50, each pouring in at one spawn point, spread over the wave's duration.
 - **Maps, in order:** 1 Main Street, one straight east-west street (landscape screens show most of it), where the guided start runs; 2 Chicago, an F with two ways in, both from the right; 3 New York, the city grid with three ways in (the tops of its avenues); 4 Manila, the slums by an estero: shanties packed roof to roof, alleys winding through them, a basketball court, the main road bridging the canal, three ways in; 5 Mexico City, the Zócalo: one great open square between two avenues with the Metropolitan Cathedral, the National Palace and the Templo Mayor ruins standing in it and the giant flag in its middle, painted casitas round it; 6 Rome, Via Labicana bent into an M (in from both feet, over the two peaks, down into the safe zone where it dips in the middle), the Colosseum between the peaks; 7 Tokyo, Shibuya, on the biggest map (192 by 192): the safe zone in the middle of the scramble crossing, every road into it a way in (Inokashira-dori, Center Gai, Meiji-dori, Bunkamura-dori, Dogenzaka, Miyamasuzaka, Route 246), Hachiko Square and the station with its tracks south of it, video screens round it; 8 London, one bridge over the Thames end to end, no buildings, two piers that widen it; 9 White House, the last stand: one long open mown lawn with the horde coming off Pennsylvania Avenue along the whole north side and the White House itself as the safe zone, past a fountain in a ring of path, flower gardens, a helipad, groves and hedges down the sides, the drive to the north portico and a few barricades. They were put in this order in October 2026 (it was Central Park, London, White House, Rome, Queens, Tokyo), each horde sized to its new place; then Brooklyn became Chicago, Queens Manila and Central Park Mexico City (a save that cleared one counts the new city cleared); a save that cleared a map keeps it open whatever comes before it. London, the White House, Rome and Tokyo took the places of Harlem, Red Hook, Wall Street and Times Square in October 2026; a save that cleared one of those counts the city in its place as cleared.
 - **Horde size:** a fixed number per map that grows map to map: Main Street sends about 1,250 zombies in 5 waves (125 to 326 each), Chicago about 3,750 in 8 (255 to 673), New York 4,000 in 10 (230 to 514), then Manila 4,600 in 10, Mexico City 5,300 in 10, Rome 6,000 in 11, Tokyo 6,800 in 11, London 7,600 in 12 and the White House 8,500 in 12. Par for maps 4 to 9 was scaled from the measured undefended runs by zombie count when they were reordered, and every par got the longer walk when the maps doubled: `node scripts/undefended.ts <map id>` gives the exact figure. Every zombie has 20% more HP than before October 2026 (a normal one 120).
-- **No map is won at once (October 2026):** every map takes a few tries: the starting loadout loses Main Street, and what won one map loses the next until the chips from a try or two (a loss keeps half the kill chips) buy more. `node scripts/balance.ts [map id] [seed]` plays the campaign that way (a sensible defence, every chip spent between tries, each try listed) and is the check; the target is about three tries a map. Main Street, Brooklyn, London and Queens were made bigger for it (before the maps were reordered) (they were won at once in that simulation; Main Street's starting loadout used to win, leaking 0 to 30 of 50). That alone did not do it: a first clear paid for 20 to 40 upgrades, so Brooklyn and New York still fell at once; chips were cut (kills/15, first clear +100) and costs raised 1.5×. Not yet checked in the simulation since.
+- **No map is won at once (October 2026):** every map should take a few tries. `node scripts/balance.ts [map id] [seed]` plays the campaign that way; the target is about three tries a map. Chips and prices have been retuned by hand since, so it needs rerunning before it can be trusted.
 - **Par:** about what an undefended run of every wave takes (`node scripts/undefended.ts <map id>` prints it), so the time bonus is earned by killing the horde on its way in. A formula of 1.35 × the wave time fell far short on the later maps, where a mob pours in only as fast as there is room and the crowd takes long to walk in (Rome's undefended run takes 1,331 s against 586 s of waves).
 - **Spawning:** a mob pours in only as fast as there is room at its spawn point (a crowd that cannot fit would be shoved into the buildings): each newcomer keeps 60% of its own size clear of anyone there, counting the ones that came in the same step (a whole mob once landed in one step, piled up and jammed for good). A way in that stays full for 2 seconds sends the mob to another. Late zombies of one wave carry into the next, and any zombie still shoved into a building is put back on the nearest open tile; a zombie wider than half a tile is pushed out only from the tiles it started on (following its pushes once hung the game).
 - **Where they come from:** spawn tiles glow red with arrows pointing in (and "THEY COME FROM HERE" while planning). No street may run off the map except where the horde comes in or into the safe zone; a test checks every map.
@@ -311,7 +259,9 @@ Settled while building; not to be reopened without playtesting a reason.
 - **Twice as big (October 2026):** every map was doubled each way, every tile made 2 by 2, so streets, sidewalks and buildings are twice as big while zombies, soldiers, cars and roadblocks keep their size: room for the horde (Main Street's road is 8 tiles of asphalt, its sidewalks 2). Maps record `scale: 2` and the painter draws their lanes, sidewalks, crosswalks, lots and roof shade that much wider, so they look as they did, only bigger. Maps 4 to 9 are laid out at design size in `scripts/maps.ts` and doubled as they are written (`scripts/upscale.ts`); maps 1 to 3 were doubled once. Map thumbnails are painted from the design-size map. Only the city being played keeps its painting (all of them would fill a phone). Saves went to version 4: a kept setup from before would land in the wrong places, so those were dropped.
 - **Life on the map:** fire flickers in burned-out wrecks and in some oil drums, smoke drifts off them downwind, grey smoke off some rubble, steam off some manholes: only drawn, and only where the decor itself was drawn; 24 spots at most on high quality, fewer on lower.
 - **Building kinds added (October 2026):** `k` Chicago greystones (stone fronts), `z` skyscrapers (their tops drawn above the roof shade, a plant room and two masts), `y` shanties (each roof its own tin, rust or tarp, rows of roofs of uneven widths, tyres and stones holding them down, plywood walls), `x` casitas (each its own colour), `c` colonial red stone (tezontle). Landmarks added: the Metropolitan Cathedral, the giant flag, the L, washing lines, a basketball court. The White House is drawn bigger on bigger grounds.
-- **Last setup:** pressing Start keeps the defence as it stands for that city in the save; next time, Last setup (beside Start) clears the map and puts it back, as far as what you own allows. The map's own cars go back where they were moved to.
+- **Last setup:** pressing Start keeps the defence as it stands for that city in the save. Opening that city (or Play again) puts it down again, as far as what you own allows; the Clear button, beside Start, takes everything back after a question. The guided start and the debug map do not auto-place.
+- **Pixel look (October 2026):** the HUD's type is VT323 (a pixel font, `@fontsource/vt323`, bundled for offline play); its buttons have notched corners; icons are drawn from letter grids in `game/pixicons.ts`: a white flag for Menu and a cog for Settings (both generated in code, four frames each: hovered, the flag ripples and the cog turns), and a zombie head (leaks) and a skull (kills) top left on no backdrop, a spider for Debug at the end of the top-right row, and a helmet, a barricade and cross hairs on the Units, Build and Strikes tabs. There is no wave progress bar. A picked soldier's card is his dossier: Remove (while planning) and Retreat (mid-wave) are a red bookmark out of its top, and a walkie-talkie beside it (its screen a game controller) plays as him. Playing as a soldier drops the controls to 10% under a vignette dithered like the city board's lamp light (seven Bayer steps, one art pixel to 3 screen pixels).
+- **Play as a soldier:** during a wave, the controller button on a picked soldier's card lets the player drive him: WASD walks, the mouse aims, holding left-click fires, 10% more range. The controls fade to 60% and cannot be clicked until the button or Esc hands him back, or he dies. Not for turrets, fixed units, medics, engineers or soldiers indoors.
 - **Kills by who:** every kill is credited to a soldier class, a structure or a strike (fire counts for whoever lit it), and the end panel lists the top six beside the chips.
 - **Soldier down:** a soldier killed in a wave gives a notice under the status (tap it to look) and a red ring where he fell.
 - **Cone trade-off, tested:** none added. Four Riflemen across Main Street over its first three waves: wide and middle cones held with no leaks, the narrowest leaked about 86. A wide cone sees more targets; a narrow one only shoots straighter.

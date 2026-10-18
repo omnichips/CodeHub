@@ -1,5 +1,6 @@
 // The main menu, or the art viewer with ?art, or straight into a fight with ?play (?play=chicago for that map).
 import Phaser from 'phaser';
+import '@fontsource/vt323/latin-400.css';
 import palette from './data/palette.json' with { type: 'json' };
 import { watchForCrashes } from './game/crash.ts';
 import { startLoading } from './game/loading.ts';

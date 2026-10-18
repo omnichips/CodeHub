@@ -183,6 +183,8 @@ export const facingOf =(angle: number) => ((Math.round(angle / ((2 * Math.PI) / 
 export const coneOf = (u: UnitStats) => u.cone ?? DEFAULT_CONE;
 export const indirect = (u: UnitStats) => u.weapon === 'shell';
 export const support = (u: UnitStats) => u.weapon === 'heal' || u.weapon === 'repair';
+/** Driving a soldier yourself: his range is this much longer. */
+const CONTROL_RANGE = 1.1;
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -193,6 +195,8 @@ export class World {
   hpBy = 1; // the save's difficulty: every zombie's health times this
   countBy = 1; // and every wave's numbers
   sightBy = 1; // the weather: rain and fog cut every soldier's range by a few percent
+  /** The soldier the player is driving: the way he is walking (-1 to 1 each) and whether the trigger is held. His aim is set with aim(). */
+  control?: { s: Soldier; dx: number; dy: number; fire: boolean };
   phase: 'plan' | 'wave' | 'won' | 'lost' = 'plan';
   time = 0;
   kills = 0;
@@ -548,13 +552,19 @@ export class World {
     };
   }
 
-  /** Only while planning: clears what has been put down and lays out a kept setup again, as much of it as `have` (how
-   *  many of each you own) allows and as still fits. The map's own cars go back where they were moved to. */
-  useSetup(p: Setup, have: Record<string, number>) {
+  /** Only while planning: takes back every soldier, roadblock and structure put down (the map's own cars stay). */
+  clearSetup() {
     if (this.phase !== 'plan') return;
     for (const s of this.soldiers.filter((o) => !o.owner)) this.removeSoldier(s);
     for (const rb of this.roadblocks.filter((o) => !o.prop)) this.removeBlock(rb, true);
     for (const st of [...this.structures]) this.removeStructure(st, true);
+  }
+
+  /** Only while planning: clears what has been put down and lays out a kept setup again, as much of it as `have` (how
+   *  many of each you own) allows and as still fits. The map's own cars go back where they were moved to. */
+  useSetup(p: Setup, have: Record<string, number>) {
+    if (this.phase !== 'plan') return;
+    this.clearSetup();
     const props = this.roadblocks.filter((rb) => rb.prop), left = (kind: string) => (have[kind] ?? 0) - (this.used[kind] ?? 0) > 0;
     props.forEach((rb) => this.mark(rb, 0));
     props.forEach((rb, k) => {
@@ -597,7 +607,7 @@ export class World {
   }
 
   /** How far a soldier reaches, a watchtower or a window included. */
-  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * this.sightBy * (s.indoor ? this.stats.indoor.rangeBy : 1); }
+  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * this.sightBy * (s.indoor ? this.stats.indoor.rangeBy : 1) * (this.control?.s === s ? CONTROL_RANGE : 1); }
 
   /** What one hit of his does: less from indoors. */
   private damageOf(s: Soldier) { return this.stats.units[s.kind].damage! * (s.indoor ? this.stats.indoor.damageBy : 1); }
@@ -1322,7 +1332,7 @@ export class World {
     const z = ZOMBIES[this.zkind[j]];
     if (z.armor && (how === 'bullet' || how === 'fire')) amount *= z.armor;
     if (z.low && (how === 'bullet' || how === 'pierce')) amount *= 0.7; // a crawler, low on the ground
-    if (how !== 'fire' && how !== 'dot') this.zhit[j] = 0.1;
+    if (how !== 'fire' && how !== 'dot') this.zhit[j] = 0.6; // red for about a tenth of a second at 1x (the fight runs PACE times faster)
     if ((this.zhp[j] -= amount) > 0) return;
     this.kill(j);
     this.kills++;
@@ -1442,7 +1452,7 @@ export class World {
     const gone: Soldier[] = [];
     for (const s of this.soldiers) {
       if (s.dead) continue;
-      const u = this.stats.units[s.kind];
+      const u = this.stats.units[s.kind], c = this.control?.s === s ? this.control : undefined;
       s.rangeBy = s.rateBy = s.cover = 1;
       s.incendiary = false;
       for (const st of this.structures) {
@@ -1462,7 +1472,7 @@ export class World {
         }
       } else {
         s.cooldown = Math.max(0, s.cooldown - dt);
-        if (s.cooldown === 0 && this.hasTarget(s, u)) {
+        if (s.cooldown === 0 && (c ? c.fire : this.hasTarget(s, u))) {
           this.fire(s, u);
           s.cooldown = 1 / (u.fireRate! * s.rateBy);
           s.firedAt = this.time;
@@ -1470,7 +1480,16 @@ export class World {
       }
       const firing = this.firing(s);
       s.walking = false;
-      if (s.dest) {
+      if (c && (c.dx || c.dy)) {
+        // Driven: WASD walks him, slower while the trigger is held.
+        const n = Math.hypot(c.dx, c.dy), step = (firing ? u.aimSpeed : u.speed) * dt;
+        this.pushOut(s.x + (c.dx / n) * step, s.y + (c.dy / n) * step, u.radius);
+        s.x = this.px;
+        s.y = this.py;
+        s.walking = true;
+        s.heading = Math.atan2(c.dy, c.dx);
+        if (s.indoor && !this.grid.wall[this.grid.at(s.x, s.y)]) s.indoor = false;
+      } else if (s.dest) {
         const { x, y, field } = s.dest, d = Math.hypot(x - s.x, y - s.y);
         if (d < 1) {
           s.dest = undefined;
@@ -1542,7 +1561,7 @@ export class World {
   /** Direct fire goes at his mark, a little off (pellets spread wider); mortars and grenadiers drop on the aim point. */
   private fire(s: Soldier, u: UnitStats) {
     this.by = s;
-    const aim = (s.shot = indirect(u) || u.weapon === 'flame' ? s.angle : this.markAngle(s)), off = (by: number) => (this.random() * 2 - 1) * this.spread(s) * by;
+    const aim = (s.shot = indirect(u) || u.weapon === 'flame' || this.control?.s === s ? s.angle : this.markAngle(s)), off = (by: number) => (this.random() * 2 - 1) * this.spread(s) * by;
     this.noise(s.kind, s.x, s.y);
     switch (u.weapon) {
       case 'bullet':

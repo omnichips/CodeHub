@@ -95,6 +95,8 @@ export class Game extends Phaser.Scene {
   speed = 1;
   acc = 0;
   selected?: Thing;
+  driving?: Soldier; // the soldier the player is playing as (WASD to walk, the mouse to aim and shoot)
+  held = new Set<string>(); // WASD keys down
   drag?: Drag;
   pointer = { x: -1, y: -1 }; // screen point of the drag in progress
   dragAngle = -Math.PI / 2; // which way the finger was last moving: an A-10 flies that way
@@ -220,7 +222,7 @@ export class Game extends Phaser.Scene {
       win: () => { if (this.world.phase === 'plan' || this.world.phase === 'wave') this.world.phase = 'won'; },
       leaks: () => { this.unlimited = !this.unlimited; this.world.leakLimit = this.unlimited ? Infinity : this.build.stats.leakLimit; },
       start: () => this.begin(),
-      setup: () => this.useSetup(),
+      clear: () => { this.world.clearSetup(); this.selected = undefined; },
       speed: (n) => (this.speed = n),
       action: (a) => this.act(a),
       again: () => this.afterStory(() => this.scene.restart()),
@@ -231,6 +233,7 @@ export class Game extends Phaser.Scene {
       }),
       menu: (to) => this.afterStory(() => this.leave(to)),
       retreat: () => this.retreat(),
+      drive: () => this.drive(),
       skip: () => { if (this.tutorial >= 0) this.endTutorial(); else { this.civTip = false; civTipDone(); } },
       nextWave: () => this.world.skipBreak(),
     });
@@ -238,16 +241,23 @@ export class Game extends Phaser.Scene {
     this.setZoom(this.cameras.main.zoom); // again, now the bars can be measured
     music('game');
     city(this.mapId);
+    this.useSetup(); // last time's defence is already down
     // The keyboard's shortcuts (Settings, Controls), unless a scene, a question or the settings are up.
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || this.inStory || document.querySelector('.dialog') || !document.getElementById('menu')!.hidden) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key, keys = profile.settings.keys, a = (Object.keys(keys) as KeyAction[]).find((x) => keys[x] === key);
+      if (this.driving && key.length === 1 && 'wasd'.includes(key)) { e.preventDefault(); return; } // walking, not the tabs
       if (!a) return;
       e.preventDefault();
       this.key(a);
     };
     addEventListener('keydown', onKey);
-    this.events.once('shutdown', () => removeEventListener('keydown', onKey));
+    // Playing as a soldier: WASD held down walks him.
+    const hold = (down: boolean) => (e: KeyboardEvent) => { if ('wasd'.includes(e.key.toLowerCase()) && e.key.length === 1) down ? this.held.add(e.key.toLowerCase()) : this.held.delete(e.key.toLowerCase()); };
+    const onHold = hold(true), onRelease = hold(false);
+    addEventListener('keydown', onHold);
+    addEventListener('keyup', onRelease);
+    this.events.once('shutdown', () => { removeEventListener('keydown', onKey); removeEventListener('keydown', onHold); removeEventListener('keyup', onRelease); });
     // As the line breaks (leaks toward the limit) the colour drains out of the city.
     this.gray = this.game.renderer.type === Phaser.WEBGL ? this.cameras.main.postFX?.addColorMatrix() : undefined;
     this.grayAt = 0;
@@ -359,10 +369,10 @@ export class Game extends Phaser.Scene {
     w.start();
   }
 
-  /** Clears what is down and puts the kept setup back, as far as what you own now allows. */
+  /** Puts the kept setup down, as far as what you own now allows (every time a city is opened, unless it is the guided start). */
   useSetup() {
     const kept = profile.save.setups[this.mapId];
-    if (!kept) return;
+    if (!kept || this.debug || this.tutorial >= 0) return;
     this.world.useSetup(kept, this.loadout);
     this.selected = undefined;
   }
@@ -419,6 +429,7 @@ export class Game extends Phaser.Scene {
     if (a === 'turn') { if (this.drag?.kind === 'place') this.turned = !this.turned; else if (this.canTurn) this.act('Turn'); }
     if (a === 'remove' && w.phase === 'plan' && sel && !(isBlock(sel) && sel.prop)) this.act('Remove');
     if (a === 'retreat' && isSoldier(sel)) this.act(w.phase === 'plan' ? 'Remove' : 'Retreat');
+    if (a === 'deselect' && this.driving) return this.stopDriving();
     if (a === 'deselect') this.selected = this.armed = this.pending = this.strikeAim = undefined;
     if (a === 'help') this.hud.toggleKeys((Object.keys(KEY_ACTIONS) as KeyAction[]).map((k) => [keyName(profile.settings.keys[k]), KEY_ACTIONS[k][1]]));
   }
@@ -602,7 +613,34 @@ export class Game extends Phaser.Scene {
 
   downPointers() { return this.input.manager.pointers.filter((p) => p.isDown); }
 
+  /** Plays as the picked soldier: only mid-wave, and not a turret, a soldier fixed in place, one indoors or one falling back. */
+  canDrive(s: Thing | undefined): s is Soldier {
+    const w = this.world;
+    return w.phase === 'wave' && isSoldier(s) && !s.dead && !s.owner && !s.indoor && !s.leaving && !w.stats.units[s.kind].fixed && !support(w.stats.units[s.kind]);
+  }
+
+  drive() {
+    if (this.driving) return this.stopDriving();
+    const s = this.selected;
+    if (!this.canDrive(s)) return;
+    this.driving = s;
+    s.dest = undefined;
+    this.armed = this.pending = this.strikeAim = this.drag = undefined;
+    this.world.control = { s, dx: 0, dy: 0, fire: false };
+  }
+
+  stopDriving() {
+    this.driving = undefined;
+    this.world.control = undefined;
+    this.held.clear();
+  }
+
   onDown(p: Phaser.Input.Pointer) {
+    if (this.driving) { // the mouse is his gun: aim where it points, fire while it is down
+      this.pointer = { x: p.x, y: p.y };
+      if (p.leftButtonDown() && this.world.control) this.world.control.fire = true;
+      return;
+    }
     const cam = this.cameras.main, down = this.downPointers();
     if (this.drag?.kind === 'place') return;
     if (down.length >= 2) {
@@ -663,6 +701,7 @@ export class Game extends Phaser.Scene {
   }
 
   onMove(p: Phaser.Input.Pointer) {
+    if (this.driving) { this.pointer = { x: p.x, y: p.y }; return; }
     const d = this.drag, cam = this.cameras.main;
     if (!d && p.wasTouch === false) this.hover(p);
     if (!d || d.kind === 'place') return;
@@ -691,6 +730,7 @@ export class Game extends Phaser.Scene {
   }
 
   onUp(p: Phaser.Input.Pointer) {
+    if (this.driving) { if (this.world.control && !p.leftButtonDown()) this.world.control.fire = false; return; }
     const d = this.drag;
     if (!d || d.kind === 'place') return;
     if (d.kind === 'pinch') {
@@ -833,6 +873,7 @@ export class Game extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     const w = this.world;
+    this.drive_();
     if (w.phase === 'wave' && this.speed > 0 && !this.inStory) {
       this.acc += (Math.min(delta, 100) / 1000) * this.speed * PACE;
       const until = performance.now() + STEP_BUDGET;
@@ -869,6 +910,20 @@ export class Game extends Phaser.Scene {
     this.drawOverlay();
     this.listen(delta);
     this.updateHud();
+  }
+
+  /** Each frame while playing as a soldier: WASD to the sim, the gun at the mouse, the camera on him; and out of it when he falls or the wave ends. */
+  drive_() {
+    const w = this.world, s = this.driving, c = w.control;
+    if (!s || !c) return;
+    if (!this.canDrive(s) || !w.soldiers.includes(s)) return this.stopDriving();
+    const h = this.held;
+    c.dx = (h.has('d') ? 1 : 0) - (h.has('a') ? 1 : 0);
+    c.dy = (h.has('s') ? 1 : 0) - (h.has('w') ? 1 : 0);
+    w.aim(s, ...this.toWorld(this.pointer.x, this.pointer.y));
+    const cam = this.cameras.main;
+    cam.scrollX += (s.x - cam.width / 2 - cam.scrollX) * 0.12;
+    cam.scrollY += (s.y - cam.height / 2 - cam.scrollY) * 0.12;
   }
 
   /** What would put a bird up at (x, y): a soldier firing close by, or a zombie coming near. */
@@ -936,7 +991,7 @@ export class Game extends Phaser.Scene {
   }
 
   drawZombies() {
-    const w = this.world, t = w.time, hurt = hex(palette.blood1) | 0x404040, burning = hex(palette.flash0), v = this.cameras.main.worldView;
+    const w = this.world, t = w.time, hurt = 0xff3030, burning = hex(palette.flash0), v = this.cameras.main.worldView;
     this.seen = 0;
     for (let i = 0; i < w.n; i++) {
       let s = this.zombies[i];
@@ -1347,14 +1402,14 @@ export class Game extends Phaser.Scene {
     const turnable = (isBlock(sel) && !sel.prop && !this.world.stats.roadblocks[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
     this.canTurn = (planning && turnable) || (isBlock(sel) && !!sel.prop);
     this.hud.update({
-      status: [!planning && this.time.now - this.behind < 1500 ? 'Slowed' : '', `Leaks ${w.leaks}/${Number.isFinite(w.leakLimit) ? w.leakLimit : '∞'}`, `${w.kills} kills`],
+      status: [!planning && this.time.now - this.behind < 1500 ? 'Slowed' : '', `${w.leaks}/${Number.isFinite(w.leakLimit) ? w.leakLimit : '∞'}`, `${w.kills}`],
       warn: w.leaks >= w.leakLimit * 0.7,
       counts: Object.fromEntries(ids.map((id) => [id, this.available(id)])),
       // A strike can only be called in once the wave is on, and not again until it has cooled down.
       ready: Object.fromEntries(ids.map((id) => [id, isUsable(id) ? w.strikeReady(id) : this.available(id) > 0])),
       cool: Object.fromEntries(Object.keys(USABLES).map((id) => [id, waving ? Math.max(0, w.readyAt[id as UsableKind] - w.time) / this.world.stats.usables[id as UsableKind].cooldown : 0])),
       planning,
-      restore: !!profile.save.setups[this.mapId],
+      placed: planning && (w.soldiers.length > 0 || w.structures.length > 0 || w.roadblocks.some((rb) => !rb.prop)),
       speed: this.speed,
       armed: this.armed ?? '',
       routes: this.showRoutes,
@@ -1368,11 +1423,9 @@ export class Game extends Phaser.Scene {
         ...(waving && sel?.kind === 'noise' ? ['Sound off'] : []),
         ...(planning && turnable ? ['Turn'] : []),
         ...(isBlock(sel) && sel.prop ? ['Turn'] : []),
-        ...(planning && sel && !(isBlock(sel) && sel.prop) ? ['Remove'] : []),
-        ...(waving && isSoldier(sel) && !sel.owner && !this.world.stats.units[sel.kind].fixed ? [sel.leaving ? 'Retreating…' : 'Retreat'] : []),
+        ...(planning && sel && !isSoldier(sel) && !(isBlock(sel) && sel.prop) ? ['Remove'] : []), // a soldier's is the bookmark on his dossier
       ],
-      progress: waving ? { wave: Math.min(w.wave + 1, w.waves), waves: w.waves, done: w.kills + w.leaks, left: w.left } : undefined,
-      card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? this.cardOf(sel) : undefined,
+      card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? { ...this.cardOf(sel), drivable: this.canDrive(sel) || this.driving === sel, driving: this.driving === sel, mark: planning ? 'Remove' : waving && !sel.owner && !this.world.stats.units[sel.kind].fixed ? (sel.leaving ? 'Retreating…' : 'Retreat') : '' } : undefined,
       end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals, sketch: (this.sketch ??= this.sketchMap()) },
       tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : this.civTip && waving && w.civilians.some((c) => c.state === 'inside') ? CIV_TIP : '',
       breakLeft: w.breakLeft / PACE,
@@ -1428,11 +1481,11 @@ export class Game extends Phaser.Scene {
   chipLines(p: Payout) {
     const pc = (v: number) => `+${Math.round(v * 100)}%`;
     return [
-      `Kills: ${p.base} chips${this.world.phase === 'lost' ? ', half kept' : ''}`,
+      `Kills: ${p.base} chips`,
       ...(p.timeBonus ? [`Time bonus ${pc(p.timeBonus)}`] : []),
       ...(p.leakBonus ? [`Few leaks ${pc(p.leakBonus)}`] : []),
       ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
-      ...(p.minimum ? [`Minimum pay: ${p.minimum} chips`] : []),
+      ...(p.minimum ? [`Base pay: +${p.minimum} chips`] : []),
       ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
       ...(this.skipChips ? [`Breaks skipped ${this.world.skips}: +${this.skipChips}`] : []),
       ...(this.civChips ? [`Civilians saved ${this.world.saved}: +${this.civChips}`] : []),

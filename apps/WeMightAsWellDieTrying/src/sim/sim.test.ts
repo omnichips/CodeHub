@@ -59,6 +59,21 @@ test('a rifleman shoots what is in his cone and nothing behind him', () => {
   assert.equal(w.kills, 1);
 });
 
+test('a soldier played by hand walks with WASD, shoots only where aimed while the trigger is held, and reaches 10% farther', () => {
+  const w = world(Array(20).fill('.'.repeat(19) + 'E'));
+  const s = w.placeSoldier('rifleman', 160, 80)!, range = w.rangeOf(s);
+  w.start();
+  w.control = { s, dx: 1, dy: 0, fire: false };
+  assert.ok(Math.abs(w.rangeOf(s) / range - 1.1) < 1e-9, 'his range is 10% longer while driven');
+  w.spawn(0, 100, 80); // in range behind him: a soldier left alone would shoot it
+  run(w, 1);
+  assert.ok(s.x > 160, 'he walked east');
+  assert.equal(w.alive[0], 1, 'trigger not held: he does not fire on his own');
+  w.control = { s, dx: 0, dy: 0, fire: true };
+  run(w, 10, () => w.aim(s, w.zx[0], w.zy[0]));
+  assert.equal(w.alive[0], 0, 'held trigger, aimed at it: dead');
+});
+
 const open = () => world([...Array(19).fill('.'.repeat(20)), 'E'.repeat(20)]);
 const kind = (name: string) => ZOMBIE_KINDS.indexOf(name);
 

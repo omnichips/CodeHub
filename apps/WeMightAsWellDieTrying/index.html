@@ -20,7 +20,7 @@
         --right: max(8px, env(safe-area-inset-right)); --bottom: max(8px, env(safe-area-inset-bottom));
       }
       html, body { margin: 0; height: 100%; background: #232526; overflow: hidden; touch-action: none; overscroll-behavior: none; }
-      body { font: 600 calc(13px * var(--text, 1)) ui-monospace, Menlo, Consolas, monospace; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      body { font: 400 calc(19px * var(--text, 1)) 'VT323', ui-monospace, Menlo, Consolas, monospace; font-synthesis: none; -webkit-font-smoothing: none; font-smooth: never; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       #game { position: fixed; inset: 0; }
       button {
         font: inherit; color: var(--ink); background: var(--olive); border: 2px solid var(--line);
@@ -117,6 +117,7 @@
       #menu button.px:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.08); }
       #menu button.px:focus-visible { outline: 2px solid #f5d27a; outline-offset: 2px; }
       #menu .main .pair > button.px { flex: none; }
+      #menu .main .pair { gap: 10px; } /* 5 art pixels: the two folders end where the dossier does (193 art pixels across) */
       /* The first time it shows: the city fades in, the title is stamped on, the rest follows it down. */
       #menu .main.intro { animation: thump 0.18s 0.72s ease-out; }
       #menu .main.intro > * { animation: rise 0.35s calc(0.85s + var(--i) * 70ms) ease-out both; }
@@ -185,7 +186,10 @@
       #menu .form .storage small { width: 100%; color: #5a4024; font-size: calc(11px * var(--text, 1)); }
       #menu .form .build { position: absolute; right: 12px; bottom: 4px; margin: 0; color: rgba(58, 38, 20, 0.55); font-size: calc(10px * var(--text, 1)); font-style: italic; transform: rotate(-2deg); }
       /* During a fight: the same sheet, a little smaller. */
-      #menu .form.window { width: min(560px, 100%); max-height: calc(100% - 16px); padding: 14px 16px 18px; zoom: 0.9; }
+      /* In a fight the sheet is also a .window, whose dark box (below) would cover the parchment: the sheet's own look wins. */
+      #menu .form.window { width: min(560px, 100%); max-height: calc(100% - 16px); padding: 14px 16px 18px; zoom: 0.9;
+        background: #dcc28c var(--parch); background-size: 192px; border: 0; border-bottom: 3px solid #8a6a3a;
+        box-shadow: inset 0 0 22px rgba(110, 66, 20, 0.5), 6px 8px 0 rgba(6, 4, 3, 0.6); }
       @media (max-width: 760px), (max-height: 500px) { #menu .form { padding: 12px 12px 18px; } #menu .formhead h2 canvas:last-child { width: 72px !important; } }
       #menu .head { display: flex; gap: 10px; align-items: center; }
       #menu .head h2 { margin: 0; }
@@ -395,15 +399,8 @@
       #hud .end .go { transform: none; }
       #hud .end .medals li { color: var(--red-ink); }
       /* How far through the horde: a strip of paper under the status, the wave, a bar inked in, how many are left. */
-      #hud .progress { top: calc(var(--top) + 46px); left: var(--left); display: flex; align-items: center; gap: 8px; width: min(340px, 46vw); padding: 5px 8px; box-sizing: border-box; color: var(--pen); background: var(--paper); box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.5); pointer-events: none; }
-      #hud .progress b { white-space: nowrap; }
-      #hud .progress .fill { flex: 1; height: 8px; border: 2px solid var(--pen); background: #d8ceb2; }
-      #hud .progress .fill i { display: block; height: 100%; background: var(--red-ink); transform-origin: left; transition: transform 0.3s ease-out; }
-      #hud .progress small { white-space: nowrap; color: #5a4a2a; }
-      #hud:has(.progress:not([hidden])) .notices { top: calc(var(--top) + 84px); }
-      #hud.lefty .progress { left: auto; right: var(--right); }
       /* The picked soldier: a manila card, his photo pinned to it. */
-      #hud .card { bottom: calc(var(--bottom) + 52px); right: var(--right); display: flex; gap: 10px; width: min(300px, 40vw); padding: 10px 12px 10px 10px; box-sizing: border-box; color: var(--pen); background: var(--manila); border-bottom: 3px solid var(--manila-dark); box-shadow: 4px 6px 0 rgba(6, 4, 3, 0.55); animation: pop 0.15s ease-out; pointer-events: none; }
+      #hud .card { bottom: var(--bottom); right: var(--right); display: flex; gap: 10px; width: min(300px, 40vw); padding: 10px 12px 10px 10px; box-sizing: border-box; color: var(--pen); background: var(--manila); border-bottom: 3px solid var(--manila-dark); box-shadow: 4px 6px 0 rgba(6, 4, 3, 0.55); animation: pop 0.15s ease-out; pointer-events: none; }
       #hud .card .photo { position: relative; flex: none; padding: 3px 3px 10px; background: var(--paper); box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.5); transform: rotate(-3deg); }
       #hud .card .photo::before { content: ''; position: absolute; left: 50%; top: -3px; width: 7px; height: 7px; margin-left: -3px; background: #c9473a; box-shadow: inset 2px 2px 0 #f08a78, 1px 1px 0 #7a2620; }
       #hud .card img { display: block; width: 44px; height: 44px; image-rendering: pixelated; background: #2c2e2f; }
@@ -516,7 +513,19 @@
       #menu:has(.binder) { justify-content: center; padding: var(--top) var(--right) var(--bottom) var(--left); }
       #menu .binder { position: relative; display: flex; flex-direction: column; width: min(860px, 100%); max-height: 100%; box-sizing: border-box; padding: 10px 14px 14px 44px; background: #3d4a2c; border: 2px solid #1c2414; box-shadow: inset 0 0 0 4px #4a5a34, 8px 10px 0 rgba(6, 4, 3, 0.6); animation: panel-in 0.22s ease-out; }
       #menu .binder .rings { position: absolute; left: 8px; top: 40px; bottom: 30px; display: flex; flex-direction: column; justify-content: space-around; }
-      #menu .binder .rings i { display: block; width: 26px; height: 12px; border: 3px solid #9aa0a4; border-left-color: #5a6064; border-radius: 8px; background: transparent; box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.5); }
+      #menu .binder .rings svg { display: block; filter: drop-shadow(1px 2px 0 rgba(0, 0, 0, 0.5)); }
+      /* Settings' sections: rubber stamps, a little crooked, pressed on the sheet. */
+      #menu .formhead .tabs:has(.stamp) { gap: 10px; align-items: center; margin-bottom: 6px; }
+      #menu .formhead .stamp:nth-child(odd) { transform: rotate(-2deg); }
+      #menu .formhead .stamp:nth-child(even) { transform: rotate(1.5deg); }
+      #menu .formhead .stamp[aria-pressed="true"] { transform: rotate(-1deg) scale(1.04); }
+      /* Over the section in use, a pixel \/ pencilled in, pulsing in hard steps. */
+      #menu .formhead .stamp { position: relative; overflow: visible; }
+      #menu .formhead .stamp[aria-pressed="true"]::after { content: ''; position: absolute; left: 50%; top: -16px; width: 18px; height: 10px; margin-left: -9px; pointer-events: none; image-rendering: pixelated;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 5' shape-rendering='crispEdges' fill='%233a2614'%3E%3Crect x='0' y='0' width='2' height='1'/%3E%3Crect x='7' y='0' width='2' height='1'/%3E%3Crect x='1' y='1' width='2' height='1'/%3E%3Crect x='6' y='1' width='2' height='1'/%3E%3Crect x='2' y='2' width='2' height='1'/%3E%3Crect x='5' y='2' width='2' height='1'/%3E%3Crect x='3' y='3' width='3' height='1'/%3E%3Crect x='4' y='4' width='1' height='1'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+        animation: chevron 0.9s steps(1) infinite; }
+      @keyframes chevron { 0% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(3px); opacity: 0.55; } }
+      @media (prefers-reduced-motion: reduce) { #menu .formhead .stamp[aria-pressed="true"]::after { animation: none; } }
       #menu .binder .bhead { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
       #menu .binder .bhead .tabs { display: flex; gap: 2px; margin-left: auto; align-items: flex-end; }
       #menu .binder .page { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; background: #e9e2cc; box-shadow: inset 0 0 0 1px #b9b2a0; }
@@ -528,6 +537,70 @@
       #menu .book .memorial { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; font-weight: 500; color: #5a5040; columns: 2 260px; }
       #menu .book .memorial b { color: #2e2a22; }
       [hidden] { display: none !important; }
+      /* ---- Pixel look: the pixel font above, notched corners, icon buttons, the play-as-a-soldier dimming ---- */
+      #hud .menu:not(.icon), #hud .tab, #hud .speeds button, #hud .time > button, #hud .actions button, #hud .item, #hud .debug .panel button,
+      #menu .form button:not(.px) { clip-path: polygon(0 3px, 3px 3px, 3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px)); border-radius: 0; }
+      #hud svg, #hud img { image-rendering: pixelated; }
+      /* The row of status icons: no backdrop, a thin light outline so they read over any ground. */
+      #hud .status { align-items: center; }
+      #hud .menu.icon, #hud .debug .menu.icon { min-width: 0; min-height: 0; padding: 4px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 0; box-shadow: none; transform: none; }
+      @media (hover: hover) { #hud .menu.icon:hover { background: transparent; } }
+      #hud .menu.icon:hover svg { transform: translateY(-1px); }
+      #hud .menu.icon:active svg { transform: translateY(1px); }
+      #hud .status svg, #hud .card .drive svg { filter: drop-shadow(1px 0 0 #141516) drop-shadow(-1px 0 0 #141516) drop-shadow(0 1px 0 #141516) drop-shadow(0 -1px 0 #141516); }
+      #hud .status span { background: transparent; border: 0; box-shadow: none; transform: none; padding: 0 4px; color: #f4efe0; text-shadow: 1px 0 #141516, -1px 0 #141516, 0 1px #141516, 0 -1px #141516, 1px 1px #141516, -1px -1px #141516, 1px -1px #141516, -1px 1px #141516; }
+      #hud .status span.stat { display: flex; align-items: center; gap: 5px; font-weight: 700; }
+      #hud .status span.stat b { font-weight: 700; min-width: 1ch; }
+      #hud .status .warn, #hud .status span.warn { background: transparent; color: #ff8a78; }
+      /* Debug: the spider, with its panel dropping down under it. */
+      /* A moving icon: four frames stacked, the first shown; hovered, they take turns (the flag waves, the cog turns). */
+      #hud .anim { display: grid; }
+      #hud .anim > svg { grid-area: 1 / 1; visibility: hidden; }
+      #hud .anim > svg:first-child { visibility: visible; }
+      #hud .menu.icon:is(:hover, :focus-visible) .anim > svg { visibility: hidden; animation: pxframe 0.48s steps(1) infinite; }
+      #hud .menu.icon:is(:hover, :focus-visible) .anim > svg:nth-child(2) { animation-delay: 0.12s; }
+      #hud .menu.icon:is(:hover, :focus-visible) .anim > svg:nth-child(3) { animation-delay: 0.24s; }
+      #hud .menu.icon:is(:hover, :focus-visible) .anim > svg:nth-child(4) { animation-delay: 0.36s; }
+      @keyframes pxframe { 0% { visibility: visible; } 25%, 100% { visibility: hidden; } }
+      @media (prefers-reduced-motion: reduce) { #hud .menu.icon .anim > svg { animation: none !important; } #hud .menu.icon .anim > svg:first-child { visibility: visible !important; } }
+      #hud .debug { position: relative; bottom: auto; right: auto; pointer-events: auto; display: block; }
+      #hud .debug .panel { position: absolute; top: 100%; right: 0; z-index: 5; margin-top: 4px; width: max-content; background: var(--paper); border: 0; box-shadow: 3px 4px 0 rgba(6, 4, 3, 0.5); color: var(--pen); }
+      #hud .debug .panel small { color: #6b5530; }
+      #hud .debug .panel button { color: var(--pen); background: var(--manila); border: 0; border-bottom: 3px solid var(--manila-dark); }
+      #hud .debug .panel button[aria-pressed='true'] { background: #ddbf82; }
+      #hud.lefty .debug .panel { right: auto; left: 0; }
+      #hud .time { align-items: center; }
+      #hud .debug svg { filter: drop-shadow(1px 0 0 #141516) drop-shadow(-1px 0 0 #141516) drop-shadow(0 1px 0 #141516) drop-shadow(0 -1px 0 #141516); }
+      /* The soldier's card: his type beside his name; the walkie-talkie that lets you play as him. */
+      #hud .card .role, #hud .card .ups, #hud .card small { font-size: calc(15px * var(--text, 1)); }
+      #hud .card .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+      #hud .card .role { margin-top: 0; }
+      /* The walkie-talkie stands outside the dossier, to its left (its right when left-handed). */
+      #hud .card .drive { position: absolute; left: -58px; bottom: 0; min-width: 0; min-height: 0; padding: 0; line-height: 0; background: transparent; border: 0; box-shadow: none; clip-path: none; cursor: pointer; pointer-events: auto; }
+      #hud .card .drive svg { display: block; }
+      #hud.lefty .card .drive { left: auto; right: -58px; }
+      /* The dossier sits on the bottom edge; a soldier's own buttons (Target, Deploy turret) move left of it and its radio. */
+      #hud:has(.card:not([hidden])) .actions { right: calc(var(--right) + min(300px, 40vw) + 64px); }
+      #hud.lefty:has(.card:not([hidden])) .actions { right: auto; left: calc(var(--left) + min(300px, 40vw) + 64px); }
+      /* Retreat: a red ribbon bookmark sticking up out of the top of the dossier. */
+      #hud .card .bookmark { position: absolute; top: -30px; right: 18px; min-width: 0; min-height: 0; padding: 4px 10px 8px; color: #f4efe0; background: #b23a30; border: 0; box-shadow: inset -3px 0 0 #7a2620, inset 3px 0 0 #d4594c; font-size: calc(17px * var(--text, 1)); line-height: 1; letter-spacing: 0.04em; pointer-events: auto; clip-path: polygon(0 6px, 50% 0, 100% 6px, 100% 100%, 0 100%); }
+      @media (hover: hover) { #hud .card .bookmark:not(:disabled):hover { background: #c9473a; transform: translateY(-2px); } }
+      #hud .card .bookmark:disabled { cursor: default; background: #8a4a40; }
+      #hud.driving .card .bookmark { pointer-events: none; }
+      #hud .tab { display: inline-flex; align-items: center; gap: 5px; }
+      #hud .tab svg { flex: none; }
+      #hud .card .drive[aria-pressed='true'] svg { filter: drop-shadow(0 0 0 #d8392b) drop-shadow(2px 0 0 #d8392b) drop-shadow(-2px 0 0 #d8392b) drop-shadow(0 2px 0 #d8392b) drop-shadow(0 -2px 0 #d8392b); }
+      /* Playing as a soldier: the controls drop to 10% and can't be clicked, except the radio that hands him back; dark pixel edges close in. */
+      #hud .pxvig { inset: 0; display: none; pointer-events: none; background-size: 100% 100%; image-rendering: pixelated; }
+      #hud.driving .pxvig { display: block; }
+      #hud.driving > *:not(.pxvig) { opacity: 0.1; pointer-events: none; }
+      #hud.driving > .card { opacity: 1; background: transparent; border: 0; box-shadow: none; }
+      #hud.driving > .card > :not(.drive) { opacity: 0.1; }
+      #hud.driving > .card > .drive { opacity: 1; pointer-events: auto; }
+      /* Settings: the plain buttons (keys, Reset keys) are paper tags in pixel type, not green blocks. */
+      #menu .form button:not(.px) { color: #2e2a22; background: #c9a86a; border: 0; border-bottom: 3px solid #9c7f48; box-shadow: none; min-height: 34px; }
+      @media (hover: hover) { #menu .form button:not(.px):hover { background: #ddbf82; } }
+      #menu .form button.listening { background: #e8a58a; }
     </style>
   </head>
   <body>

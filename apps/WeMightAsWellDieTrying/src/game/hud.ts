@@ -1,8 +1,9 @@
-// The controls over the map, in HTML so they stay sharp: Menu and Settings, status, Start (and Last setup) and the time
+// The controls over the map, in HTML so they stay sharp: Menu and Settings, status, Start (and Clear) and the time
 // controls, a Debug button (the horde's routes on or off), the bar
 // you drag soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start
 // tip, notices when a soldier falls, and the end-of-run panel with the chips the run paid and who made the kills.
 import { ask } from './dialog.ts';
+import { pixAnim, pixIcon, type IconName } from './pixicons.ts';
 
 export type Group = 'units' | 'build' | 'strikes';
 export interface BarItem { id: string; name: string; group: Group; icon: string; desc: string }
@@ -13,7 +14,7 @@ export interface HudState {
   ready: Record<string, boolean>; // can be dragged out now
   cool: Record<string, number>; // a strike's cooldown still to go, 1 to 0
   planning: boolean;
-  restore: boolean; // a setup kept from last time can be put down
+  placed: boolean; // something is down, so it can be cleared
   speed: number;
   armed: string; // the bar item tapped, waiting for a tap on the map
   routes: boolean; // the horde's routes are shown
@@ -22,8 +23,7 @@ export interface HudState {
   actions: string[];
   tip: string; // the guided start's current step, or ''
   breakLeft: number; // real seconds left of the break between waves, 0 for none
-  progress?: { wave: number; waves: number; done: number; left: number }; // during a wave: how far through the horde
-  card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[] }; // the soldier picked
+  card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[]; drivable: boolean; mark: string; driving: boolean }; // the soldier picked (drivable: the player can play as him; mark: the bookmark on his dossier, Remove while planning, Retreat mid-wave)
   end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string };
 }
 interface Handlers {
@@ -34,13 +34,14 @@ interface Handlers {
   win(): void; // debug: the fight is won now
   leaks(): void; // debug: unlimited leaks, or not
   start(): void;
-  setup(): void; // puts down the setup kept from last time
+  clear(): void; // takes back everything put down (asked first)
   speed(n: number): void;
   action(name: string): void;
   again(): void;
   next(): void; // won: on to the next city (the board, after the last)
   menu(to: 'menu' | 'tree'): void;
   retreat(): void;
+  drive(): void; // play as the soldier picked, or go back to the whole squad
   skip(): void; // skips the guided start
   nextWave(): void;
 }
@@ -54,9 +55,28 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial
 }
 const text = (e: HTMLElement, t: string) => { if (e.textContent !== t) e.textContent = t; };
 
+/** The dark edges of the screen while playing as a soldier: dithered like the lamp light over the city board (game/board.ts),
+ *  seven steps of a 4 by 4 Bayer pattern (the crosses and dots between the steps), one art pixel to `px` screen pixels.
+ *  A data URL for the CSS, made for the screen's size. */
+function pixelVignette(px = 3) {
+  const w = Math.ceil(innerWidth / px), h = Math.ceil(innerHeight / px), c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const x = c.getContext('2d')!, img = x.createImageData(w, h), bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], steps = 7;
+  for (let j = 0; j < h; j++)
+    for (let i = 0; i < w; i++) {
+      const r = Math.hypot((i - w / 2) / (w / 2), (j - h / 2) / (h / 2)), f = Math.min(1, Math.max(0, (r - 0.45) / 0.75)) * steps, lo = Math.floor(f);
+      const level = (lo + (bayer[(i & 3) + (j & 3) * 4] < (f - lo) * 16 ? 1 : 0)) / steps;
+      img.data.set([6, 4, 3, Math.round(level * 0.85 * 255)], (j * w + i) * 4);
+    }
+  x.putImageData(img, 0, 0);
+  return c.toDataURL();
+}
+
 export class Hud {
   private readonly root: HTMLElement;
   private readonly status: HTMLElement[];
+  private readonly statusText: HTMLElement[]; // what each status says (the icon sits beside it)
   private readonly start: HTMLButtonElement;
   private readonly restore: HTMLButtonElement;
   private readonly nextWave: HTMLButtonElement;
@@ -72,8 +92,8 @@ export class Hud {
   private readonly end: HTMLElement;
   private readonly hint: HTMLElement;
   private readonly banners: HTMLElement;
-  private readonly progress: HTMLElement;
   private readonly vignette: HTMLElement;
+  private readonly pxvig: HTMLElement; // the pixelated dark edges while playing as a soldier
   private readonly keys: HTMLElement;
   private readonly card: HTMLElement;
   private cardKind = '';
@@ -88,22 +108,28 @@ export class Hud {
     this.on = on;
     this.speedList = [0, ...speeds];
     root.classList.toggle('lefty', lefty);
-    this.status = [el('span'), el('span'), el('span')];
-    const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : this.askRetreat()) });
-    const settings = el('button', { type: 'button', className: 'menu', textContent: 'Settings', onclick: () => on.settings() });
+    // Slowed, then leaks (a zombie's head) and kills (a skull): an icon and a number.
+    const stat = (icon: IconName, title: string) => { const t = el('b'); return { span: el('span', { className: 'stat', title }, pixIcon(icon), t), t }; };
+    const leakStat = stat('zombie', 'Leaks: zombies that got through, of the most the line can take'), killStat = stat('skull', 'Kills');
+    const slowed = el('span');
+    this.status = [slowed, leakStat.span, killStat.span];
+    this.statusText = [slowed, leakStat.t, killStat.t];
+    const icon = (art: IconName | Element, label: string, go: () => void) => el('button', { type: 'button', className: 'menu icon', ariaLabel: label, title: label, onclick: go }, typeof art === 'string' ? pixIcon(art) : art);
+    const menu = icon(pixAnim('flag'), 'Menu', () => (this.planning ? on.menu('menu') : this.askRetreat())); // hovered, the flag waves
+    const settings = icon(pixAnim('gear'), 'Settings', () => on.settings()); // and the cog turns
     const routes = el('button', { type: 'button', textContent: 'Routes', title: 'Show the lines the horde keeps to', onclick: () => on.routes() });
     const win = el('button', { type: 'button', textContent: 'Win now', title: 'End the fight as won', onclick: () => on.win() });
     const leaks = el('button', { type: 'button', className: 'leaks', textContent: 'Unlimited leaks', title: 'Leaks never lose the fight', onclick: () => on.leaks() });
     const panel = el('div', { className: 'panel', hidden: true }, el('small', {}, 'Debug'), routes, win, leaks);
-    this.debug = el('div', { className: 'debug' }, panel, el('button', { type: 'button', className: 'menu', textContent: 'Debug', onclick: () => (panel.hidden = !panel.hidden) }));
+    this.debug = el('div', { className: 'debug' }, icon('spider', 'Debug', () => (panel.hidden = !panel.hidden)), panel);
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
     this.nextWave = el('button', { type: 'button', className: 'go next', hidden: true, title: 'Skip the rest of the break: +2% of your kill chips', onclick: () => on.nextWave() });
-    this.restore = el('button', { type: 'button', textContent: 'Last setup', title: 'Put everything back where it was last time', onclick: () => on.setup() });
+    this.restore = el('button', { type: 'button', textContent: 'Clear', title: 'Take back everything you have put down', onclick: () => this.askClear() });
     this.notices = el('div', { className: 'notices' });
     this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n === 0.5 ? '½×' : n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
-    this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => el('button', { type: 'button', className: 'tab', textContent: label, onclick: () => { this.group = group; bar.scrollLeft = 0; } }));
+    this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => el('button', { type: 'button', className: 'tab', onclick: () => { this.group = group; bar.scrollLeft = 0; } }, pixIcon(group, 2), label));
     this.hint = el('div', { className: 'hint', hidden: true });
     for (const { id, name, group, icon, desc } of items) {
       const count = el('span', { className: 'count' });
@@ -139,15 +165,15 @@ export class Hud {
     this.tipText = el('p');
     this.tip = el('div', { className: 'tip', hidden: true }, this.tipText, el('button', { type: 'button', textContent: 'Skip', onclick: () => on.skip() }));
     this.end = el('div', { className: 'end', hidden: true });
-    this.progress = el('div', { className: 'progress', hidden: true, role: 'progressbar', ariaLabel: 'The horde' }, el('b'), el('span', { className: 'fill' }, el('i')), el('small'));
     this.card = el('div', { className: 'card', hidden: true });
     this.vignette = el('div', { className: 'vignette', ariaHidden: 'true' });
+    this.pxvig = el('div', { className: 'pxvig', ariaHidden: 'true' });
     this.keys = el('div', { className: 'keysheet', hidden: true, onclick: () => (this.keys.hidden = true) });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
       this.vignette,
-      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.nextWave, this.speeds), this.progress, this.notices, this.card,
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.debug, this.end, this.hint, this.banners, this.keys,
+      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.nextWave, this.speeds, this.debug), this.notices, this.card,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.end, this.hint, this.banners, this.keys, this.pxvig,
     );
   }
 
@@ -167,9 +193,17 @@ export class Hud {
     if (!this.keys.hidden) this.keys.replaceChildren(el('div', {}, el('h2', {}, 'Keys'), el('dl', {}, ...lines.flatMap(([k, what]) => [el('dt', {}, k), el('dd', {}, what)])), el('small', {}, 'Change them in Settings, Controls.')));
   }
 
+  /** Clearing the defence: asked first, on paper. */
+  askClear() {
+    ask('Clear everything?', 'Every soldier, roadblock and structure you have put down goes back to the bar.', [
+      { label: 'Clear', go: true, act: () => this.on.clear() },
+      { label: 'Keep it', act: () => {} },
+    ]);
+  }
+
   /** Leaving mid-wave: asked first, on paper. */
   askRetreat() {
-    ask('Retreat?', 'It counts as a loss: you keep half the chips from your kills.', [
+    ask('Retreat?', 'It counts as a loss: you keep the chips from your kills.', [
       { label: 'Retreat', go: true, act: () => this.on.retreat() },
       { label: 'Keep fighting', act: () => {} },
     ]);
@@ -213,10 +247,10 @@ export class Hud {
 
   update(s: HudState) {
     this.planning = s.planning;
-    s.status.forEach((t, i) => { text(this.status[i], t); this.status[i].hidden = !t; });
+    s.status.forEach((t, i) => { text(this.statusText[i], t); this.status[i].hidden = !t; });
     this.status[1].classList.toggle('warn', s.warn);
     this.start.hidden = !s.planning;
-    this.restore.hidden = !s.planning || !s.restore;
+    this.restore.hidden = !s.planning || !s.placed;
     this.speeds.hidden = s.planning;
     this.nextWave.hidden = !s.breakLeft || !!s.end;
     if (s.breakLeft) text(this.nextWave, `Next wave now · ${Math.ceil(s.breakLeft)}s`);
@@ -240,14 +274,6 @@ export class Hud {
       );
     }
     // How far through the horde: the wave, a bar filling as they fall, how many are left.
-    this.progress.hidden = !s.progress || !!s.end;
-    if (s.progress) {
-      const { wave, waves, done, left } = s.progress, share = done / Math.max(1, done + left);
-      text(this.progress.children[0] as HTMLElement, `Wave ${wave}/${waves}`);
-      (this.progress.querySelector('i') as HTMLElement).style.transform = `scaleX(${share})`;
-      text(this.progress.children[2] as HTMLElement, `${left.toLocaleString()} left`);
-      this.progress.ariaValueNow = String(Math.round(share * 100));
-    }
     // The soldier picked: his photo pinned to a card, his health, kills and his class's upgrades.
     this.card.hidden = !s.card || !!s.end;
     if (s.card) {
@@ -257,13 +283,21 @@ export class Hud {
         this.cardKind = key;
         this.card.replaceChildren(
           el('div', { className: 'photo' }, el('img', { src: c.icon, alt: '' })),
-          el('div', { className: 'body' }, el('b', {}, c.name), el('small', { className: 'role' }, c.role), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, ...c.stats.map((t) => el('span', {}, t)))));
+          el('div', { className: 'body' }, el('div', { className: 'head' }, el('b', {}, c.name), el('small', { className: 'role' }, c.role)), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, ...c.stats.map((t) => el('span', {}, t)))),
+          el('button', { type: 'button', className: 'bookmark', onclick: (e) => this.on.action((e.currentTarget as HTMLElement).textContent!) }),
+          el('button', { type: 'button', className: 'drive', ariaLabel: 'Play as this soldier', onclick: () => this.on.drive() }, pixIcon('radio', 3)));
       }
       const hp = this.card.querySelector('.hp i') as HTMLElement | null;
       if (hp) { hp.style.transform = `scaleX(${Math.max(0, c.hp / c.max)})`; hp.classList.toggle('low', c.hp / c.max <= 0.5); }
+      if (c.driving && !this.root.classList.contains('driving')) this.pxvig.style.backgroundImage = `url(${pixelVignette()})`; // made for the screen as it is now
+      this.root.classList.toggle('driving', c.driving);
+      const mark = this.card.querySelector('.bookmark') as HTMLButtonElement | null; // Remove or Retreat, a ribbon out of the top of the dossier
+      if (mark) { mark.hidden = !c.mark; text(mark, c.mark); mark.disabled = c.mark === 'Retreating…'; }
+      const drive = this.card.querySelector('.drive') as HTMLButtonElement | null;
+      if (drive) { drive.hidden = !c.drivable; drive.setAttribute('aria-pressed', String(c.driving)); drive.title = c.driving ? 'Back to the squad (Esc)' : 'Play as him: WASD to walk, the mouse to aim and shoot'; }
       const stat = this.card.querySelector('.stat') as HTMLElement | null;
       if (stat) text(stat, `${c.where} · ${c.kills} kill${c.kills === 1 ? '' : 's'}`);
-    } else this.cardKind = '';
+    } else { this.cardKind = ''; this.root.classList.remove('driving'); }
     this.tip.hidden = !s.tip || !!s.end;
     text(this.tipText, s.tip);
     this.end.hidden = !s.end;

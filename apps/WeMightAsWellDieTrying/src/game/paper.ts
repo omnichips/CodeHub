@@ -110,7 +110,7 @@ const covers = new Map<string, HTMLCanvasElement>();
 /** A ring-bound folder, its card cover in `col` with a label on it, two binder rings down its spine. Hovered, the
  *  cover swings open from the spine and the lined page under it shows. */
 export function folder(label: string, col: string, dark: string, seed: number) {
-  const W = 94, H = 44, key = `${col}${seed}`, lw = measure(label, 'person') + 10;
+  const W = 96, H = 44, key = `${col}${seed}`, lw = measure(label, 'person') + 10;
   const cover = covers.get(key) ?? (() => {
     const cv = el('canvas', { width: W - 4, height: H - 4 }), q = new Pen(cv.getContext('2d')!);
     q.rect(0, 0, W - 4, H - 4, dark); q.rect(1, 1, W - 6, H - 6, col); q.rect(1, 1, W - 6, 1, 'rgba(255,255,255,0.18)');
@@ -146,7 +146,7 @@ export function folder(label: string, col: string, dark: string, seed: number) {
 let gear = 0, gearAt = 0;
 /** A pink sticky note with a gear drawn on it: hovered, the gear turns and the bottom corner curls up. */
 export function stickyNote() {
-  const W = 58, H = 48;
+  const W = 57, H = 48;
   return (p: Pen, lift: number, t: number) => {
     gear += Math.min(0.1, Math.max(0, t - gearAt)) * 2.4 * lift;
     gearAt = t;
@@ -169,7 +169,7 @@ export function stickyNote() {
 /** A sticky note like the settings' with a picture drawn on it and `label` under: `col`/`top` its paper, `flap` its
  *  curling corner. Hovered, it lifts, its corner curls and `icon` (drawn round cx, cy) moves as it likes. */
 function iconNote(label: string, [col, top, flap, ink]: [string, string, string, string], icon: (p: Pen, cx: number, cy: number, lift: number, t: number) => void) {
-  const W = Math.max(58, measure(label, 'person') + 16), H = 48;
+  const W = Math.max(57, measure(label, 'person') + 14), H = 48;
   return [W, H, (p: Pen, lift: number, t: number) => {
     const y = 2 - Math.round(lift * 2), w = W - 4, h = H - 6;
     p.dither(3, 5, w, h, 0.55 + lift * 0.1, SHADOW);
@@ -349,6 +349,18 @@ export function indexTab(label: string, col: string, dark: string, open: () => b
     const face = on ? col : dark; // the ones behind, in their own colour's shade
     p.rect(2, y, W - 6, 2, face); p.rect(0, y + 2, W - 2, H - y - 2, face); p.rect(0, y + 2, 1, H - y - 2, '#141516'); p.rect(W - 3, y + 2, 1, H - y - 2, '#141516');
     p.text(label, 8, y + 6, on ? INK : '#3a3428');
+  }] as const;
+}
+
+/** A rubber stamp to press, inked like inkStamp's (a box ruled 2 pixels thick round the word, worn where the ink missed) but
+ *  in `ink`: the one in use pressed hard, the others faint until hovered. */
+export function stampTab(label: string, ink: string, open: () => boolean) {
+  const W = measure(label, 'person') + 10, H = 15;
+  return [W, H, (p: Pen, lift: number) => {
+    p.c.globalAlpha = open() ? 0.95 : 0.5 + lift * 0.3;
+    p.rect(0, 0, W, H, ink); p.c.clearRect(2, 2, W - 4, H - 4); p.text(label, 5, 4, ink);
+    for (let k = 0; k < 18; k++) p.c.clearRect(Math.floor(roll(k, W) * W), Math.floor(roll(W, k) * H), 1, 1); // worn ink
+    p.c.globalAlpha = 1;
   }] as const;
 }
 

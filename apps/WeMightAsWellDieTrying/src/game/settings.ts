@@ -8,11 +8,12 @@ import { BODIES, KEY_ACTIONS, TEXT_SIZE, UI_SCALE, defaultKeys, type KeyAction, 
 import { Pen } from '../story/draw.ts';
 import { roll } from '../story/kit.ts';
 import { el } from './hud.ts';
-import { checkBox, faderArt, indexTab, noteTag, parchment, pixelButton, pixelCanvas, pixelText } from './paper.ts';
+import { checkBox, faderArt, noteTag, stampTab, parchment, pixelButton, pixelCanvas, pixelText } from './paper.ts';
 import { play, retune } from './sound.ts';
 
 type Tab = 'sound' | 'display' | 'story' | 'controls';
-const TABS: [Tab, string, string, string][] = [['sound', 'Sound', '#d9c55a', '#b8a440'], ['display', 'Display', '#9ad0e0', '#7ab4c8'], ['story', 'Story', '#f2b8c2', '#d68794'], ['controls', 'Controls', '#b8d89a', '#94b878']];
+// Each section a rubber stamp in its own ink.
+const TABS: [Tab, string, string][] = [['sound', 'Sound', '#b23a30'], ['display', 'Display', '#2f5a8a'], ['story', 'Story', '#7a3a6a'], ['controls', 'Controls', '#3f6a2a']];
 let tab: Tab = 'sound'; // the tab last looked at, kept while the game runs
 let parch: string | undefined; // the paper's texture, made once
 let listening: KeyAction | undefined; // the shortcut waiting for its new key
@@ -47,7 +48,7 @@ export function settingsSheet(o: { back: () => void; again: () => void; tags?: [
   const choice = (label: string, k: 'gore' | 'quality' | 'story', options: string[]) => boxes(label, options.map((v) => [v[0].toUpperCase() + v.slice(1), () => s[k] === v, () => set(k, v as never)]));
   const onOff = (label: string, k: 'lefty' | 'mix' | 'shake' | 'colorblind' | 'haptics') => boxes(label, [['Off', () => !s[k], () => set(k, false)], ['On', () => s[k], () => set(k, true)]]);
 
-  const tabs = TABS.map(([t, label, col, dark]) => { const [w, h, d] = indexTab(label.toUpperCase(), col, dark, () => tab === t); const b = pixelButton(label, w, h, d, () => { if (tab !== t) { tab = t; o.again(); } }, 'tab'); b.setAttribute('aria-pressed', String(tab === t)); return b; });
+  const tabs = TABS.map(([t, label, ink]) => { const [w, h, d] = stampTab(label.toUpperCase(), ink, () => tab === t); const b = pixelButton(label, w, h, d, () => { if (tab !== t) { tab = t; o.again(); } }, 'stamp'); b.setAttribute('aria-pressed', String(tab === t)); return b; });
   const rows: Record<Tab, () => HTMLElement[]> = {
     sound: () => [
       row('Master volume', fader('Master volume', 'master')),

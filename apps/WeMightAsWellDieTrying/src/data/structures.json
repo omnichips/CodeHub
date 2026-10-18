@@ -2,60 +2,60 @@
   "roadblocks": {
     "plastic": {
       "name": "Plastic barrier",
-      "hp": 150,
+      "hp": 165,
       "length": 3,
       "detour": 30
     },
     "wood": {
       "name": "Wooden barricade",
-      "hp": 400,
+      "hp": 440,
       "length": 3,
       "detour": 40
     },
     "sandbags": {
       "name": "Sandbag wall",
-      "hp": 800,
+      "hp": 880,
       "length": 3,
       "detour": 50
     },
     "car": {
       "name": "Abandoned car",
-      "hp": 1400,
+      "hp": 1540,
       "length": 3,
       "detour": 60,
       "width": 2
     },
     "cement": {
       "name": "Cement barrier",
-      "hp": 4000,
+      "hp": 4400,
       "length": 3,
       "detour": 80,
       "fixed": true
     },
     "taxi": {
       "name": "Abandoned taxi",
-      "hp": 1200,
+      "hp": 1320,
       "length": 3,
       "detour": 60,
       "width": 2
     },
     "jeepney": {
       "name": "Abandoned jeepney",
-      "hp": 1600,
+      "hp": 1760,
       "length": 3,
       "detour": 60,
       "width": 2
     },
     "bus": {
       "name": "Bus",
-      "hp": 3000,
+      "hp": 3300,
       "length": 5,
       "detour": 90,
       "width": 2
     },
     "police": {
       "name": "Police barricade",
-      "hp": 300,
+      "hp": 330,
       "length": 3,
       "detour": 35
     }

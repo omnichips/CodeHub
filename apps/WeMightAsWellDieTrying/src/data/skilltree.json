@@ -45,8 +45,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    20,
-    35
+    15,
+    25
    ],
    "parent": "rifleman",
    "icon": "rifleman-idle-6/0",
@@ -66,18 +66,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    25,
-    50
+    10,
+    20,
+    35
    ],
    "parent": "rifleman.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "rifleman",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -89,18 +89,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    15,
-    25,
-    50
+    10,
+    20,
+    35
    ],
    "parent": "rifleman.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "rifleman",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -112,18 +112,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    45,
-    60
+    15,
+    30,
+    40
    ],
    "parent": "rifleman.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "rifleman",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -135,8 +135,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    50,
-    85
+    35,
+    60
    ],
    "parent": "rifleman.damage",
    "needs": [
@@ -161,18 +161,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    35,
-    70
+    15,
+    25,
+    50
    ],
    "parent": "rifleman.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "rifleman",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -184,18 +184,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    20,
-    35,
-    70
+    15,
+    25,
+    50
    ],
    "parent": "rifleman.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "rifleman",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -207,18 +207,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    30,
-    65,
-    85
+    20,
+    45,
+    60
    ],
    "parent": "rifleman.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "rifleman",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -230,9 +230,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    110
+    25,
+    50,
+    75
    ],
    "parent": "rifleman.damage2",
    "needs": [
@@ -241,12 +241,12 @@
     "rifleman.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "rifleman",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -258,7 +258,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "shield-idle-6/0",
@@ -278,8 +278,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "shield",
    "icon": "shield-idle-6/0",
@@ -299,18 +299,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "shield.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shield",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -322,18 +322,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "shield.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shield",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -345,18 +345,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "shield.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shield",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -368,8 +368,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "shield.damage",
    "needs": [
@@ -394,18 +394,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "shield.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shield",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -417,18 +417,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "shield.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shield",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -440,18 +440,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    65,
-    85,
-    160
+    45,
+    60,
+    110
    ],
    "parent": "shield.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shield",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -463,9 +463,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "shield.damage2",
    "needs": [
@@ -474,12 +474,12 @@
     "shield.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "shield",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -491,7 +491,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    300
+    210
    ],
    "parent": "shield.hp",
    "icon": "noise/0",
@@ -500,7 +500,7 @@
     {
      "stat": "taunt",
      "of": "shield",
-     "by": 0.5
+     "by": 0.75
     }
    ]
   },
@@ -512,7 +512,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "shotgunner-idle-6/0",
@@ -532,8 +532,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "shotgunner",
    "icon": "shotgunner-idle-6/0",
@@ -553,18 +553,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "shotgunner.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shotgunner",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -576,18 +576,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "shotgunner.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shotgunner",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -599,18 +599,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "shotgunner.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shotgunner",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -622,8 +622,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "shotgunner.damage",
    "needs": [
@@ -648,18 +648,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shotgunner",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -671,18 +671,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shotgunner",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -694,18 +694,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    65,
-    85,
-    160
+    45,
+    60,
+    110
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shotgunner",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -717,9 +717,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "shotgunner.damage2",
    "needs": [
@@ -728,12 +728,12 @@
     "shotgunner.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "shotgunner",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -745,7 +745,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    300
+    210
    ],
    "parent": "shotgunner.hp",
    "icon": "icon-pellets/0",
@@ -766,7 +766,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "machinegunner-idle-6/0",
@@ -786,8 +786,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "machinegunner",
    "icon": "machinegunner-idle-6/0",
@@ -807,18 +807,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "machinegunner.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "machinegunner",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -830,18 +830,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "machinegunner.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "machinegunner",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -853,18 +853,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "machinegunner.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "machinegunner",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -876,8 +876,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "machinegunner.damage",
    "needs": [
@@ -902,18 +902,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "machinegunner",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -925,18 +925,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "machinegunner",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -948,18 +948,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    65,
-    85,
-    160
+    45,
+    60,
+    110
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "machinegunner",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -971,9 +971,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "machinegunner.damage2",
    "needs": [
@@ -982,12 +982,12 @@
     "machinegunner.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "machinegunner",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -999,7 +999,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "marksman-idle-6/0",
@@ -1019,8 +1019,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "marksman",
    "icon": "marksman-idle-6/0",
@@ -1040,18 +1040,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "marksman.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "marksman",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1063,18 +1063,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "marksman.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "marksman",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1086,18 +1086,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "marksman.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "marksman",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1109,8 +1109,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "marksman.damage",
    "needs": [
@@ -1135,18 +1135,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "marksman.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "marksman",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1158,18 +1158,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "marksman.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "marksman",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1181,18 +1181,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    65,
-    85,
-    160
+    45,
+    60,
+    110
    ],
    "parent": "marksman.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "marksman",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1204,9 +1204,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "marksman.damage2",
    "needs": [
@@ -1215,12 +1215,12 @@
     "marksman.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "marksman",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -1232,7 +1232,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "grenadier-idle-6/0",
@@ -1252,8 +1252,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "grenadier",
    "icon": "grenadier-idle-6/0",
@@ -1273,18 +1273,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "grenadier.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "grenadier",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1296,18 +1296,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "grenadier.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "grenadier",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1319,18 +1319,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "grenadier.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "grenadier",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1342,8 +1342,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "grenadier.damage",
    "needs": [
@@ -1368,18 +1368,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "grenadier.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "grenadier",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1391,18 +1391,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "grenadier.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "grenadier",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1414,18 +1414,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    65,
-    85,
-    160
+    45,
+    60,
+    110
    ],
    "parent": "grenadier.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "grenadier",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1437,9 +1437,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "grenadier.damage2",
    "needs": [
@@ -1448,12 +1448,12 @@
     "grenadier.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "grenadier",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -1465,7 +1465,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    300
+    210
    ],
    "parent": "grenadier.hp",
    "icon": "icon-blast/0",
@@ -1474,7 +1474,7 @@
     {
      "stat": "blast",
      "of": "grenadier",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -1486,7 +1486,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    55
+    40
    ],
    "parent": "rifleman",
    "icon": "medic-idle-6/0",
@@ -1506,8 +1506,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    35,
-    50
+    25,
+    35
    ],
    "parent": "medic",
    "icon": "medic-idle-6/0",
@@ -1527,18 +1527,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    50,
-    100
+    20,
+    35,
+    70
    ],
    "parent": "medic.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "medic",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1550,18 +1550,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    25,
-    60,
-    100
+    20,
+    40,
+    70
    ],
    "parent": "medic.more",
    "icon": "icon-heal/0",
-   "desc": "Heals faster. +10% a level.",
+   "desc": "Heals faster. +15% a level.",
    "effects": [
     {
      "stat": "heal",
      "of": "medic",
-     "by": 0.1
+     "by": 0.15
     }
    ]
   },
@@ -1573,8 +1573,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    175
+    65,
+    120
    ],
    "parent": "medic.heal",
    "needs": [
@@ -1598,18 +1598,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    70,
-    145
+    25,
+    50,
+    100
    ],
    "parent": "medic.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "medic",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1621,18 +1621,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    35,
-    85,
-    145
+    25,
+    60,
+    100
    ],
    "parent": "medic.more2",
    "icon": "icon-heal/0",
-   "desc": "Heals faster. +10% a level.",
+   "desc": "Heals faster. +15% a level.",
    "effects": [
     {
      "stat": "heal",
      "of": "medic",
-     "by": 0.1
+     "by": 0.15
     }
    ]
   },
@@ -1644,9 +1644,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    110,
-    190
+    50,
+    75,
+    135
    ],
    "parent": "medic.heal2",
    "needs": [
@@ -1654,12 +1654,12 @@
     "medic.heal2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "medic",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -1671,7 +1671,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    100
+    70
    ],
    "parent": "shotgunner",
    "icon": "flamethrower-idle-6/0",
@@ -1691,8 +1691,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    50,
-    95
+    35,
+    65
    ],
    "parent": "flamethrower",
    "icon": "flamethrower-idle-6/0",
@@ -1712,18 +1712,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    50,
-    100,
-    165
+    35,
+    70,
+    115
    ],
    "parent": "flamethrower.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "flamethrower",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1735,18 +1735,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    100,
-    180
+    40,
+    70,
+    125
    ],
    "parent": "flamethrower.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "flamethrower",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1758,18 +1758,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    110,
-    210
+    40,
+    75,
+    145
    ],
    "parent": "flamethrower.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "flamethrower",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1781,8 +1781,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    175,
-    315
+    120,
+    220
    ],
    "parent": "flamethrower.damage",
    "needs": [
@@ -1807,18 +1807,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    145,
-    240
+    50,
+    100,
+    170
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "flamethrower",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1830,18 +1830,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    145,
-    260
+    60,
+    100,
+    180
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "flamethrower",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -1853,18 +1853,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    160,
-    300
+    60,
+    110,
+    210
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "flamethrower",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -1876,9 +1876,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    190,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "flamethrower.damage2",
    "needs": [
@@ -1887,12 +1887,12 @@
     "flamethrower.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "flamethrower",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -1904,7 +1904,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    560
+    390
    ],
    "parent": "flamethrower.hp",
    "icon": "icon-burn/0",
@@ -1913,7 +1913,7 @@
     {
      "stat": "burn",
      "of": "flamethrower",
-     "by": 0.5
+     "by": 0.75
     }
    ]
   },
@@ -1925,7 +1925,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    100
+    70
    ],
    "parent": "marksman",
    "icon": "sniper-idle-6/0",
@@ -1945,8 +1945,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    50,
-    95
+    35,
+    65
    ],
    "parent": "sniper",
    "icon": "sniper-idle-6/0",
@@ -1966,18 +1966,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    50,
-    100,
-    165
+    35,
+    70,
+    115
    ],
    "parent": "sniper.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "sniper",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -1989,18 +1989,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    100,
-    180
+    40,
+    70,
+    125
    ],
    "parent": "sniper.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "sniper",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2012,18 +2012,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    110,
-    210
+    40,
+    75,
+    145
    ],
    "parent": "sniper.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "sniper",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2035,8 +2035,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    175,
-    315
+    120,
+    220
    ],
    "parent": "sniper.damage",
    "needs": [
@@ -2061,18 +2061,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    145,
-    240
+    50,
+    100,
+    170
    ],
    "parent": "sniper.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "sniper",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2084,18 +2084,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    145,
-    260
+    60,
+    100,
+    180
    ],
    "parent": "sniper.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "sniper",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2107,18 +2107,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    160,
-    300
+    60,
+    110,
+    210
    ],
    "parent": "sniper.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "sniper",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2130,9 +2130,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    190,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "sniper.damage2",
    "needs": [
@@ -2141,12 +2141,12 @@
     "sniper.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "sniper",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2158,7 +2158,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    560
+    390
    ],
    "parent": "sniper.hp",
    "icon": "icon-pierce/0",
@@ -2179,7 +2179,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    100
+    70
    ],
    "parent": "grenadier",
    "icon": "bazooka-idle-6/0",
@@ -2199,8 +2199,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    50,
-    95
+    35,
+    65
    ],
    "parent": "bazooka",
    "icon": "bazooka-idle-6/0",
@@ -2220,18 +2220,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    50,
-    100,
-    165
+    35,
+    70,
+    115
    ],
    "parent": "bazooka.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "bazooka",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2243,18 +2243,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    100,
-    180
+    40,
+    70,
+    125
    ],
    "parent": "bazooka.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "bazooka",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2266,18 +2266,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    110,
-    210
+    40,
+    75,
+    145
    ],
    "parent": "bazooka.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "bazooka",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2289,8 +2289,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    175,
-    315
+    120,
+    220
    ],
    "parent": "bazooka.damage",
    "needs": [
@@ -2315,18 +2315,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    145,
-    240
+    50,
+    100,
+    170
    ],
    "parent": "bazooka.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "bazooka",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2338,18 +2338,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    145,
-    260
+    60,
+    100,
+    180
    ],
    "parent": "bazooka.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "bazooka",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2361,18 +2361,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    160,
-    300
+    60,
+    110,
+    210
    ],
    "parent": "bazooka.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "bazooka",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2384,9 +2384,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    190,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "bazooka.damage2",
    "needs": [
@@ -2395,12 +2395,12 @@
     "bazooka.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "bazooka",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2412,7 +2412,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    560
+    390
    ],
    "parent": "bazooka.hp",
    "icon": "icon-blast/0",
@@ -2421,7 +2421,7 @@
     {
      "stat": "blast",
      "of": "bazooka",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2433,7 +2433,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    100
+    70
    ],
    "parent": "medic",
    "icon": "engineer-idle-6/0",
@@ -2453,8 +2453,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    50,
-    95
+    35,
+    65
    ],
    "parent": "engineer",
    "icon": "engineer-idle-6/0",
@@ -2474,18 +2474,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    50,
-    100,
-    165
+    35,
+    70,
+    115
    ],
    "parent": "engineer.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "engineer",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2497,18 +2497,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    60,
-    100,
-    180
+    40,
+    70,
+    125
    ],
    "parent": "engineer.more",
    "icon": "icon-repair/0",
-   "desc": "Repairs faster. +10% a level.",
+   "desc": "Repairs faster. +15% a level.",
    "effects": [
     {
      "stat": "repair",
      "of": "engineer",
-     "by": 0.1
+     "by": 0.15
     }
    ]
   },
@@ -2520,8 +2520,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    175,
-    315
+    120,
+    220
    ],
    "parent": "engineer.repair",
    "needs": [
@@ -2545,18 +2545,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    70,
-    145,
-    240
+    50,
+    100,
+    170
    ],
    "parent": "engineer.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "engineer",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2568,18 +2568,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    85,
-    145,
-    260
+    60,
+    100,
+    180
    ],
    "parent": "engineer.more2",
    "icon": "icon-repair/0",
-   "desc": "Repairs faster. +10% a level.",
+   "desc": "Repairs faster. +15% a level.",
    "effects": [
     {
      "stat": "repair",
      "of": "engineer",
-     "by": 0.1
+     "by": 0.15
     }
    ]
   },
@@ -2591,9 +2591,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    190,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "engineer.repair2",
    "needs": [
@@ -2601,12 +2601,12 @@
     "engineer.repair2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "engineer",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2618,7 +2618,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    155
+    110
    ],
    "parent": "bazooka",
    "icon": "mortar-idle-6/0",
@@ -2638,8 +2638,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    150
+    65,
+    105
    ],
    "parent": "mortar",
    "icon": "mortar-idle-6/0",
@@ -2659,18 +2659,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    75,
-    135,
-    250
+    55,
+    95,
+    175
    ],
    "parent": "mortar.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "mortar",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2682,18 +2682,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    100,
-    165,
-    305
+    70,
+    115,
+    215
    ],
    "parent": "mortar.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "mortar",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2705,18 +2705,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    180,
-    360
+    75,
+    125,
+    250
    ],
    "parent": "mortar.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "mortar",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2728,8 +2728,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    270,
-    485
+    190,
+    340
    ],
    "parent": "mortar.damage",
    "needs": [
@@ -2754,18 +2754,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    195,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "mortar.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "mortar",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2777,18 +2777,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    145,
-    240,
-    440
+    100,
+    170,
+    310
    ],
    "parent": "mortar.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "mortar",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2800,18 +2800,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    160,
-    260,
-    520
+    110,
+    180,
+    365
    ],
    "parent": "mortar.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "mortar",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2823,9 +2823,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    190,
-    310,
-    620
+    135,
+    215,
+    435
    ],
    "parent": "mortar.damage2",
    "needs": [
@@ -2834,12 +2834,12 @@
     "mortar.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "mortar",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2851,7 +2851,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    850
+    595
    ],
    "parent": "mortar.hp",
    "icon": "icon-blast/0",
@@ -2860,7 +2860,7 @@
     {
      "stat": "blast",
      "of": "mortar",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -2872,7 +2872,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    155
+    110
    ],
    "parent": "engineer",
    "icon": "operator-idle-6/0",
@@ -2892,8 +2892,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    95,
-    150
+    65,
+    105
    ],
    "parent": "operator",
    "icon": "operator-idle-6/0",
@@ -2913,18 +2913,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    75,
-    135,
-    250
+    55,
+    95,
+    175
    ],
    "parent": "operator.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "operator",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -2936,18 +2936,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    100,
-    165,
-    305
+    70,
+    115,
+    215
    ],
    "parent": "operator.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "operator",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -2959,18 +2959,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    180,
-    360
+    75,
+    125,
+    250
    ],
    "parent": "operator.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "operator",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -2982,8 +2982,8 @@
    "cat": "soldiers",
    "max": 2,
    "cost": [
-    270,
-    485
+    190,
+    340
    ],
    "parent": "operator.damage",
    "needs": [
@@ -3008,18 +3008,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    110,
-    195,
-    360
+    75,
+    135,
+    250
    ],
    "parent": "operator.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +4% a level.",
+   "desc": "Shoots farther. +6% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "operator",
-     "by": 0.04
+     "by": 0.06
     }
    ]
   },
@@ -3031,18 +3031,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    145,
-    240,
-    440
+    100,
+    170,
+    310
    ],
    "parent": "operator.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +8% a level.",
+   "desc": "Every hit does more. +12% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "operator",
-     "by": 0.08
+     "by": 0.12
     }
    ]
   },
@@ -3054,18 +3054,18 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    160,
-    260,
-    520
+    110,
+    180,
+    365
    ],
    "parent": "operator.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +6% a level.",
+   "desc": "Shoots faster. +9% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "operator",
-     "by": 0.06
+     "by": 0.09
     }
    ]
   },
@@ -3077,9 +3077,9 @@
    "cat": "soldiers",
    "max": 3,
    "cost": [
-    190,
-    310,
-    620
+    135,
+    215,
+    435
    ],
    "parent": "operator.damage2",
    "needs": [
@@ -3088,12 +3088,12 @@
     "operator.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +25% a level.",
+   "desc": "More health. +37.5% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "operator",
-     "by": 0.25
+     "by": 0.375
     }
    ]
   },
@@ -3105,7 +3105,7 @@
    "cat": "soldiers",
    "max": 1,
    "cost": [
-    850
+    595
    ],
    "parent": "operator.hp",
    "icon": "turret-idle-6/0",
@@ -3147,8 +3147,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    35
+    15,
+    25
    ],
    "parent": "plastic",
    "icon": "plastic/0",
@@ -3168,9 +3168,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    20,
-    45,
-    60
+    15,
+    30,
+    40
    ],
    "parent": "plastic.more",
    "icon": "icon-hp/0",
@@ -3212,8 +3212,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    45
+    15,
+    30
    ],
    "parent": "wood",
    "icon": "wood/0",
@@ -3233,9 +3233,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    25,
-    50,
-    75
+    20,
+    35,
+    55
    ],
    "parent": "wood.more",
    "icon": "icon-hp/0",
@@ -3256,7 +3256,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    45
+    30
    ],
    "parent": "wood",
    "needs": [
@@ -3280,8 +3280,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    45,
-    60
+    30,
+    40
    ],
    "parent": "sandbags",
    "icon": "sandbags/0",
@@ -3301,9 +3301,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    50,
-    75,
-    135
+    35,
+    55,
+    95
    ],
    "parent": "sandbags.more",
    "icon": "icon-hp/0",
@@ -3324,7 +3324,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    95
+    65
    ],
    "parent": "sandbags",
    "needs": [
@@ -3348,8 +3348,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    60,
-    100
+    40,
+    70
    ],
    "parent": "car",
    "icon": "car/0",
@@ -3369,9 +3369,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    75,
-    120,
-    215
+    55,
+    85,
+    150
    ],
    "parent": "car.more",
    "icon": "icon-hp/0",
@@ -3392,7 +3392,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    185
+    130
    ],
    "parent": "car",
    "needs": [
@@ -3416,8 +3416,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    100,
-    180
+    70,
+    125
    ],
    "parent": "cement",
    "icon": "cement/0",
@@ -3437,9 +3437,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    120,
-    215,
-    365
+    85,
+    150,
+    255
    ],
    "parent": "cement.more",
    "icon": "icon-hp/0",
@@ -3460,7 +3460,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    20
+    15
    ],
    "parent": "plastic",
    "needs": [
@@ -3484,8 +3484,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    20,
-    45
+    15,
+    30
    ],
    "parent": "wire",
    "icon": "wire/0",
@@ -3505,9 +3505,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    45,
-    60,
-    110
+    30,
+    40,
+    75
    ],
    "parent": "wire.more",
    "icon": "icon-power/0",
@@ -3528,7 +3528,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    45
+    30
    ],
    "parent": "wire",
    "needs": [
@@ -3552,8 +3552,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    45,
-    60
+    30,
+    40
    ],
    "parent": "spikes",
    "icon": "spikes/0",
@@ -3573,9 +3573,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    60,
-    100,
-    180
+    40,
+    70,
+    125
    ],
    "parent": "spikes.more",
    "icon": "icon-power/0",
@@ -3596,7 +3596,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    80
+    55
    ],
    "parent": "spikes",
    "needs": [
@@ -3620,8 +3620,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    50,
-    100
+    35,
+    70
    ],
    "parent": "noise",
    "icon": "noise/0",
@@ -3641,9 +3641,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    75,
-    135,
-    270
+    55,
+    95,
+    190
    ],
    "parent": "noise.more",
    "icon": "icon-power/0",
@@ -3664,7 +3664,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    60
+    40
    ],
    "parent": "wire",
    "needs": [
@@ -3688,8 +3688,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    45,
-    85
+    30,
+    60
    ],
    "parent": "mine",
    "icon": "mine/0",
@@ -3709,9 +3709,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    60,
-    110,
-    210
+    40,
+    75,
+    145
    ],
    "parent": "mine.more",
    "icon": "icon-power/0",
@@ -3732,7 +3732,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    105
+    75
    ],
    "parent": "mine",
    "needs": [
@@ -3756,8 +3756,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    60,
-    110
+    40,
+    75
    ],
    "parent": "explosives",
    "icon": "explosives/0",
@@ -3777,9 +3777,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    100,
-    180,
-    305
+    70,
+    125,
+    215
    ],
    "parent": "explosives.more",
    "icon": "icon-power/0",
@@ -3800,7 +3800,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    205
+    145
    ],
    "parent": "explosives",
    "needs": [
@@ -3824,8 +3824,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    100,
-    180
+    70,
+    125
    ],
    "parent": "rigged",
    "icon": "rigged/0",
@@ -3845,9 +3845,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    165,
-    270,
-    495
+    115,
+    190,
+    345
    ],
    "parent": "rigged.more",
    "icon": "icon-power/0",
@@ -3868,7 +3868,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    130
+    90
    ],
    "parent": "mine",
    "needs": [
@@ -3896,8 +3896,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    60,
-    135
+    40,
+    95
    ],
    "parent": "puddle",
    "icon": "puddle/0",
@@ -3917,9 +3917,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    110,
-    210,
-    360
+    75,
+    145,
+    250
    ],
    "parent": "puddle.more",
    "icon": "icon-power/0",
@@ -3940,7 +3940,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    35
+    25
    ],
    "parent": "wood",
    "needs": [
@@ -3964,8 +3964,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    45,
-    60
+    30,
+    40
    ],
    "parent": "nest",
    "icon": "nest/0",
@@ -3985,9 +3985,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    50,
-    100,
-    165
+    35,
+    70,
+    115
    ],
    "parent": "nest.more",
    "icon": "icon-power/0",
@@ -4008,7 +4008,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    80
+    55
    ],
    "parent": "nest",
    "needs": [
@@ -4032,8 +4032,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    50,
-    100
+    35,
+    70
    ],
    "parent": "watchtower",
    "icon": "watchtower/0",
@@ -4053,9 +4053,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    75,
-    135,
-    270
+    55,
+    95,
+    190
    ],
    "parent": "watchtower.more",
    "icon": "icon-power/0",
@@ -4076,7 +4076,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    70
+    50
    ],
    "parent": "sandbags",
    "needs": [
@@ -4100,8 +4100,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    50,
-    100
+    35,
+    70
    ],
    "parent": "ammo",
    "icon": "ammo/0",
@@ -4121,9 +4121,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    75,
-    135,
-    250
+    55,
+    95,
+    175
    ],
    "parent": "ammo.more",
    "icon": "icon-power/0",
@@ -4144,7 +4144,7 @@
    "cat": "structures",
    "max": 1,
    "cost": [
-    125
+    90
    ],
    "parent": "ammo",
    "needs": [
@@ -4168,8 +4168,8 @@
    "cat": "structures",
    "max": 2,
    "cost": [
-    75,
-    135
+    55,
+    95
    ],
    "parent": "incendiary",
    "icon": "incendiary/0",
@@ -4189,9 +4189,9 @@
    "cat": "structures",
    "max": 3,
    "cost": [
-    120,
-    215,
-    365
+    85,
+    150,
+    255
    ],
    "parent": "incendiary.more",
    "icon": "icon-power/0",
@@ -4233,8 +4233,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    20,
-    35
+    15,
+    25
    ],
    "parent": "missile",
    "icon": "missile/0",
@@ -4254,9 +4254,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    20,
-    45,
-    85
+    15,
+    30,
+    60
    ],
    "parent": "missile.charge",
    "icon": "icon-power/0",
@@ -4277,7 +4277,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    65
+    45
    ],
    "parent": "missile",
    "needs": [
@@ -4301,8 +4301,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    45,
-    80
+    30,
+    55
    ],
    "parent": "a10",
    "icon": "a10/0",
@@ -4322,9 +4322,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    70,
-    115,
-    210
+    50,
+    80,
+    145
    ],
    "parent": "a10.charge",
    "icon": "icon-power/0",
@@ -4345,7 +4345,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    50
+    35
    ],
    "parent": "missile",
    "needs": [
@@ -4369,8 +4369,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    35,
-    70
+    25,
+    50
    ],
    "parent": "smoke",
    "icon": "smoke/0",
@@ -4390,9 +4390,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    50,
-    95,
-    175
+    35,
+    65,
+    120
    ],
    "parent": "smoke.charge",
    "icon": "icon-power/0",
@@ -4413,7 +4413,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    110
+    75
    ],
    "parent": "missile",
    "needs": [
@@ -4437,8 +4437,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    60,
-    105
+    40,
+    75
    ],
    "parent": "artillery",
    "icon": "artillery/0",
@@ -4458,9 +4458,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    80,
-    155,
-    285
+    55,
+    110,
+    200
    ],
    "parent": "artillery.charge",
    "icon": "icon-power/0",
@@ -4481,7 +4481,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    80
+    55
    ],
    "parent": "smoke",
    "needs": [
@@ -4505,8 +4505,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    50,
-    95
+    35,
+    65
    ],
    "parent": "flare",
    "icon": "flare/0",
@@ -4526,9 +4526,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    85,
-    135,
-    255
+    60,
+    95,
+    180
    ],
    "parent": "flare.charge",
    "icon": "icon-power/0",
@@ -4549,7 +4549,7 @@
    "cat": "usables",
    "max": 1,
    "cost": [
-    120
+    85
    ],
    "parent": "a10",
    "needs": [
@@ -4573,8 +4573,8 @@
    "cat": "usables",
    "max": 2,
    "cost": [
-    70,
-    125
+    50,
+    90
    ],
    "parent": "napalm",
    "icon": "napalm/0",
@@ -4594,9 +4594,9 @@
    "cat": "usables",
    "max": 3,
    "cost": [
-    95,
-    175,
-    315
+    65,
+    120,
+    220
    ],
    "parent": "napalm.charge",
    "icon": "icon-power/0",
@@ -4617,9 +4617,9 @@
    "cat": "base",
    "max": 3,
    "cost": [
-    25,
-    50,
-    80
+    20,
+    35,
+    55
    ],
    "parent": "command",
    "icon": "icon-leak/0",
@@ -4638,8 +4638,8 @@
    "cat": "base",
    "max": 2,
    "cost": [
-    85,
-    150
+    60,
+    105
    ],
    "parent": "leak",
    "icon": "icon-leak/0",
@@ -4658,9 +4658,9 @@
    "cat": "base",
    "max": 3,
    "cost": [
-    45,
-    85,
-    150
+    30,
+    60,
+    105
    ],
    "parent": "command",
    "icon": "icon-chips/0",

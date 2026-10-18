@@ -1,5 +1,21 @@
 [
  {
+  "date": "2026-10-19 00:45",
+  "title": "Take the wheel",
+  "notes": [
+   "Play as a soldier: mid-wave, press the walkie-talkie beside a soldier's dossier and he is yours. WASD walks him, the mouse aims and holding the left button fires, with 10% more range. The controls fade to a tenth under a pixel vignette; press the walkie-talkie again or Esc to hand him back. He goes back to the squad if he falls.",
+   "Your last defence is put down for you when you open a city, Play again included. Clear, beside Start, takes it all back after asking.",
+   "Chips: one for every 10 kills (was 15), a loss keeps all of them (was half), and every run pays 8 chips times the map's number on top.",
+   "Everything in the skill tree costs about 30% less, and every soldier upgrade is half again as strong (damage +12% a level, health +37.5%, and so on).",
+   "Soldiers hit harder (+15% damage) and fire 10% faster, roadblocks have 10% more health, and soldiers walk about half as fast as before.",
+   "Zombies flash red on every hit.",
+   "The fight's controls are pixel art: pixel type, notched corners, and icons for Menu (a white flag that waves when hovered), Settings (a cog that turns), leaks (a zombie's head), kills (a skull) and Debug (a spider, top right). The folder tabs have a helmet, a barricade and cross hairs.",
+   "A picked soldier's card is his dossier: his class beside his name, Remove (while planning) or Retreat (mid-wave) as a red bookmark out of its top. It sits on the bottom edge now. The wave progress bar is gone.",
+   "Settings: the binder's rings are pixel art, Sound, Display, Story and Controls are rubber stamps with a pulsing marker over the one you are on, and Settings opened mid-fight is parchment like the menu's.",
+   "On the main menu the New save and Load save folders and the post-its line up with the Continue dossier."
+  ]
+ },
+ {
   "date": "2026-10-18 19:48",
   "title": "Wrecks, jeepneys and armour",
   "notes": [

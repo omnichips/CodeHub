@@ -43,7 +43,7 @@ test('every level of every node can be bought, starting from nothing but the sta
     for (const n of NODES) if (state(owned, n.id) === 'open') { spent += nextCost(owned, n.id)!; owned[n.id] = level(owned, n.id) + 1; grew = true; }
   }
   assert.ok(NODES.every((n) => level(owned, n.id) === n.max));
-  assert.ok(spent > 50000 && spent < 70000, `everything costs ${spent} chips: a long campaign`);
+  assert.ok(spent > 35000 && spent < 50000, `everything costs ${spent} chips: a long campaign`);
 });
 
 test('a new soldier needs only his parent, no upgrades of other soldiers', () => {
@@ -56,12 +56,12 @@ test('a new soldier needs only his parent, no upgrades of other soldiers', () =>
   assert.ok(deep.cost[2] > first.cost[2] * 5, 'deep in the tree costs far more');
 });
 
-test('chips: kills/15 with time and leak bonuses on a win, half the kill chips on a loss', () => {
+test('chips: kills/10 with time and leak bonuses on a win, all the kill chips on a loss', () => {
   const run = { kills: 600, leaks: 0, leakLimit: 50, time: 420, par: 420, won: true, firstClear: true, chipGain: 1 };
-  assert.equal(payout(run).total, Math.floor(40 * 1.25) + 100); // at par: no time bonus; no leaks: +25%
-  assert.equal(payout({ ...run, time: 315, firstClear: false }).total, Math.floor(40 * 1.55)); // 25% under par: full +30%
-  assert.equal(payout({ ...run, leaks: 50, firstClear: false }).total, 40);
-  assert.equal(payout({ ...run, won: false }).total, 20);
+  assert.equal(payout(run).total, Math.floor(60 * 1.25) + 100); // at par: no time bonus; no leaks: +25%
+  assert.equal(payout({ ...run, time: 315, firstClear: false }).total, Math.floor(60 * 1.55)); // 25% under par: full +30%
+  assert.equal(payout({ ...run, leaks: 50, firstClear: false }).total, 60);
+  assert.equal(payout({ ...run, won: false }).total, 60);
 });
 
 test('a save from a file is never trusted: junk is dropped, bad numbers reset', () => {

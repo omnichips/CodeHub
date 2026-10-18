@@ -12,6 +12,7 @@ import { Grid, type MapData } from '../sim/grid.ts';
 import { DIFFICULTY, exportSave, fresh, noStats, parse, remove, type Difficulty, type Save, type Stats } from '../meta/save.ts';
 import { ask } from './dialog.ts';
 import { el } from './hud.ts';
+import { pixIcon } from './pixicons.ts';
 import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
 import { atmosphere } from './atmosphere.ts';
@@ -359,7 +360,7 @@ export class Menu extends Phaser.Scene {
       return b;
     });
     return el('div', { className: 'binder', ariaLabel: 'Binder' },
-      el('div', { className: 'rings', ariaHidden: 'true' }, ...Array.from({ length: 5 }, () => el('i'))),
+      el('div', { className: 'rings', ariaHidden: 'true' }, ...Array.from({ length: 5 }, () => pixIcon('ring', 2))),
       el('div', { className: 'bhead' }, pixelButton('Back', bw, bh, bd, () => this.show(this.binderFrom), 'tag'), el('div', { className: 'tabs' }, ...tabs)),
       el('div', { className: 'page' }, inner));
   }
@@ -388,11 +389,11 @@ export class Menu extends Phaser.Scene {
           MEDALS.filter((m) => last.medals[m.id]).sort((a, b) => last.medals[a.id] - last.medals[b.id]).map((m) => m.ribbon)),
         () => { open(k); this.show('save'); }, 'dossier')] : []),
       el('div', { className: 'pair' },
-        pixelButton('New save', 94, 44, last ? folder('NEW SAVE', '#4a5032', '#2e3220', 3) : folder('NEW SAVE', '#9c2f28', '#5e1d18', 3), () => this.show('new')),
-        pixelButton('Load save', 94, 44, folder('LOAD SAVE', '#2f3a54', '#1c2333', 8), () => this.show('load'))),
+        pixelButton('New save', 96, 44, last ? folder('NEW SAVE', '#4a5032', '#2e3220', 3) : folder('NEW SAVE', '#9c2f28', '#5e1d18', 3), () => this.show('new')),
+        pixelButton('Load save', 96, 44, folder('LOAD SAVE', '#2f3a54', '#1c2333', 8), () => this.show('load'))),
       // Settings, and beside it the last save's medals and field manual as post-its.
       el('div', { className: 'tags' },
-        pixelButton('Settings', 58, 48, stickyNote(), () => { this.binderFrom = 'menu'; this.show('settings'); }, 'sticky'),
+        pixelButton('Settings', 57, 48, stickyNote(), () => { this.binderFrom = 'menu'; this.show('settings'); }, 'sticky'),
         ...(last ? [
           pixelButton('Medals', ...medalNote(), () => { open(k); this.binderFrom = 'menu'; this.show('medals'); }, 'sticky'),
           pixelButton('Field manual', ...manualNote(), () => { open(k); this.binderFrom = 'menu'; this.show('manual'); }, 'sticky')] : [])),
