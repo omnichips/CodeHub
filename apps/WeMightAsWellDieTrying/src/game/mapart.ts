@@ -46,8 +46,11 @@ function rng(seed: number) {
 }
 const seedOf = (x: number, y: number, salt = 0) => Math.imul(x + 1, 73856093) ^ Math.imul(y + 1, 19349663) ^ salt;
 
+/** Something drawn on a map that the game brings to life (game/mapanims.ts, game/ambience.ts): where, and for some of
+ *  them a sprite frame and its angle, where it heads (`to`, then on along `a` for `len`), how many go. */
+export interface Drawn { kind: string; x: number; y: number; frame?: string; a?: number; to?: number[]; len?: number; n?: number }
 /** The decor each painted map shows (some is left out: deep in a roof's shade, or where it does not belong). */
-export const drawn = new Map<string, { kind: string; x: number; y: number }[]>();
+export const drawn = new Map<string, Drawn[]>();
 
 /** Makes the map texture `key` (once) and returns it. `blood` is off when gore is set to none. */
 export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: string, blood: boolean) {
@@ -101,8 +104,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     return isGreen(x, y) ? 'green' : ch(x, y) === ',' ? 'plaza' : side[y * w + x] ? 'side' : road[y * w + x] ? 'road' : '';
   };
   const signals: { kind: string; x: number; y: number }[] = []; // traffic lights, at the corners of junctions
-  const fires: { kind: string; x: number; y: number }[] = []; // on the roofs of buildings burning
-  const extra: { kind: string; x: number; y: number }[] = []; // trees' crowns and the camp's helicopter, to move
+  const fires: Drawn[] = []; // on the roofs of buildings burning
+  const extra: Drawn[] = []; // trees' crowns, the camp's helicopter or what waits there instead, to move
   const runX = (x: number, y: number) => { let a = x, b = x; while (isRoad(a - 1, y)) a--; while (isRoad(b + 1, y)) b++; return [a, b]; };
   const runY = (x: number, y: number) => { let a = y, b = y; while (isRoad(x, a - 1)) a--; while (isRoad(x, b + 1)) b++; return [a, b]; };
   /** Where two roads cross: the road runs on a long way both across and down. */
@@ -546,40 +549,213 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       extra.push({ kind: big ? 'crown' : 'crown-small', x: cx, y: cy });
     }
 
-  // ---- The safe zone's camp: tents in rows, and a pad for the helicopter (which is drawn live) ----
-  /** A canvas tent from above: its shadow, the two slopes either side of the ridge, pegs, the door flap; a medical
-   *  one has a red cross. */
-  const tent = (x: number, y: number, tw: number, th: number, medic: boolean) => {
-    rect('rgba(0,0,0,0.35)', x + 3, y + 3, tw, th);
-    rect(P.outline, x - 1, y - 1, tw + 2, th + 2);
-    rect(P.olive1, x, y, tw, th / 2);
-    rect(P.olive0, x, y + th / 2, tw, th / 2);
-    rect(P.olive2, x, y + th / 2 - 1, tw, 2); // the ridge
-    for (const gx of [x - 3, x + tw + 2]) for (const gy of [y + 2, y + th - 3]) dot(P.khaki1, gx, gy);
-    rect(P.outline, x + tw / 2 - 3, y + th - 2, 6, 2);
-    if (medic) { rect(P.snow1, x + tw / 2 - 5, y + 2, 10, th / 2 - 3); rect(P.red1, x + tw / 2 - 1, y + 3, 2, th / 2 - 5); rect(P.red1, x + tw / 2 - 3, y + th / 4 - 1, 6, 2); }
-  };
-  if (!(map.decor ?? []).some((d) => d.kind === 'whitehouse')) {
-    const done = new Uint8Array(w * h);
-    for (const first of grid.goals) {
-      if (done[first]) continue;
-      const zone: number[] = [];
-      for (const stack = [first]; stack.length; ) {
-        const i = stack.pop()!;
-        if (done[i] || !goal[i]) continue;
-        done[i] = 1;
-        zone.push(i);
-        if (i % w > 0) stack.push(i - 1);
-        if (i % w < w - 1) stack.push(i + 1);
-        if (i >= w) stack.push(i - w);
-        if (i + w < w * h) stack.push(i + w);
+  // ---- The safe zone: how its people are to get out (a pad for the helicopter, which is drawn live; or what the
+  // city's story has waiting there: map.evac), the camp round it (tents, people, cookfires, tables, toilets, cars), and
+  // junk piled along where it meets the streets (only drawn: the horde walks through it) ----
+  /** The zone's people are sprites (art/sprites.ts): CIVS everyday looks, then UMBRELLAS more under umbrellas. */
+  const CIVS = 7, UMBRELLAS = 3;
+  const civ = (k: number) => `civ${k}-walk/0`;
+  /** How the people in the zone (x0, y0)-(x1, y1) get out, drawn on it; returns the boxes it takes, in pixels. Drawn
+   *  in a frame of its own, in the design's pixels: x along the zone's way out (the map's edge it lies on; for the
+   *  queue the side facing the station, for stairs the south), y negative going in from it. Boats lie along that side
+   *  (live: they bob); buses and trucks face out through it; stairs go down toward it. What moves is pushed to `extra`
+   *  for the game to animate: boats, smoke, headlights, lamps, water lapping at a hull, people going down the stairs. */
+  const evacuation = (kind: NonNullable<MapData['evac']>, x0: number, y0: number, x1: number, y1: number) => {
+    const L = x0 * T, R = (x1 + 1) * T, Tp = y0 * T, B = (y1 + 1) * T;
+    let edge = y1 === h - 1 ? 'S' : x0 === 0 ? 'W' : x1 === w - 1 ? 'E' : y0 === 0 ? 'N' : 'S';
+    if (kind === 'stairs') edge = 'S';
+    if (kind === 'queue') {
+      // Toward the station.
+      let sx = 0, sy = 0, n = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (ch(x, y) === 's') { sx += x; sy += y; n++; }
+      const dx = n ? sx / n - (x0 + x1) / 2 : 0, dy = n ? sy / n - (y0 + y1) / 2 : 1;
+      edge = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : dy > 0 ? 'S' : 'N';
+    }
+    const [ox, oy, a] = ({ S: [L, B, 0], W: [L, Tp, Math.PI / 2], N: [R, Tp, Math.PI], E: [R, B, -Math.PI / 2] } as Record<string, number[]>)[edge];
+    const across = edge === 'S' || edge === 'N', len = (across ? R - L : B - Tp) / S, deep = (across ? B - Tp : R - L) / S, px = 1 / S; // px: a sprite pixel here
+    const at = (x: number, y: number): [number, number] => [ox + Math.round(Math.cos(a)) * x * S - Math.round(Math.sin(a)) * y * S, oy + Math.round(Math.sin(a)) * x * S + Math.round(Math.cos(a)) * y * S];
+    const live = (k: string, x: number, y: number, more: Partial<Drawn> = {}) => { const [wx, wy] = at(x, y); extra.push({ kind: k, x: wx, y: wy, ...more }); };
+    // Sprites go on once the frame is put away (they are drawn at their own size, not the design's).
+    const later: (() => void)[] = [], put = (frame: string, x: number, y: number, turn = 0) => later.push(() => stamp(frame, ...at(x, y), a + turn, 0));
+    const q = rng(seedOf(x0, y0, 41)), boxes: number[][] = [];
+    /** Someone queueing or waiting, facing the way out (+y), a little this way or that. */
+    const waiting = (x: number, y: number, umbrella = false) => put(civ(umbrella ? CIVS + ((q() * UMBRELLAS) | 0) : (q() * CIVS) | 0), x, y, Math.PI / 2 + (q() - 0.5) * 0.9);
+    c.save();
+    c.translate(ox, oy);
+    c.rotate(a);
+    c.scale(S, S);
+
+    /** The bottom `d` of the frame made a harbour: water, the quay's edge along it, bollards. */
+    const harbour = (d: number) => {
+      rect(P.teal0, 0, -d, len, d);
+      for (let k = 0; k < (len * d) / 50; k++) rect(q() < 0.7 ? P.teal1 : P.teal2, q() * len, -d + 4 + q() * (d - 5), 3 + q() * 4, 1);
+      rect('rgba(0,0,0,0.3)', 0, -d, len, 4); // the quay's shadow on the water
+      rect(P.outline, 0, -d - 3, len, 3); rect(P.cream, 0, -d - 3, len, 2);
+      for (let x = 10; x < len - 4; x += 26) { disc(P.outline, x, -d - 6, 2.2); disc(P.metal1, x, -d - 6, 1.5); }
+    };
+    /** Stairs going down from `top` toward the way out, `half` either side of `cx`, darker step by step into the dark:
+     *  in a stone surround with a wall at the far end, or (makeshift) between plywood and sandbags. */
+    const stairs = (cx: number, top: number, bottom: number, half: number, makeshift: boolean) => {
+      const n = Math.max(4, Math.floor((bottom - top) / 4)), step = (bottom - top) / n;
+      rect('rgba(0,0,0,0.35)', cx - half - 2, top + 2, half * 2 + 7, bottom - top + 3);
+      for (let i = 0; i < n; i++) {
+        const f = i / n, col = `rgb(${Math.round(119 - f * 108)},${Math.round(115 - f * 105)},${Math.round(106 - f * 96)})`;
+        rect(col, cx - half, top + i * step, half * 2, step);
+        rect(`rgba(234,223,174,${(0.3 * (1 - f)).toFixed(2)})`, cx - half, top + i * step, half * 2, 0.5); // each step's lit edge
       }
-      const xs = zone.map((i) => i % w), ys = zone.map((i) => Math.floor(i / w)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-      if (x1 - x0 < 4 * S || y1 - y0 < 3 * S) continue; // too small for a camp
-      const inZone = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && goal[y * w + x] === 1;
+      rect('#060606', cx - half, bottom - 3, half * 2, 3);
+      for (const side of [-1, 1]) {
+        const wx = side < 0 ? cx - half - 4 : cx + half;
+        if (makeshift) for (let y = top - 1; y < bottom + 3; y += 3) { rect(P.outline, wx, y, 4, 3); rect([P.brown1, P.brown2, P.khaki0][Math.abs(Math.round(y)) % 3], wx + 0.5, y + 0.5, 3, 2); }
+        else { rect(P.outline, wx, top - 1, 4, bottom - top + 5); rect(P.cream, wx + 0.5, top - 0.5, 3, bottom - top + 4); }
+        rect(P.metal2, side < 0 ? cx - half + 1 : cx + half - 1.5, top, 0.5, bottom - top - 2); // the handrails
+      }
+      if (half > 14) rect(P.metal2, cx - 0.25, top + 2, 0.5, bottom - top - 5);
+      if (!makeshift) { rect(P.outline, cx - half - 4, bottom, half * 2 + 8, 4); rect(P.cream, cx - half - 3.5, bottom + 0.5, half * 2 + 7, 3); }
+      else for (const side of [-1, 1]) for (let y = top + 4; y < bottom; y += 18 * px) put('sandbags/0', cx + side * (half + 9), y, Math.PI / 2);
+    };
+    /** People going down the stairs whose top is at (tx, top), coming from (fx, fy). */
+    const flow = (fx: number, fy: number, tx: number, top: number, down: number, n: number, umbrella = false) =>
+      live('flow', fx, fy, { to: at(tx, top), a: a + Math.PI / 2, len: down * S, n, frame: umbrella ? 'umbrella' : '' });
+
+    if (kind === 'ferry' || kind === 'ship') {
+      // Moored along the quay, each with a gangway down to it and a crowd on the quay at its foot.
+      const ship = kind === 'ship', long = (ship ? 320 : 288) * px, beam = (ship ? 64 : 60) * px, d = beam + 14, cy = -d / 2 - 1;
+      const n = ship ? Math.max(1, Math.min(3, Math.floor(len / (long + 16)))) : 1, gap = len / n;
+      harbour(d);
+      for (let k = 0; k < n; k++) {
+        const cx = n === 1 ? Math.max(long / 2 + 6, Math.min(len - long / 2 - 6, len * 0.5)) : gap * (k + 0.5), flip = ship && k % 2 === 1;
+        live('boat', cx, cy, { frame: ship ? `ship/${(k + x0) % 3}` : 'ferry/0', a: a + (flip ? Math.PI : 0) });
+        for (let x = cx - long / 2 + 6; x < cx + long / 2 - 10; x += 14) { live('foam', x, cy - beam / 2 - 2); live('foam', x + 7, cy + beam / 2 + 2); }
+        const gx = cx + (flip ? -1 : 1) * long * (ship ? 0.08 : -0.22), foot = cy - beam / 2;
+        rect(P.outline, gx - 1, -d - 1, 5, foot + d + 1); rect(P.khaki1, gx, -d - 1, 3, foot + d + 1);
+        for (let y = -d; y < foot; y += 2) rect(P.khaki0, gx, y, 3, 1);
+        for (let j = 0; j < 16; j++) waiting(gx + 1 + (q() - 0.5) * 40, -d - 7 - q() * 14);
+      }
+      boxes.push([0, -d - 24, len, 0]);
+    } else if (kind === 'bus' || kind === 'trucks') {
+      // Lined up facing out, engines running.
+      const long = 78 * px, wide = 28 * px;
+      const vehicle = (frame: string, cx: number, front: number) => {
+        put(frame, cx, front - long / 2, Math.PI / 2);
+        live('headlight', cx - wide * 0.3, front + 1); live('headlight', cx + wide * 0.3, front + 1); live('exhaust', cx + wide * 0.3, front - long - 1);
+      };
+      if (kind === 'bus') {
+        const n = Math.max(1, Math.min(3, Math.floor(len / (wide + 12)))), gap = len / n;
+        for (let k = 0; k < n; k++) vehicle('schoolbus/0', gap * (k + 0.5), -3);
+        boxes.push([gap / 2 - wide, -long - 6, gap * (n - 0.5) + wide, 0]);
+      } else {
+        const rows = Math.max(1, Math.min(3, Math.floor((deep - 6) / (long + 8))));
+        for (const cx of [len / 2 - wide / 2 - 4, len / 2 + wide / 2 + 4]) for (let k = 0; k < rows; k++) vehicle('armytruck/0', cx, -3 - k * (long + 8));
+        boxes.push([len / 2 - wide - 8, -6 - rows * (long + 8), len / 2 + wide + 8, 0]);
+      }
+    } else if (kind === 'stairs') {
+      // Down into the metro, its red M on a post; people walking in from across the zone and going down, on and on.
+      const cx = len / 2, half = 18, top = -deep * 0.72, bottom = -deep * 0.26;
+      stairs(cx, top, bottom, half, false);
+      rect(P.outline, cx + half + 7, top - 14, 2, 14); rect(P.outline, cx + half + 3, top - 25, 11, 11); rect(P.red1, cx + half + 4, top - 24, 9, 9);
+      for (const [mx, my, mw, mh] of [[5, 2, 1, 5], [9, 2, 1, 5], [6, 3, 1, 1], [8, 3, 1, 1], [7, 4, 1, 1]]) rect(P.snow2, cx + half + 1 + mx, top - 24 + my, mw, mh); // the M
+      for (const lane of [-1, 0, 1]) flow(cx + lane * 34, -deep + 6, cx + lane * 9, top, bottom - top, 5);
+      boxes.push([cx - half - 8, -deep, cx + half + 16, bottom + 6]);
+    } else {
+      // The queue for the station: lanes between barriers, the checkpoint, and the makeshift stairs down into the
+      // subway. The middle lanes keep moving and go down; the rest stand and wait under their umbrellas.
+      const lanes = Math.max(2, Math.floor((len - 8) / 14)), lx = (len - lanes * 14) / 2, cx = len / 2, half = Math.min(28, lanes * 7 - 7), top = -30, bottom = -4;
+      for (let k = 0; k <= lanes; k++) { const x = lx + k * 14; rect(P.metal2, x, -deep + 6, 1, deep - 44); for (let y = -deep + 6; y < -38; y += 10) rect(P.outline, x - 1, y, 3, 2); }
+      rect(P.outline, lx - 2, -38, lanes * 14 + 5, 5); rect(P.flash0, lx - 1, -37, lanes * 14 + 3, 3);
+      for (let k = 0; k < lanes; k++) rect(P.pave0, lx + k * 14 + 4, -38, 6, 5); // a gate in each lane
+      live('beacon', lx - 2, -36); live('beacon', lx + lanes * 14 + 3, -36);
+      stairs(cx, top, bottom, half, true);
+      live('window', cx - half - 6, top - 2); live('window', cx + half + 6, top - 2); // work lamps
+      for (let k = 0; k < lanes; k++) {
+        const mx = lx + k * 14 + 7;
+        if (Math.abs(mx - cx) < half) flow(mx, -deep + 8, mx, top, bottom - top, 6, true);
+        else for (let y = -44; y > -deep + 10; y -= 8) waiting(mx + (q() - 0.5) * 2, y + (q() - 0.5) * 2, true);
+      }
+      boxes.push([0, -deep, len, 0]);
+    }
+    c.restore();
+    for (const f of later) f();
+    return boxes.map(([bx0, by0, bx1, by1]) => { const [ax, ay] = at(bx0, by0), [bx, by] = at(bx1, by1); return [Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)]; });
+  };
+
+  /** The camp, wherever in zone (x0, y0)-(x1, y1) is not kept clear: tents, cookfires with people round them and
+   *  their sleeping bags, aid tables, a row of portable toilets, cars left there, crates, and a crowd. As much of it as
+   *  the zone has room for. */
+  const dress = (inZone: (x: number, y: number) => boolean, x0: number, y0: number, x1: number, y1: number, tiles: number, keeps: number[][]) => {
+    const q = rng(seedOf(x0, y0, 51)), taken: number[][] = [], L = x0 * T, Tp = y0 * T, R = (x1 + 1) * T, B = (y1 + 1) * T;
+    const free = (x: number, y: number, r: number) =>
+      [[-r, -r], [r, -r], [-r, r], [r, r], [0, 0]].every(([dx, dy]) => inZone(Math.floor((x + dx) / T), Math.floor((y + dy) / T))) &&
+      !keeps.some(([l, t, rr, b]) => x + r > l && x - r < rr && y + r > t && y - r < b) && taken.every(([tx, ty, tr]) => Math.hypot(tx - x, ty - y) >= tr + r);
+    const spot = (r: number) => {
+      for (let k = 0; k < 40; k++) { const x = L + r + q() * (R - L - 2 * r), y = Tp + r + q() * (B - Tp - 2 * r); if (free(x, y, r)) { taken.push([x, y, r]); return [x, y]; } }
+    };
+    const room = tiles / (S * S); // in the design's tiles
+    const many = (n: number, most: number, r: number, place: (x: number, y: number) => void) => { for (let k = 0; k < Math.min(most, Math.floor(n)); k++) { const p = spot(r); if (p) place(p[0], p[1]); } };
+    const turn = () => q() * Math.PI * 2;
+    many(room / 10, 12, 24, (x, y) => stamp(`tent/${(q() * 4) | 0}`, x, y, q() < 0.5 ? 0 : Math.PI, 0));
+    many(room / 30, 6, 30, (x, y) => { // a cookfire, people round it, their sleeping bags further out
+      stamp('campfire/0', x, y, 0, 0);
+      extra.push({ kind: 'campfire', x, y });
+      const sit = 3 + ((q() * 3) | 0);
+      for (let k = 0; k < sit; k++) { const b = (k / sit) * Math.PI * 2 + q() * 0.4; stamp(civ((q() * CIVS) | 0), x + Math.cos(b) * 13, y + Math.sin(b) * 13, b + Math.PI, 0); }
+      for (let k = 0; k < 2; k++) { const b = q() * Math.PI * 2; stamp(`sleepbag/${(q() * 3) | 0}`, x + Math.cos(b) * 23, y + Math.sin(b) * 23, b, 0); }
+    });
+    many(room / 45, 4, 20, (x, y) => { // an aid table, people at it, crates behind
+      stamp('table/0', x, y, 0, 0);
+      for (let k = 0; k < 3; k++) stamp(civ((q() * CIVS) | 0), x - 8 + k * 8, y + 11, -Math.PI / 2 + (q() - 0.5) * 0.5, 0);
+      stamp(`crate/${(q() * 2) | 0}`, x + (q() - 0.5) * 16, y - 13, 0, 0);
+    });
+    if (room > 30) { const p = spot(28); if (p) for (let k = 0; k < 4; k++) stamp(`toilet/${k % 2 ? 0 : (q() * 2) | 0}`, p[0] - 21 + k * 14, p[1], 0, 0); }
+    many(room / 35, 4, 27, (x, y) => stamp(`sedan/${(q() * 4) | 0}`, x, y, (q() < 0.5 ? 0 : Math.PI / 2) + (q() - 0.5) * 0.5, 0));
+    many(room / 12, 10, 9, (x, y) => stamp(`crate/${(q() * 2) | 0}`, x, y, (q() - 0.5) * 0.6, 0));
+    many(room / 8, 16, 11, (x, y) => stamp(`sleepbag/${(q() * 3) | 0}`, x, y, turn(), 0));
+    many(room, 140, 5, (x, y) => {
+      const a = turn();
+      stamp(civ((q() * CIVS) | 0), x, y, a, 0);
+      if (q() < 0.3) { const fx = x + Math.cos(a) * 9, fy = y + Math.sin(a) * 9; if (free(fx, fy, 4)) { taken.push([fx, fy, 4]); stamp(civ((q() * CIVS) | 0), fx, fy, a + Math.PI, 0); } } // two talking
+    });
+  };
+
+  /** Junk piled along where the zone meets the street, a stretch of each kind at a time, an opening now and then:
+   *  sandbags, concrete, plastic and police barriers, timber, crates. */
+  const blockade = (zone: number[]) => {
+    const KINDS = ['sandbags/0', 'cement/0', 'plastic/0', 'police/0', 'wood/0', 'crate/0', 'plastic/1', 'police/1', 'crate/1'];
+    for (const i of zone) {
+      const x = i % w, y = (i - x) / w;
+      for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h || goal[ny * w + nx] || wall[ny * w + nx]) continue;
+        const along = dy ? x : y, k = along % (12 * S);
+        if (k >= 8 * S && k < 9 * S) continue; // an opening
+        stamp(KINDS[(Math.floor(along / (3 * S)) * 4 + (dx + 1) * 3 + dy + 1) % KINDS.length], (x + 0.5) * T + dx * (T / 2 - 5), (y + 0.5) * T + dy * (T / 2 - 5), dy ? 0 : Math.PI / 2, 0);
+      }
+    }
+  };
+
+  const white = (map.decor ?? []).some((d) => d.kind === 'whitehouse'), done = new Uint8Array(w * h);
+  for (const first of grid.goals) {
+    if (done[first]) continue;
+    const zone: number[] = [];
+    for (const stack = [first]; stack.length; ) {
+      const i = stack.pop()!;
+      if (done[i] || !goal[i]) continue;
+      done[i] = 1;
+      zone.push(i);
+      if (i % w > 0) stack.push(i - 1);
+      if (i % w < w - 1) stack.push(i + 1);
+      if (i >= w) stack.push(i - w);
+      if (i + w < w * h) stack.push(i + w);
+    }
+    const xs = zone.map((i) => i % w), ys = zone.map((i) => Math.floor(i / w)), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const inZone = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && goal[y * w + x] === 1;
+    const keeps: number[][] = [];
+    if (map.evac) keeps.push(...evacuation(map.evac, x0, y0, x1, y1));
+    else if (white) keeps.push([x0 * T, y0 * T + (y1 - y0) * T * 0.12, (x1 + 1) * T, y0 * T + (y1 - y0) * T * 0.82]); // the White House stands on it
+    else if (x1 - x0 >= 4 * S && y1 - y0 >= 3 * S) {
       // The pad: the map's own helipad if it has one here, else a new one in the middle.
       const own = (map.decor ?? []).find((d) => d.kind === 'helipad' && inZone(Math.floor(d.x / T), Math.floor(d.y / T)));
-      const pad = own ? [own.x, own.y] : [((x0 + x1 + 1) / 2) * T, ((y0 + y1 + 1) / 2) * T];
+      const pad = own ? [own.x, own.y] : [((x0 + x1 + 1) / 2) * T, ((y0 + y1 + 1) / 2) * T], r = (3.5 * S + 1) * T;
       if (!own) {
         c.save(); c.translate(pad[0], pad[1]); c.scale(S, S);
         c.strokeStyle = P.flash0; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 30, 0, 7); c.stroke(); c.lineWidth = 1;
@@ -587,19 +763,10 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         c.restore();
       }
       extra.push({ kind: 'heli', x: pad[0], y: pad[1] });
-      // Tents in rows, clear of the pad and the fence.
-      const tw = 2 * S, th = Math.max(2, Math.round(1.5 * S)), step = 3 * S;
-      let n = 0;
-      for (let ty = y0 + S; ty + th <= y1 - S + 1 && n < 10; ty += step)
-        for (let tx = x0 + S; tx + tw <= x1 - S + 1 && n < 10; tx += step + S) {
-          if (Math.hypot((tx + tw / 2) * T - pad[0], (ty + th / 2) * T - pad[1]) < (3.5 * S + 1) * T) continue;
-          let fits = true;
-          for (let y = ty - 1; y <= ty + th; y++) for (let x = tx - 1; x <= tx + tw; x++) if (!inZone(x, y)) fits = false;
-          if (!fits) continue;
-          tent(tx * T, ty * T, tw * T, th * T, n % 4 === 1);
-          n++;
-        }
+      keeps.push([pad[0] - r, pad[1] - r, pad[0] + r, pad[1] + r]);
     }
+    dress(inZone, x0, y0, x1, y1, zone.length, keeps);
+    blockade(zone);
   }
 
   /** Someone lying dead, two tiles long, head toward `a`: one of ours (uniform, vest, helmet, his rifle beside him) or
@@ -812,7 +979,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     disc('rgba(0,0,0,0.35)', x + 3, y + 3, 16); disc(P.outline, x, y, 16); disc(P.pave1, x, y, 15); disc(P.pave0, x, y, 10);
     disc(P.metal2, x, y, 2.5);
   };
-  const shown: { kind: string; x: number; y: number }[] = [];
+  const shown: Drawn[] = [];
   drawn.set(key, shown);
   /** Things drawn at a size of their own (the grounds' furniture: fountains, beds, the court, the L) grow with the map. */
   const GROWS = ['fountain', 'flowers', 'helipad', 'flag', 'court', 'laundry', 'el'];
@@ -825,6 +992,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     if (d.kind === 'colosseum') { colosseum(x, y); return; }
     if (d.kind === 'scramble') { scramble(x, y); return; }
     if (d.kind === 'rails') { rails(x, y); return; }
+    if (map.evac && kindAt(x, y) === 'safe') return; // the safe zone is taken by what waits there (no crates in the harbour)
+
     if (!WHERE[d.kind]?.includes(kindAt(x, y)) || fadeAt(x, y) > 0.4) return; // nothing deep in the shadow
     shown.push(d);
     if (d.kind === 'tree') {

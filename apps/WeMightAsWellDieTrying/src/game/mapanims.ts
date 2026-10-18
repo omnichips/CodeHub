@@ -1,4 +1,5 @@
-// Life on a painted map, only drawn (the fight never sees it). The camp's helicopter, fire glowing on burning roofs,
+// Life on a painted map, only drawn (the fight never sees it). The camp's helicopter (or the headlights, lit windows and
+// lamps of what waits there instead, the water lapping at a ship), fire glowing on burning roofs,
 // reticles on the spots soldiers can go up to, dust blowing across the screen. Lights: street lamps glowing, a few on the blink;
 // traffic lights at the junctions changing; Tokyo's video screens. Water: ripples running on rivers and canals, a
 // fountain's spray. Wind: trees stirring, the Zocalo's flag flying, litter blowing down the street. Critters: crows and
@@ -8,7 +9,7 @@ import palette from '../data/palette.json' with { type: 'json' };
 import { profile } from '../meta/profile.ts';
 import type { Grid, MapData } from '../sim/grid.ts';
 
-type Decor = { kind: string; x: number; y: number };
+type Decor = import('./mapart.ts').Drawn;
 const hex = (c: string) => Phaser.Display.Color.HexStringToColor(c).color;
 const WIND = { x: 16, y: 5 }; // px a second litter blows (the flag flies east too)
 const CYCLE = 14; // seconds a traffic light takes to go round: green, amber, red
@@ -222,6 +223,50 @@ export function mapAnims(scene: Phaser.Scene, map: MapData, grid: Grid, decor: D
     });
   }
 
+  // ---- What waits on the safe zone instead of a helicopter (game/mapart.ts): headlights on, a train's windows lit
+  // and flickering, the checkpoint's amber lamps blinking, the water lapping along a hull ----
+  const GLOW: Record<string, [number, number]> = { headlight: [0xfff0c0, 1.1], window: [0xffd890, 0.55], beacon: [0xffa030, 0.9] }; // tint, size
+  const glows = decor.filter((d) => d.kind in GLOW).map((d) => ({
+    kind: d.kind, img: scene.add.image(d.x, d.y, 'fx-glow').setBlendMode('ADD').setTint(GLOW[d.kind][0]).setScale(GLOW[d.kind][1] * S).setDepth(0.5), phase: roll(d.x, d.y) * 10,
+  }));
+  const foam = decor.filter((d) => d.kind === 'foam').map((d) => ({ img: scene.add.image(d.x, d.y, 'fx-px').setScale(4 * S, S).setTint(0xdcddd3).setDepth(0.5), x: d.x, phase: roll(d.x, d.y) * 10 }));
+  // Boats at the quay, riding the water: rocking a little, drifting toward and off the quay on their lines.
+  const boats = decor.filter((d) => d.kind === 'boat' && d.frame).map((d) => ({ img: scene.add.image(d.x, d.y, 'sprites', d.frame).setRotation(d.a ?? 0).setDepth(0.55), d, phase: roll(d.x, d.y) * 10 }));
+  if (boats.length) steps.push((t) => {
+    for (const { img, d, phase } of boats) {
+      const a = d.a ?? 0, sway = Math.sin(t * 0.6 + phase) * 1.2 * S, surge = Math.sin(t * 0.37 + phase * 2) * 0.8 * S;
+      img.setPosition(d.x + Math.cos(a) * surge - Math.sin(a) * sway, d.y + Math.sin(a) * surge + Math.cos(a) * sway).setRotation(a + Math.sin(t * 0.8 + phase) * 0.008);
+    }
+  });
+  // People walking in to the top of the stairs and going down them, darker and smaller into the dark, and more after.
+  const flows = decor.filter((d) => d.kind === 'flow' && d.to).flatMap((d) => {
+    const [tx, ty] = d.to!, walk = Math.hypot(tx - d.x, ty - d.y), down = d.len ?? 40, total = walk + down, n = d.n ?? 5;
+    return Array.from({ length: n }, (_, k) => {
+      const look = d.frame === 'umbrella' ? 7 + ((k + Math.floor(d.x)) % 3) : (k * 3 + Math.floor(d.x)) % 7; // the civilians' looks: art/sprites.ts
+      return { s: scene.add.sprite(d.x, d.y, 'sprites').setDepth(1).play({ key: `civ${look}-walk`, startFrame: k % 2 }), d, tx, ty, walk, down, total, p: (k / n) * total, speed: 8 + roll(k, d.x) * 4 };
+    });
+  });
+  if (flows.length) steps.push((_t, dt) => {
+    for (const f of flows) {
+      f.p = (f.p + f.speed * dt) % f.total;
+      const a = f.d.a ?? 0, toward = Math.atan2(f.ty - f.d.y, f.tx - f.d.x);
+      if (f.p < f.walk) {
+        const u = f.p / f.walk;
+        f.s.setPosition(f.d.x + (f.tx - f.d.x) * u, f.d.y + (f.ty - f.d.y) * u).setRotation(toward).setScale(1).setAlpha(Math.min(1, f.p / 12)).clearTint();
+      } else {
+        const u = (f.p - f.walk) / f.down, g = Math.round(255 * (1 - u * 0.85));
+        f.s.setPosition(f.tx + Math.cos(a) * (f.p - f.walk), f.ty + Math.sin(a) * (f.p - f.walk)).setRotation(a).setScale(1 - u * 0.25).setAlpha(1 - u * u).setTint(Phaser.Display.Color.GetColor(g, g, g));
+      }
+    }
+  });
+  if (glows.length || foam.length) steps.push((t) => {
+    for (const g of glows) g.img.setAlpha(
+      g.kind === 'beacon' ? ((t * 1.2 + g.phase) % 1 < 0.5 ? 0.75 : 0.05)
+        : g.kind === 'window' ? 0.32 + 0.08 * Math.sin(t * 1.7 + g.phase) - (Math.sin(t * 13 + g.phase * 3) > 0.96 ? 0.22 : 0) // now and then a flicker
+          : 0.5 + 0.04 * Math.sin(t * 9 + g.phase));
+    for (const f of foam) { const k = Math.sin(t * 1.4 + f.phase); f.img.setAlpha(Math.max(0, k) * 0.55).setX(f.x + k * 1.5 * S); }
+  });
+
   // ---- Dust blowing across the screen, as much as the setting says ----
   const motes = Array.from({ length: 160 }, () => ({
     img: scene.add.image(0, 0, 'fx-px').setDepth(12).setTint([0xc9bc94, 0xa49873, 0xeadfae][(Math.random() * 3) | 0]),
@@ -246,8 +291,8 @@ export function mapAnims(scene: Phaser.Scene, map: MapData, grid: Grid, decor: D
   };
 }
 
-/** The pixels it draws with, made once. */
-function textures(scene: Phaser.Scene) {
+/** The pixels it draws with, made once (the menu's helicopter uses them too). */
+export function textures(scene: Phaser.Scene) {
   if (scene.textures.exists('fx-px')) return;
   const g = scene.make.graphics({}, false);
   g.fillStyle(0xffffff, 1).fillRect(0, 0, 1, 1).generateTexture('fx-px', 1, 1);
@@ -275,7 +320,7 @@ function textures(scene: Phaser.Scene) {
 }
 
 /** Drawn this many pixels to each of its own, so a helicopter scaled up with the map keeps the map's fine pixels. */
-const HELI_RES = 2;
+export const HELI_RES = 2;
 
 /** A Chinook from above, nose to the east, 80 by 24: the long body lit from the north, panel seams and rivets, the fuel
  *  sponsons down its sides, the two engines either side of the tall pylon at the back, the ramp; the front mast's

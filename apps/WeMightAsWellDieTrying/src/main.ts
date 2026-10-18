@@ -1,4 +1,4 @@
-// The main menu, or the art viewer with ?art, or straight into New York with ?play.
+// The main menu, or the art viewer with ?art, or straight into a fight with ?play (?play=chicago for that map).
 import Phaser from 'phaser';
 import palette from './data/palette.json' with { type: 'json' };
 import { watchForCrashes } from './game/crash.ts';

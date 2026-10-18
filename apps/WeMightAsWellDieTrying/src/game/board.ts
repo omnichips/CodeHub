@@ -8,9 +8,11 @@
 import { MAPS, perSoldier, profile, unlocked } from '../meta/profile.ts';
 import { BAYER, Pen } from '../story/draw.ts';
 import { measure } from '../story/font.ts';
-import { LOOKS, glow, person, roll, skyline } from '../story/kit.ts';
+import { squadPhoto, PHOTO } from '../story/faces.ts';
+import { glow, roll, skyline } from '../story/kit.ts';
 import { story } from '../story/record.ts';
-import { DEPARTURES, MEMBERS } from '../story/types.ts';
+import { STORY } from '../story/storyConfig.ts';
+import { DEPARTURES, MEMBERS, type Member } from '../story/types.ts';
 import { el } from './hud.ts';
 import { play } from './sound.ts';
 
@@ -441,17 +443,16 @@ export function board(act: BoardActions): HTMLElement {
     // The compass.
     compass(p, 286, 330);
 
-    // The squad's snapshot, the gone crossed out.
-    p.dither(317, 259, 78, 66, 0.55, '#120a05');
-    p.rect(314, 256, 78, 66, '#e6e0cd'); p.rect(314, 321, 78, 1, '#a59d86');
-    p.rect(317, 259, 72, 46, '#4a463b'); p.rect(317, 259, 72, 30, '#3d3a31'); p.rect(317, 289, 72, 1, '#2e2b24');
-    MEMBERS.forEach((who, i) => {
-      const x = 320 + i * 11, y = 270;
-      person(p, x, y, LOOKS[who], { face: i < 3 ? 1 : -1 });
-      if (gone.has(who)) for (let k = 0; k < 11; k++) { p.rect(x + 1 + k, y + 3 + k * 1.3, 1, 2, RED); p.rect(x + 11 - k, y + 3 + k * 1.3, 1, 2, RED); }
-    });
-    p.text('the squad', 324, 309, INK);
-    tape(p, 344, 251, 18, 7);
+    // The squad's snapshot, the one the story ends each city on (story/faces.ts), the gone crossed out: drawn as the
+    // cutscene draws it, cut out of that picture and pinned up smaller.
+    const shot = el('canvas', { width: STORY.W, height: STORY.H }), ph = PHOTO.ih + 21, sw = 98, sh = Math.round((sw * ph) / PHOTO.w);
+    squadPhoto(new Pen(shot.getContext('2d')!), 99, [...gone] as Member[], []);
+    p.dither(315, 262, sw, sh, 0.55, '#120a05');
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(shot, PHOTO.x, STORY.TOP + 10, PHOTO.w, ph, 312, 259, sw, sh);
+    g.imageSmoothingEnabled = false;
+    tape(p, 352, 254, 18, 7);
 
     // The newspaper.
     paper(p, 414, 196, 56, 94, '#cfc6ad', 17);

@@ -18,6 +18,8 @@ export interface MapData {
   props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
   decor?: { kind: string; x: number; y: number }[];
   scale?: number;
+  /** How the people in the safe zone get out, as the city's story has it (only drawn): none for a helicopter. */
+  evac?: 'bus' | 'ferry' | 'ship' | 'stairs' | 'trucks' | 'queue';
 }
 export const BUILDING = '#boghmwarskzyxc';
 export const BARRIER = '~f';

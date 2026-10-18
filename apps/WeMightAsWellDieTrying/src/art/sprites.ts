@@ -288,9 +288,9 @@ export function roadblockPiece(kind: 'plastic' | 'wood' | 'sandbags' | 'cement' 
 
 /** A flat box with rounded corners, from x0 to x1 and `hw` either side of the middle: two boxes crossed, and a circle
  *  in each corner (a capsule would be a pill). */
-const slab = (mat: string, x0: number, x1: number, hw: number, z: number, r: number): Part[] => [
-  { mat, a: [x0, 0], b: [x1, 0], r: hw - r, z, square: true }, { mat, a: [x0 + r, 0], b: [x1 - r, 0], r: hw, z, square: true },
-  c(mat, [x0 + r, -(hw - r)], r, z), c(mat, [x1 - r, -(hw - r)], r, z), c(mat, [x0 + r, hw - r], r, z), c(mat, [x1 - r, hw - r], r, z),
+const slab = (mat: string, x0: number, x1: number, hw: number, z: number, r: number, y = 0): Part[] => [
+  { mat, a: [x0, y], b: [x1, y], r: hw - r, z, square: true }, { mat, a: [x0 + r, y], b: [x1 - r, y], r: hw, z, square: true },
+  c(mat, [x0 + r, y - (hw - r)], r, z), c(mat, [x1 - r, y - (hw - r)], r, z), c(mat, [x0 + r, y + hw - r], r, z), c(mat, [x1 - r, y + hw - r], r, z),
 ];
 /** A car seen from above, nose east: two tiles wide, three long. Paint, the cabin roof, and anything extra on top. */
 const car = (paint: string, roof: string, extra: Part[] = []): Part[] => [
@@ -308,6 +308,121 @@ const WRECKS: [string, string][] = [['wreck', 'wreckRoof'], ['navy', 'snow'], ['
 const wreck = ([paint, roof]: [string, string], k: number): Part[] =>
   car(paint, roof, [c('hole', [8 - k * 2, -4 + k * 3], 1.6, 4.3, 0, [9.5 - k, 1 + k]), c('copper', [-15 + k * 4, 8 - k * 6], 2.4, 3.2), c('copper', [14, -6 + k * 5], 1.8, 3.2), c('blood', [-3, 9 - k * 4], 1.4, 5.4)]);
 const box = (mat: string, w = 4, h = 2.5): Part[] => [c(mat, [-w, -h], 2.6, 2, 1, [w, -h]), c(mat, [-w, h], 2.6, 2, 1, [w, h])];
+
+/** Someone who lived here, from above, built like a soldier but in their own clothes: shoes, a coat over the
+ *  shoulders, arms, a head of hair (or a hat), maybe a backpack, a bag or a case in one hand, or an umbrella over it
+ *  all. One walking step (s = 1 or -1). The game's civilians: CIVS normal looks, then UMBRELLAS under umbrellas. */
+interface Civ { coat: string; hair: string; hat?: string; pack?: string; carry?: string; umbrella?: string }
+const CIVS: Civ[] = [
+  { coat: 'navy', hair: 'black', carry: 'brown' }, { coat: 'red', hair: 'brown', pack: 'teal' }, { coat: 'shirtTan', hair: 'black' },
+  { coat: 'teal', hair: 'shirtPale', carry: 'black' }, { coat: 'maroon', hair: 'snow', hat: 'urban' }, { coat: 'urban', hair: 'brown', pack: 'hivis' },
+  { coat: 'cream', hair: 'black', carry: 'red' },
+  { coat: 'navy', hair: 'black', umbrella: 'snow' }, { coat: 'red', hair: 'brown', umbrella: 'navy' }, { coat: 'urban', hair: 'black', umbrella: 'red' },
+];
+function civilian(l: Civ, s: number): Part[] {
+  return [
+    c('shoe', [s * 2.5, -2.2], 1.5, 1), c('shoe', [-s * 2.5, 2.2], 1.5, 1),
+    ...(l.pack ? [c(l.pack, [-3.6, -2], 2, 2.5, 2, [-3.6, 2])] : []),
+    c(l.coat, [-0.3, -4], 2.6, 2, 2, [-0.3, 4]),
+    c(l.coat, [0.3, -4.6], 1, 4, 1, [2 + s, -5]), c(l.coat, [0.3, 4.6], 1, 4, 1, [2 - s, 5]), c('skin', [2.3 + s, -5], 1.2, 4.6, 1), c('skin', [2.3 - s, 5], 1.2, 4.6, 1),
+    ...(l.carry ? [c(l.carry, [1.5 - s, 6.6], 1.5, 3.6, 0.8, [4 - s, 6.6])] : []),
+    c('skin', [0.6, 0], 2.9, 5.4, 2.2), c(l.hair, [-0.5, 0], 2.7, 6, 2),
+    ...(l.hat ? [c(l.hat, [0, 0], 3.3, 6.6, 1.4)] : []),
+    ...(l.umbrella ? [c(l.umbrella, [1, 0], 6.2, 9, 2), c('metal', [1, 0], 0.6, 11.2)] : []),
+  ];
+}
+
+/** A ferry from above, bow east, 288 long and 60 across: white, a blue band round her hull; a long cabin with rows
+ *  of windows, an upper deck with its benches and orange lifeboats, the wheelhouse forward, a red funnel, railings,
+ *  people out on the open aft deck, the winch and bitts on the foredeck. */
+function ferry(): Part[] {
+  const h = (k: number, s: number) => (((Math.sin(k * 12.9898 + s * 78.233) * 43758.5453) % 1) + 1) % 1; // scattered, the same every time
+  const passengers = Array.from({ length: 26 }, (_, k): Part[] => {
+    const x = -134 + h(k, 1) * 46, y = -20 + h(k, 2) * 40, coat = ['navy', 'red', 'shirtTan', 'teal', 'maroon', 'urban', 'cream'][k % 7];
+    return [c(coat, [x, y], 2.4, 4.5, 1.5), c('skin', [x + 0.4, y], 1.6, 6), c(k % 3 ? 'black' : 'brown', [x - 0.4, y], 1.4, 6.3)];
+  }).flat();
+  return [
+    ...slab('navy', -144, 104, 30, 2.6, 8), ...[0, 1, 2, 3, 4, 5].map((k) => c('navy', [104 + k * 6.4, 0], 30 - k * 5.2, 2.6, 0.4)), // the hull's band
+    ...slab('snow', -142, 104, 28, 3, 7), ...[0, 1, 2, 3, 4, 5].map((k) => c('snow', [104 + k * 6, 0], 28 - k * 5, 3, 0.4)),
+    ...slab('smoke', -138, 104, 24, 3.4, 5), // the deck
+    c('metal', [-140, -26.5], 0.5, 4.2, 0, [100, -26.5]), c('metal', [-140, 26.5], 0.5, 4.2, 0, [100, 26.5]), c('metal', [-141, -26], 0.5, 4.2, 0, [-141, 26]), // railings
+    ...passengers,
+    ...[-120, -104].flatMap((x) => [...slab('wood', x, x + 10, 2, 4, 1, -12), ...slab('wood', x, x + 10, 2, 4, 1, 12)]), // benches
+    ...slab('snow', -82, 74, 22, 7, 3), // the cabin
+    ...Array.from({ length: 19 }, (_, k): Part[] => [c('lens', [-78 + k * 8, -18.8], 1.3, 7.4, 0, [-73.5 + k * 8, -18.8]), c('lens', [-78 + k * 8, 18.8], 1.3, 7.4, 0, [-73.5 + k * 8, 18.8])]).flat(),
+    ...slab('cream', -64, 48, 15, 9.5, 2), // the upper deck
+    ...[-56, -12, 22].flatMap((x) => [...slab('wood', x, x + 12, 1.6, 10.2, 0.8, -9), ...slab('wood', x, x + 12, 1.6, 10.2, 0.8, 9)]),
+    ...[-56, -6, 24].flatMap((x) => [...slab('hivis', x, x + 16, 3, 10.5, 2, -19), ...slab('hivis', x, x + 16, 3, 10.5, 2, 19)]), // lifeboats
+    ...slab('snow', 50, 72, 17, 12, 3), ...slab('lens', 68, 73, 15, 12.4, 2), c('metal', [60, 0], 1, 14), // the wheelhouse, its windscreen, the mast
+    c('red', [-34, 0], 7.5, 14, 2), c('black', [-34, 0], 4.6, 15), // the funnel
+    c('metal', [118, 0], 4, 4.4, 1.5), c('black', [128, -8], 1.6, 5), c('black', [128, 8], 1.6, 5), c('black', [-134, -18], 1.6, 5), c('black', [-134, 18], 1.6, 5), // winch, bitts
+    c('red', [-143, 0], 1.2, 6, 0, [-147, 0]),
+  ];
+}
+
+/** A ship from above, bow east, 320 long and 64 across: a hull, the bridge and funnel aft, and on the deck what she
+ *  carries. Grey with her hatches (0), a cargo ship stacked with containers (1), a white liner with two funnels (2). */
+function ship(kind: number): Part[] {
+  const [rim, side, deck] = [['black', 'smoke', 'concrete'], ['red', 'black', 'smoke'], ['navy', 'snow', 'cream']][kind];
+  const hull = [
+    ...slab(rim, -160, 112, 32, 2.6, 9), ...[0, 1, 2, 3, 4, 5, 6].map((k) => c(rim, [112 + k * 6.6, 0], 32 - k * 4.7, 2.6, 0.4)),
+    ...slab(side, -158, 112, 30, 3, 8), ...[0, 1, 2, 3, 4, 5, 6].map((k) => c(side, [112 + k * 6.2, 0], 30 - k * 4.5, 3, 0.4)),
+    ...slab(deck, -154, 110, 26, 3.4, 6),
+    c('metal', [-156, -28.5], 0.5, 4.2, 0, [110, -28.5]), c('metal', [-156, 28.5], 0.5, 4.2, 0, [110, 28.5]),
+    c('metal', [140, 0], 1.6, 14), c('metal', [128, 0], 4, 4.4, 1.5), c('black', [148, -7], 1.6, 5), c('black', [148, 7], 1.6, 5), // mast, winch, bitts
+  ];
+  const bridge = [...slab('snow', -150, -106, 26, 11, 3), ...slab('cream', -146, -112, 20, 13.5, 2), c('lens', [-106.5, -23], 1.2, 11.4, 0, [-106.5, 23]), c('metal', [-108, -31], 1.5, 11.2, 0, [-108, 31])];
+  if (kind === 0) return [
+    ...hull, ...bridge, ...[-86, -46, -6, 34, 74].flatMap((x) => [...slab('metal', x - 14, x + 14, 21, 5, 2), c('black', [x, -21], 0.5, 5.3, 0, [x, 21])]),
+    c('urban', [-132, 0], 7.5, 16, 2), c('black', [-132, 0], 4.6, 17), c('red', [-132, -7.6], 1, 16.2, 0, [-132, 7.6]),
+  ];
+  if (kind === 1) {
+    const boxes = ['navy', 'red', 'teal', 'hivis', 'urban', 'maroon', 'brown'];
+    return [
+      ...hull, ...bridge,
+      ...Array.from({ length: 30 }, (_, k): Part[] => { const x = -92 + Math.floor(k / 5) * 34, y = -20 + (k % 5) * 10; return slab(boxes[(k * 3 + (k >> 2)) % 7], x, x + 30, 4.2, 5 + ((k * 7) % 3) * 2, 1, y); }).flat(),
+      c('hivis', [-80, -27], 1.2, 13, 0, [-60, -6]), c('hivis', [40, 27], 1.2, 13, 0, [60, 6]), // cranes
+      c('black', [-132, 0], 7.5, 16, 2), c('hivis', [-132, 0], 6, 16.4), c('black', [-132, 0], 4.2, 17),
+    ];
+  }
+  return [
+    ...hull, ...slab('snow', -150, 90, 26, 8, 3),
+    ...Array.from({ length: 30 }, (_, k): Part[] => [c('lens', [-146 + k * 8, -23], 1.2, 8.4, 0, [-142 + k * 8, -23]), c('lens', [-146 + k * 8, 23], 1.2, 8.4, 0, [-142 + k * 8, 23])]).flat(),
+    ...slab('cream', -136, 70, 20, 10.5, 2), ...slab('snow', 64, 88, 22, 13, 3), c('lens', [87.5, -20], 1.2, 13.4, 0, [87.5, 20]),
+    ...[-110, -80, -40, 0, 30].flatMap((x) => [...slab('hivis', x, x + 18, 3, 11, 2, -22), ...slab('hivis', x, x + 18, 3, 11, 2, 22)]),
+    ...[-60, -10].flatMap((x) => [c('red', [x, 0], 8, 16, 2), c('black', [x, 0], 5, 17)]),
+  ];
+}
+
+/** A yellow school bus from above, nose east: its hood out in front, black rub rails, windows down both sides, roof
+ *  hatches, the emergency door at the back. */
+const schoolBus = (): Part[] => [
+  ...([[-25, -13.5], [25, -13.5], [-25, 13.5], [25, 13.5]] as const).map((p) => c('shoe', p, 3, 1.5, 0.5)),
+  ...slab('hivis', -38.3, 26, 13.3, 3, 4), ...slab('hivis', 24, 37.5, 10, 2.6, 3),
+  c('black', [-37, -13.2], 0.7, 3.4, 0, [25, -13.2]), c('black', [-37, 13.2], 0.7, 3.4, 0, [25, 13.2]),
+  ...[-33, -25, -17, -9, -1, 7, 15].flatMap((x) => [c('lens', [x, -11.4], 1, 3.8, 0, [x + 5, -11.4]), c('lens', [x, 11.4], 1, 3.8, 0, [x + 5, 11.4])]),
+  ...slab('lens', 22, 25.5, 12, 3.6, 1.5), ...slab('cream', -24, -16, 6, 3.8, 1.5), ...slab('cream', 2, 10, 6, 3.8, 1.5),
+  c('black', [-38, -6], 0.6, 3.6, 0, [-38, 6]), c('red', [-38, -11.5], 1.2, 3.6), c('red', [-38, 11.5], 1.2, 3.6), c('brass', [37.5, -8], 1.3, 3), c('brass', [37.5, 8], 1.3, 3),
+];
+/** An army truck from above, nose east: the cab, the canvas back over its hoops, a star on the cab roof. */
+const armyTruck = (): Part[] => [
+  ...([[-26, -13], [-16, -13], [24, -12], [-26, 13], [-16, 13], [24, 12]] as const).map((p) => c('shoe', p, 3.2, 1.5, 0.5)),
+  ...slab('helmet', 18, 36, 12, 4.4, 3), ...slab('lens', 32, 35.5, 10, 4.8, 1.5), c('snow', [24, 0], 1.6, 4.6), c('brass', [36.5, -8], 1.3, 3.5), c('brass', [36.5, 8], 1.3, 3.5),
+  ...slab('tube', -36, 16, 13.3, 5, 2.5), ...[-30, -21, -12, -3, 6].map((x) => c('vestDark', [x, -13], 0.7, 7.6, 0, [x, 13])),
+];
+/** A field tent, ridge east-west: its two slopes, the ridge, guy ropes, the flap open at the east end. */
+const tent = (mat: string): Part[] => [
+  ...[-17, 17].flatMap((x) => [c('metal', [x, -11], 0.4, 1, 0, [x + (x < 0 ? -4 : 4), -15]), c('metal', [x, 11], 0.4, 1, 0, [x + (x < 0 ? -4 : 4), 15])]),
+  { mat, a: [-18, -6], b: [18, -6], r: 6.5, z: 3, dome: 2, square: true }, { mat, a: [-18, 6], b: [18, 6], r: 6.5, z: 3, dome: 2, square: true },
+  { mat, a: [-18, 0], b: [18, 0], r: 1.4, z: 5.6, square: true }, c('black', [17, 0], 2.4, 4.6, 0, [19, 0]),
+];
+/** A campfire: a ring of stones, the logs crossed, the coals glowing (its flames and smoke are drawn live). */
+const campfire = (): Part[] => [
+  ...Array.from({ length: 9 }, (_, k) => c('concrete', [Math.cos((k * Math.PI * 2) / 9) * 6.5, Math.sin((k * Math.PI * 2) / 9) * 6.5], 1.7, 2, 1)),
+  c('wood', [-4, -3], 1.1, 2.5, 1, [4, 3]), c('wood', [-4, 3], 1.1, 2.6, 1, [4, -3]), c('ember', [0, 0], 3, 2.2, 0.5), c('fire', [0.5, -0.5], 1.6, 3.4),
+];
+/** A sleeping bag with someone in it, head east; the bag's colour. */
+const sleepingBag = (mat: string): Part[] => [c(mat, [-9, 0], 3.6, 2, 1.5, [5, 0]), c(mat, [-9, 0], 3, 2.8, 1), c('skin', [8, 0], 2.3, 3.2, 1.5), c('brown', [9, 0], 2.1, 3.5, 1)];
 
 /** Structures, strike icons and the A-10, each one still frame facing east. Size 48 for the big ones. */
 const PROPS: Record<string, [number, Part[]]> = {
@@ -436,5 +551,20 @@ export function frames() {
   for (const parts of splats) out.push({ anim: 'splat', fps: 0, size: SIZE, rgba: draw(parts, SIZE, 0, false) });
   for (const [name, [size, parts]] of Object.entries(PROPS)) out.push({ anim: name, fps: 0, size, rgba: draw(parts, size, 0, true) });
   WRECKS.forEach((paint, k) => out.push({ anim: 'car', fps: 0, size: BIG, rgba: draw(wreck(paint, k), BIG, 0, true) })); // car/0, car/1, car/2
+  // The people in the safe zones (east only, turned freely like zombies), and what they have there.
+  CIVS.forEach((l, k) => { for (const s of [1, -1]) out.push({ anim: `civ${k}-walk`, fps: 4, size: SIZE, rgba: draw(civilian(l, s), SIZE, 0, true) }); });
+  const still = (anim: string, size: number, parts: Part[]) => out.push({ anim, fps: 0, size, rgba: draw(parts, size, 0, true) });
+  still('ferry', 304, ferry());
+  for (const k of [0, 1, 2]) still('ship', 336, ship(k)); // ship/0 grey, ship/1 cargo, ship/2 liner
+  still('schoolbus', BUS, schoolBus());
+  still('armytruck', BUS, armyTruck());
+  for (const m of ['helmet', 'vest', 'snow', 'navy']) still('tent', BIG, tent(m));
+  still('campfire', SIZE, campfire());
+  for (const m of ['navy', 'red', 'tube']) still('sleepbag', SIZE, sleepingBag(m));
+  for (const m of ['navy', 'helmet']) still('toilet', SIZE, [...slab(m, -6, 6, 6, 7, 1.5), c('snow', [-2, -2], 1.4, 7.6), c('metal', [6, -4], 0.5, 7.2, 0, [6, 4])]); // a portable toilet, its vent, its door
+  still('table', SIZE, [...slab('wood', -10, 10, 5.5, 4, 1), c('snow', [-6, -2], 1.5, 5.2), c('snow', [-3, 2], 1.5, 5.2), ...slab('red', 2, 7, 2.5, 5.6, 1, -1), c('brass', [8, 3], 1.2, 5)]); // cups, a box, a lamp
+  still('crate', SIZE, [...slab('wood', -7, 7, 7, 4.5, 1), c('brown', [-7, -3], 0.5, 4.7, 0, [7, -3]), c('brown', [-7, 3], 0.5, 4.7, 0, [7, 3])]);
+  still('crate', SIZE, [...slab('wood', -9, 3, 6, 4.5, 1, -3), ...slab('tube', -3, 9, 5, 6.5, 1, 4), c('brass', [3, 4], 0.6, 6.8, 0, [8, 4])]); // two stacked, the top one ammunition green
+  for (const [paint, roof] of [['red', 'cream'], ['navy', 'snow'], ['snow', 'urban'], ['teal', 'snow']]) still('sedan', BIG, car(paint, roof));
   return out;
 }

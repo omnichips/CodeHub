@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-10-18 14:48",
+    "title": "Paper and evacuations",
+    "notes": [
+      "The main menu shows the city your save is on: its zombies walk the horde's routes and what is left of the squad fires down at them. The title is stamped on bigger, and every button is pixel-art paper: the save's dossier, ring-bound folders, a sticky note for settings, the news clipping in the corner.",
+      "New save and Load save are folders with post-its; the story is a reel of film frames; the skill tree is a requisitions sheet on the cork wall, its skills yellow cards on red string, a pile of chips counting down as you spend and APPROVED stamped on what you buy.",
+      "Settings is a sheet of parched paper: tabs for Sound, Display, Story and Controls, faders like the radio's, boxes ticked in pen, and little live pictures of gore, bodies and dust.",
+      "The safe zones show how their people are to get out, as the story has it: school buses on Main Street, a ferry in Chicago, three ships each in New York and Manila (riding the water), metro stairs in Rome and the subway in Tokyo with people going down, an army convoy in London.",
+      "Every safe zone is a camp now: people (no more circles), tents, cookfires, sleeping bags, aid tables, toilets, cars and crates, with junk piled where it meets the street.",
+      "The war room's squad photo is the one from the cutscenes."
+    ]
+  },
+  {
     "date": "2026-10-18 02:49",
     "title": "The war room",
     "notes": [
@@ -119,21 +131,29 @@
   {
     "date": "2026-10-15 18:05",
     "title": "Six new maps",
-    "notes": ["Six new maps, recorded sounds, and fixes for the freeze at 10x."]
+    "notes": [
+      "Six new maps, recorded sounds, and fixes for the freeze at 10x."
+    ]
   },
   {
     "date": "2026-10-15 14:46",
     "title": "Sound and a playtest pass",
-    "notes": ["Sound, three maps, the levelled skill web and a big round of fixes from playtesting."]
+    "notes": [
+      "Sound, three maps, the levelled skill web and a big round of fixes from playtesting."
+    ]
   },
   {
     "date": "2026-10-15 11:38",
     "title": "Skills, saves and New York",
-    "notes": ["The skill web, chips, save slots, the menu and settings, the New York map; install it as an app."]
+    "notes": [
+      "The skill web, chips, save slots, the menu and settings, the New York map; install it as an app."
+    ]
   },
   {
     "date": "2026-10-15 01:23",
     "title": "The first build",
-    "notes": ["The game: the art, the engine, every soldier and zombie, structures and strikes."]
+    "notes": [
+      "The game: the art, the engine, every soldier and zombie, structures and strikes."
+    ]
   }
 ]

@@ -93,9 +93,45 @@
       #menu { position: fixed; inset: 0; display: flex; align-items: center; padding: var(--top) var(--right) var(--bottom) var(--left);
         background: linear-gradient(90deg, rgba(12, 12, 13, 0.86) 0, rgba(12, 12, 13, 0.6) 420px, rgba(12, 12, 13, 0.22) 100%); }
       #menu .panel { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); max-height: 100%; overflow-y: auto; margin-left: 4vw; }
-      #menu h1 { margin: 0 0 4px; font-size: clamp(18px, 3.4vw, 26px); line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
-      #menu h1 span { display: block; font-size: clamp(30px, 7vw, 52px); color: #c9473a; text-shadow: 3px 3px 0 var(--line); }
       #menu h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.04em; }
+      /* Over the city, under the panels (not the board, the tree or a fight's settings): a vignette, and film grain. */
+      #menu:not(.ingame):not(:has(.board, .web))::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(ellipse 80% 75% at 60% 45%, transparent 40%, rgba(6, 4, 3, 0.78) 100%); }
+      #menu:not(.ingame):not(:has(.board, .web))::after { content: ''; position: absolute; inset: -40px; pointer-events: none; opacity: 0.1; animation: grain 0.6s steps(3) infinite;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+      @keyframes grain { 33% { transform: translate(-14px, 9px); } 66% { transform: translate(11px, -12px); } }
+      #menu > * { position: relative; z-index: 1; }
+
+      /* The main menu. The title: the story's font stamped in ink, the big line flickering now and then like a sign. */
+      #menu .main { width: min(400px, 100%); overflow: visible; } /* short enough not to scroll; its paper pokes out a little */
+      #menu .logo { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 0; }
+      #menu .logo canvas { display: block; max-width: 100%; image-rendering: pixelated; }
+      #menu .logo canvas:last-child { transform: rotate(-1.5deg); transform-origin: left; animation: sign 9s 3s infinite; }
+      @keyframes sign { 0%, 90%, 92%, 94%, 100% { opacity: 1; } 91%, 93.5% { opacity: 0.45; } }
+      #menu .tagline { margin: 0 0 6px; color: #c4a058; font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+      /* What to press: pixel-art paper like the war-room board's (game/paper.ts), each a button round its canvas. */
+      #menu button.px { display: block; padding: 0; min-width: 0; min-height: 0; line-height: 0; background: none; border: 0; }
+      #menu button.px canvas { display: block; max-width: 100%; image-rendering: pixelated; }
+      @media (hover: hover) { #menu button.px:hover { background: none; } }
+      #menu button.px:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.08); }
+      #menu button.px:focus-visible { outline: 2px solid #f5d27a; outline-offset: 2px; }
+      #menu .main .pair > button.px { flex: none; }
+      /* The first time it shows: the city fades in, the title is stamped on, the rest follows it down. */
+      #menu .main.intro { animation: thump 0.18s 0.72s ease-out; }
+      #menu .main.intro > * { animation: rise 0.35s calc(0.85s + var(--i) * 70ms) ease-out both; }
+      #menu .main.intro > .logo { animation: stamp 0.38s 0.36s cubic-bezier(0.5, 0, 0.75, 0) both; }
+      #menu .aside.intro { animation: rise 0.5s 1.2s ease-out both; }
+      @keyframes stamp { from { opacity: 0; transform: scale(1.8) rotate(-5deg); } 60% { opacity: 1; } }
+      @keyframes thump { 40% { transform: translate(2px, 3px); } }
+      @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+      /* On the right: the latest patch notes, as a clipping. */
+      #menu .aside { position: absolute; right: var(--right); top: var(--top); }
+      @media (max-width: 760px) { #menu .aside canvas { width: 160px !important; } }
+      /* The build, and the sound on or off. */
+      #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: 11px; }
+      #menu .foot .icon { display: grid; place-items: center; width: 40px; min-height: 36px; padding: 0; background: var(--panel); }
+      #menu .foot .icon[aria-pressed="false"] { box-shadow: none; color: var(--dim); }
+      #menu .foot svg { width: 18px; height: 18px; }
       #menu .chips { margin: 0 0 8px; color: #c4a058; }
       #menu .panel > button, #menu .pair > button { min-height: 46px; text-align: left; }
       #menu .pair { display: flex; gap: 8px; }
@@ -113,12 +149,6 @@
       #menu .board .hit:hover, #menu .board .hit:active { background: transparent; transform: none; filter: none; }
       #menu .board .hit[aria-disabled="true"] { cursor: not-allowed; }
       #menu .board .hit:focus-visible { outline: 2px solid #f5d27a; outline-offset: 1px; }
-      #menu .corner { position: absolute; z-index: 2; top: var(--top); right: var(--right); display: flex; gap: 6px; animation: pop 0.22s ease-out; }
-      #menu .corner button { min-height: 44px; }
-      /* The patch notes: an icon in the main menu's corner, a red dot on it while there are new ones. */
-      #menu .corner .icon { position: relative; display: grid; place-items: center; width: 44px; padding: 0; background: var(--panel); }
-      #menu .corner .icon svg { width: 22px; height: 22px; }
-      #menu .corner .dot { position: absolute; top: -4px; right: -4px; width: 12px; height: 12px; border-radius: 50%; background: #c9473a; border: 2px solid var(--line); animation: pop 0.3s ease-out; }
       #menu .notes { width: min(560px, 100%); gap: 6px; }
       #menu .notes section { background: var(--panel); border: 2px solid var(--line); padding: 8px 12px; }
       #menu .notes h3 { margin: 0; font-size: 14px; }
@@ -126,6 +156,34 @@
       #menu .notes ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.45; font-weight: 500; }
       #menu button:disabled { opacity: 0.45; cursor: default; }
       #menu .settings { width: min(440px, 100%); gap: 6px; }
+      /* Settings: a sheet of parched paper pinned in the middle of the screen (game/settings.ts), browned toward its edges. */
+      #menu:has(.form) { justify-content: center; }
+      #menu .form { position: relative; width: min(640px, 100%); margin: 0; gap: 10px; padding: 18px 22px 14px; box-sizing: border-box; color: #3a2614;
+        background: #dcc28c var(--parch); background-size: 192px; image-rendering: pixelated; border-bottom: 3px solid #8a6a3a;
+        box-shadow: inset 0 0 22px rgba(110, 66, 20, 0.5), 6px 8px 0 rgba(6, 4, 3, 0.6); overflow-y: auto; scrollbar-width: none; }
+      #menu .form::-webkit-scrollbar { display: none; }
+      #menu .form > * { flex-shrink: 0; } /* too tall for the screen, it scrolls (with a finger or the wheel) rather than squeezing */
+      #menu .form::before { content: ''; position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; margin-left: -5px; background: #c9473a; box-shadow: inset 3px 3px 0 #f08a78, 2px 2px 0 #7a2620; } /* its pin */
+      #menu .form canvas { image-rendering: pixelated; display: block; }
+      #menu .formhead { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; border-bottom: 2px solid #9c7a48; padding-bottom: 2px; }
+      #menu .formhead h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+      #menu .formhead .tabs { display: flex; gap: 2px; margin-left: auto; align-items: flex-end; }
+      #menu .form .rows { display: flex; flex-direction: column; gap: 10px; min-height: 150px; padding: 6px 0; }
+      #menu .form .srow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px dashed rgba(90, 58, 24, 0.35); }
+      #menu .form .srow .label { flex: 1 1 180px; }
+      #menu .form .ctl { display: flex; align-items: center; gap: 12px; }
+      #menu .form .boxes { display: flex; gap: 10px; flex-wrap: wrap; }
+      #menu .form .fader { touch-action: none; cursor: pointer; outline: none; }
+      #menu .form .fader:focus-visible { outline: 2px solid #3a2614; outline-offset: 2px; }
+      #menu .form .preview { display: block; padding: 3px; background: #e2dccb; box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.45); transform: rotate(1.5deg); }
+      #menu .form .pencil { margin: 0; color: #5a4024; font-style: italic; }
+      #menu .form .sheetfoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      #menu .form .storage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1 1 260px; }
+      #menu .form .storage small { width: 100%; color: #5a4024; font-size: 11px; }
+      #menu .form .build { position: absolute; right: 12px; bottom: 4px; margin: 0; color: rgba(58, 38, 20, 0.55); font-size: 10px; font-style: italic; transform: rotate(-2deg); }
+      /* During a fight: the same sheet, a little smaller. */
+      #menu .form.window { width: min(560px, 100%); max-height: calc(100% - 16px); padding: 14px 16px 18px; zoom: 0.9; }
+      @media (max-width: 760px), (max-height: 500px) { #menu .form { padding: 12px 12px 18px; } #menu .formhead h2 canvas:last-child { width: 72px !important; } }
       #menu .head { display: flex; gap: 10px; align-items: center; }
       #menu .head h2 { margin: 0; }
       #menu .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--panel); border: 2px solid var(--line); padding: 3px 3px 3px 10px; }
@@ -140,60 +198,73 @@
       #menu .storage .meter i.full { background: var(--warn); }
       #menu .storage small { width: 100%; color: var(--dim); font-size: 11px; }
 
-      /* Skill tree: a bar on top, the tree of cards filling the screen, the picked card's details at the bottom. */
-      #menu:has(.web) { padding: 0; background: rgba(12, 12, 13, 0.94); }
-      #menu .web { position: absolute; inset: 0; }
-      #menu .web .top { position: absolute; z-index: 1; top: var(--top); left: var(--left); right: var(--right); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-      #menu .web .top .chips { margin: 0; background: var(--panel); border: 2px solid var(--line); padding: 9px 10px; }
+      /* Skill tree: requisitions. Index tabs and the chips up top; the cork wall, a sheet clipped to it with the skills'
+         cards pinned on in red string; the picked card's note at the bottom. */
+      #menu:has(.web) { padding: 0; background: #0b0907; }
+      /* --veil: how dark the tree's cork and sheet are under the cards (0 to 1), as the war-room board has under what can
+         be pressed. --halo: how dark it goes far from the board. */
+      #menu .web { position: absolute; inset: 0; --veil: 0.2; --halo: 1; }
+      #menu .web .top { position: absolute; z-index: 1; top: var(--top); left: var(--left); right: var(--right); display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+      #menu .web .top .chips { display: block; margin: 0; padding: 4px 8px; background: rgba(12, 10, 8, 0.75); line-height: 0; }
+      #menu .web .top .chips canvas { width: 300px; height: 48px; image-rendering: pixelated; }
       #menu .web .chips.spend { animation: spend 0.5s ease-out; }
-      @keyframes spend { 30% { color: #c9473a; transform: scale(1.08); } }
-      #menu .web .tabs { display: flex; gap: 4px; margin-left: auto; }
-      #menu .view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; }
+      @keyframes spend { 30% { transform: scale(1.08) rotate(-1deg); } }
+      #menu .web .tabs { display: flex; gap: 2px; margin-left: auto; align-items: flex-end; }
+      /* A phone: the chips and tabs smaller, so they fit one row over the board. */
+      @media (max-width: 760px), (max-height: 500px) {
+        #menu .web .top .chips canvas { width: 225px; height: 36px; }
+        #menu .web .top button.px canvas { width: auto !important; height: 32px; }
+      }
+      #menu .view { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; background: #000; }
       #menu .plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; } /* sized to the tree in tree.ts */
-      #menu .plane svg { position: absolute; inset: 0; pointer-events: none; }
-      #menu .plane path { fill: none; stroke: #3a3b3c; stroke-width: 2.5; transition: stroke 0.15s, stroke-width 0.15s; }
-      #menu .plane path.open { stroke: var(--dim); }
-      #menu .plane path.owned { stroke: var(--ink); }
-      #menu .plane path.trail { stroke: #c4a058; stroke-width: 4; }
+      #menu .plane .sheet { position: absolute; background-size: 64px; image-rendering: pixelated; border: 14px solid #6b4728; box-sizing: content-box; margin: -14px;
+        outline: 2px solid #3d2614; box-shadow: 8px 10px 0 rgba(6, 4, 3, 0.55); }
+      #menu .plane .sheet::after { content: ''; position: absolute; inset: 0; background: rgba(6, 4, 3, var(--veil)); pointer-events: none; } /* the veil */
+      /* The cork wall round the board, an ellipse twice its size, fading to black toward its edge; black past it. */
+      #menu .plane .halo { position: absolute; pointer-events: none; image-rendering: pixelated; background-color: #3d2a17;
+        background-image: radial-gradient(closest-side, transparent 72%, rgba(0, 0, 0, var(--halo)) 100%), linear-gradient(rgba(6, 4, 3, var(--veil)), rgba(6, 4, 3, var(--veil))), var(--cork);
+        background-size: auto, auto, 96px; }
+      #menu .plane .sheet::before { content: ''; position: absolute; left: 50%; top: -24px; width: 120px; height: 26px; margin-left: -60px; background: #7f868a; border: 3px solid #454b4e; box-shadow: inset 0 4px 0 #b5bcc0; } /* the clip */
+      #menu .plane .heading { position: absolute; left: 40px; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+      #menu .plane .heading canvas { image-rendering: pixelated; }
+      #menu .plane svg { position: absolute; inset: 0; pointer-events: none; filter: drop-shadow(1px 3px 0 rgba(20, 10, 6, 0.4)); }
+      #menu .plane path { fill: none; stroke: #6a5a48; stroke-width: 2; opacity: 0.45; transition: stroke 0.15s, stroke-width 0.15s; }
+      #menu .plane path.open { stroke: #b8322b; stroke-dasharray: 3 5; opacity: 0.9; }
+      #menu .plane path.owned { stroke: #b8322b; opacity: 1; }
+      #menu .plane path.trail { stroke: #e05a4c; stroke-width: 3.5; opacity: 1; }
       #menu .plane path.drawn { stroke-dasharray: 700; animation: draw 0.7s ease-out; }
       @keyframes draw { from { stroke-dashoffset: 700; } }
-      #menu .node { position: absolute; display: flex; align-items: center; gap: 6px; width: 176px; height: 46px; min-width: 0; min-height: 0; padding: 0 8px 0 4px;
-        text-align: left; overflow: hidden; background: var(--panel); border-color: #3a3b3c; transition: transform 0.12s ease-out, border-color 0.12s, box-shadow 0.12s, background-color 0.15s; }
-      #menu .node img { flex: none; width: 34px; height: 34px; image-rendering: pixelated; pointer-events: none; }
-      #menu .node span { display: flex; flex-direction: column; gap: 1px; min-width: 0; pointer-events: none; }
-      #menu .node b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      #menu .node small { font-size: 10px; color: var(--dim); white-space: nowrap; }
-      #menu .node.owned { background: var(--olive); border-color: var(--ink); }
-      #menu .node.owned small { color: var(--ink); }
-      #menu .node.part { background: #2c3220; }
-      #menu .node.open { border-color: var(--dim); }
-      #menu .node.afford { border-color: #c4a058; }
-      #menu .node.afford small { color: #c4a058; }
-      #menu .node.locked img { opacity: 0.35; filter: grayscale(1); }
-      #menu .node.locked b { color: var(--dim); }
-      #menu .node.trail { border-color: #c4a058; }
-      @media (hover: hover) {
-        #menu .node:hover { z-index: 1; transform: translateY(-2px); border-color: var(--ink); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(196, 160, 88, 0.3); background: #2a2c2e; }
-        #menu .node.owned:hover { background: var(--olive-lit); }
-      }
-      #menu .node:active:not(:disabled) { transform: scale(0.95); transition-duration: 0.05s; }
-      #menu .node.picked { z-index: 1; outline: 3px solid #c9473a; outline-offset: 2px; animation: picked 1.4s ease-in-out infinite; }
-      @keyframes picked { 50% { outline-color: rgba(201, 71, 58, 0.4); outline-offset: 4px; } }
-      #menu .node.bought, #menu .node.picked.bought { animation: bought 0.55s ease-out, picked 1.4s 0.55s ease-in-out infinite; }
-      @keyframes bought { 30% { transform: scale(1.12); background: #6b7a3c; box-shadow: 0 0 0 5px rgba(196, 160, 88, 0.55), 0 0 26px #c4a058; } }
-      #menu .node .ripple { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: rgba(234, 223, 174, 0.4); pointer-events: none; animation: ripple 0.5s ease-out forwards; }
+      /* A skill's card: its pixel art (game/paper.ts) with the skill's icon over it. */
+      #menu .node { position: absolute; width: 200px; height: 72px; min-width: 0; min-height: 0; padding: 0; background: none; border: 0; transition: transform 0.12s ease-out; }
+      #menu .node canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+      #menu .node img { position: absolute; left: 8px; top: 16px; width: 36px; height: 36px; image-rendering: pixelated; pointer-events: none; }
+      #menu .node.locked img { opacity: 0.4; filter: grayscale(1); }
+      #menu .node.trail { outline: 2px dashed #c4a058; outline-offset: 2px; }
+      @media (hover: hover) { #menu .node:hover { z-index: 1; background: none; transform: translate(-1px, -4px) rotate(-1deg); } }
+      #menu .node:active:not(:disabled) { transform: scale(0.96); transition-duration: 0.05s; }
+      #menu .node.picked { z-index: 1; transform: translateY(-3px); }
+      #menu .node.bought { animation: bought 0.5s ease-out; }
+      @keyframes bought { 30% { transform: scale(1.12) rotate(2deg); } }
+      #menu .node .ripple { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: rgba(46, 42, 34, 0.25); pointer-events: none; animation: ripple 0.5s ease-out forwards; }
       @keyframes ripple { to { transform: scale(32); opacity: 0; } }
-      #menu .plane .spent { position: absolute; z-index: 2; font: 700 13px ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: #c4a058; text-shadow: 2px 2px 0 var(--line); pointer-events: none; animation: spent 0.9s ease-out forwards; }
+      #menu .plane .spent { position: absolute; z-index: 2; font: 700 15px ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: #b23a30; text-shadow: 2px 2px 0 #efe9d6; pointer-events: none; animation: spent 0.9s ease-out forwards; }
       @keyframes spent { to { transform: translateY(-30px); opacity: 0; } }
-      #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(600px, calc(100vw - 16px)); box-sizing: border-box;
-        display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--panel); border: 2px solid var(--line); }
+      /* The picked card's note: paper pinned at the bottom, its writing in ink, what it takes on a post-it. */
+      #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(640px, calc(100vw - 16px)); box-sizing: border-box;
+        display: flex; gap: 12px; align-items: center; padding: 12px 14px 10px; background: #e9e2cc; color: #2e2a22; border-bottom: 3px solid #a3987a; box-shadow: 5px 7px 0 rgba(6, 4, 3, 0.6);
+        border-top: 0; }
+      #menu .info::after { content: ''; position: absolute; left: 0; right: 0; top: -8px; height: 8px; background: var(--torn) repeat-x; background-size: 256px 8px; image-rendering: pixelated; pointer-events: none; } /* its torn top edge (tree.ts) */
+      #menu .info::before { content: ''; position: absolute; left: 50%; top: 4px; width: 8px; height: 8px; margin-left: -4px; background: #c9473a; box-shadow: inset 2px 2px 0 #f08a78, 2px 2px 0 #7a2620; } /* its pin */
       #menu .info img { flex: none; width: 40px; height: 40px; image-rendering: pixelated; }
       #menu .info div { flex: 1 1 0; min-width: 0; }
-      /* The buy button never squeezes the description: long "Needs ..." text wraps inside it. */
-      #menu .info .go { flex: 0 1 auto; max-width: 40%; padding: 6px 10px; }
-      #menu .info .x { flex: none; align-self: flex-start; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; background: var(--panel); }
-      #menu .info p { margin: 2px 0 0; color: var(--dim); line-height: 1.35; }
+      #menu .info b { color: #2e2a22; }
+      /* The post-it never squeezes the description: a long "Needs ..." scales down inside it. */
+      #menu .info .buy { flex: 0 1 auto; max-width: 45%; }
+      #menu .info .x { flex: none; align-self: flex-start; width: 26px; height: 26px; min-width: 0; min-height: 0; padding: 0; color: #2e2a22; background: transparent; border: 2px solid #8a7f60; }
+      #menu .info p { margin: 2px 0 0; color: #5a5040; line-height: 1.35; }
       #menu .info > p { margin: 0; }
+      #menu .info .approved { position: absolute; left: 34%; top: 6px; image-rendering: pixelated; pointer-events: none; transform: rotate(-9deg); animation: approved 0.35s cubic-bezier(0.5, 0, 0.75, 0) both; }
+      @keyframes approved { from { opacity: 0; transform: scale(2.2) rotate(-15deg); } 70% { opacity: 1; } }
       /* The eye beside a soldier: watch him fight. */
       #menu .info .eye { flex: none; display: grid; place-items: center; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; background: #2f3a54; border-color: #475675; }
       #menu .info .eye svg { width: 16px; height: 16px; }
@@ -232,17 +303,25 @@
       #menu.ingame { background: rgba(12, 12, 13, 0.6); justify-content: center; }
       #menu .window { margin: 0; padding: 12px; background: #1b1c1d; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); animation: pop 0.15s ease-out; }
       #menu.leaving { opacity: 0; pointer-events: none; }
-      #menu .slots { width: min(520px, 100%); }
-      #menu .slotrow { display: flex; gap: 6px; }
-      #menu .slotrow .slot { flex: 1; }
+      /* New save and Load save: a folder for each slot, in the middle of the screen. */
+      #menu:has(.slots) { justify-content: center; }
+      #menu .slots { width: min(580px, 100%); margin: 0; align-items: center; gap: 14px; }
+      #menu .slots .head { align-self: stretch; }
+      #menu .slotrow { display: flex; gap: 12px; align-items: center; justify-content: center; }
+      #menu .slotrow .tags { display: flex; flex-direction: column; gap: 8px; width: 124px; align-items: flex-start; }
+      #menu .slotrow button.px:disabled { opacity: 0.6; }
+      #menu .slotrow .tags button.px:nth-child(odd) { transform: rotate(-2deg); }
+      #menu .slotrow .tags button.px:nth-child(even) { transform: rotate(1.5deg); }
       #menu .slot { display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 6px 12px; min-height: 52px; }
       #menu .slot small { color: var(--dim); font-size: 11px; }
-      #menu .story { width: min(420px, 100%); }
-      #menu .story .list { display: flex; flex-direction: column; gap: 4px; }
-      #menu .story .slot { min-height: 42px; }
+      /* Story: every scene a frame of film, in a grid in the middle of the screen. */
+      #menu:has(.reel) { justify-content: center; }
+      #menu .story { width: min(1120px, 100%); margin: 0; align-items: center; }
+      #menu .story .head { align-self: stretch; }
+      #menu .reel { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, 192px); gap: 14px; justify-content: center; }
+      #menu .reel button.px:disabled { opacity: 0.55; }
       /* A scene: its own canvas over everything but the turn-your-phone notice, pixels kept square. */
       #story { position: fixed; left: 0; top: 0; z-index: 9; image-rendering: pixelated; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-      #menu .slot.go small { color: #e2b9a8; letter-spacing: normal; text-transform: none; }
       #menu .stats { width: min(560px, 100%); }
       #menu table { border-collapse: collapse; background: var(--panel); border: 2px solid var(--line); }
       #menu th, #menu td { padding: 6px 10px; text-align: right; white-space: nowrap; }
@@ -253,6 +332,7 @@
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         #hud .banner > div { animation: none; opacity: 0; }
+        #menu::after, #menu .logo canvas { animation: none !important; } /* sped up, these would strobe */
       }
       /* The game crashed: what happened, and a report to copy and send. */
       #crash { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; gap: 10px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: rgba(20, 21, 22, 0.96); }

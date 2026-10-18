@@ -1,20 +1,26 @@
-// The skill tree: one category at a time, laid out left to right as a tree of cards: Command on the left, each node's
-// upgrades in the column after it, joined by square-cornered lines. Drag to look around, pinch or scroll to zoom, tap
-// a card to see it and buy its next level (most take up to 3). Some also need other cards fully bought first (a new
-// soldier only his parent). A soldier's card has an eye: a demo of him fighting.
+// The skill tree, as requisitions: one category at a time, a sheet clipped to a board on the cork wall, its skills
+// pixel-art cards pinned to it left to right as a tree: Command on the left, each node's upgrades in the column after
+// it, joined by red string (solid once bought, dotted while it can be, faint while locked). Drag to look around, pinch
+// or scroll to zoom, tap a card to see it on the note at the bottom and buy its next level (most take up to 3): the
+// note is stamped APPROVED. Some also need other cards fully bought first (a new soldier only his parent). A soldier's
+// card has an eye: a demo of him fighting. The chips are a pile of tokens up top, counting down as they are spent.
 import type Phaser from 'phaser';
 import { icon } from '../art/atlas.ts';
 import { persist, profile } from '../meta/profile.ts';
 import { NODE, NODES, level, missing, nextCost, state, type Category, type Node } from '../meta/progress.ts';
 import { UNITS, type UnitKind } from '../sim/world.ts';
+import { Pen } from '../story/draw.ts';
 import { stopWatching, watch } from './demo.ts';
 import { el } from './hud.ts';
+import { CARD, chipStack, corkTile, indexTab, inkStamp, noteTag, pixelButton, pixelText, sheetTile, skillCard } from './paper.ts';
+import { play } from './sound.ts';
 
-const CATS: [Category, string][] = [['soldiers', 'Soldiers'], ['structures', 'Build'], ['usables', 'Strikes'], ['base', 'Base']];
+const CATS: [Category, string, string, string][] = [['soldiers', 'Soldiers', '#d9c55a', '#b8a440'], ['structures', 'Build', '#9ad0e0', '#7ab4c8'], ['usables', 'Strikes', '#e59aa6', '#c97a87'], ['base', 'Base', '#b8d89a', '#94b878']];
 const ROOT = 'command'; // every category hangs off it, so it shows in all of them
-const CARD_W = 176, CARD_H = 46, COL = 216, ROW = 56, PAD = 40; // px on the plane
+const CARD_W = CARD.W * 2, CARD_H = CARD.H * 2, COL = CARD_W + 52, ROW = CARD_H + 14, PAD = 40; // px on the plane (a card's art at 2×)
+const HEAD = 72; // px of the sheet over the first row: its heading
 const TAP = 8; // px a pointer may wander and still count as a tap
-const TOP = 60, BOTTOM = 76; // px the bar and the card cover
+const TOP = 70, BOTTOM = 96; // px the bar and the note cover
 const READABLE = 0.85; // the smallest zoom the tree opens at: the names on the cards still read
 const SVG = 'http://www.w3.org/2000/svg';
 let cat: Category = 'soldiers'; // the tab last looked at, kept while the game runs
@@ -43,43 +49,76 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
   const pic = (frame: string) => icons.get(frame) ?? icons.set(frame, icon(scene, frame)).get(frame)!;
   let selected: Node | undefined, shape = layout(cat);
 
-  const chips = el('span', { className: 'chips' });
-  const tabs = CATS.map(([c, label]) => el('button', { type: 'button', className: 'tab', textContent: label, onclick: () => { if (c === cat) return; cat = c; selected = undefined; draw(); fit(); } }));
+  // The chips, a pile of tokens; spent, the count runs down to what is left.
+  const pile = el('canvas', { width: 150, height: 24, ariaHidden: 'true' }), pilePen = new Pen(pile.getContext('2d')!);
+  const chips = el('span', { className: 'chips', role: 'status' }, pile);
+  let shown = save.chips, counting = 0;
+  const count = () => {
+    cancelAnimationFrame(counting);
+    const from = shown, to = save.chips, t0 = performance.now();
+    chips.ariaLabel = `${to} chips`;
+    const step = (now: number) => {
+      const u = Math.min(1, (now - t0) / 600);
+      shown = Math.round(from + (to - from) * (1 - (1 - u) ** 3));
+      chipStack(pilePen, shown);
+      if (u < 1 && pile.isConnected) counting = requestAnimationFrame(step);
+    };
+    if (from === to) chipStack(pilePen, to); else counting = requestAnimationFrame(step);
+  };
+  const tabs = CATS.map(([c, label, col, dark]) => { const [w, h, d] = indexTab(label.toUpperCase(), col, dark, () => cat === c); const b = pixelButton(label, w, h, d, () => { if (c === cat) return; cat = c; selected = undefined; draw(); fit(); }, 'tab'); return b; });
+  const [bw, bh, bd] = noteTag('BACK', '#c9a86a', '#9c7f48', '#2e2a22');
   const svg = document.createElementNS(SVG, 'svg');
+  const sheet = el('div', { className: 'sheet' }), heading = el('div', { className: 'heading' }), halo = el('div', { className: 'halo' });
   const plane = el('div', { className: 'plane' });
   const view = el('div', { className: 'view' }, plane);
+  halo.style.setProperty('--cork', `url(${corkTile()})`);
+  sheet.style.backgroundImage = `url(${sheetTile()})`;
   const info = el('div', { className: 'info' });
+  info.style.setProperty('--torn', `url(${tornEdge()})`);
   const demo = el('div', { className: 'demo', hidden: true });
   const close = () => { demo.hidden = true; stopWatching(); };
   root.replaceChildren(el('div', { className: 'web' },
-    el('div', { className: 'top' }, el('button', { type: 'button', textContent: 'Back', onclick: () => { close(); back(); } }), chips, el('div', { className: 'tabs' }, ...tabs)), view, info, demo));
+    el('div', { className: 'top' }, pixelButton('Back', bw, bh, bd, () => { close(); back(); }, 'tag'), chips, el('div', { className: 'tabs' }, ...tabs)), view, info, demo));
   addEventListener('keydown', function esc(e) {
     if (!root.contains(demo)) return removeEventListener('keydown', esc);
     if (e.key === 'Escape' && !demo.hidden) close();
   });
 
-  const lines = new Map<string, SVGPathElement>(), cards = new Map<string, HTMLButtonElement>();
-  /** The cards and lines of the category on show. */
+  const lines = new Map<string, SVGPathElement>(), cards = new Map<string, HTMLButtonElement>(), pens = new Map<string, Pen>();
+  /** Red string from one card's right side to another's left, sagging between them. */
+  const string = (x1: number, y1: number, x2: number, y2: number) => {
+    const path = document.createElementNS(SVG, 'path'), gap = (x2 - x1) / 2, sag = 8 + Math.abs(y2 - y1) * 0.06;
+    path.setAttribute('d', `M${x1} ${y1}C${x1 + gap} ${y1 + sag} ${x2 - gap} ${y2 + sag} ${x2} ${y2}`);
+    return path;
+  };
+  /** The cards and strings of the category on show, on its requisitions sheet. */
   function draw() {
     shape = layout(cat);
     lines.clear();
     cards.clear();
+    pens.clear();
     svg.replaceChildren();
     svg.setAttribute('width', String(shape.w));
     svg.setAttribute('height', String(shape.h));
     plane.style.width = `${shape.w}px`;
     plane.style.height = `${shape.h}px`;
+    // The sheet the cards are pinned to, clipped to its board: the form's heading over them.
+    Object.assign(sheet.style, { left: '0px', top: `${-HEAD}px`, width: `${shape.w}px`, height: `${shape.h + HEAD}px` });
+    // The cork wall round it, going to black away from it (index.html, .halo).
+    Object.assign(halo.style, { left: `${-shape.w / 2}px`, top: `${-HEAD - (shape.h + HEAD) / 2}px`, width: `${shape.w * 2}px`, height: `${(shape.h + HEAD) * 2}px` });
+    heading.replaceChildren(pixelText('REQUISITIONS', '#2e2a22', 4), pixelText(`Form 27 · ${CATS.find(([c]) => c === cat)![1]}`, '#7a6a48', 2));
+    heading.style.top = `${-HEAD + 26}px`;
     for (const [id, p] of shape.at) {
       const n = NODE.get(id)!, parent = n.parent && shape.at.get(n.parent);
       if (parent) {
-        // Out of the parent's right side, down (or up) the gap between the columns, into the child's left side.
-        const path = document.createElementNS(SVG, 'path'), mid = parent.x + CARD_W + (COL - CARD_W) / 2;
-        path.setAttribute('d', `M${parent.x + CARD_W} ${parent.y + CARD_H / 2}H${mid}V${p.y + CARD_H / 2}H${p.x}`);
+        // Out of the parent's right side, across the gap between the columns, into the child's left side.
+        const path = string(parent.x + CARD_W - 6, parent.y + CARD_H / 2, p.x + 4, p.y + CARD_H / 2);
         svg.append(path);
         lines.set(id, path);
       }
-      const b = el('button', { type: 'button', className: 'node', ariaLabel: n.name },
-        el('img', { src: pic(n.icon), alt: '' }), el('span', {}, el('b', {}, n.name), el('small')));
+      const cv = el('canvas', { width: CARD.W, height: CARD.H, ariaHidden: 'true' });
+      pens.set(id, new Pen(cv.getContext('2d')!));
+      const b = el('button', { type: 'button', className: 'node', ariaLabel: n.name }, cv, el('img', { src: pic(n.icon), alt: '' }));
       b.style.left = `${p.x}px`;
       b.style.top = `${p.y}px`;
       b.onclick = (e) => {
@@ -100,12 +139,11 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       for (const from of NODE.get(id)!.needs ?? []) {
         const q = shape.at.get(from);
         if (!q || from === NODE.get(id)!.parent || q.x + CARD_W > p.x) continue;
-        const path = document.createElementNS(SVG, 'path'), mid = p.x - (COL - CARD_W) / 2;
-        path.setAttribute('d', `M${q.x + CARD_W} ${q.y + CARD_H / 2}H${mid}V${p.y + CARD_H / 2}H${p.x}`);
+        const path = string(q.x + CARD_W - 6, q.y + CARD_H / 2, p.x + 4, p.y + CARD_H / 2);
         svg.prepend(path);
         joins.push({ to: id, path });
       }
-    plane.replaceChildren(svg, ...cards.values());
+    plane.replaceChildren(halo, sheet, heading, svg, ...cards.values());
     refresh();
   }
   const joins: { to: string; path: SVGPathElement }[] = [];
@@ -130,35 +168,36 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
 
   function refresh() {
     const owned = save.skills;
-    chips.textContent = `${save.chips} chips`;
+    count();
     tabs.forEach((t, k) => t.setAttribute('aria-pressed', String(CATS[k][0] === cat)));
     for (const [id, b] of cards) {
-      const n = NODE.get(id)!, s = state(owned, id), lv = level(owned, id), cost = nextCost(owned, id);
+      const n = NODE.get(id)!, s = state(owned, id), lv = level(owned, id), cost = nextCost(owned, id), afford = s === 'open' && save.chips >= cost;
       b.classList.remove('owned', 'open', 'locked');
       b.classList.add(s);
-      b.classList.toggle('part', lv > 0 && lv < n.max);
-      b.classList.toggle('afford', s === 'open' && save.chips >= cost);
       b.classList.toggle('picked', n === selected);
-      const pips = n.max > 1 ? `${'■'.repeat(lv)}${'□'.repeat(n.max - lv)} ` : '';
-      b.querySelector('small')!.textContent = s === 'owned' ? `${pips}owned` : s === 'locked' ? `${pips}${n.parent && level(owned, n.parent) > 0 ? `needs ${missing(owned, id).length} more` : 'locked'}` : `${pips}${cost} chips`;
+      const status = s === 'locked' ? (n.parent && level(owned, n.parent) > 0 ? `needs ${missing(owned, id).length} more` : 'locked') : `${cost} chips`;
+      b.ariaLabel = `${n.name}: ${s === 'owned' ? 'owned' : status}`;
+      skillCard(pens.get(id)!, { name: n.name, status, lv, max: n.max, state: s, afford, picked: n === selected });
       lines.get(id)?.setAttribute('class', `${s}${lines.get(id)!.classList.contains('trail') ? ' trail' : ''}`);
     }
     for (const j of joins) j.path.setAttribute('class', `${state(owned, j.to)}${j.path.classList.contains('trail') ? ' trail' : ''}`);
     const n = selected;
     if (!n) return info.replaceChildren(el('p', {}, 'Tap a skill to see it. Drag to look around; pinch or scroll to zoom.'));
-    const s = state(owned, n.id), lv = level(owned, n.id), cost = nextCost(owned, n.id), short = cost - save.chips;
-    const buy = el('button', { type: 'button', className: 'go' }), next = n.max > 1 ? `level ${lv + 1}` : 'it';
-    if (s === 'owned') Object.assign(buy, { textContent: n.max > 1 ? 'All levels owned' : 'Owned', disabled: true });
-    else if (s === 'locked') Object.assign(buy, { textContent: `Needs ${list([...(level(owned, n.parent!) ? [] : [n.parent!]), ...missing(owned, n.id)])}`, disabled: true });
-    else if (short > 0) Object.assign(buy, { textContent: `${cost} chips (${short} short)`, disabled: true });
-    else Object.assign(buy, { textContent: `Buy ${next}: ${cost} chips`, onclick: () => {
+    const s = state(owned, n.id), lv = level(owned, n.id), cost = nextCost(owned, n.id), short = cost - save.chips, next = n.max > 1 ? `level ${lv + 1}` : 'it';
+    // What it takes, on a post-it: yellow to press, grey while it cannot be bought.
+    const can = s === 'open' && short <= 0;
+    const label = s === 'owned' ? (n.max > 1 ? 'ALL LEVELS ISSUED' : 'ISSUED') : s === 'locked' ? `NEEDS ${list([...(level(owned, n.parent!) ? [] : [n.parent!]), ...missing(owned, n.id)]).toUpperCase()}`
+      : short > 0 ? `${cost} CHIPS (${short} SHORT)` : `SPEND ${cost} CHIPS`;
+    const [tw, th, td] = can ? noteTag(label, '#e0cc62', '#cbb84e', '#2e2a22') : noteTag(label, '#b8b3a4', '#9c9787', '#4a463b');
+    const buy = pixelButton(can ? `Buy ${next}: ${cost} chips` : label.toLowerCase(), tw, th, td, () => {
       if (state(save.skills, n.id) !== 'open' || save.chips < cost) return;
       save.chips -= cost;
       save.skills[n.id] = lv + 1;
       persist();
       refresh();
       bought(n, cost);
-    } });
+    }, 'buy');
+    buy.disabled = !can;
     const levels = (n.max > 1 ? ` Level ${lv} of ${n.max}.` : '') + (n.needs ? ` Needs ${list(n.needs)} fully bought.` : '');
     const unit = soldierOf(n);
     const eye = unit && el('button', { type: 'button', className: 'eye', title: `Watch a ${UNITS[unit].name} fight`, ariaLabel: `Watch a ${UNITS[unit].name} fight`, onclick: () => show(unit) }, eyeIcon());
@@ -168,8 +207,13 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
 
   function deselect() { if (!selected) return; selected = undefined; refresh(); }
 
-  /** Just bought: the card pops and flashes, the chips spent float up off it, the lines to what it opened draw in. */
+  /** Just bought: APPROVED stamped on the note with a thud, the card pops, the chips spent float up off it, the strings
+   *  to what it opened draw in. */
   function bought(n: Node, cost: number) {
+    const ok = inkStamp('APPROVED', 3);
+    ok.classList.add('approved');
+    info.append(ok);
+    play('thud', 0.6);
     const b = cards.get(n.id)!;
     b.classList.remove('bought');
     void b.offsetWidth; // restarts the animation
@@ -198,9 +242,22 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
 
   // ---- Pan and zoom: the plane is moved with one CSS transform ----
   const v = { x: 0, y: 0, z: 1 };
-  const apply = () => { plane.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.z})`; };
+  const apply = () => {
+    clamp();
+    plane.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.z})`;
+      };
+  /** No farther out than the whole board fits the screen (between the bar and the note), no farther in than 2.5×. */
+  const minZoom = () => Math.min(READABLE, (view.clientWidth - 24) / (shape.w + 28), (view.clientHeight - TOP - BOTTOM) / (shape.h + HEAD + 40));
+  /** The board never leaves the screen: smaller than the room, it stays inside it; bigger, its edges cannot be pulled in
+   *  past the room's (on a phone too, where the room is small). */
+  function clamp() {
+    const w = view.clientWidth, h = view.clientHeight, l = -14 * v.z, r = (shape.w + 14) * v.z, t = (-HEAD - 30) * v.z, b = (shape.h + 14) * v.z;
+    const fit = (at: number, lo: number, hi: number, min: number, max: number) => (hi - lo <= max - min ? Math.max(min - lo, Math.min(max - hi, at)) : Math.min(min - lo, Math.max(max - hi, at)));
+    v.x = fit(v.x, l, r, 12, w - 12);
+    v.y = fit(v.y, t, b, TOP, h - BOTTOM);
+  }
   const zoomAt = (sx: number, sy: number, z: number) => {
-    z = Math.max(0.25, Math.min(2.5, z));
+    z = Math.max(minZoom(), Math.min(2.5, z));
     v.x = sx - ((sx - v.x) / v.z) * z;
     v.y = sy - ((sy - v.y) / v.z) * z;
     v.z = z;
@@ -260,6 +317,14 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
 
   draw();
   fit();
+}
+
+/** The note's torn top edge, as pixels: the paper reaching up a pixel or three, raggedly, as an image URL. */
+function tornEdge() {
+  const cv = el('canvas', { width: 128, height: 4 }), g = cv.getContext('2d')!;
+  g.fillStyle = '#e9e2cc';
+  for (let x = 0, up = 2; x < 128; x++) { if (Math.sin(x * 12.9898) * 43758.5453 % 1 > 0.35) up = Math.max(0, Math.min(4, up + (Math.sin(x * 78.233) > 0 ? 1 : -1))); g.fillRect(x, 4 - up, 1, up); }
+  return cv.toDataURL();
 }
 
 /** 'A', 'A and B', 'A, B and C': the names of nodes. */

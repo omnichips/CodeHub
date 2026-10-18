@@ -1,5 +1,6 @@
 // A little life on a painted map, only drawn: fire flickering in burned-out cars, blazes and some oil drums, smoke
-// drifting off them downwind, grey smoke off some rubble, steam from some manholes. Used by the game and the menu.
+// drifting off them downwind, grey smoke off some rubble, steam from some manholes, smoke from the funnel or the
+// exhausts of what waits on the safe zone. Used by the game and the menu.
 import type Phaser from 'phaser';
 
 type Decor = { kind: string; x: number; y: number };
@@ -16,6 +17,24 @@ export function ambience(scene: Phaser.Scene, decor: Decor[], most: number, size
   }
   let left = most;
   for (const [k, d] of decor.entries()) {
+    // The safe zone's (never left out for `most`): a cookfire's flames, a bus's or a truck's exhaust.
+    if (d.kind === 'campfire') {
+      scene.add.particles(d.x, d.y, 'fx-spark', {
+        lifespan: { min: 250, max: 500 }, speedY: span(-16, -6), speedX: span(-4, 4), scale: { start: s(1.5), end: s(0.2) }, alpha: { start: 0.95, end: 0 },
+        tint: [0xffd060, 0xff9030, 0xff5020], blendMode: 'ADD', frequency: 70,
+      }).setDepth(1.4);
+      scene.add.particles(d.x, d.y - 2, 'fx-puff', { lifespan: 2500, speedY: span(-10, -5), speedX: span(2, 6), scale: { start: s(0.3), end: s(1.6) }, alpha: { start: 0.25, end: 0 }, tint: 0x3a3836, frequency: 320 }).setDepth(9);
+      continue;
+    }
+    if (d.kind === 'funnel' || d.kind === 'exhaust') {
+      const funnel = d.kind === 'funnel';
+      scene.add.particles(d.x, d.y, 'fx-puff', {
+        lifespan: funnel ? { min: 3500, max: 5000 } : { min: 1200, max: 1800 }, speedY: span(-10, -4), speedX: span(2, 7),
+        scale: { start: s(funnel ? 0.7 : 0.25), end: s(funnel ? 3.4 : 1.1) }, alpha: { start: funnel ? 0.4 : 0.22, end: 0 },
+        tint: funnel ? 0x2e2c2a : 0x9a968e, frequency: funnel ? 150 : 280,
+      }).setDepth(9);
+      continue;
+    }
     const roll = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296; // the same few each time the map is shown
     const big = d.kind === 'blaze', fire = big || d.kind === 'wreck' || d.kind === 'burnt' || (d.kind === 'barrel' && roll < 0.3);
     const steam = d.kind === 'manhole' && roll < 0.4, smoke = fire || (d.kind === 'rubble' && roll < 0.25);

@@ -306,7 +306,8 @@ const CREW: [Member, number, Pose, boolean][] = [
 const FEET = 44; // where they stand in the photo, from its top (their tops; the floor is under their shoes)
 /** When each new X starts being drawn, seconds into the shot (one after another). */
 export const xAt = (k: number) => 1.4 + k * 1.1;
-const PHOTO = { x: 53, w: 214, iw: 204, ih: 92 };
+/** Where the snapshot lies in the shot, and its picture inside its border (the war-room board pins up the same one). */
+export const PHOTO = { x: 53, w: 214, iw: 204, ih: 92 };
 
 export function squadPhoto(pen: Pen, t: number, gone: Member[], fresh: Member[]) {
   const top = STORY.TOP, ph = STORY.H - STORY.TOP - STORY.BAR, stage = pen.stage;

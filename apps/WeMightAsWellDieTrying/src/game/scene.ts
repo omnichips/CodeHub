@@ -14,8 +14,8 @@ import {
   PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
   type BlockKind, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
-import { Hud, el, type Group } from './hud.ts';
-import { settingRows } from './settings.ts';
+import { Hud, type Group } from './hud.ts';
+import { settingsSheet } from './settings.ts';
 import { city, hordeLevel, music, play } from './sound.ts';
 import { pose, runScene, stopScene, unseen, type View } from '../story/player.ts';
 import { LOST_LINES } from '../story/storyConfig.ts';
@@ -83,7 +83,7 @@ export class Game extends Phaser.Scene {
   top!: Phaser.GameObjects.Graphics;
   pending?: Soldier; // a sentry operator waiting for a tap to set his turret down
   armed?: string; // a bar item tapped: the next tap on the map puts it down there
-  mapId = MAPS[0].id;
+  mapId = new URLSearchParams(location.search).get('play') || MAPS[0].id; // ?play=<map id> starts there (main.ts)
   mapData!: MapData;
   build!: Build;
   loadout: Record<string, number> = {};
@@ -415,9 +415,7 @@ export class Game extends Phaser.Scene {
       this.speed = was;
       document.getElementById('hud')!.classList.toggle('lefty', profile.settings.lefty);
     };
-    const draw = () => root.replaceChildren(el('div', { className: 'panel settings window', role: 'dialog', ariaLabel: 'Settings' },
-      el('div', { className: 'head' }, el('button', { type: 'button', textContent: 'Back', onclick: close }), el('h2', {}, 'Settings')),
-      ...settingRows(draw), el('p', { className: 'note' }, 'Gore, quality and dead bodies change from the next fight.')));
+    const draw = (): void => root.replaceChildren(settingsSheet({ back: close, again: draw, note: 'Gore, quality and dead bodies change from the next fight.', small: true }));
     root.hidden = false;
     root.classList.remove('leaving'); // left on by the menu's fade into the fight
     root.classList.add('ingame');

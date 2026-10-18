@@ -33,17 +33,18 @@ export function open(slot: number, save = load(slot) ?? fresh(`Save ${slot + 1}`
   persist();
 }
 
-/** The maps, in the order they unlock: the next opens once the one before is cleared. */
+/** The maps, in the order they unlock: the next opens once the one before is cleared. Each safe zone shows how its
+ *  people are to get out, as the story has it (`evac`; a helicopter where none is given). */
 export const MAPS: { id: string; name: string; data: MapData; waves: WavePlan }[] = [
-  { id: 'main-street', name: 'Main Street', data: mainStreet, waves: waves['main-street'] }, // one straight street: learn the game here
-  { id: 'chicago', name: 'Chicago', data: chicago, waves: waves.chicago }, // an F: two ways in, the L over the top street
-  { id: 'new-york', name: 'New York', data: newYork, waves: waves['new-york'] }, // the city grid: three ways in
+  { id: 'main-street', name: 'Main Street', data: { ...mainStreet, evac: 'bus' }, waves: waves['main-street'] }, // one straight street: learn the game here
+  { id: 'chicago', name: 'Chicago', data: { ...chicago, evac: 'ferry' }, waves: waves.chicago }, // an F: two ways in, the L over the top street
+  { id: 'new-york', name: 'New York', data: { ...newYork, evac: 'ship' }, waves: waves['new-york'] }, // the city grid: three ways in
   // Maps 4 to 9 are drawn by scripts/maps.ts.
-  { id: 'manila', name: 'Manila', data: manila, waves: waves.manila }, // the slums: shanties, alleys, a canal
+  { id: 'manila', name: 'Manila', data: { ...manila, evac: 'ship' }, waves: waves.manila }, // the slums: shanties, alleys, a canal
   { id: 'mexico', name: 'Mexico City', data: mexico, waves: waves.mexico }, // the Zócalo: open ground, the cathedral and palace standing in it
-  { id: 'rome', name: 'Rome', data: rome, waves: waves.rome }, // Via Labicana bent into an M, the safe zone where it dips in the middle
-  { id: 'tokyo', name: 'Tokyo', data: tokyo, waves: waves.tokyo }, // Shibuya: the safe zone in the middle of the scramble crossing, the horde from every side
-  { id: 'london', name: 'London', data: london, waves: waves.london }, // one long bridge, end to end, no buildings
+  { id: 'rome', name: 'Rome', data: { ...rome, evac: 'stairs' }, waves: waves.rome }, // Via Labicana bent into an M, the safe zone where it dips in the middle
+  { id: 'tokyo', name: 'Tokyo', data: { ...tokyo, evac: 'queue' }, waves: waves.tokyo }, // Shibuya: the safe zone in the middle of the scramble crossing, the horde from every side
+  { id: 'london', name: 'London', data: { ...london, evac: 'trucks' }, waves: waves.london }, // one long bridge, end to end, no buildings
   { id: 'white-house', name: 'White House', data: whiteHouse, waves: waves['white-house'] }, // the last stand: one open lawn, the horde along one whole side
 ];
 /** Open once the map before it is cleared, or if cleared already (a save from before the maps were put in this order). */

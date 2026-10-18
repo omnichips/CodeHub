@@ -1,5 +1,8 @@
-// The main menu: a ruined city from above (game/menucity.ts), burning and drifting slowly, a few zombies shambling along its streets, under an HTML
-// overlay. Main: continue the last save, new save or load a save, settings (statistics inside). Inside a save: its cities and its skill tree.
+// The main menu: the city the save played last is on, from above, drifting slowly under falling ash, its zombies
+// walking the horde's routes, what is left of the squad at the spots soldiers hold firing down at them, now and then a
+// helicopter leaving. Over it an HTML overlay: the title stamped on, then pixel-art paper (game/paper.ts): the last
+// save's dossier, folders for a new save and loading one, a sticky note for settings (statistics inside), and the
+// latest patch notes as a clipping. Inside a save: its cities and its skill tree.
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, lastPlayed, open, persist, profile, saves } from '../meta/profile.ts';
@@ -11,11 +14,15 @@ import { el } from './hud.ts';
 import { ambience } from './ambience.ts';
 import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
+import { HELI_RES, mapAnims, textures } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
-import { CITY_H, CITY_W, LANES, MENU_CITY } from './menucity.ts';
-import { settingRows } from './settings.ts';
-import { music } from './sound.ts';
+import { clipping, dossier, folder, filmFrame, noteTag, pixelButton, slotFolder, stickyNote } from './paper.ts';
+import { routesOf } from '../sim/routes.ts';
+import { settingsSheet } from './settings.ts';
+import { music, play, retune } from './sound.ts';
 import { skillWeb } from './tree.ts';
+import { FONT } from '../story/font.ts';
+import { roll } from '../story/kit.ts';
 import { noStory, record, story } from '../story/record.ts';
 import { playScene, pose } from '../story/player.ts';
 import { order } from '../story/text.ts';
@@ -24,6 +31,7 @@ import { mapOf } from '../story/types.ts';
 export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'story';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
+const SQUAD = ['rifleman', 'sniper', 'shotgunner', 'marksman', 'grenadier', 'medic']; // as many stand as the story has left
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
 
 const THUMB_W = 240, THUMB_H = 150;
@@ -34,47 +42,134 @@ const half = (m: MapData): MapData => ((m.scale ?? 1) < 2 ? m : {
   slots: m.slots?.map(([x, y]) => [x >> 1, y >> 1]), decor: m.decor?.map((d) => ({ ...d, x: d.x / 2, y: d.y / 2 })),
 });
 
-interface Walker { s: Phaser.GameObjects.Sprite; lane: number[]; t: number; speed: number; dir: 1 | -1 }
+interface Walker { s: Phaser.GameObjects.Sprite; route: number[]; p: number; speed: number; down: number }
+interface Gunner { s: Phaser.GameObjects.Sprite; kind: string; x: number; y: number; cool: number }
+interface Heli { body: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; rotors: Phaser.GameObjects.Image[]; beacon: Phaser.GameObjects.Image; t: number; x: number; y: number; a: number; len: number }
+interface Flake { img: Phaser.GameObjects.Image; u: number; v: number; vu: number; vv: number; size: number; ember: boolean; ph: number }
 
 const button = (text: string, onclick: () => void, className = '') => el('button', { type: 'button', textContent: text, className, onclick });
 const LEVELS = NODES.reduce((n, x) => n + x.max, 0);
 const summary = (s: Save) => `${s.chips} chips · ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities · ${Object.values(s.skills).reduce((a, b) => a + b, 0)}/${LEVELS} skills`;
-/** The newest patch notes this device has opened (their date), so the icon can show when there are new ones. */
+/** The newest patch notes this device has opened (their date), so the clipping can show when there are new ones. */
 const SEEN = 'dietrying.notesSeen';
 const seen = () => { try { return localStorage.getItem(SEEN) ?? ''; } catch { return ''; } };
 const NEWEST = notes[0]?.date ?? '';
-/** A page of notes, drawn in the text colour. */
-function notesIcon() {
+const clock = (t: number) => `${Math.floor(t / 3600)}h ${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}m`;
+/** Where a save stands in the story: the city it is on (none once all are behind it), its day, its squad, and how
+ *  many the notebook says were left behind (a page with no number, Rome's, counts none). */
+function standing(s: Save | undefined) {
+  const next = MAPS.findIndex((m) => !s?.cleared[m.id]), row = story.maps[next >= 0 ? next : story.maps.length - 1];
+  const behind = Object.values(s?.story.notebook ?? {}).reduce((n, e) => n + (e.got === null ? 0 : e.needed - e.got), 0);
+  return { next, day: row.day, squad: row.squad, behind };
+}
+
+/** A line of the story's font stamped in ink: each pixel a `B`-pixel block, chipped here and there, the ink uneven,
+ *  over its shadow. `seed` keeps its chips the same every time. */
+function stamp(text: string, B: number, inks: string[], seed: number) {
+  const w = [...text].reduce((n, ch) => n + (FONT[ch]?.w ?? 1) + 1, -1), off = Math.max(1, B >> 1);
+  const cv = el('canvas', { width: w * B + off, height: 7 * B + off, ariaHidden: 'true' }), c = cv.getContext('2d')!;
+  const lit: [number, number][] = [];
+  let at = 0;
+  for (const ch of text) { for (const [x, y] of FONT[ch]?.px ?? []) lit.push([at + x, y]); at += (FONT[ch]?.w ?? 1) + 1; }
+  c.fillStyle = '#141516';
+  for (const [x, y] of lit) c.fillRect(x * B + off, y * B + off, B, B);
+  for (const [x, y] of lit)
+    for (let v = 0; v < B; v++)
+      for (let u = 0; u < B; u++) {
+        const px = x * B + u, py = y * B + v, r = roll(px * 31 + seed, py * 17 + seed), chip = roll((px >> 1) + seed, (py >> 1) * 7);
+        if (r < 0.06 || chip < 0.035) continue; // worn through to the paper
+        c.fillStyle = inks[roll(px >> 2, (py >> 2) + seed) < 0.3 ? 1 : 0];
+        c.fillRect(px, py, 1, 1);
+      }
+  return cv;
+}
+
+/** A speaker, crossed out while the sound is off. */
+function speaker(on: boolean) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.innerHTML = '<path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 3v4h4M9 11h7M9 14.5h7M9 18h5" fill="none" stroke="currentColor" stroke-width="2"/>';
+  svg.innerHTML = '<path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>' + (on ? '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2"/>' : '<path d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2"/>');
   return svg;
 }
-const clock = (t: number) => `${Math.floor(t / 3600)}h ${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}m`;
+/** Master volume before the sound was turned off, to turn it back on to. */
+const UNMUTE = 'dietrying.unmute';
 
 export class Menu extends Phaser.Scene {
   open: Screen = 'menu';
   walkers: Walker[] = [];
+  routes: number[][] = [];
+  squad: Gunner[] = [];
+  animate?: (dt: number) => void;
+  home = { x: 0, y: 0 };
+  mapW = 1;
+  mapH = 1;
+  tile = 16;
+  gw = 1;
+  heliSize = 1;
+  heli?: Heli;
+  ash: Flake[] = [];
+  tracers!: Phaser.GameObjects.Graphics;
+  shots: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
   root!: HTMLElement;
   note = ''; // a line saying what the last cheat did
   settingsFrom: Screen = 'menu'; // where Settings goes back to: the main menu or a save's cities
+  intro = true; // the first time the main menu shows: the title stamped on, the rest after it
 
   constructor() { super('menu'); }
 
-  init(data: { open?: Screen }) { this.open = data.open ?? 'menu'; }
+  init(data: { open?: Screen }) { this.open = data.open ?? 'menu'; this.intro = true; }
 
   preload() { load(this); }
 
   create() {
     bake(this);
-    this.cameras.main.fadeIn(400);
-    const city = paintMap(this, MENU_CITY, new Grid(MENU_CITY), `menu-city-${profile.settings.gore !== 'none'}`, profile.settings.gore !== 'none');
-    this.add.image(0, 0, city).setOrigin(0);
-    ambience(this, drawn.get(city) ?? [], 40, 2); // bigger: the menu shows the city from farther off
-    this.walkers = SHAMBLERS.map((kind, k) => ({
-      s: this.add.sprite(0, 0, 'sprites').setDepth(2).setScale(1.7).play({ key: `${kind}-walk`, startFrame: k % 2 }),
-      lane: LANES[k % LANES.length], t: Math.random(), speed: 7 + Math.random() * 6, dir: k % 2 ? 1 : -1,
-    }));
+    textures(this);
+    const cam = this.cameras.main.setBackgroundColor('#000000').fadeIn(400);
+    const all = saves(), at = standing(all[lastPlayed(all)] ?? undefined), blood = profile.settings.gore !== 'none';
+    // The city the save played last is on (the last one once every city is behind it), painted as the fight paints it
+    // (the same texture, so going into the fight from here costs nothing), with its life.
+    const m = MAPS[at.next >= 0 ? at.next : MAPS.length - 1], grid = new Grid(m.data), S = m.data.scale ?? 1, T = grid.tile;
+    const art = paintMap(this, m.data, grid, `map-${m.id}-${blood}`, blood), decor = drawn.get(art) ?? [];
+    this.add.image(0, 0, art).setOrigin(0);
+    this.mapW = grid.w * T;
+    this.mapH = grid.h * T;
+    ambience(this, decor, 24);
+    this.animate = mapAnims(this, { ...m.data, slots: [] }, grid, decor, profile.settings.quality === 'low' ? 0.4 : 1, { scare: () => undefined, planning: () => false });
+    // Where the view drifts round: halfway between the middle of the map and the safe zone, where the line is held.
+    const g = grid.goals;
+    this.home = {
+      x: ((g.reduce((n, i) => n + (i % grid.w), 0) / g.length + 0.5) * T + this.mapW / 2) / 2,
+      y: ((g.reduce((n, i) => n + Math.floor(i / grid.w), 0) / g.length + 0.5) * T + this.mapH / 2) / 2,
+    };
+    // The horde, along its own routes to the safe zone, each from somewhere along one.
+    this.routes = routesOf(m.data, grid, S).list.map((r) => r.tiles).filter((r) => r.length > 4);
+    this.tile = T;
+    this.gw = grid.w;
+    this.walkers = this.routes.length ? Array.from({ length: 16 }, (_, k) => {
+      const route = this.routes[k % this.routes.length];
+      return { s: this.add.sprite(0, 0, 'sprites').setDepth(2).play({ key: `${SHAMBLERS[k % SHAMBLERS.length]}-walk`, startFrame: k % 2 }), route, p: Math.random() * route.length, speed: (7 + Math.random() * 6) / T, down: 0 };
+    }) : [];
+    // What is left of the squad, at the spots soldiers hold nearest the line (or in the street there, on a map with none).
+    const far = (p: number[]) => Math.hypot(p[0] - this.home.x, p[1] - this.home.y);
+    const spots = (m.data.slots ?? []).map(([x, y]) => [(x + 0.5) * T, (y + 0.5) * T]).sort((p, q) => far(p) - far(q)), picked: number[][] = [];
+    for (const sp of spots) if (picked.length < at.squad && picked.every((p) => Math.hypot(p[0] - sp[0], p[1] - sp[1]) > 3 * T)) picked.push(sp);
+    while (picked.length < at.squad) picked.push([this.home.x + (picked.length - at.squad / 2) * 2 * T, this.home.y]);
+    this.squad = picked.map(([x, y], k) => ({ s: this.add.sprite(x, y, 'sprites').setDepth(3).play({ key: `${SQUAD[k]}-idle-2`, startFrame: k % 2 }), kind: SQUAD[k], x, y, cool: 1 + Math.random() * 3 }));
+    this.tracers = this.add.graphics().setDepth(2.5).setBlendMode('ADD');
+    this.shots = [];
+    // A helicopter going over now and then, high up, leaving.
+    const img = (key: string, depth: number) => this.add.image(0, 0, key).setDepth(depth).setVisible(false);
+    this.heli = { shadow: img('fx-heli', 1.45).setTint(0x000000).setAlpha(0.25), body: img('fx-heli', 11), rotors: [img('fx-rotor-blur', 11.1), img('fx-rotor-blur', 11.1)], beacon: img('fx-glow', 11.2).setBlendMode('ADD').setTint(0xff3020), t: -(8 + Math.random() * 10), x: 0, y: 0, a: 0, len: 0 };
+    this.heliSize = S;
+    // Ash coming down over it all, and a few embers, as many as the quality allows.
+    this.ash = Array.from({ length: profile.settings.quality === 'low' ? 24 : 60 }, () => {
+      const ember = Math.random() < 0.15;
+      return {
+        img: this.add.image(0, 0, 'fx-px').setDepth(12).setTint(ember ? 0xff8a40 : [0x8f8a82, 0x6f6b66, 0xb8b2a6][(Math.random() * 3) | 0]).setBlendMode(ember ? 'ADD' : 'NORMAL'),
+        u: Math.random(), v: Math.random(), vu: 0.008 + Math.random() * 0.02, vv: 0.015 + Math.random() * 0.035, size: ember ? 1.5 + Math.random() : 1.5 + Math.random() * 2, ember, ph: Math.random() * 6.3,
+      };
+    });
+    cam.setZoom(this.zoom());
     this.root = document.getElementById('menu')!;
     this.root.hidden = false;
     this.root.classList.remove('leaving');
@@ -83,18 +178,90 @@ export class Menu extends Phaser.Scene {
     music('menu');
   }
 
-  /** The city covers the screen with room to spare, and the view drifts across that spare room. */
+  /** A little farther out than a fight starts (it shows 480 pixels of map top to bottom), never past the map's edges. */
+  zoom() { const { width: W, height: H } = this.scale; return Math.max(H / 560, W / this.mapW, H / this.mapH); }
+
+  /** The view drifts slowly round where the line is held, never off the map. */
   update(time: number, delta: number) {
-    const { width: W, height: H } = this.scale, z = Math.max(W / CITY_W, H / CITY_H) * 1.12, t = time / 1000;
-    this.cameras.main.setZoom(z).centerOn(CITY_W / 2 - (Math.sin(t / 23) * (CITY_W * z - W)) / 2 / z, CITY_H / 2 - (Math.cos(t / 31) * (CITY_H * z - H)) / 2 / z);
-    for (const w of this.walkers) {
-      const [x0, y0, x1, y1] = w.lane, len = Math.hypot(x1 - x0, y1 - y0);
-      w.t += (w.dir * w.speed * delta) / 1000 / len;
-      if (w.t > 1 || w.t < 0) w.t = w.dir > 0 ? 0 : 1; // off the edge: back in at the other end
-      const wobble = Math.sin(t * 1.7 + w.speed) * 0.25, ang = Math.atan2(y1 - y0, x1 - x0) + (w.dir > 0 ? 0 : Math.PI) + wobble;
-      const px = x0 + (x1 - x0) * w.t, py = y0 + (y1 - y0) * w.t;
-      w.s.setPosition(px, py).setRotation(ang);
+    const t = time / 1000, dt = Math.min(0.1, delta / 1000), cam = this.cameras.main, z = this.zoom(), vw = this.scale.width / z, vh = this.scale.height / z;
+    const fit = (c: number, view: number, size: number) => (view >= size ? size / 2 : Math.max(view / 2, Math.min(size - view / 2, c)));
+    cam.setZoom(z).centerOn(fit(this.home.x + Math.sin(t / 23) * 180, vw, this.mapW), fit(this.home.y + Math.cos(t / 31) * 120, vh, this.mapH));
+    this.animate?.(dt);
+    const T = this.tile, w = this.gw, centre = (i: number) => [((i % w) + 0.5) * T, (Math.floor(i / w) + 0.5) * T];
+    const again = (z2: Walker) => { z2.route = this.routes[(Math.random() * this.routes.length) | 0]; z2.p = 0; };
+    for (const z2 of this.walkers) {
+      if (z2.down > 0) {
+        // Shot: lying where it fell a while, fading, then another starts down a route.
+        z2.down -= dt;
+        z2.s.setAlpha(Math.min(1, z2.down));
+        if (z2.down <= 0) { again(z2); z2.s.setAlpha(1).clearTint().anims.resume(); }
+        continue;
+      }
+      z2.p += z2.speed * dt;
+      if (z2.p >= z2.route.length - 1) again(z2); // into the safe zone: another comes
+      const r = z2.route, k = Math.floor(z2.p), u = z2.p - k, [ax, ay] = centre(r[k]), [bx, by] = centre(r[Math.min(r.length - 1, k + 1)]), [fx, fy] = centre(r[Math.min(r.length - 1, k + 3)]);
+      z2.s.setPosition(ax + (bx - ax) * u, ay + (by - ay) * u).setRotation(Math.atan2(fy - ay, fx - ax) + Math.sin(t * 1.7 + z2.speed * 99) * 0.25);
     }
+    this.fire(dt);
+    this.fly(t, dt);
+    const v = cam.worldView;
+    for (const f of this.ash) {
+      f.u = (f.u + f.vu * dt + 1) % 1;
+      f.v += f.vv * dt;
+      if (f.v > 1.02) { f.v = -0.02; f.u = Math.random(); }
+      f.img.setPosition(v.x + (f.u + Math.sin(t * 0.8 + f.ph) * 0.01) * v.width, v.y + f.v * v.height).setScale(f.size / cam.zoom)
+        .setAlpha(f.ember ? 0.5 + 0.4 * Math.sin(t * 7 + f.ph) : 0.55);
+    }
+  }
+
+  /** The squad: each, now and then, shoots at the nearest zombie in reach; some go down. */
+  fire(dt: number) {
+    this.tracers.clear();
+    this.shots = this.shots.filter((s) => (s.t -= dt) > 0);
+    for (const s of this.shots) this.tracers.lineStyle(1.5, 0xffd890, s.t / 0.08).lineBetween(s.x0, s.y0, s.x1, s.y1);
+    for (const g of this.squad) {
+      if ((g.cool -= dt) > 0) continue;
+      let best: Walker | undefined, near = 220;
+      for (const w of this.walkers) { const d = Math.hypot(w.s.x - g.x, w.s.y - g.y); if (!w.down && d < near) { near = d; best = w; } }
+      if (!best) { g.cool = 0.5; continue; }
+      g.cool = 0.8 + Math.random() * 2.4;
+      const target = best, d = ((Math.round(Math.atan2(target.s.y - g.y, target.s.x - g.x) / (Math.PI / 4)) % 8) + 8) % 8;
+      g.s.play(`${g.kind}-shoot-${d}`);
+      this.time.delayedCall(260, () => g.s.play(`${g.kind}-idle-${d}`));
+      this.shots.push({ x0: g.x, y0: g.y, x1: target.s.x + (Math.random() - 0.5) * 6, y1: target.s.y + (Math.random() - 0.5) * 6, t: 0.08 });
+      if (Math.random() < 0.35) {
+        target.down = 3;
+        target.s.anims.pause();
+        target.s.setTint(0x6a6560);
+        if (profile.settings.gore !== 'none') {
+          const splat = this.add.image(target.s.x, target.s.y, 'sprites', `splat/${(Math.random() * 3) | 0}`).setDepth(1.5).setRotation(Math.random() * 6.3);
+          this.tweens.add({ targets: splat, alpha: 0, delay: 4000, duration: 4000, onComplete: () => splat.destroy() });
+        }
+      }
+    }
+  }
+
+  /** The helicopter: away for a while, then across the view high up and out the far side, its shadow on the city. */
+  fly(t: number, dt: number) {
+    const h = this.heli!, v = this.cameras.main.worldView, SIZE = 1.35 * this.heliSize, SPEED = 240; // as big as the camp's, lifted
+    if ((h.t += dt) < 0) return;
+    if (h.len === 0) {
+      // Off it goes: in from one side of the view, out the far side, a little uphill (north, away).
+      const east = Math.random() < 0.5;
+      h.a = east ? -0.3 - Math.random() * 0.3 : Math.PI + 0.3 + Math.random() * 0.3;
+      h.len = Math.hypot(v.width, v.height) + 400;
+      h.x = v.centerX - (Math.cos(h.a) * h.len) / 2;
+      h.y = v.centerY + Math.random() * v.height * 0.3 - (Math.sin(h.a) * h.len) / 2;
+      play('heli', 0.35);
+    }
+    const along = h.t * SPEED, x = h.x + Math.cos(h.a) * along, y = h.y + Math.sin(h.a) * along;
+    const parts = [h.body, h.shadow, h.beacon, ...h.rotors];
+    if (along > h.len) { for (const p of parts) p.setVisible(false); h.t = -(25 + Math.random() * 30); h.len = 0; return; }
+    for (const p of parts) p.setVisible(true);
+    h.body.setPosition(x, y).setRotation(h.a).setScale(SIZE / HELI_RES);
+    h.shadow.setPosition(x + 70, y + 44).setRotation(h.a).setScale((0.9 * this.heliSize) / HELI_RES);
+    h.rotors.forEach((r, k) => { const at = (k ? -28 : 26) * SIZE; r.setPosition(x + Math.cos(h.a) * at, y + Math.sin(h.a) * at).setScale(SIZE / HELI_RES); });
+    h.beacon.setPosition(x - Math.cos(h.a) * 4 * SIZE, y - Math.sin(h.a) * 4 * SIZE).setScale(SIZE * 0.45).setAlpha((t * 2.2) % 1 < 0.15 ? 0.9 : 0);
   }
 
   show(screen: Screen): void {
@@ -115,16 +282,35 @@ export class Menu extends Phaser.Scene {
   }
 
   main(): HTMLElement[] {
-    const all = saves(), k = lastPlayed(all), last = all[k], unread = NEWEST > seen();
-    const icon = el('button', { type: 'button', className: 'icon', title: 'Patch notes', ariaLabel: unread ? 'Patch notes: something new' : 'Patch notes', onclick: () => this.show('notes') }, notesIcon());
-    if (unread) icon.append(el('i', { className: 'dot' }));
-    return [el('div', { className: 'corner' }, icon), el('div', { className: 'panel main' },
-      el('h1', {}, 'We Might As Well', el('br'), el('span', {}, 'Die Trying')),
-      // Straight back into the save played last.
-      ...(last ? [el('button', { type: 'button', className: 'slot go', onclick: () => { open(k); this.show('save'); } }, `Continue: ${last.name}`, el('small', {}, summary(last)))] : []),
-      el('div', { className: 'pair' }, button('New save', () => this.show('new'), last ? '' : 'go'), button('Load save', () => this.show('load'))),
-      button('Settings', () => { this.settingsFrom = 'menu'; this.show('settings'); }),
-    )];
+    const all = saves(), k = lastPlayed(all), last = all[k], unread = NEWEST > seen(), at = standing(last), intro = this.intro;
+    this.intro = false;
+    const panel = el('div', { className: `panel main${intro ? ' intro' : ''}` },
+      el('h1', { className: 'logo', ariaLabel: 'We Might As Well Die Trying' }, stamp('WE MIGHT AS WELL', 4, ['#b9b08e', '#a39a7a'], 3), stamp('DIE TRYING', 8, ['#c9473a', '#a8352b'], 7)),
+      el('p', { className: 'tagline' }, `Day ${at.day} · ${at.behind ? `${at.behind.toLocaleString('en-US')} left behind` : 'hold the line'}`),
+      // Straight back into the save played last: its dossier, a pip for each city (lost, the one it is on, to come).
+      ...(last ? [pixelButton(`Continue: ${last.name}, ${summary(last)}`, 196, 66,
+        dossier(last.name, MAPS.map((m, i) => (last.cleared[m.id] ? 'held' : i === at.next ? 'next' : '')), `${last.chips} chips   ${MAPS.filter((m) => last.cleared[m.id]).length}/${MAPS.length} cities`, at.day),
+        () => { open(k); this.show('save'); }, 'dossier')] : []),
+      el('div', { className: 'pair' },
+        pixelButton('New save', 94, 44, last ? folder('NEW SAVE', '#4a5032', '#2e3220', 3) : folder('NEW SAVE', '#9c2f28', '#5e1d18', 3), () => this.show('new')),
+        pixelButton('Load save', 94, 44, folder('LOAD SAVE', '#2f3a54', '#1c2333', 8), () => this.show('load'))),
+      pixelButton('Settings', 58, 48, stickyNote(), () => { this.settingsFrom = 'menu'; this.show('settings'); }, 'sticky'),
+    );
+    [...panel.children].forEach((c, i) => (c as HTMLElement).style.setProperty('--i', String(i)));
+    if (intro) setTimeout(() => play('thud', 0.5), 700); // the title landing
+    // On the right: the latest patch notes, as a clipping.
+    const [cw, ch, draw] = clipping(notes[0]?.title ?? 'Patch notes', NEWEST.slice(0, 10), unread);
+    const aside = el('div', { className: `aside${intro ? ' intro' : ''}` }, pixelButton(unread ? 'Patch notes: something new' : 'Patch notes', cw, ch, draw, () => this.show('notes')));
+    // The sound, on or off, and which build this is.
+    const s = profile.settings, mute = el('button', { type: 'button', className: 'icon', ariaLabel: 'Sound', ariaPressed: String(s.master > 0) }, speaker(s.master > 0));
+    mute.onclick = () => {
+      if (s.master > 0) { try { localStorage.setItem(UNMUTE, String(s.master)); } catch { /* storage blocked: back on at 80% */ } s.master = 0; }
+      else { let v = 0.8; try { v = Number(localStorage.getItem(UNMUTE)) || 0.8; } catch { /* the same */ } s.master = v; }
+      persist(); retune();
+      mute.ariaPressed = String(s.master > 0);
+      mute.replaceChildren(speaker(s.master > 0));
+    };
+    return [panel, aside, el('div', { className: 'foot' }, el('span', {}, `Build ${__BUILD__}`), mute)];
   }
 
   /** What changed in each update, newest first. Opening them clears the icon's dot. */
@@ -147,23 +333,36 @@ export class Menu extends Phaser.Scene {
       open(into, save);
       again();
     };
+    const pips = (s: Save) => MAPS.map((m, i) => (s.cleared[m.id] ? 'held' : i === MAPS.findIndex((x) => !s.cleared[x.id]) ? 'next' : '') as 'held' | 'next' | '');
+    const line = (s: Save) => `${s.chips} chips   ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities`;
+    const date = (s: Save) => new Date(s.played).toISOString().slice(0, 10);
+    const tag = (label: string, col: string, dark: string, ink: string, press: () => void) => { const [w, h, draw] = noteTag(label, col, dark, ink); return pixelButton(label, w, h, draw, press, 'tag'); };
     const row = (s: Save | undefined, k: number) => {
-      if (mode === 'new') return el('button', { type: 'button', className: 'slot', onclick: () => {
-        if (s && !confirm(`Start over in this slot? "${s.name}" (${summary(s)}) will be gone. Export it first if you might want it back.`)) return;
-        open(k, fresh(`Save ${k + 1}`));
-        this.show('save');
-      } }, s ? `Slot ${k + 1}: overwrite ${s.name}` : `Slot ${k + 1}: empty`, el('small', {}, s ? summary(s) : 'Start here'));
-      if (!s) return el('div', { className: 'slotrow' }, el('button', { type: 'button', className: 'slot', disabled: true }, `Slot ${k + 1}: empty`, el('small', {}, 'Nothing saved here')),
-        button('Import', () => { into = k; file.click(); }));
+      if (mode === 'new') {
+        const b = pixelButton(s ? `Slot ${k + 1}: overwrite ${s.name}` : `Slot ${k + 1}: empty`, 214, 68, slotFolder(s
+          ? { slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'danger', note: ['WILL BE', 'LOST!'], noteInk: '#8a2a20' }
+          : { slot: k + 1, title: 'Empty', line: 'Nothing saved here', kind: 'empty', note: ['START', 'HERE'] }), () => {
+          if (s && !confirm(`Start over in this slot? "${s.name}" (${summary(s)}) will be gone. Export it first if you might want it back.`)) return;
+          open(k, fresh(`Save ${k + 1}`));
+          this.show('save');
+        });
+        return el('div', { className: 'slotrow' }, b);
+      }
+      if (!s) {
+        const b = pixelButton(`Slot ${k + 1}: empty`, 214, 68, slotFolder({ slot: k + 1, title: 'Empty', line: 'Nothing saved here', kind: 'empty', note: ['NO', 'SAVE'] }), () => {});
+        b.disabled = true;
+        return el('div', { className: 'slotrow' }, b, el('div', { className: 'tags' }, tag('IMPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => { into = k; file.click(); })));
+      }
       return el('div', { className: 'slotrow' },
-        el('button', { type: 'button', className: 'slot', onclick: () => { open(k); this.show('save'); } }, s.name, el('small', {}, `${summary(s)} · ${new Date(s.played).toLocaleDateString()}`)),
-        button('Export', () => exportSave(s)),
-        button('Delete', () => {
-          if (!confirm(`Delete "${s.name}" (${summary(s)})? This cannot be undone.`)) return;
-          remove(k);
-          if (profile.slot === k) profile.save = fresh(`Save ${k + 1}`); // not written until played
-          again();
-        }, 'danger'));
+        pixelButton(`${s.name}, ${summary(s)}`, 214, 68, slotFolder({ slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'save', note: ['PLAYED', date(s)] }), () => { open(k); this.show('save'); }),
+        el('div', { className: 'tags' },
+          tag('EXPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => exportSave(s)),
+          tag('DELETE', '#e59aa6', '#c97a87', '#4a1e28', () => {
+            if (!confirm(`Delete "${s.name}" (${summary(s)})? This cannot be undone.`)) return;
+            remove(k);
+            if (profile.slot === k) profile.save = fresh(`Save ${k + 1}`); // not written until played
+            again();
+          })));
     };
     return el('div', { className: 'panel slots' }, this.head(mode === 'new' ? 'New save' : 'Load save', 'menu'), ...saves().map(row), file);
   }
@@ -205,16 +404,13 @@ export class Menu extends Phaser.Scene {
   /** Every scene of the story in order; the ones this save has seen can be played again. */
   storyLog(): HTMLElement {
     const seen = new Set(profile.save.story.seen);
-    const name = (id: string) => {
-      const m = MAPS.find((x) => x.id === mapOf(id, story).id)!;
-      return id === 'opening' ? `Opening · ${m.name}` : id === 'ending' ? `Ending · ${m.name}` : `${m.name} · ${id.startsWith('before:') ? 'Before' : 'After'}`;
-    };
     const rows = order(story).map((id) => {
-      const sc = story.scenes.find((x) => x.id === id)!;
-      return el('button', { type: 'button', className: 'slot', disabled: !seen.has(id), onclick: () => this.replay(id) },
-        seen.has(id) ? name(id) : 'Not seen yet', el('small', {}, seen.has(id) ? `Day ${sc.day} · ${sc.time}` : 'Clear the city before it to see it'));
+      const sc = story.scenes.find((x) => x.id === id)!, city = MAPS.find((x) => x.id === mapOf(id, story).id)!.name, kind = id === 'opening' ? 'Opening' : id === 'ending' ? 'Ending' : id.startsWith('before:') ? 'Before' : 'After';
+      const b = pixelButton(seen.has(id) ? `${city}, ${kind}` : 'Not seen yet: clear the city before it to see it', 96, 56, filmFrame({ city, kind, day: `Day ${sc.day}`, seen: seen.has(id) }), () => this.replay(id));
+      b.disabled = !seen.has(id);
+      return b;
     });
-    return el('div', { className: 'panel story' }, this.head('Story', 'save'), el('div', { className: 'list' }, ...rows));
+    return el('div', { className: 'panel story' }, this.head('Story', 'save'), el('div', { className: 'reel' }, ...rows));
   }
 
   /** Plays a scene again from the Story log, its map shots over a painting of the city (half size, as the cards). */
@@ -256,13 +452,7 @@ export class Menu extends Phaser.Scene {
   }
 
   settings(): HTMLElement {
-    return el('div', { className: 'panel settings' },
-      this.head('Settings', this.settingsFrom),
-      ...settingRows(() => this.show('settings')),
-      el('div', { className: 'row' }, el('span', {}, 'Every save, side by side'), el('div', { className: 'seg' }, button('Statistics', () => this.show('stats')))),
-      el('div', { className: 'row' }, el('span', {}, 'Cheats for testing'), el('div', { className: 'seg' }, button('Debug', () => { this.note = ''; this.show('debug'); }))),
-      el('p', { className: 'note' }, `Build ${__BUILD__}`), // which version this device is running
-    );
+    return settingsSheet({ back: () => this.show(this.settingsFrom), again: () => this.show('settings'), tags: [['Statistics', () => this.show('stats')], ['Debug', () => { this.note = ''; this.show('debug'); }]] });
   }
 
   /** Cheats, for testing: they change the save in use. */
