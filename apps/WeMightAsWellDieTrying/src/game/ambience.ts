@@ -36,8 +36,10 @@ export function ambience(scene: Phaser.Scene, decor: Decor[], most: number, size
       continue;
     }
     const roll = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296; // the same few each time the map is shown
-    const big = d.kind === 'blaze', fire = big || d.kind === 'wreck' || d.kind === 'burnt' || (d.kind === 'barrel' && roll < 0.3);
-    const steam = (d.kind === 'manhole' && roll < 0.4) || d.kind === 'vent', smoke = fire || (d.kind === 'rubble' && roll < 0.25);
+    // A burned-out car still burning (`carfire`), or only smoking (`carsmoke`): the map painter picks which (a quarter
+    // each, the rest gone cold).
+    const big = d.kind === 'blaze', fire = big || d.kind === 'wreck' || d.kind === 'carfire' || (d.kind === 'barrel' && roll < 0.3);
+    const steam = (d.kind === 'manhole' && roll < 0.4) || d.kind === 'vent', smoke = fire || d.kind === 'carsmoke' || (d.kind === 'rubble' && roll < 0.25);
     if ((!fire && !steam && !smoke) || left-- <= 0) continue;
     if (fire) scene.add.particles(d.x, d.y, 'fx-spark', {
       lifespan: big ? { min: 450, max: 900 } : { min: 300, max: 600 }, speedY: big ? span(-34, -14) : span(-22, -8), speedX: big ? span(-9, 9) : span(-5, 5),
@@ -47,7 +49,7 @@ export function ambience(scene: Phaser.Scene, decor: Decor[], most: number, size
     if (smoke) scene.add.particles(d.x, d.y - 2, 'fx-puff', {
       lifespan: big ? { min: 3500, max: 5500 } : { min: 2500, max: 4000 }, speedY: span(-12, -6), speedX: span(2, 8),
       scale: { start: s(big ? 0.9 : 0.5), end: s(big ? 4 : 2.4) }, alpha: { start: big ? 0.45 : fire ? 0.35 : 0.2, end: 0 },
-      tint: fire ? 0x2a2826 : 0x8a8680, frequency: big ? 110 : fire ? 220 : 500,
+      tint: fire || d.kind === 'carsmoke' ? 0x2a2826 : 0x8a8680, frequency: big ? 110 : fire ? 220 : d.kind === 'carsmoke' ? 180 : 500,
     }).setDepth(9);
     if (steam) scene.add.particles(d.x, d.y, 'fx-puff', {
       lifespan: 1600, speedY: span(-8, -3), speedX: span(-2, 4), scale: { start: s(0.4), end: s(1.6) }, alpha: { start: 0.18, end: 0 }, tint: 0xd8d4c8, frequency: 400,

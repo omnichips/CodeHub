@@ -15,7 +15,7 @@ import { el } from './hud.ts';
 import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
 import { atmosphere } from './atmosphere.ts';
-import { weatherLine, weatherOf } from '../meta/profile.ts';
+import { drizzles, weatherLine, weatherOf } from '../meta/profile.ts';
 import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { HELI_RES, mapAnims, textures } from './mapanims.ts';
@@ -180,7 +180,7 @@ export class Menu extends Phaser.Scene {
     this.mapW = grid.w * T;
     this.mapH = grid.h * T;
     ambience(this, decor, 24);
-    const air = atmosphere(this, weatherOf(m.id), decor, grid.w * T, grid.h * T, profile.settings.quality === 'low' ? 0.4 : 1);
+    const air = atmosphere(this, weatherOf(m.id), decor, grid.w * T, grid.h * T, profile.settings.quality === 'low' ? 0.4 : 1, drizzles(m.id));
     this.air = air;
     this.animate = mapAnims(this, { ...m.data, slots: [] }, grid, decor, profile.settings.quality === 'low' ? 0.4 : 1, { scare: () => undefined, planning: () => false });
     // Where the view drifts round: halfway between the middle of the map and the safe zone, where the line is held.

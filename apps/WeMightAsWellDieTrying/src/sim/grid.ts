@@ -18,10 +18,21 @@ export interface MapData {
   props?: { kind: string; tx: number; ty: number; vertical: boolean }[];
   decor?: { kind: string; x: number; y: number }[];
   scale?: number;
+  /** Abandoned armour standing on the map: solid (nobody walks through it, nobody stands on it; see SOLIDS). `tx`,
+   *  `ty` its top-left tile; `vertical`: its length runs north-south. */
+  solids?: { kind: 'tank' | 'apc'; tx: number; ty: number; vertical: boolean }[];
   /** How the people in the safe zone get out, as the city's story has it (only drawn): none for a helicopter. */
   evac?: 'bus' | 'ferry' | 'ship' | 'stairs' | 'trucks' | 'queue';
 }
 export const BUILDING = '#boghmwarskzyxc';
+/** Each piece of armour's footprint in tiles: along its length, then across. */
+export const SOLIDS = { tank: [5, 3], apc: [4, 3] } as const;
+/** The tiles a piece of armour stands on. */
+export function solidTiles(g: { w: number; h: number }, s: NonNullable<MapData['solids']>[number]) {
+  const [len, across] = SOLIDS[s.kind], [sw, sh] = s.vertical ? [across, len] : [len, across], out: number[] = [];
+  for (let y = s.ty; y < s.ty + sh; y++) for (let x = s.tx; x < s.tx + sw; x++) if (x >= 0 && y >= 0 && x < g.w && y < g.h) out.push(y * g.w + x);
+  return out;
+}
 export const BARRIER = '~f';
 
 export class Grid {

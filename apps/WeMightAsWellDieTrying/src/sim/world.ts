@@ -4,7 +4,7 @@ import economy from '../data/economy.json' with { type: 'json' };
 import structures from '../data/structures.json' with { type: 'json' };
 import unitData from '../data/units.json' with { type: 'json' };
 import zombieData from '../data/zombies.json' with { type: 'json' };
-import { Grid, distanceField, downhill, type MapData } from './grid.ts';
+import { Grid, distanceField, downhill, solidTiles, type MapData } from './grid.ts';
 import { routesOf, type Routes } from './routes.ts';
 
 export const STEP = 1 / 60;
@@ -129,7 +129,8 @@ export interface Civilian {
   x: number; // where they stand (in the street at the door, until brought out)
   y: number;
   door: number; // the building tile they are in (-1: hiding in an abandoned car instead, on a map with few buildings)
-  state: 'inside' | 'out' | 'saved' | 'dead';
+  state: 'waiting' | 'inside' | 'out' | 'saved' | 'dead'; // waiting: not there yet (they turn up in a break between waves)
+  appear: number; // the wave (from 1) they turn up in the break before
   held: number; // seconds of fight a soldier has held the door
   hp: number;
   walking: boolean;
@@ -290,6 +291,8 @@ export class World {
     this.charges = Object.fromEntries(Object.entries(stats.usables).map(([k, u]) => [k, u.charges])) as Record<UsableKind, number>;
     this.readyAt = Object.fromEntries(Object.keys(stats.usables).map((k) => [k, 0])) as Record<UsableKind, number>;
     this.grid = new Grid(map);
+    // Abandoned armour is solid, like water or a hedge: walked round, never through, stood on by nobody.
+    for (const s of map.solids ?? []) for (const i of solidTiles(this.grid, s)) this.grid.wall[i] = 2;
     this.cellStart = new Int32Array(this.grid.w * this.grid.h + 1);
     this.cellFill = new Int32Array(this.grid.w * this.grid.h);
     this.structAt = new Int32Array(this.grid.w * this.grid.h);
@@ -477,7 +480,14 @@ export class World {
     const picked: typeof spots = [], dist = (p: (typeof spots)[number], s: (typeof spots)[number]) => Math.hypot((p.street % w) - (s.street % w), Math.floor(p.street / w) - Math.floor(s.street / w));
     for (let apart = Math.max(w, h) / 5; apart >= 2 && picked.length < n; apart /= 2) // spread apart, closer if they will not fit
       for (const s of spots) if (picked.length < n && !picked.includes(s) && picked.every((p) => dist(p, s) > apart)) picked.push(s);
-    this.civilians = picked.map((s, id) => ({ id, x: ((s.street % w) + 0.5) * T, y: (Math.floor(s.street / w) + 0.5) * T, door: s.door, state: 'inside', held: 0, hp: CIVILIAN.hp, walking: false }));
+    // One at a time, in the breaks: before wave 2, before wave 5, before the last (each a break earlier if two would
+    // share one). A fight of one wave has them there from the start.
+    const waves = this.plan.waves.length, appear = [2, 5, waves].slice(0, picked.length).map((k) => Math.min(Math.max(2, k), waves));
+    for (let k = appear.length - 2; k >= 0; k--) if (appear[k] >= appear[k + 1]) appear[k] = Math.max(2, appear[k + 1] - 1);
+    this.civilians = picked.map((s, id) => ({
+      id, x: ((s.street % w) + 0.5) * T, y: (Math.floor(s.street / w) + 0.5) * T, door: s.door, state: waves < 2 ? 'inside' : 'waiting', appear: appear[id] ?? 2,
+      held: 0, hp: CIVILIAN.hp, walking: false,
+    }));
   }
 
   /** Walks a civilian who is out toward (x, y): anywhere open, the safe zone too. */
@@ -495,6 +505,8 @@ export class World {
    *  by zombies touching them, and are safe once in the safe zone. */
   private updateCivilians(dt: number) {
     for (const c of this.civilians) {
+      // Turning up: in the break before their wave (or later, if that break went by unseen).
+      if (c.state === 'waiting' && (this.wave > c.appear - 2 || (this.wave === c.appear - 2 && this.breakLeft > 0))) c.state = 'inside';
       if (c.state === 'inside') {
         const guard = this.soldiers.some((s) => !s.dead && !s.owner && !s.walking && Math.hypot(s.x - c.x, s.y - c.y) <= CIVILIAN.reach);
         c.held = guard ? c.held + dt : Math.max(0, c.held - dt * 2);

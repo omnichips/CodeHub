@@ -45,13 +45,15 @@ export const MAPS: { id: string; name: string; data: MapData; waves: WavePlan }[
   { id: 'rome', name: 'Rome', data: { ...rome, evac: 'stairs' }, waves: waves.rome }, // Via Labicana bent into an M, the safe zone where it dips in the middle
   { id: 'tokyo', name: 'Tokyo', data: { ...tokyo, evac: 'queue' }, waves: waves.tokyo }, // Shibuya: the safe zone in the middle of the scramble crossing, the horde from every side
   { id: 'london', name: 'London', data: { ...london, evac: 'trucks' }, waves: waves.london }, // one long bridge, end to end, no buildings
-  { id: 'white-house', name: 'White House', data: whiteHouse, waves: waves['white-house'] }, // the last stand: one open lawn, the horde along one whole side
+  { id: 'white-house', name: 'White House', data: whiteHouse as MapData, waves: waves['white-house'] }, // the last stand: one open lawn, the horde along one whole side, tanks and APCs left on it
 ];
 /** Each city's weather and time of day, the same every fight. Rain and fog cut every soldier's range by the
  *  difficulty's `weather` share; the rest is only how it looks. */
 export type Weather = 'clear' | 'rain' | 'fog' | 'night' | 'dusk' | 'haze' | 'dust';
 export const WEATHER: Record<string, Weather> = { london: 'rain', chicago: 'fog', tokyo: 'night', rome: 'dusk', manila: 'haze', mexico: 'dust' };
 export const weatherOf = (id: string): Weather => WEATHER[id] ?? 'clear';
+/** A light rain over the city as well, only to look at (Tokyo's night). */
+export const drizzles = (id: string) => id === 'tokyo';
 export const blinds = (w: Weather) => w === 'rain' || w === 'fog';
 /** The weather in a few words, with what it does on the save's difficulty: "Rain: -5% range". */
 export function weatherLine(id: string) {

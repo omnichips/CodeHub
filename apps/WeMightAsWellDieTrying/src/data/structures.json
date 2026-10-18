@@ -39,6 +39,13 @@
       "detour": 60,
       "width": 2
     },
+    "jeepney": {
+      "name": "Abandoned jeepney",
+      "hp": 1600,
+      "length": 3,
+      "detour": 60,
+      "width": 2
+    },
     "bus": {
       "name": "Bus",
       "hp": 3000,

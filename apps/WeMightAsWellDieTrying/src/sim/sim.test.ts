@@ -567,3 +567,31 @@ test('the next wave can be called in early, between waves', () => {
   assert.equal(w.wave, 1);
   assert.equal(w.skips, 1);
 });
+
+test('abandoned armour is solid: zombies walk round it, never through, and nobody stands on it', () => {
+  const rows = ['S'.repeat(16), ...Array(14).fill('.'.repeat(16)), 'E'.repeat(16)];
+  const w = new World({ name: 't', tile: 16, par: 60, rows, solids: [{ kind: 'tank', tx: 2, ty: 6, vertical: false }, { kind: 'apc', tx: 9, ty: 6, vertical: false }] }, noWaves);
+  const solid = (x: number, y: number) => w.grid.wall[w.grid.at(x, y)] === 2;
+  assert.ok(solid(4 * 16, 7 * 16) && solid(10 * 16, 7 * 16));
+  const s = w.placeSoldier('rifleman', 4 * 16 + 8, 7 * 16 + 8);
+  assert.ok(!s || !solid(s.x, s.y), 'not on top of it');
+  if (s) w.removeSoldier(s);
+  for (let k = 0; k < 30; k++) w.spawn(0, 16 + k * 8, 8);
+  w.start();
+  run(w, 60, () => { for (let i = 0; i < w.n; i++) if (w.alive[i]) assert.ok(!solid(w.zx[i], w.zy[i]), `a zombie inside the armour at ${w.zx[i]},${w.zy[i]}`); });
+  assert.equal(w.leaks, 30, 'all of them found the way round');
+});
+
+test('civilians turn up one at a time, in the breaks before waves 2, 5 and the last', () => {
+  const rows = ['S'.repeat(30), ...Array(6).fill('.'.repeat(30)), '#'.repeat(26) + '....', ...Array(6).fill('.'.repeat(30)), 'E'.repeat(30)];
+  const waves = Array.from({ length: 8 }, () => ({ duration: 1, spawn: {} }));
+  const w = new World({ name: 't', tile: 16, par: 60, rows }, { gap: 2, waves });
+  w.placeCivilians(3);
+  assert.deepEqual(w.civilians.map((c) => c.appear), [2, 5, 8]);
+  assert.ok(w.civilians.every((c) => c.state === 'waiting'), 'nobody there before the fight');
+  w.start();
+  const seen: number[][] = [];
+  for (let k = 0; k < 60 * 40 && w.wave < 7; k++) { w.step(); seen.push([w.wave, w.civilians.filter((c) => c.state !== 'waiting').length]); }
+  const at = (n: number) => seen.find(([, there]) => there === n)?.[0]; // the wave index each turned up in the break after
+  assert.deepEqual([at(1), at(2), at(3)], [0, 3, 6]);
+});

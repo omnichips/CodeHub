@@ -4,13 +4,13 @@ import palette from '../data/palette.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
 import { RESCUED, VARIANTS } from '../art/sprites.ts';
 import { NODE, NODES, PACE, payout, build, type Build, type Payout } from '../meta/progress.ts';
-import { MAPS, blinds, persist, profile, weatherLine, weatherOf } from '../meta/profile.ts';
+import { MAPS, blinds, drizzles, persist, profile, weatherLine, weatherOf } from '../meta/profile.ts';
 import { DIFFICULTY, KEY_ACTIONS, MEMORIAL, type KeyAction } from '../meta/save.ts';
 import { keyName } from './settings.ts';
 import { award } from '../meta/medals.ts';
-import type { MapData } from '../sim/grid.ts';
+import { Grid, type MapData } from '../sim/grid.ts';
 import { ambience } from './ambience.ts';
-import { atmosphere, type Atmosphere } from './atmosphere.ts';
+import { atmosphere, darkOut, weatherShade, type Atmosphere } from './atmosphere.ts';
 import { DEBUG_EACH, DEBUG_MAP, DEBUG_STRIKES, debugView } from './debugmap.ts';
 import { Flames } from './flame.ts';
 import { mapAnims } from './mapanims.ts';
@@ -54,6 +54,7 @@ const MAX_ZOOM = 4;
 const HUD_TOP = 56, HUD_BOTTOM = 104; // screen pixels the status row and the bar cover, until the HUD is there to measure
 const LIFT = 36; // a finger drags things this far above itself, so it does not hide where they go
 const GRAB = { touch: 34, mouse: 22 }; // how near (screen pixels) a soldier or his handle has to be to pick it up
+const VEHICLES = new Set(['car', 'taxi', 'bus', 'jeepney']); // roadblocks that are vehicles: their headlights after dark
 const PENCIL = 0xe8e2cc; // the soldiers' cones, sketched in pencil
 const ZOMBIES_BY = Object.fromEntries(ZOMBIE_KINDS.map((k, i) => [k, ZOMBIES[i]]));
 /** Each zombie kind's looks (its own, then the variants in other clothes), each a walk of two frames. */
@@ -125,6 +126,9 @@ export class Game extends Phaser.Scene {
   civTip = false; // the tip for civilians is up (once a device)
   skipChips = 0; // what cutting breaks short paid
   atmos!: Atmosphere; // the weather and the light (game/atmosphere.ts)
+  shade: [number, number, number] = [1, 1, 1]; // the weather's darkening, as a tint for what stands above the ground
+  headlamps = false; // dark enough for headlights
+  beams = new Map<Roadblock, Phaser.GameObjects.Image[]>(); // each working vehicle's headlights
   gray?: Phaser.FX.ColorMatrix; // drains the colour as leaks mount
   grayAt = 0; // how drained it is now, 0 to 1
   peak = 0; // the most soldiers standing at once this fight, for the red at the screen's edges
@@ -180,7 +184,7 @@ export class Game extends Phaser.Scene {
     if (!this.debug) this.world.placeCivilians(3);
     this.civTip = !this.debug && this.world.civilians.length > 0 && !civTipSeen();
     if (this.unlimited) this.world.leakLimit = Infinity;
-    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, diffChips: 0, civ: undefined, civState: new Map(), civSprites: new Map(), civChips: 0, skipChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
+    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, beams: new Map(), diffChips: 0, civ: undefined, civState: new Map(), civSprites: new Map(), civChips: 0, skipChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
     this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
@@ -189,11 +193,13 @@ export class Game extends Phaser.Scene {
     const blood = profile.settings.gore !== 'none';
     // Only this map's painting is kept (Play again needs no new one): at their size, all of them would fill a phone.
     for (const k of this.textures.getTextureKeys()) if (k.startsWith('map-') && k !== `map-${m.id}-${blood}`) this.textures.remove(k);
-    const art = paintMap(this, m.data, this.world.grid, `map-${m.id}-${blood}`, blood);
+    const art = paintMap(this, m.data, new Grid(m.data), `map-${m.id}-${blood}`, blood); // the map as drawn: the world's own grid has the armour walled in
     this.add.image(0, 0, art).setOrigin(0);
     ambience(this, drawn.get(art) ?? [], Math.round(24 * QUALITY[profile.settings.quality].particles));
     this.animate = mapAnims(this, m.data, this.world.grid, drawn.get(art) ?? [], QUALITY[profile.settings.quality].particles, { scare: (x, y) => this.scare(x, y), planning: () => this.world.phase === 'plan' });
-    this.atmos = atmosphere(this, weatherOf(m.id), drawn.get(art) ?? [], this.world.grid.w * this.world.grid.tile, this.world.grid.h * this.world.grid.tile, QUALITY[profile.settings.quality].particles);
+    this.shade = weatherShade(weatherOf(m.id));
+    this.headlamps = darkOut(weatherOf(m.id));
+    this.atmos = atmosphere(this, weatherOf(m.id), drawn.get(art) ?? [], this.world.grid.w * this.world.grid.tile, this.world.grid.h * this.world.grid.tile, QUALITY[profile.settings.quality].particles, drizzles(m.id));
     this.floor = this.add.graphics().setDepth(1);
     this.top = this.add.graphics().setDepth(10);
     this.entries = this.findEntries();
@@ -391,6 +397,7 @@ export class Game extends Phaser.Scene {
       this.civState.set(c, c.state);
       if (was === undefined || was === c.state) continue;
       const look = () => this.cameras.main.pan(c.x, c.y, 350, 'Sine.easeInOut');
+      if (was === 'waiting' && c.state === 'inside') { this.hud.notice('Someone is still in there: hold the spot to bring them out', look); if (!this.muted) play('police'); }
       if (c.state === 'out' && this.civTip) { this.civTip = false; civTipDone(); }
       if (c.state === 'out') { this.hud.notice('A civilian is out: walk them to the safe zone', look); if (!this.muted) play('police'); this.civ = c; this.selected = undefined; }
       if (c.state === 'dead') { this.hud.notice('A civilian was killed', look); buzz(80); if (!this.muted) play('say-civ-scream', this.near(c.x, c.y)); if (this.civ === c) this.civ = undefined; }
@@ -1027,12 +1034,18 @@ export class Game extends Phaser.Scene {
       if (pieced) tiles.forEach((i, k) => sprites[k].setPosition(((i % gw) + 0.5) * T, (Math.floor(i / gw) + 0.5) * T).setRotation(turn));
       else if (block) sprites[0].setPosition(...w.blockCentre(o)).setRotation(turn);
       else sprites[0].setPosition((o as Structure).x, (o as Structure).y).setRotation(o.kind === 'rigged' ? (o as Structure).angle : 0);
-      if (block) {
-        const c = Math.round(255 * (0.5 + (0.5 * o.hp) / this.world.stats.roadblocks[o.kind].hp)); // darker as it breaks
-        for (const sp of sprites) sp.setTint(Phaser.Display.Color.GetColor(c, c, c));
+      // Darker as it breaks, and as dark as the weather makes the street round it (night in Tokyo).
+      const [sr, sg, sb] = this.shade, c = block ? 0.5 + (0.5 * o.hp) / this.world.stats.roadblocks[o.kind].hp : 1;
+      for (const sp of sprites) sp.setTint(Phaser.Display.Color.GetColor(Math.round(255 * c * sr), Math.round(255 * c * sg), Math.round(255 * c * sb)));
+      // A car, taxi, bus or jeepney still in working order, after dark: its headlights on, two beams ahead of it.
+      if (block && o.prop && this.headlamps && VEHICLES.has(o.kind)) {
+        let beams = this.beams.get(o);
+        if (!beams) this.beams.set(o, (beams = [-1, 1].map(() => this.add.image(0, 0, 'fx-light').setOrigin(0.06, 0.5).setBlendMode('ADD').setTint(0xfff0c4).setAlpha(0.32).setDepth(1.56))));
+        const [cx, cy] = w.blockCentre(o), half = (this.world.stats.roadblocks[o.kind].length * T) / 2, dx = Math.cos(turn), dy = Math.sin(turn);
+        beams.forEach((b, k) => b.setPosition(cx + dx * (half - 3) - dy * (k ? 7 : -7), cy + dy * (half - 3) + dx * (k ? 7 : -7)).setRotation(turn).setScale(0.75, 0.2));
       }
     }
-    for (const [o, sprites] of this.blocks) if (!things.includes(o)) { sprites.forEach((sp) => sp.destroy()); this.blocks.delete(o); }
+    for (const [o, sprites] of this.blocks) if (!things.includes(o)) { sprites.forEach((sp) => sp.destroy()); this.blocks.delete(o); this.beams.get(o as Roadblock)?.forEach((b) => b.destroy()); this.beams.delete(o as Roadblock); }
   }
 
   drawOverlay() {
@@ -1361,7 +1374,7 @@ export class Game extends Phaser.Scene {
       progress: waving ? { wave: Math.min(w.wave + 1, w.waves), waves: w.waves, done: w.kills + w.leaks, left: w.left } : undefined,
       card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? this.cardOf(sel) : undefined,
       end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals, sketch: (this.sketch ??= this.sketchMap()) },
-      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : this.civTip && waving ? CIV_TIP : '',
+      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : this.civTip && waving && w.civilians.some((c) => c.state === 'inside') ? CIV_TIP : '',
       breakLeft: w.breakLeft / PACE,
     });
   }

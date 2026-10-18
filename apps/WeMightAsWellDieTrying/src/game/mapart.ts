@@ -7,7 +7,7 @@
 // a map always looks the same.
 import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
-import { BUILDING, distanceField, type Grid, type MapData } from '../sim/grid.ts';
+import { BUILDING, SOLIDS, distanceField, type Grid, type MapData } from '../sim/grid.ts';
 
 const P = palette;
 const LANES = 10; // the most lanes a road can have; wider than that both ways is a crossing
@@ -117,6 +117,25 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
   const runX = (x: number, y: number) => { let a = x, b = x; while (isRoad(a - 1, y)) a--; while (isRoad(b + 1, y)) b++; return [a, b]; };
   const runY = (x: number, y: number) => { let a = y, b = y; while (isRoad(x, a - 1)) a--; while (isRoad(x, b + 1)) b++; return [a, b]; };
   /** Where two roads cross: the road runs on a long way both across and down. */
+  /** Which way the road at tile (x, y) runs, for something parked along it: 0 east-west, π/2 north-south; undefined
+   *  on a crossing (it runs both ways) or off the road. */
+  const roadAngle = (x: number, y: number) => {
+    if (!isRoad(x, y) || crossing(x, y)) return undefined;
+    const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y);
+    return b2 - a2 > b1 - a1 ? Math.PI / 2 : 0;
+  };
+  /** How many tiles in a row (this one among them) the road at (x, y) runs on the same width: lane lines only on a
+   *  stretch long enough to need them, not a stub of a few tiles where a lane opens out. */
+  const evenFor = (x: number, y: number, vertical: boolean, ax: number, bx: number, ay: number, by: number) => {
+    let n = 1;
+    for (const d of [-1, 1])
+      for (let k = 1; k <= 6 * S; k++) {
+        const xx = vertical ? x : x + d * k, yy = vertical ? y + d * k : y;
+        if (!isRoad(xx, yy) || (vertical ? runX(xx, yy).join() !== [ax, bx].join() : runY(xx, yy).join() !== [ay, by].join())) break;
+        n++;
+      }
+    return n;
+  };
   const crossing = (x: number, y: number) => { if (!isRoad(x, y)) return false; const [a1, b1] = runX(x, y), [a2, b2] = runY(x, y); return b1 - a1 >= LANES * S && b2 - a2 >= LANES * S; };
 
   // ---- Buildings: each connected block, and brownstones and shops cut into lots a few tiles wide ----
@@ -143,6 +162,17 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       return r * 1e6 + row * 1000 + Math.floor((x + shift) / width);
     }
     return t === 'b' || t === 'h' || t === 'k' ? Math.floor(x / (4 * S)) * 100000 + r : t === 'x' ? Math.floor(x / (3 * S)) * 100000 + r : r;
+  };
+  /** Whether the building's outside wall on side (dx, dy) of tile (x, y) runs on for only a step (4S tiles or less):
+   *  part of a staircase on the slant, not a wall. */
+  const shortWall = (x: number, y: number, dx: number, dy: number) => {
+    // How far the wall runs on each way along that side, and what is past its end.
+    const along = (d: number) => { let k = 1; while (k <= 4 * S) { const xx = x + (dy ? d * k : 0), yy = y + (dx ? d * k : 0); if (!built(xx, yy) || built(xx + dx, yy + dy)) break; k++; } return k; };
+    const a = along(-1), b = along(1);
+    if (a + b - 1 > 4 * S) return false;
+    // A step: past an end the building carries on, stepped out (or the ground steps in), rather than turning a corner.
+    const past = (d: number, k: number) => { const xx = x + (dy ? d * k : 0), yy = y + (dx ? d * k : 0); return built(xx + dx, yy + dy); };
+    return past(-1, a) || past(1, b);
   };
   const patch = (x: number, y: number, list: string[]) => list[Math.abs(Math.imul(lot(x, y), 2654435761) >>> 7) % list.length];
   const same = (x: number, y: number, x2: number, y2: number) => built(x2, y2) && (x2 < 0 || y2 < 0 || x2 >= w || y2 >= h || lot(x, y) === lot(x2, y2));
@@ -247,7 +277,10 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       if (r() < 0.06) rect('rgba(60,40,30,0.3)', px + r() * 10, py + r() * 10, 4, 3); // a tile cracked or slipped
     }
     else for (let k = 0; k < T; k += 3) { rect(roof.light, px + k, py, 1, T); rect(roof.dark, px + k + 1, py, 1, T); } // corrugated ribs
-    const edgeN = !same(x, y, x, y - 1), edgeS = !same(x, y, x, y + 1), edgeW = !same(x, y, x - 1, y), edgeE = !same(x, y, x + 1, y);
+    // An edge that is one step of a staircase (the building on the slant) gets no parapet or wall of its own: the slant
+    // cut across its steps draws its edge (see the corners below), and the steps' own would show as teeth.
+    const step = (dx: number, dy: number) => !built(x + dx, y + dy) && shortWall(x, y, dx, dy);
+    const edgeN = !same(x, y, x, y - 1) && !step(0, -1), edgeS = !same(x, y, x, y + 1) && !step(0, 1), edgeW = !same(x, y, x - 1, y) && !step(-1, 0), edgeE = !same(x, y, x + 1, y) && !step(1, 0);
     // A parapet where the roof ends: lit on the top and left, in shade on the bottom and right. Shanties have none,
     // only a dark seam where one tin roof meets the next.
     if (t === 'y') {
@@ -259,7 +292,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       if (edgeS) rect(P.pave0, px, py + T - 2, T, 2);
       if (edgeE) rect(P.pave0, px + T - 2, py, 2, T);
     }
-    if (!built(x, y + 1)) wallFace(roof.front, x, px, py, r);
+    if (!built(x, y + 1) && !step(0, 1)) wallFace(roof.front, x, px, py, r);
     else if (!edgeN && !edgeS && !edgeW && !edgeE && roof.texture !== 'deck') clutter(px, py, r);
     if (roof.texture === 'ribs' && !edgeN && !edgeS && (x + y * 3) % 7 === 0) { rect(P.outline, px + 3, py + 4, 10, 8); rect(P.cloth1, px + 4, py + 5, 8, 6); rect(P.cloth2, px + 4, py + 5, 8, 1); } // a skylight
   };
@@ -355,7 +388,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           (dx ? runY(x - dx * k, y).join() === [ay, by].join() : runX(x, y - dy * k).join() === [ax, bx].join()));
         if (vertical && (into(0, -1) || into(0, 1))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 1, py + 2 + k * 5, T - 2, 2);
         else if (flat && (into(-1, 0) || into(1, 0))) for (let k = 0; k < 3; k++) rect(P.pave1, px + 2 + k * 5, py + 1, 2, T - 2);
-        else if ((vertical || flat) && straight && (vertical ? across : down) >= 2 * S) {
+        else if ((vertical || flat) && straight && (vertical ? across : down) >= 2 * S && evenFor(x, y, vertical, ax, bx, ay, by) >= 6 * S) {
           // Marked as a two-way road: an even number of lanes about S tiles wide each, a double yellow line down the very
           // middle, white dashes between the lanes each way. An alley narrower than two lanes has none.
           const [a, b, along] = vertical ? [ax, bx, y] : [ay, by, x], width = (b - a + 1) * T, lanes = Math.max(2, Math.round((b - a + 1) / S / 2) * 2);
@@ -409,12 +442,12 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     }
 
   // ---- Corners, where two kinds of ground meet (buildings counting as one), so they join up and do not look tiled ----
-  // A step of a staircase edge (a street or path on the slant, built of tiles) is cut along its own length on one side
-  // only, so the steps' cuts join into one straight slant. A real corner (its edges longer than S tiles) is cut S tiles
+  // A staircase edge (a street or path on the slant, built of tiles) has every step's corner cut from halfway along one
+  // edge to halfway along the other, on both kinds' corners: the cuts meet at each edge's middle, so they join into one
+  // slant whatever the steps' lengths (a slope that is not 45° steps 2, 1, 2...). A real corner (its edges longer than S tiles) is cut S tiles
   // back on the slant, or, a building's, rounded off (only drawn: the building still stands to its square corner). The
   // other kind fills the cut, edged with a curb or a stone rim; a sidewalk's corner at a junction gets a traffic light.
   const kindOf = (x: number, y: number) => (built(x, y) && x >= 0 && y >= 0 && x < w && y < h ? 'house' : ground(x, y));
-  const RANK: Record<string, number> = { house: 0, green: 1, side: 2, plaza: 3, road: 4 }; // on a staircase the lower one gives way
   /** Tile (tx, ty) painted as kind B, as its neighbour (bx, by), of map letter `cc`, is (a lawn keeps its mown stripes,
    *  a roof its building's look). */
   const fill = (cc: string, B: string, tx: number, ty: number, r: () => number, bx: number, by: number) => {
@@ -438,20 +471,21 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         if ((A === 'side' && B === 'plaza') || (A === 'plaza' && B === 'side')) continue; // one paving
         // How far each edge runs back from the corner with B beside it, and whether it then steps out (a staircase).
         let lx = 0, ly = 0;
-        while (lx <= 2 * S && kindOf(x - sx * lx, y) === A && kindOf(x - sx * lx, y + sy) === B) lx++;
-        while (ly <= 2 * S && kindOf(x, y - sy * ly) === A && kindOf(x + sx, y - sy * ly) === B) ly++;
-        const stepX = lx <= 2 * S && kindOf(x - sx * lx, y + sy) === A, stepY = ly <= 2 * S && kindOf(x + sx, y - sy * ly) === A;
+        // (A step runs up to STEP tiles; a building's, on a gentle slope, up to twice that.)
+        const STEP = A === 'house' || B === 'house' ? 4 * S : 2 * S;
+        while (lx <= STEP && kindOf(x - sx * lx, y) === A && kindOf(x - sx * lx, y + sy) === B) lx++;
+        while (ly <= STEP && kindOf(x, y - sy * ly) === A && kindOf(x + sx, y - sy * ly) === B) ly++;
+        const stepX = lx <= STEP && kindOf(x - sx * lx, y + sy) === A, stepY = ly <= STEP && kindOf(x + sx, y - sy * ly) === A;
         const stair = stepX && stepY;
-        if (stair && RANK[A] > RANK[B]) continue;
         // A step is cut its whole length each way, so the slant matches the staircase's slope. A lone jog (an edge that
         // shifts sideways: a short edge between two long ones) has two corners, one each way; each is cut half the
         // jog back along both edges, so the two cuts meet in one slant across the middle of the jog. Every edge of a
         // street (curb, building line) jogging together then slants across the same rows, keeping its width.
-        const jog = !stair && ((stepX && ly > 2 * S) || (stepY && lx > 2 * S)), round = A === 'house' && !stair && !jog;
+        const jog = !stair && ((stepX && ly > STEP) || (stepY && lx > STEP)), round = A === 'house' && !stair && !jog;
         if (D !== B && !jog) continue;
-        if (B === 'house' && !jog) continue; // a building only gives way to the ground at a jog's other corner
+        if (B === 'house' && !jog && !stair) continue; // a building only gives way to the ground at a jog's other corner, or on a slant
         const half = (stepX ? lx : ly) / 2;
-        const cx = stair ? lx : jog ? half : Math.min(lx, S), cy = stair ? ly : jog ? half : Math.min(ly, S);
+        const cx = stair ? lx / 2 : jog ? half : Math.min(lx, S), cy = stair ? ly / 2 : jog ? half : Math.min(ly, S);
         const px = (sx > 0 ? x + 1 : x) * T, py = (sy > 0 ? y + 1 : y) * T; // the corner point
         const ax = px - sx * cx * T, by = py - sy * cy * T; // the cut's ends, back along each edge
         const R = S * T, ox = px - sx * R, oy = py - sy * R; // a rounded corner's centre
@@ -1017,6 +1051,12 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     disc(P.metal2, x, y, 2.5);
   };
   const shown: Drawn[] = [];
+  /** Vehicles standing in the street (the ones to be moved, then each burned one drawn), a circle each: where no other
+   *  burned one is put. */
+  const parked: [number, number, number][] = (map.props ?? []).filter((p) => p.kind === 'car' || p.kind === 'taxi' || p.kind === 'bus' || p.kind === 'jeepney').map((p) => {
+    const len = p.kind === 'bus' ? 5 : 3; // its tile is the middle of its length, the second tile across it (World.blockCentre)
+    return [(p.tx + (p.vertical ? 1 : 0.5)) * T, (p.ty + (p.vertical ? 0.5 : 1)) * T, len * T * 0.5];
+  });
   drawn.set(key, shown);
   /** Things drawn at a size of their own (the grounds' furniture: fountains, beds, the court) grow with the map. */
   const GROWS = ['fountain', 'flowers', 'helipad', 'flag', 'court', 'laundry'];
@@ -1121,8 +1161,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
       for (let k = 0; k < 16; k++) { const a = r() * 7, rr = 9 + r() * 6, s = 1 + ((r() * 3) | 0); rect([P.pave1, P.khaki0, P.brown0, P.metal1][k % 4], x + Math.cos(a) * rr, y + Math.sin(a) * rr, s, s); }
     } else if (d.kind === 'burnt') {
       // A car burned out where it stopped in the street.
-      disc('rgba(10,10,10,0.45)', x, y, 16);
-      stamp(`car/${(x + y) % 3}`, x, y, r() * 0.8 - 0.4 + (r() < 0.5 ? 0 : Math.PI / 2), 0.66);
+      const along = roadAngle(Math.floor(x / T), Math.floor(y / T));
+      burntCar(x, y, along === undefined ? r() * 0.8 - 0.4 + (r() < 0.5 ? 0 : Math.PI / 2) : along + (r() - 0.5) * 0.25 + (r() < 0.5 ? 0 : Math.PI), r, false, undefined, true); // where the map put it
     } else if (d.kind === 'laundry') {
       // Washing hung on a line across an alley.
       rect('rgba(0,0,0,0.25)', x - 14, y + 2, 30, 1); rect(P.metal2, x - 15, y, 30, 1);
@@ -1159,6 +1199,12 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
 
   cityProps();
   storytelling();
+  // Abandoned armour where the map has it: a tank or an APC, dust kicked up round it, parked along its length.
+  for (const s of map.solids ?? []) {
+    const [len, across] = SOLIDS[s.kind], [sw, sh] = s.vertical ? [across, len] : [len, across], x = (s.tx + sw / 2) * T, y = (s.ty + sh / 2) * T, r = rng(seedOf(s.tx, s.ty, 57));
+    disc('rgba(40,34,24,0.35)', x + 3, y + 3, Math.max(sw, sh) * T * 0.55); // churned-up ground, its shadow
+    stamp(`${s.kind}/0`, x, y, (s.vertical ? Math.PI / 2 : 0) + (r() < 0.5 ? 0 : Math.PI), 0.12);
+  }
 
   // Traffic lights at the junctions' corners: a dark three-light head on its post (lit by game/mapanims.ts).
   for (const s of signals) {
@@ -1209,10 +1255,11 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           rect(P.outline, px + 2, py + T - 9, 12, 4); rect(col, px + 3, py + T - 8, 10, 2);
           shown.push({ kind: 'neon', x: px + 8, y: py + T - 7, n: parseInt(col.slice(1), 16) });
         }
-        // In the road, along it: a jeepney left where it stopped.
+        // In the road, along it: a jeepney burned out where it stopped.
         if (city === 'Manila' && road[i] && r() < 0.006) {
-          const [a, b] = runX(x, y), along = b - a > 4 * S; // which way the road runs
-          jeepney(px + T / 2, py + T / 2, along ? 0 : Math.PI / 2, r);
+          // (The ones that can still be moved are props in the map: these burned where they stopped.)
+          const along = roadAngle(x, y);
+          if (along !== undefined) burntCar(px + T / 2, py + T / 2, along + (r() < 0.5 ? 0 : Math.PI), r, false, 'jeepney/0');
         }
       }
     // Main Street: a diner with its chrome and neon, a gas station's pumps under their canopy. New York: yellow cabs, steam
@@ -1235,7 +1282,8 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           rect('rgba(0,0,0,0.3)', px - 6 + 3, py - 10 + 3, 3 * T, 12); rect(P.outline, px - 7, py - 11, 3 * T + 2, 14); rect('#e2dccb', px - 6, py - 10, 3 * T, 12); rect('#c9473a', px - 6, py - 10, 3 * T, 3); // the canopy
           for (const k of [0, 1, 2]) box(px - 2 + k * 15, py + 6, 5, 7, ['#c9473a', '#3f5a7a', '#4f8a86'][k], '#f2f2ea'); // the pumps
         }
-        if (city === 'New York' && road[i] && r() < 0.005) cab(cx, cy, runX(x, y)[1] - runX(x, y)[0] > 4 * S ? 0 : Math.PI / 2);
+        // New York: more of its cabs, burned where they stopped (the ones still whole are props in the map, to be moved).
+        if (city === 'New York' && roadAngle(x, y) !== undefined && r() < 0.005) burntCar(cx, cy, roadAngle(x, y)! + (r() < 0.5 ? 0 : Math.PI), r, false, 'taxi/0');
         if (city === 'New York' && road[i] && r() < 0.0025) {
           // A Con Ed stack: orange and white, steam pouring off it.
           disc('rgba(0,0,0,0.35)', cx + 2, cy + 2, 4); disc(P.outline, cx, cy, 4); disc('#f08a28', cx, cy, 3.2); rect('#f2f2ea', cx - 3, cy - 1, 6, 2);
@@ -1246,7 +1294,7 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           rect('rgba(0,0,0,0.35)', cx + 1, cy - 1, 3, 12); rect(P.metal1, cx - 1, cy - 10, 2, 12); box(cx - 4, cy - 13, 8, 4, P.metal1, '#f2f2ea');
           shown.push({ kind: 'flood', x: cx, y: cy });
         }
-        if (city === 'White House' && road[i] && service < 4 && r() < 0.006) { service++; suv(cx, cy, runX(x, y)[1] - runX(x, y)[0] > 4 * S ? 0 : Math.PI / 2); }
+        if (city === 'White House' && roadAngle(x, y) !== undefined && service < 4 && r() < 0.006) { service++; suv(cx, cy, roadAngle(x, y)! + (r() < 0.5 ? 0 : Math.PI)); }
       }
     // Mexico City: strings of papel picado across the Zocalo, every few rows of it.
     if (city === 'Mexico City')
@@ -1268,15 +1316,6 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         }
   }
 
-  /** A New York cab from above: yellow, the checker strip, the light on its roof. */
-  function cab(x: number, y: number, a: number) {
-    c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S); // a car's size on a map drawn S times over
-    rect('rgba(0,0,0,0.35)', -9, -3, 20, 9); rect(P.outline, -11, -5, 22, 10); rect('#f0c030', -10, -4, 20, 8);
-    rect('#2c2e30', -4, -3, 9, 6); rect('#f0c030', -2, -3, 4, 6); // windows, the roof between
-    for (let k = -10; k < 10; k += 2) rect(k % 4 ? '#141516' : '#f2f2ea', k, -4, 2, 1); // checkers
-    rect('#f2f2ea', -1, -1, 3, 2); // the roof light
-    c.restore();
-  }
   /** A Secret Service car from above: black, tinted glass, red and blue lights in the grille. */
   function suv(x: number, y: number, a: number) {
     c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S);
@@ -1286,17 +1325,29 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
     c.restore();
   }
 
-  /** A jeepney from above: long, painted loud, chrome on the bonnet, a roof rack. */
-  function jeepney(x: number, y: number, a: number, r: () => number) {
-    const L = 22, B = 9, body = ['#c9473a', '#3f5a7a', '#f0c860', '#4f8a86', '#e2dccb'][(r() * 5) | 0];
-    c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S);
-    rect('rgba(0,0,0,0.35)', -L / 2 + 2, -B / 2 + 2, L, B);
-    rect(P.outline, -L / 2 - 1, -B / 2 - 1, L + 2, B + 2);
-    rect(body, -L / 2, -B / 2, L, B);
-    rect('#dcddd3', L / 2 - 5, -B / 2, 5, B); rect('#9aa0a4', L / 2 - 4, -B / 2 + 1, 3, B - 2); // the chrome bonnet
-    rect('#2c2e30', -L / 2 + 2, -B / 2 + 1, L - 9, B - 2); for (let k = -L / 2 + 3; k < L / 2 - 8; k += 3) rect('#5a6064', k, -B / 2 + 1, 1, B - 2); // the roof rack
-    for (let k = -L / 2; k < L / 2 - 5; k += 4) dot(['#f0c860', '#c9473a', '#4fb0e0'][(k + 20) % 3], k, -B / 2); // its stripes
+
+  /** A car burned out where it stopped, along the street (`a`): a scorch under it, the shell blackened, rust and ash
+   *  on it, glass gone; `door`: one door hanging open, charred. Only drawn: it is not a car that can be moved. */
+  function burntCar(x: number, y: number, a: number, r: () => number, door: boolean, model?: string, force = false) {
+    // Not on top of another vehicle: one already burned here, or one standing in the street to be moved.
+    if (!force && parked.some(([px, py, pr]) => Math.hypot(px - x, py - y) < pr + 26)) return false;
+    parked.push([x, y, 26]);
+    // Whatever it was before it burned: one of the wrecks, a taxi, a sedan (in Manila a jeepney too). A taxi's or a
+    // jeepney's paint still shows through the soot.
+    const MODELS = ['car/0', 'car/1', 'car/2', 'taxi/0', 'sedan/0', 'sedan/1', 'sedan/3', ...(map.name === 'Manila' ? ['jeepney/0', 'jeepney/0'] : [])];
+    const pick = model ?? MODELS[Math.floor(r() * MODELS.length)], soot = pick === 'taxi/0' || pick === 'jeepney/0' ? 0.45 + r() * 0.1 : 0.7 + r() * 0.12;
+    disc('rgba(10,10,10,0.45)', x, y, 9 * S);
+    for (let k = 0; k < 10; k++) dot('rgba(20,18,16,0.5)', x + (r() - 0.5) * 22 * S, y + (r() - 0.5) * 22 * S, 1 + r() * 2); // soot round it
+    stamp(pick, x, y, a, soot);
+    c.save(); c.translate(x, y); c.rotate(a);
+    for (let k = 0; k < 14; k++) dot(r() < 0.5 ? '#6a3a22' : r() < 0.5 ? '#3a3632' : '#8a6a4a', (r() - 0.5) * 34, (r() - 0.5) * 18, r() < 0.3 ? 2 : 1); // rust and ash
+    rect('#141210', 3, -9, 6, 18); rect('#141210', -13, -8, 5, 16); // the glass gone, black holes
+    if (door) { rect(P.outline, -2, 13, 10, 4); rect('#2a2624', -1, 14, 8, 2); } // a door hanging open
     c.restore();
+    // A quarter of them still burning, a quarter smoking, the rest gone cold (game/ambience.ts sets them going).
+    const left = rng(seedOf(Math.round(x), Math.round(y), 17))();
+    if (left < 0.5) shown.push({ kind: left < 0.25 ? 'carfire' : 'carsmoke', x, y });
+    return true;
   }
 
   /** What people left as they ran: cars with their doors hanging open, suitcases dropped short of the camp, chalk
@@ -1309,13 +1360,9 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         const i = y * w + x, r = rng(seedOf(x, y, 91)), px = x * T, py = y * T, cx = px + T / 2, cy = py + T / 2;
         if (wall[i] || goal[i] || fade(x, y) > 0.4 || !Number.isFinite(way[i])) continue;
         // A car left in the road, a door open, something spilled from it.
-        if (road[i] && r() < 0.0025) {
-          const across = runX(x, y)[1] - runX(x, y)[0] > 4 * S, ang = across ? 0 : Math.PI / 2;
-          stamp(`car/${(x * 7 + y) % 3}`, cx, cy, ang + (r() < 0.5 ? 0 : Math.PI), 0.25);
-          c.save(); c.translate(cx, cy); c.rotate(ang);
-          rect(P.outline, -1, 4, 6, 4); rect(P.metal1, 0, 5, 5, 2); // the door, swung out
-          c.restore();
-          dot(P.cloth2, cx + 7, cy + 7, 2); dot(P.khaki1, cx + 9, cy + 5);
+        const along = roadAngle(x, y);
+        if (along !== undefined && r() < 0.0025 && burntCar(cx, cy, along + (r() - 0.5) * 0.2 + (r() < 0.5 ? 0 : Math.PI), r, true)) {
+          dot(P.cloth2, cx + 7, cy + 7, 2); dot(P.khaki1, cx + 9, cy + 5); // something spilled from it
         }
         // Suitcases dropped a few tiles short of the camp.
         if (way[i] > 2 && way[i] < 6 * S && r() < 0.035) {

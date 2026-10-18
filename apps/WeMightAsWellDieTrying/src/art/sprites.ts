@@ -345,6 +345,18 @@ const CIVS: Civ[] = [
 ];
 /** The looks of the civilians to bring out, as `civ<k>-walk` sprites. */
 export const RESCUED = [10, 11, 12];
+/** An umbrella from above, held over its owner: the canopy, six ribs out from the tip in a deeper shade of it, a
+ *  point at each one's end (the rim scalloped between them), the tip in the middle. */
+const RIB: Record<string, string> = { snow: 'urban', navy: 'black', red: 'maroon' };
+function umbrella(mat: string): Part[] {
+  const ribs = Array.from({ length: 6 }, (_, k) => (k * Math.PI) / 3 + Math.PI / 6);
+  return [
+    c(mat, [1, 0], 6.2, 9, 2),
+    ...ribs.map((a): Part => c(RIB[mat] ?? 'black', [1 + Math.cos(a) * 1.5, Math.sin(a) * 1.5], 0.5, 11.2, 0, [1 + Math.cos(a) * 6.2, Math.sin(a) * 6.2])), // the ribs
+    ...ribs.map((a) => c(mat, [1 + Math.cos(a) * 6.7, Math.sin(a) * 6.7], 0.7, 9.2, 0.3)), // their points, out past the rim
+    c('metal', [1, 0], 0.7, 11.6),
+  ];
+}
 function civilian(l: Civ, s: number): Part[] {
   const parts = person(l, s);
   return l.small ? parts.map((p) => ({ ...p, a: [p.a[0] * 0.72, p.a[1] * 0.72] as Vec, b: p.b && ([p.b[0] * 0.72, p.b[1] * 0.72] as Vec), r: p.r * 0.75, z: p.z * 0.8 })) : parts;
@@ -358,7 +370,7 @@ function person(l: Civ, s: number): Part[] {
     ...(l.carry ? [c(l.carry, [1.5 - s, 6.6], 1.5, 3.6, 0.8, [4 - s, 6.6])] : []),
     c('skin', [0.6, 0], 2.9, 5.4, 2.2), c(l.hair, [-0.5, 0], 2.7, 6, 2),
     ...(l.hat ? [c(l.hat, [0, 0], 3.3, 6.6, 1.4)] : []),
-    ...(l.umbrella ? [c(l.umbrella, [1, 0], 6.2, 9, 2), c('metal', [1, 0], 0.6, 11.2)] : []),
+    ...(l.umbrella ? umbrella(l.umbrella) : []),
     ...(l.cane ? [c('brown', [2.5 + s, 5.6], 0.7, 3.8, 0, [5.5 + s, 6.2])] : []),
     ...(l.cross ? [c('red', [-1.6, -2], 0.6, 4.2, 0, [-1.6, 2]), c('red', [-3.2, 0], 0.6, 4.2, 0, [0, 0])] : []),
   ];
@@ -456,8 +468,75 @@ const campfire = (): Part[] => [
 /** A sleeping bag with someone in it, head east; the bag's colour. */
 const sleepingBag = (mat: string): Part[] => [c(mat, [-9, 0], 3.6, 2, 1.5, [5, 0]), c(mat, [-9, 0], 3, 2.8, 1), c('skin', [8, 0], 2.3, 3.2, 1.5), c('brown', [9, 0], 2.1, 3.5, 1)];
 
+/** An abandoned M1-style tank from above, nose east, five tiles long and three across: tracks down both sides with
+ *  their treads and road wheels, the hull with its sloped glacis and engine-deck grilles, stowage baskets, the turret
+ *  turned a little off the line with its long gun, the commander's hatch thrown open, the loader's machine gun, smoke
+ *  launchers, tow cables, mud on the skirts. */
+function tank(): Part[] {
+  const treads = Array.from({ length: 26 }, (_, k) => -37.5 + k * 3).flatMap((x) => [c('metal', [x, -20.4], 0.5, 2.3, 0, [x, -14.8]), c('metal', [x, 14.8], 0.5, 2.3, 0, [x, 20.4])]);
+  const wheels = [-28, -19, -10, -1, 8, 17, 26].flatMap((x) => [c('urban', [x, -17.6], 2, 2.6, 1), c('urban', [x, 17.6], 2, 2.6, 1), c('black', [x, -17.6], 0.7, 3)]);
+  const turn = 0.18, cs = Math.cos(turn), sn = Math.sin(turn), t = (x: number, y: number): Vec => [-4 + x * cs - y * sn, x * sn + y * cs]; // turret frame, turned off the hull's line
+  return [
+    ...slab('black', -39, 39, 3.2, 2, 1.5, -17.6), ...slab('black', -39, 39, 3.2, 2, 1.5, 17.6), ...treads, ...wheels, // the tracks, their road wheels
+    c('brown', [-20, -19], 1.4, 3.4), c('brown', [10, 19], 1.6, 3.4), c('brown', [26, -18], 1.2, 3.4), // mud caked on them
+    ...slab('desert', -35, 34, 13, 4, 3), // the hull, in desert sand
+    ...slab('vest', 25, 37, 12, 3.8, 2), c('vest', [37, -10], 0.7, 4.1, 0, [37, 10]), // the glacis, sloping down to the nose
+    ...slab('black', -34, -21, 10, 4.1, 1.5), ...[-32, -29, -26, -23].map((x) => c('metal', [x, -9], 0.5, 4.3, 0, [x, 9])), // the engine deck's grilles
+    c('pack', [-30, -15], 1.2, 4.6, 0, [-20, -15]), c('pack', [-30, 15], 1.2, 4.6, 0, [-20, 15]), // tow cables
+    { mat: 'desert', a: t(-14, 0), b: t(10, 0), r: 10, z: 6, dome: 2 }, // the turret
+    { mat: 'vest', a: t(-17, -8), b: t(-17, 8), r: 3, z: 6.5, dome: 1 }, // its bustle basket
+    ...[-12, -6].map((x): Part => ({ mat: 'pack', a: t(x, -9), r: 1.6, z: 7.2, dome: 1 })), ...[-14, -8].map((x): Part => ({ mat: 'tube', a: t(x, 8.5), r: 1.5, z: 7.2, dome: 1 })), // kit stowed on it
+    { mat: 'metal', a: t(10, 0), b: t(44, 0), r: 1.4, z: 8, dome: 0.5 }, { mat: 'black', a: t(42, 0), b: t(46, 0), r: 1.9, z: 8.2, dome: 0.5 }, // the gun, its muzzle
+    { mat: 'vest', a: t(8, -4), b: t(8, 4), r: 2.2, z: 7, dome: 1 }, // the mantlet
+    { mat: 'hole', a: t(-6, -4.5), r: 2.4, z: 7.4 }, { mat: 'desert', a: t(-7.5, -8.5), r: 2.4, z: 8.4, dome: 0.5 }, // the commander's hatch, thrown open
+    { mat: 'black', a: t(-4, 5), b: t(4, 6), r: 0.7, z: 8.6 }, // the loader's machine gun
+    ...[-1, 1].map((s): Part => ({ mat: 'tube', a: t(4, 9 * s), b: t(7, 9.5 * s), r: 1, z: 7.6 })), // smoke launchers
+    c('lens', [30, -8], 0.8, 4.6), c('lens', [30, 8], 0.8, 4.6), // the driver's periscopes
+  ];
+}
+
+/** An abandoned eight-wheeled APC from above, nose east, four tiles long and three across: the wheels, a boxy hull
+ *  sloping to its nose, the trim vane folded on the front, hatches on the roof (one open), a small turret with its
+ *  cannon, the rear doors, stowage and jerry cans, smoke dischargers, aerials. */
+function apc(): Part[] {
+  return [
+    ...[-22, -10, 10, 22].flatMap((x) => [c('shoe', [x, -17], 3.6, 2, 1), c('shoe', [x, 17], 3.6, 2, 1), c('metal', [x, -17.5], 1.2, 2.6), c('metal', [x, 17.5], 1.2, 2.6)]), // eight wheels, their hubs
+    ...slab('urban', -30, 28, 14, 4, 3), ...slab('metal', 22, 31, 12.5, 3.6, 3), // the hull in urban grey, its nose sloping down
+    c('black', [30, -10], 0.8, 4.2, 0, [30, 10]), // the trim vane folded on the front
+    c('lens', [24, -6], 0.9, 4.4), c('lens', [24, -2], 0.9, 4.4), c('lens', [24, 6], 0.9, 4.4), // the driver's periscopes
+    ...slab('metal', -30, -26, 10, 4.3, 1), c('black', [-30.5, 0], 0.5, 4.4, 0, [-30.5, 9]), // the rear doors, a handle
+    c('hole', [-18, 7], 3, 4.6), c('urban', [-18, 12.5], 2.6, 5, 0.5), c('metal', [-8, 7], 2.8, 4.6, 1), // roof hatches: one thrown open
+    ...slab('metal', -3, 9, 7, 5.6, 2.5), c('metal', [9, 0], 0.9, 6.4, 0, [26, 0]), c('black', [24, 0], 1.2, 6.5, 0, [27, 0]), // the turret, its cannon
+    c('tube', [3, -7], 1, 6, 0, [6, -8]), c('tube', [3, 7], 1, 6, 0, [6, 8]), // smoke dischargers
+    c('pack', [-26, -13], 1.6, 4.7, 0, [-14, -13]), c('tube', [-26, 13], 1.8, 4.8), c('tube', [-22, 13], 1.8, 4.8), // stowage, jerry cans
+    c('black', [-24, -8], 0.4, 5, 0, [-27, -9]), c('black', [-22, -9], 0.4, 5, 0, [-26, -11]), // aerials, laid down
+    c('brown', [16, -15], 1.6, 4.3), c('brown', [-6, 14], 1.4, 4.3), // mud
+  ];
+}
+
+/** A Manila jeepney from above, nose east, three tiles long and two across: a long body painted loud, stripes down
+ *  both sides, a white roof with its rails and luggage tied on, the windscreen, a chrome bonnet with its silver horses,
+ *  lamps and a bumper, mirrors out wide, the open step at the back. */
+function jeepney(): Part[] {
+  const stripes = ['hivis', 'navy', 'teal', 'red', 'snow'];
+  return [
+    ...([[-15, -13], [13, -13], [-15, 13], [13, 13]] as const).map((p) => c('shoe', p, 3, 1.5, 0.5)),
+    ...slab('red', -23.3, 23.3, 12.3, 3, 3),
+    ...[-21, -16, -11, -6, -1, 4].flatMap((x, k) => [c(stripes[k % 5], [x, -12], 1, 3.4, 0, [x + 3, -12]), c(stripes[(k + 2) % 5], [x, 12], 1, 3.4, 0, [x + 3, 12])]),
+    ...slab('snow', -22, 8, 9.5, 4.6, 2), c('metal', [-22, -9.5], 0.6, 4.9, 0, [8, -9.5]), c('metal', [-22, 9.5], 0.6, 4.9, 0, [8, 9.5]), // the roof, its rails
+    ...slab('brown', -20, -14, 5, 5.6, 1.5, -3), ...slab('navy', -16, -11, 4, 5.4, 1.5, 4), // luggage tied on at the back
+    ...slab('lens', 8.5, 11, 10, 4.2, 1), // the windscreen
+    ...slab('metal', 11, 22, 9.5, 3.8, 2), c('snow', [14, -3], 0.8, 4.6, 0, [18, -3]), c('snow', [14, 3], 0.8, 4.6, 0, [18, 3]), // the bonnet, its silver horses
+    c('brass', [22.5, -8], 1.4, 3.6), c('brass', [22.5, 8], 1.4, 3.6), c('metal', [23.5, -11], 0.8, 3.4, 0, [23.5, 11]), // lamps, the bumper
+    c('black', [9, -14.5], 1.2, 3.5), c('black', [9, 14.5], 1.2, 3.5), c('black', [-23.5, 0], 1.5, 3), // mirrors, the step at the back
+  ];
+}
+
 /** Structures, strike icons and the A-10, each one still frame facing east. Size 48 for the big ones. */
 const PROPS: Record<string, [number, Part[]]> = {
+  jeepney: [BIG, jeepney()],
+  tank: [96, tank()],
+  apc: [80, apc()],
   taxi: [BIG, car('taxi', 'taxi', [c('cream', [-2, -3.5], 1.6, 6.6, 0.5, [-2, 3.5]), c('copper', [12, 6], 1.8, 3.2)])], // the roof sign
   /** A city bus, two tiles wide and five long: windows down both sides, a red stripe, vents on the roof. */
   bus: [BUS, [
