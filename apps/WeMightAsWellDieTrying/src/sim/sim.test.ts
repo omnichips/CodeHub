@@ -544,3 +544,26 @@ test('a soldier holding a door brings a civilian out, who is safe once walked in
   assert.equal(c.state, 'saved');
   assert.equal(w.saved, 1);
 });
+
+test('a spitter hurts a soldier at a window but never kills him, and he turns on spitters', () => {
+  const rows = ['S'.repeat(12), ...Array(6).fill('.'.repeat(12)), '#'.repeat(5) + '.'.repeat(7), ...Array(4).fill('.'.repeat(12)), 'E'.repeat(12)];
+  const w = new World({ name: 't', tile: 16, par: 60, rows, slots: [[2, 7]] }, noWaves);
+  const s = w.placeSoldier('rifleman', 2 * 16 + 8, 7 * 16 + 8)!;
+  const z = w.spawn(ZOMBIE_KINDS.indexOf('spitter'), s.x + 60, s.y - 40);
+  w.zhp[z] = 1e9;
+  for (let k = 0; k < 60 * 40; k++) { w.phase = 'wave'; w.step(); w.zx[z] = s.x + 60; w.zy[z] = s.y - 40; } // it stays put, spitting
+  assert.ok(s.spatAt !== undefined, 'spat on');
+  assert.equal(s.hp, 1);
+  assert.equal(s.dead, false);
+});
+
+test('the next wave can be called in early, between waves', () => {
+  const w = new World({ name: 't', tile: 16, par: 60, rows: ['S'.repeat(8), ...Array(6).fill('.'.repeat(8)), 'E'.repeat(8)] }, { gap: 75, waves: [{ duration: 1, spawn: { normal: 1 } }, { duration: 1, spawn: { normal: 1 } }] });
+  w.start();
+  for (let k = 0; k < 60 * 2; k++) w.step();
+  assert.ok(w.breakLeft > 0, 'in the break');
+  assert.ok(w.skipBreak());
+  w.step();
+  assert.equal(w.wave, 1);
+  assert.equal(w.skips, 1);
+});

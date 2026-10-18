@@ -1,5 +1,22 @@
 [
  {
+  "date": "2026-10-18 19:29",
+  "title": "Spitters, crawlers and the people left behind",
+  "notes": [
+   "Two new zombies from Manila on: the spitter spits bile from a distance, even at soldiers in windows (it hurts them there but never kills), and a soldier it hits goes for spitters first. The crawler drags itself under wire and over spikes, and bullets land 30% less on it.",
+   "The civilians are people now: a kid, an old man with a cane, a nurse, walking. A dotted line shows the way they will go, a red \"!\" flashes when zombies are near them, and arrows at the edge of the screen point to any you cannot see. A tip explains them the first time.",
+   "They speak up: a scream when one is caught, a thank-you on the radio when one is safe.",
+   "\"Next wave now\" during the break between waves (or Enter): +2% of your kill chips each time.",
+   "The weather shows before you fight: on each city's card on the board, in the opening telegram, and in the field manual.",
+   "Main Street has its diner and a gas station, New York its yellow cabs and steam stacks, the White House its floodlights and Secret Service cars.",
+   "Rain splashes on the street and leaves footprints behind whoever walks through it.",
+   "The horde wears more than one shirt: zombies come in other clothes, torn, and a little lighter or darker.",
+   "Patch notes, statistics and debug are on paper like the rest.",
+   "The main menu fits a phone held sideways.",
+   "The game loads faster: the engine is fetched once and kept, the story and skill tree only when first opened."
+  ]
+ },
+ {
   "date": "2026-10-18 18:25",
   "title": "Get them out",
   "notes": [

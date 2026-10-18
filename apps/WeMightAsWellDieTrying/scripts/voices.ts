@@ -24,7 +24,11 @@ const LINES: Record<string, [string, string[]]> = {
   mortar: ['bm_daniel', ['Mortar team, standing by.', 'Give me a target.', 'Rounds ready.']],
   operator: ['am_echo', ['Sentry operator, ready.', 'Turret is online.', 'Setting up the gun.']],
   down: ['am_fenrir', ['Man down!', 'We lost one!', 'Soldier down!', 'Medic! Man down!']], // someone on the radio, when a soldier falls
+  saved: ['am_michael', ['They made it!', 'Civilian secured, thank you!', 'One more out!']], // on the radio, a civilian safe in the camp
+  'civ-scream': ['af_sarah', ['Aaah! No!', 'Help! Help me!']], // a civilian caught by the horde: in the street, not on the radio
 };
+/** Lines said in the street, not over the radio: no radio filter on them. */
+const DRY = new Set(['civ-scream']);
 const GAP = 0.35; // seconds of quiet between lines, so a take never catches the next one
 
 const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'cpu' });
@@ -46,12 +50,19 @@ function radio(x: Float32Array, sr: number) {
   return out;
 }
 
+/** As loud as it goes, nothing else done to it. */
+function loud(x: Float32Array) {
+  let peak = 1e-6;
+  for (const v of x) peak = Math.max(peak, Math.abs(v));
+  return x.map((v) => (v / peak) * 0.9);
+}
+
 for (const [kind, [voice, lines]] of Object.entries(LINES)) {
   at[kind] = [];
   for (const text of lines) {
     const audio = await tts.generate(text, { voice: voice as 'am_michael' });
     rate = audio.sampling_rate;
-    const said = radio(audio.audio, rate), from = length / rate;
+    const said = DRY.has(kind) ? loud(audio.audio) : radio(audio.audio, rate), from = length / rate;
     parts.push(said, new Float32Array(Math.round(GAP * rate)));
     length += said.length + Math.round(GAP * rate);
     at[kind].push([+(from).toFixed(3), +(from + said.length / rate + 0.05).toFixed(3)]);

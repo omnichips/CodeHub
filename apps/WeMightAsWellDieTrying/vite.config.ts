@@ -57,4 +57,5 @@ self.addEventListener('fetch', (e) => {
 });
 
 // When the game was built, in Philippine time: shown in Settings and in crash reports.
-export default defineConfig({ plugins: [atlas(), serviceWorker()], define: { __BUILD__: JSON.stringify(`${new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Manila' }).slice(0, 16)} PHT`) } });
+// Phaser in a chunk of its own: it never changes, so a player's browser keeps it across every update of the game.
+export default defineConfig({ build: { chunkSizeWarningLimit: 1400, rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'phaser', test: /node_modules[\/]phaser/ }] } } } }, plugins: [atlas(), serviceWorker()], define: { __BUILD__: JSON.stringify(`${new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Manila' }).slice(0, 16)} PHT`) } });

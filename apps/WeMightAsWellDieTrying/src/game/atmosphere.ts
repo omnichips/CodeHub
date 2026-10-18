@@ -22,6 +22,9 @@ const FLASHES = 24; // muzzle flashes lit at once, at most
 
 export interface Atmosphere {
   step(dt: number): void;
+  /** In the rain, a footprint at (x, y), the walker heading `a` (fades after a while; nothing in other weather). */
+  print(x: number, y: number, a: number): void;
+  readonly wet: boolean;
   /** A gun fired at (x, y): the ground round it lit for a moment. */
   flash(x: number, y: number): void;
   /** A mark left on the street: a scorch (a big blast), a crater (a shell or grenade) or debris (a roadblock broken). */
@@ -44,6 +47,7 @@ export function atmosphere(scene: Phaser.Scene, weather: Weather, decor: Decor[]
   // Lamps' pools of light, neon, fires.
   const lamps = decor.filter((d) => d.kind === 'lamp').map((d, k) => ({ img: glow(d.x + 6, d.y - 2, 0xffd890, 5), phase: k * 1.7 }));
   const neon = decor.filter((d) => d.kind === 'neon').map((d, k) => ({ img: glow(d.x, d.y + 3, d.n ?? 0xff4fa0, 2.6), phase: k * 2.3 }));
+  const floods = decor.filter((d) => d.kind === 'flood').map((d) => glow(d.x, d.y + 14, 0xeaf2ff, 9).setAlpha(0.42));
   const fires = decor.filter((d) => d.kind === 'blaze' || d.kind === 'burnt' || d.kind === 'campfire').map((d, k) => ({ img: glow(d.x, d.y, 0xff7a30, d.kind === 'campfire' ? 4 : 6), phase: k * 3.1 }));
   // Muzzle flashes, from a pool.
   const flashes = Array.from({ length: FLASHES }, () => ({ img: glow(0, 0, 0xffd28a, 2.6).setVisible(false), t: 0 }));
@@ -57,12 +61,24 @@ export function atmosphere(scene: Phaser.Scene, weather: Weather, decor: Decor[]
     img: scene.add.image(Math.random() * w, Math.random() * h, 'fx-light').setTint(0xc8d0d4).setScale(3 + Math.random() * 3).setAlpha(0.22 + Math.random() * 0.14).setDepth(9),
     v: 4 + Math.random() * 6,
   })) : [];
+  // Splashes where drops land (in the view), and footprints on the wet street.
+  const splashes = rain ? Array.from({ length: Math.round(28 * amount) + 8 }, () => ({ x: Math.random(), y: Math.random(), t: Math.random() * 0.5 })) : [];
+  const prints = rain ? Array.from({ length: 160 }, () => ({ img: scene.add.image(0, 0, 'fx-px').setTint(0x0a0d10).setScale(2, 1.2).setDepth(1.25).setVisible(false), t: 0 })) : [];
+  let nextPrint = 0;
   let t = 0;
   return {
+    wet: !!rain,
+    print(x, y, a) {
+      if (!rain) return;
+      const p = prints[nextPrint++ % prints.length];
+      p.t = 6;
+      p.img.setPosition(x, y).setRotation(a).setAlpha(0.45).setVisible(true);
+    },
     step(dt) {
       t += dt;
       for (const l of lamps) l.img.setAlpha(look.lamps * (0.92 + 0.08 * Math.sin(t * 2 + l.phase)));
       for (const n of neon) n.img.setAlpha((weather === 'night' ? 0.7 : 0.4) * (Math.sin(t * 17 + n.phase) > 0.97 ? 0.2 : 0.9 + 0.1 * Math.sin(t * 3 + n.phase)));
+      for (const f of floods) f.setAlpha(0.4 + 0.02 * Math.sin(t * 50));
       for (const f of fires) f.img.setAlpha(0.3 + 0.1 * Math.sin(t * 9 + f.phase) + 0.06 * Math.sin(t * 23 + f.phase * 2));
       for (const f of flashes) if (f.t > 0) { f.t -= dt; f.img.setAlpha(Math.max(0, f.t / 0.09) * 0.7).setVisible(f.t > 0); }
       if (rain) {
@@ -74,6 +90,12 @@ export function atmosphere(scene: Phaser.Scene, weather: Weather, decor: Decor[]
           const x = d.x * W, y = d.y * H;
           rain.lineBetween(x, y, x - d.len * 0.25, y + d.len);
         }
+        for (const s of splashes) {
+          if ((s.t += dt) > 0.4) { s.t = 0; s.x = Math.random(); s.y = Math.random(); }
+          const f = s.t / 0.4, z = scene.cameras.main.zoom;
+          rain.lineStyle(1, 0xc4d8ea, 0.5 * (1 - f)).strokeEllipse(s.x * W, s.y * H, (2 + 8 * f) * z, (1 + 4 * f) * z);
+        }
+        for (const p of prints) if (p.t > 0) { p.t -= dt; p.img.setAlpha(Math.min(0.45, p.t / 6)); if (p.t <= 0) p.img.setVisible(false); }
       }
       for (const b of banks) { b.img.x += b.v * dt; if (b.img.x > w + 200) b.img.x = -200; }
     },

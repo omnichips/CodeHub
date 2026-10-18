@@ -72,6 +72,7 @@ interface Recipe {
 const RECIPES: Record<string, Recipe> = {
   pistol: { len: 0.18, cut: 0.5, decay: 0.03, tone: [260, 120], toneAmp: 0.4, toneDecay: 0.02, gain: 0.3, window: 0.06, voices: 3 },
   mg: { len: 0.15, cut: 0.4, decay: 0.03, tone: [150, 70], toneAmp: 0.5, toneDecay: 0.025, gain: 0.35, window: 0.05, voices: 4 },
+  spit: { len: 0.25, cut: 0.25, decay: 0.07, tone: [420, 160], toneAmp: 0.5, toneDecay: 0.05, gain: 0.3, window: 0.15, voices: 2 }, // a wet hawk, a spitter's gob
   thunk: { len: 0.3, cut: 0.08, decay: 0.06, tone: [140, 60], toneAmp: 1, toneDecay: 0.08, gain: 0.45, window: 0.08, voices: 3 },
   napalm: { len: 1.8, cut: 0.06, decay: 0.7, attack: 0.1, tone: [50, 30], toneAmp: 0.6, gain: 0.75, window: 0.2, voices: 2 },
   // The story's: a letter typed, a burst of radio static, a far-off thud.
@@ -121,6 +122,7 @@ for (const [kind, takes] of Object.entries(lines)) CLIPS[`say-${kind}`] = { take
 const USES: Record<string, string> = {
   shield: 'pistol', machinegunner: 'mg', operator: 'mg', turret: 'mg', grenadier: 'thunk', napalm: 'napalm', // the rest are CLIPS
   tick: 'tick', static: 'static', thud: 'thud', paper: 'paper', // the story's
+  spit: 'spit',
 };
 const MAX_VOICES = 16;
 

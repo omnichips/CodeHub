@@ -28,7 +28,7 @@ export interface Settings {
 
 /** What a key can do in a fight, the key it starts on, and what the cheat sheet calls it. */
 export const KEY_ACTIONS = {
-  pause: [' ', 'Pause or go on'], start: ['Enter', 'Start the wave'],
+  pause: [' ', 'Pause or go on'], start: ['Enter', 'Start, or the next wave now'],
   speed1: ['1', 'Slowest speed'], speed2: ['2', 'Speed 2'], speed3: ['3', 'Speed 3'], speed4: ['4', 'Fastest speed'],
   units: ['q', 'Units tab'], build: ['w', 'Build tab'], strikes: ['e', 'Strikes tab'],
   turn: ['r', 'Turn what is picked'], remove: ['Delete', 'Remove what is picked'], retreat: ['x', 'Pull the picked soldier out'],

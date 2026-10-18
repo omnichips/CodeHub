@@ -15,7 +15,7 @@ import { el } from './hud.ts';
 import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
 import { atmosphere } from './atmosphere.ts';
-import { weatherOf } from '../meta/profile.ts';
+import { weatherLine, weatherOf } from '../meta/profile.ts';
 import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { HELI_RES, mapAnims, textures } from './mapanims.ts';
@@ -27,11 +27,9 @@ import { UNITS, ZOMBIES, ZOMBIE_KINDS } from '../sim/world.ts';
 import { routesOf } from '../sim/routes.ts';
 import { settingsSheet } from './settings.ts';
 import { music, play, retune } from './sound.ts';
-import { skillWeb } from './tree.ts';
 import { FONT } from '../story/font.ts';
 import { roll } from '../story/kit.ts';
 import { noStory, record, story } from '../story/record.ts';
-import { playScene, pose } from '../story/player.ts';
 import { order } from '../story/text.ts';
 import { mapOf } from '../story/types.ts';
 
@@ -103,6 +101,8 @@ const ZOMBIE_NOTES: Record<string, string> = {
   tanky: 'Slow, and soaks up a magazine or three.',
   brute: 'Huge. Tears through roadblocks eight times as fast as the rest.',
   hordemother: 'Gives birth to two more every few seconds as it walks.',
+  spitter: 'Spits bile from a distance, even at soldiers in windows. A soldier it hits goes for spitters first.',
+  crawler: 'Drags itself under wire and over spikes. Low on the ground, bullets land 30% less.',
 };
 
 /** The city a save is on (the last one, once every city is behind it). */
@@ -221,7 +221,9 @@ export class Menu extends Phaser.Scene {
     this.root = document.getElementById('menu')!;
     this.root.hidden = false;
     this.root.classList.remove('leaving');
-    this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; });
+    const refit = () => this.fit();
+    addEventListener('resize', refit);
+    this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; removeEventListener('resize', refit); });
     this.show(this.open);
     music('menu');
     // Baking the thumbnails (scripts/thumbs.ts): every map painted, with blood and without, handed to the script.
@@ -330,11 +332,22 @@ export class Menu extends Phaser.Scene {
   current?: Screen;
 
   showNow(screen: Screen): void {
-    if (screen === 'tree') return whileLoading(() => skillWeb(this, this.root, () => this.show('save')));
+    if (screen === 'tree') return whileLoading(async () => { const { skillWeb } = await import('./tree.ts'); if (this.current === 'tree') skillWeb(this, this.root, () => this.show('save')); }); // fetched when first opened
     if ((screen === 'new' || screen === 'load') && !loadingActive() && saves().some((s) => s && !THUMBS.has(`${cityOf(s).id}-${profile.settings.gore !== 'none'}`)))
       return whileLoading(() => this.showNow(screen));
     const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
     this.root.replaceChildren(...[BINDER.includes(screen as Page) ? this.binder(screen as Page, panel as HTMLElement) : panel].flat()); // each panel slides in (CSS)
+    this.fit();
+  }
+
+  /** The main menu scaled down whole to fit a short screen (a phone on its side), never squashed: its paper would
+   *  slide under the next. */
+  fit() {
+    const main = this.root.querySelector<HTMLElement>('.main');
+    if (!main) return;
+    main.style.zoom = '';
+    const cs = getComputedStyle(this.root), room = this.root.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), need = main.scrollHeight;
+    if (need > room) main.style.zoom = String(Math.max(0.5, room / need));
   }
 
   /** The binder: Settings, Medals and the Field manual as pages behind index tabs, rings down its spine. */
@@ -404,7 +417,7 @@ export class Menu extends Phaser.Scene {
   /** What changed in each update, newest first. Opening them clears the icon's dot. */
   notes(): HTMLElement {
     try { localStorage.setItem(SEEN, NEWEST); } catch { /* storage blocked: the dot stays */ }
-    return el('div', { className: 'panel notes' }, this.head('Patch notes', 'menu'),
+    return el('div', { className: 'panel notes book' }, this.head('Patch notes', 'menu'),
       ...notes.map((n) => el('section', {}, el('h3', {}, n.title), el('small', {}, `${n.date} PHT`), el('ul', {}, ...n.notes.map((line) => el('li', {}, line))))));
   }
 
@@ -520,6 +533,7 @@ export class Menu extends Phaser.Scene {
     const fallen = [...profile.save.fallen].reverse().map((f) => el('li', {}, el('b', {}, f.name), ` · ${UNITS[f.kind as keyof typeof UNITS]?.name ?? f.kind} · ${f.kills} kill${f.kills === 1 ? '' : 's'} · ${f.city}, ${new Date(f.at).toISOString().slice(0, 10)}`));
     return el('div', { className: 'panel book' }, el('h2', {}, `Field manual · ${zombies.concat(soldiers).filter((e) => !e.classList.contains('locked')).length}/${zombies.length + soldiers.length}`),
       el('h3', {}, 'The horde'), el('div', { className: 'entries' }, ...zombies), el('h3', {}, 'Your soldiers'), el('div', { className: 'entries' }, ...soldiers),
+      el('h3', {}, 'The weather'), el('ul', { className: 'memorial' }, ...MAPS.map((m) => el('li', {}, el('b', {}, m.name), ` · ${weatherLine(m.id)}`))),
       el('h3', {}, `The fallen · ${profile.save.fallen.length}`), fallen.length ? el('ul', { className: 'memorial' }, ...fallen) : el('p', {}, 'Nobody yet.'));
   }
 
@@ -536,7 +550,8 @@ export class Menu extends Phaser.Scene {
   }
 
   /** Plays a scene again from the Story log, its map shots over a painting of the city (half size, as the cards). */
-  replay(id: string) {
+  async replay(id: string) {
+    const { playScene, pose } = await import('../story/player.ts'); // fetched when a scene first plays
     const m = MAPS.find((x) => x.id === mapOf(id, story).id)!, blood = profile.settings.gore !== 'none', key = `story-${m.id}`;
     const needs = story.scenes.find((x) => x.id === id)!.shots.some((s) => s.type === 'map');
     let art: HTMLCanvasElement | undefined, grid: Grid | undefined;
@@ -570,7 +585,7 @@ export class Menu extends Phaser.Scene {
     const table = el('table', {},
       el('tr', {}, el('th'), ...all.map(([name]) => el('th', {}, name)), ...(both ? [el('th', {}, 'All')] : [])),
       ...STATS.map(([f, label]) => el('tr', {}, el('th', {}, label), ...all.map(([, st]) => cell(f, st)), ...(both ? [cell(f, total)] : []))));
-    return el('div', { className: 'panel stats' }, this.head('Statistics', 'settings'), all.length ? table : el('p', {}, 'No saves yet: start one and fight.'));
+    return el('div', { className: 'panel stats book' }, this.head('Statistics', 'settings'), all.length ? table : el('p', {}, 'No saves yet: start one and fight.'));
   }
 
   settings(): HTMLElement {
@@ -580,7 +595,7 @@ export class Menu extends Phaser.Scene {
   /** Cheats, for testing: they change the save in use. */
   debug(): HTMLElement {
     const s = profile.save, cheat = (label: string, done: string, act: () => void) => button(label, () => { act(); persist(); this.note = done; this.show('debug'); });
-    return el('div', { className: 'panel settings' },
+    return el('div', { className: 'panel debug book' },
       this.head('Debug', 'settings'),
       el('p', { className: 'chips' }, `Save in use: ${s.name} · ${summary(s)}`),
       cheat('+1,000 chips', 'Added 1,000 chips.', () => (s.chips += 1000)),

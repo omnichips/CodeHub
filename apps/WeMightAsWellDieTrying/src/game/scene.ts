@@ -2,8 +2,9 @@
 import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
+import { RESCUED, VARIANTS } from '../art/sprites.ts';
 import { NODE, NODES, PACE, payout, build, type Build, type Payout } from '../meta/progress.ts';
-import { MAPS, blinds, persist, profile, weatherOf } from '../meta/profile.ts';
+import { MAPS, blinds, persist, profile, weatherLine, weatherOf } from '../meta/profile.ts';
 import { DIFFICULTY, KEY_ACTIONS, MEMORIAL, type KeyAction } from '../meta/save.ts';
 import { keyName } from './settings.ts';
 import { award } from '../meta/medals.ts';
@@ -22,7 +23,11 @@ import { Hud, type Group } from './hud.ts';
 import { settingsSheet } from './settings.ts';
 import { city, hordeLevel, music, play } from './sound.ts';
 import { startLoading, stopLoading } from './loading.ts';
-import { pose, runScene, stopScene, unseen, type View } from '../story/player.ts';
+import type { View } from '../story/player.ts';
+// The story's player and its pictures are only fetched when a scene plays (they are a good part of the game's code).
+type StoryPlayer = typeof import('../story/player.ts');
+const storyPlayer = () => import('../story/player.ts');
+const unseen = (id: string) => !profile.save.story.seen.includes(id);
 import { LOST_LINES } from '../story/storyConfig.ts';
 
 /** The order things appear in the bar. Only what the skill web has unlocked is shown. */
@@ -37,6 +42,11 @@ const TUTORIAL = [
   'To fall back, drag a soldier to where he should go. He walks there.',
   'Hold the line. Good luck.',
 ];
+/** The tip for civilians, shown once on a device (the first fight with them) until one is brought out or it is skipped. */
+const CIV_TIP = 'A light by a door or a car: someone is still hiding there. Stand a soldier there for 3 seconds to bring them out, then tap or drag them to the safe zone.';
+const CIV_TIP_KEY = 'dietrying.civtip';
+const civTipSeen = () => { try { return localStorage.getItem(CIV_TIP_KEY) === '1'; } catch { return true; } };
+const civTipDone = () => { try { localStorage.setItem(CIV_TIP_KEY, '1'); } catch { /* storage blocked: shown again next time */ } };
 /** Milliseconds of fighting worked out per frame at most (5× needs 25 steps a frame at 60 fps). Past it a big fight on
  *  a slow device runs slower than the speed asked for, and still draws, rather than freezing up. */
 const STEP_BUDGET = 25;
@@ -46,7 +56,10 @@ const LIFT = 36; // a finger drags things this far above itself, so it does not 
 const GRAB = { touch: 34, mouse: 22 }; // how near (screen pixels) a soldier or his handle has to be to pick it up
 const PENCIL = 0xe8e2cc; // the soldiers' cones, sketched in pencil
 const ZOMBIES_BY = Object.fromEntries(ZOMBIE_KINDS.map((k, i) => [k, ZOMBIES[i]]));
-const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
+/** Each zombie kind's looks (its own, then the variants in other clothes), each a walk of two frames. */
+const WALK = ZOMBIE_KINDS.map((k) => [k, ...Array.from({ length: Math.max(0, (VARIANTS[k as keyof typeof VARIANTS]?.length ?? 0) - 1) }, (_, n) => `${k}${n + 1}`)].map((a) => [`${a}-walk/0`, `${a}-walk/1`]));
+/** A shade for each zombie, a little darker or not, so a crowd of one look is not one colour. */
+const SHADES = [0xffffff, 0xe8e8e8, 0xd4d4d4, 0xf0e8e0, 0xdcdcd0];
 const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'police', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
 
 type Thing = Soldier | Roadblock | Structure;
@@ -106,7 +119,11 @@ export class Game extends Phaser.Scene {
   medals: string[] = []; // medals this fight earned
   civ?: Civilian; // the civilian picked (out of their building), to walk to the safe zone
   civState = new Map<Civilian, string>(); // each civilian's state last frame, to notice a change
+  civSprites = new Map<Civilian, Phaser.GameObjects.Sprite>(); // each one brought out, walking
+  civRoutes = new WeakMap<object, [number, number][]>(); // the way each is being walked, worked out once per order
   civChips = 0; // what the civilians saved paid
+  civTip = false; // the tip for civilians is up (once a device)
+  skipChips = 0; // what cutting breaks short paid
   atmos!: Atmosphere; // the weather and the light (game/atmosphere.ts)
   gray?: Phaser.FX.ColorMatrix; // drains the colour as leaks mount
   grayAt = 0; // how drained it is now, 0 to 1
@@ -161,8 +178,9 @@ export class Game extends Phaser.Scene {
     this.world.countBy = diff.count;
     if (blinds(weatherOf(m.id))) this.world.sightBy = 1 - diff.weather;
     if (!this.debug) this.world.placeCivilians(3);
+    this.civTip = !this.debug && this.world.civilians.length > 0 && !civTipSeen();
     if (this.unlimited) this.world.leakLimit = Infinity;
-    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, diffChips: 0, civ: undefined, civState: new Map(), civChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
+    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, diffChips: 0, civ: undefined, civState: new Map(), civSprites: new Map(), civChips: 0, skipChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
     this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
@@ -207,9 +225,10 @@ export class Game extends Phaser.Scene {
       }),
       menu: (to) => this.afterStory(() => this.leave(to)),
       retreat: () => this.retreat(),
-      skip: () => this.endTutorial(),
+      skip: () => { if (this.tutorial >= 0) this.endTutorial(); else { this.civTip = false; civTipDone(); } },
+      nextWave: () => this.world.skipBreak(),
     });
-    this.events.once('shutdown', () => { stopScene(); this.hud.destroy(); hordeLevel(0); city(); });
+    this.events.once('shutdown', () => { this.player?.stopScene(); this.hud.destroy(); hordeLevel(0); city(); });
     this.setZoom(this.cameras.main.zoom); // again, now the bars can be measured
     music('game');
     city(this.mapId);
@@ -228,7 +247,7 @@ export class Game extends Phaser.Scene {
     this.grayAt = 0;
     this.cameras.main.setBackgroundColor('#000000').fadeIn(500); // off the map is black
     stopLoading();
-    this.hud.banner(m.name, this.debug ? 'Lines are routes. Green: on one; yellow: following; red: making for one' : this.tutorial >= 0 ? 'Learn the ropes here' : '');
+    this.hud.banner(m.name, this.debug ? 'Lines are routes. Green: on one; yellow: following; red: making for one' : this.tutorial >= 0 ? 'Learn the ropes here' : weatherOf(m.id) === 'clear' ? '' : weatherLine(m.id));
     // The city's Before scene the first time it is opened (Main Street's is the Opening).
     const before = m === MAPS[0] ? 'opening' : `before:${m.id}`;
     if (!this.debug && unseen(before)) this.tell(before, () => {});
@@ -239,11 +258,15 @@ export class Game extends Phaser.Scene {
     const hud = document.getElementById('hud')!;
     this.inStory = true;
     hud.style.visibility = 'hidden';
-    runScene(id, this.storyView(), () => {
-      this.inStory = false;
-      hud.style.visibility = '';
-      music('game');
-      then();
+    void storyPlayer().then((p) => {
+      this.player = p;
+      if (!this.sys.isActive()) return; // left before it came
+      p.runScene(id, this.storyView(p.pose), () => {
+        this.inStory = false;
+        hud.style.visibility = '';
+        music('game');
+        then();
+      });
     });
   }
 
@@ -275,8 +298,10 @@ export class Game extends Phaser.Scene {
     return { entries: this.entries.map((e): [number, number, number, number] => [e.x, e.y, e.dx, e.dy]), goal, paths };
   }
 
+  player?: StoryPlayer; // the story's player, once fetched
+
   /** The map under a scene's map shots: this camera, moved as the shot says from where it is now, and put back after. */
-  storyView(): View {
+  storyView(pose: StoryPlayer['pose']): View {
     const cam = this.cameras.main, home = { x: cam.midPoint.x, y: cam.midPoint.y, z: cam.zoom }, now = { x: home.x, y: home.y, z: home.z };
     return {
       live: true,
@@ -366,9 +391,14 @@ export class Game extends Phaser.Scene {
       this.civState.set(c, c.state);
       if (was === undefined || was === c.state) continue;
       const look = () => this.cameras.main.pan(c.x, c.y, 350, 'Sine.easeInOut');
+      if (c.state === 'out' && this.civTip) { this.civTip = false; civTipDone(); }
       if (c.state === 'out') { this.hud.notice('A civilian is out: walk them to the safe zone', look); if (!this.muted) play('police'); this.civ = c; this.selected = undefined; }
-      if (c.state === 'dead') { this.hud.notice('A civilian was killed', look); buzz(80); if (this.civ === c) this.civ = undefined; }
-      if (c.state === 'saved') { this.hud.notice(`Civilian safe: ${this.world.saved}/${this.world.civilians.length}`, look); if (this.civ === c) this.civ = undefined; }
+      if (c.state === 'dead') { this.hud.notice('A civilian was killed', look); buzz(80); if (!this.muted) play('say-civ-scream', this.near(c.x, c.y)); if (this.civ === c) this.civ = undefined; }
+      if (c.state === 'saved') {
+        this.hud.notice(`Civilian safe: ${this.world.saved}/${this.world.civilians.length}`, look);
+        if (!this.muted) { play('police'); this.time.delayedCall(400, () => play('say-saved')); }
+        if (this.civ === c) this.civ = undefined;
+      }
     }
   }
 
@@ -376,7 +406,7 @@ export class Game extends Phaser.Scene {
   key(a: KeyAction) {
     const w = this.world, sel = this.selected;
     if (a === 'pause' && w.phase === 'wave') { if (this.speed) { this.lastSpeed = this.speed; this.speed = 0; } else this.speed = this.lastSpeed || 1; }
-    if (a === 'start') this.begin();
+    if (a === 'start') { if (w.phase === 'plan') this.begin(); else w.skipBreak(); } // and between waves: the next one now
     if (a.startsWith('speed')) { const n = this.build.speeds[Number(a.slice(5)) - 1]; if (n) this.speed = this.lastSpeed = n; }
     if (a === 'units' || a === 'build' || a === 'strikes') this.hud.tab(a);
     if (a === 'turn') { if (this.drag?.kind === 'place') this.turned = !this.turned; else if (this.canTurn) this.act('Turn'); }
@@ -437,6 +467,8 @@ export class Game extends Phaser.Scene {
     this.paid.total += this.diffChips;
     this.civChips = Math.round(this.paid.base * 0.1 * w.saved); // each civilian saved: a tenth of the kills' chips
     this.paid.total += this.civChips;
+    this.skipChips = Math.round(this.paid.base * 0.02 * w.skips); // each break cut short: a fiftieth of the kills' chips
+    this.paid.total += this.skipChips;
     save.chips += this.paid.total;
     if (won) save.cleared[this.mapId] = true;
     else this.lostLine = LOST_LINES[Math.floor(Math.random() * LOST_LINES.length)];
@@ -809,6 +841,7 @@ export class Game extends Phaser.Scene {
     this.anims.globalTimeScale = w.phase === 'wave' ? this.speed * PACE : 1;
     this.animate(Math.min(delta, 100) / 1000);
     this.atmos.step(Math.min(delta, 100) / 1000);
+    this.footprints(delta);
     if (this.strikeAim && !w.strikeReady('a10')) this.strikeAim = undefined; // cooling down after all, or the fight is over
     this.settle();
     this.spill();
@@ -824,6 +857,7 @@ export class Game extends Phaser.Scene {
     }
     this.drawZombies();
     this.drawSoldiers();
+    this.drawCivilians();
     this.drawBuilt();
     this.drawOverlay();
     this.listen(delta);
@@ -903,7 +937,7 @@ export class Game extends Phaser.Scene {
         if (s?.visible) s.setVisible(false);
         continue;
       }
-      const z = ZOMBIES[w.zkind[i]], walk = WALK[w.zkind[i]];
+      const z = ZOMBIES[w.zkind[i]], looks = WALK[w.zkind[i]], walk = looks[i % looks.length];
       s ??= this.zombies[i] = this.add.sprite(0, 0, 'sprites', walk[0]).setDepth(2);
       const vx = w.zvx[i], vy = w.zvy[i], moving = vx * vx + vy * vy > 4, rate = z.speed > 20 ? 8 : 4;
       s.setVisible(true).setPosition(w.zx[i], w.zy[i]).setFrame(walk[moving ? ((t * rate + i * 0.37) | 0) & 1 : 0]);
@@ -914,8 +948,8 @@ export class Game extends Phaser.Scene {
       s.setScale(z.jumps && tile >= 0 && w.grid.block[tile] ? 1.35 : 1);
       // Showing routes: green on its route, through yellow (following others back to it) to red (making for it alone).
       const link = w.zlink[i], route = this.showRoutes ? Phaser.Display.Color.GetColor(link < 0.5 ? 230 : Math.round(230 * (1 - link) * 2), link < 0.5 ? Math.round(80 + 300 * link) : 230, 60) : 0;
-      const tint = w.zhit[i] > 0 ? hurt : w.zburn[i] > 0 && ((t * 12) | 0) % 2 ? burning : route;
-      if (tint) s.setTint(tint);
+      const tint = w.zhit[i] > 0 ? hurt : w.zburn[i] > 0 && ((t * 12) | 0) % 2 ? burning : route || SHADES[i % SHADES.length];
+      if (tint !== 0xffffff) s.setTint(tint);
       else if (s.isTinted) s.clearTint();
     }
   }
@@ -929,6 +963,52 @@ export class Game extends Phaser.Scene {
       if (!s.dead) sp.play(`${s.kind}-${w.firing(s) ? 'shoot' : s.walking ? 'walk' : 'idle'}-${s.facing}`, true);
     }
     for (const [s, sp] of this.soldiers) if (!w.soldiers.includes(s)) { sp.destroy(); this.soldiers.delete(s); }
+  }
+
+  /** In the rain, footprints behind whoever walks: soldiers, civilians, and a few of the horde. */
+  footprints(delta: number) {
+    if (!this.atmos.wet || this.world.phase !== 'wave' || !this.speed || (this.printAt += delta) < 260) return;
+    this.printAt = 0;
+    const w = this.world, side = (this.printSide = -this.printSide);
+    const step = (x: number, y: number, a: number) => this.atmos.print(x + Math.cos(a + Math.PI / 2) * 2 * side, y + Math.sin(a + Math.PI / 2) * 2 * side, a);
+    for (const s of w.soldiers) if (!s.dead && s.walking) step(s.x, s.y, s.heading);
+    for (const c of w.civilians) if (c.state === 'out' && c.walking) step(c.x, c.y, this.civSprites.get(c)?.rotation ?? 0);
+    for (let k = 0, i = (Math.random() * w.n) | 0; k < 12 && w.n; k++, i = (i + 37) % w.n) if (w.alive[i]) step(w.zx[i], w.zy[i], Math.atan2(w.zvy[i], w.zvx[i]));
+  }
+  printAt = 0;
+  printSide = 1;
+
+  /** The civilians out of their buildings: a person each (a kid, an old man, a nurse), walking the way they head. */
+  drawCivilians() {
+    for (const c of this.world.civilians) {
+      let sp = this.civSprites.get(c);
+      if (c.state !== 'out') { sp?.setVisible(false); continue; }
+      if (!sp) this.civSprites.set(c, (sp = this.add.sprite(c.x, c.y, 'sprites').setDepth(3).play(`civ${RESCUED[c.id % RESCUED.length]}-walk`)));
+      const dx = c.x - sp.x, dy = c.y - sp.y;
+      if (dx * dx + dy * dy > 0.01) sp.setRotation(Math.atan2(dy, dx));
+      sp.setPosition(c.x, c.y).setVisible(true);
+      if (c.walking) sp.anims.resume(); else sp.anims.pause();
+    }
+  }
+
+  /** The tiles a civilian will walk along to where they were sent, as the sim walks them: straight where nothing is in
+   *  the way, else down the distance field toward it. */
+  civRoute(c: Civilian) {
+    const d = c.dest!;
+    let r = this.civRoutes.get(d);
+    if (r) return r;
+    const g = this.world.grid, T = g.tile;
+    r = [];
+    let i = g.at(c.x, c.y);
+    for (let n = 0; n < 2000 && i >= 0 && d.field[i] > 0 && Number.isFinite(d.field[i]); n++) {
+      r.push([((i % g.w) + 0.5) * T, (Math.floor(i / g.w) + 0.5) * T]);
+      const x = i % g.w, next = [x > 0 ? i - 1 : -1, x < g.w - 1 ? i + 1 : -1, i - g.w, i + g.w].filter((j) => j >= 0 && j < d.field.length).reduce((b, j) => (d.field[j] < d.field[b] ? j : b), i);
+      if (next === i) break;
+      i = next;
+    }
+    r.push([d.x, d.y]);
+    this.civRoutes.set(d, r);
+    return r;
   }
 
   /** Roadblocks and structures. Lines of them are drawn tile by tile; the rest as one sprite. */
@@ -1043,12 +1123,36 @@ export class Game extends Phaser.Scene {
         top.fillStyle(hex(palette.flash1), glow).fillCircle(c.x, c.y, 3).lineStyle(1.5 / z, hex(palette.flash1), glow).strokeCircle(c.x, c.y, 9);
         if (c.held > 0) top.lineStyle(3 / z, good, 1).beginPath().arc(c.x, c.y, 9, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * c.held) / CIVILIAN_HOLD).strokePath();
       } else if (c.state === 'out') {
-        if (c === this.civ) {
-          top.lineStyle(1.5 / z, light, 0.9).strokeCircle(c.x, c.y, 8);
-          if (c.dest) top.lineStyle(1 / z, light, 0.5).lineBetween(c.x, c.y, c.dest.x, c.dest.y);
+        if (c === this.civ) top.lineStyle(1.5 / z, light, 0.9).strokeCircle(c.x, c.y, 9);
+        // The way they will walk, dotted, the dots running toward where they are going.
+        if (c.dest) {
+          const route = this.civRoute(c), step = 0.5 + ((this.time.now / 300) % 1);
+          top.fillStyle(light, 0.8);
+          for (let k = 0; k + 1 < route.length; k++) for (let f = step / 2; f < 1; f += 0.5) {
+            const [x0, y0] = route[k], [x1, y1] = route[k + 1], x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f;
+            if (Math.hypot(x - c.x, y - c.y) > 6) top.fillCircle(x, y, 1.6 / Math.max(0.6, z * 0.6));
+          }
+          top.lineStyle(1.5 / z, light, 0.9).strokeCircle(c.dest.x, c.dest.y, 5);
         }
-        top.fillStyle(dark, 1).fillCircle(c.x, c.y + 1, 4.2).fillStyle(0x4f8a86, 1).fillCircle(c.x, c.y + 1, 3.4).fillStyle(0xd9a77a, 1).fillCircle(c.x, c.y - 2, 2);
-        if (c.hp < 60) { top.fillStyle(dark, 1).fillRect(c.x - 6, c.y - 9, 12, 2); top.fillStyle(bad, 1).fillRect(c.x - 6, c.y - 9, (12 * c.hp) / 60, 2); }
+        if (c.hp < 60) { top.fillStyle(dark, 1).fillRect(c.x - 6, c.y - 11, 12, 2); top.fillStyle(bad, 1).fillRect(c.x - 6, c.y - 11, (12 * c.hp) / 60, 2); }
+      }
+      if (c.state !== 'inside' && c.state !== 'out') continue;
+      // Zombies close: a red "!" over them.
+      let near = false;
+      for (let i = 0; i < w.n && !near; i++) if (w.alive[i] && Math.abs(w.zx[i] - c.x) < 64 && Math.abs(w.zy[i] - c.y) < 64) near = true;
+      if (near && Math.floor(this.time.now / 250) % 2 === 0) {
+        const s = 1 / Math.max(0.7, z * 0.7);
+        top.fillStyle(dark, 1).fillRect(c.x - 4 * s, c.y - 26 * s, 8 * s, 13 * s).fillStyle(bad, 1).fillRect(c.x - 3 * s, c.y - 25 * s, 6 * s, 11 * s)
+          .fillStyle(0xffffff, 1).fillRect(c.x - 1 * s, c.y - 23 * s, 2 * s, 5 * s).fillRect(c.x - 1 * s, c.y - 17 * s, 2 * s, 2 * s);
+      }
+      // Off the screen: an arrow at its edge pointing their way.
+      const v = this.cameras.main.worldView, bars = this.bars(), x0 = v.x + 18 / z, x1 = v.right - 18 / z, y0 = v.y + (bars.top + 14) / z, y1 = v.bottom - (bars.bottom + 14) / z;
+      if (!v.contains(c.x, c.y) && x1 > x0 && y1 > y0) {
+        // Along the line from the middle of what shows toward them, as far as the room clear of the controls goes.
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, dx = c.x - cx, dy = c.y - cy, a = Math.atan2(dy, dx);
+        const k = Math.min(dx ? ((dx > 0 ? x1 : x0) - cx) / dx : Infinity, dy ? ((dy > 0 ? y1 : y0) - cy) / dy : Infinity);
+        const ax = cx + dx * k, ay = cy + dy * k, L = 10 / z;
+        top.fillStyle(near ? bad : hex(palette.flash1), 0.95).fillTriangle(ax + Math.cos(a) * L, ay + Math.sin(a) * L, ax + Math.cos(a + 2.5) * L, ay + Math.sin(a + 2.5) * L, ax + Math.cos(a - 2.5) * L, ay + Math.sin(a - 2.5) * L);
       }
     }
     if (isSoldier(sel)) {
@@ -1139,6 +1243,11 @@ export class Game extends Phaser.Scene {
     for (const b of w.blasts) {
       const f = b.age / 0.35;
       top.fillStyle(b.bile ? hex(palette.rot2) : f < 0.3 ? light : flame, 0.75 * (1 - f)).fillCircle(b.x, b.y, b.r * (0.5 + 0.5 * f));
+    }
+    // Spit in the air: a green gob arcing from the spitter to the soldier it hit.
+    for (const sp of w.spits) {
+      const f = Math.min(1, sp.age / 0.2), x = sp.x0 + (sp.x1 - sp.x0) * f, y = sp.y0 + (sp.y1 - sp.y0) * f - Math.sin(f * Math.PI) * 14;
+      top.fillStyle(hex(palette.rot2), 1 - sp.age / 0.35).fillCircle(x, y, 2.5).fillStyle(hex(palette.rot1), 0.5 * (1 - sp.age / 0.35)).fillCircle(sp.x1, sp.y1, 5 * f);
     }
     for (const s of w.screams) top.lineStyle(2 / z, paint, 1 - s.age / 0.35).strokeCircle(s.x, s.y, (s.r * s.age) / 0.35);
     // Where a soldier just fell: a red ring, shrinking, for three seconds.
@@ -1252,7 +1361,8 @@ export class Game extends Phaser.Scene {
       progress: waving ? { wave: Math.min(w.wave + 1, w.waves), waves: w.waves, done: w.kills + w.leaks, left: w.left } : undefined,
       card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? this.cardOf(sel) : undefined,
       end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals, sketch: (this.sketch ??= this.sketchMap()) },
-      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : '',
+      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : this.civTip && waving ? CIV_TIP : '',
+      breakLeft: w.breakLeft / PACE,
     });
   }
 
@@ -1311,6 +1421,7 @@ export class Game extends Phaser.Scene {
       ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
       ...(p.minimum ? [`Minimum pay: ${p.minimum} chips`] : []),
       ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
+      ...(this.skipChips ? [`Breaks skipped ${this.world.skips}: +${this.skipChips}`] : []),
       ...(this.civChips ? [`Civilians saved ${this.world.saved}: +${this.civChips}`] : []),
       ...(this.diffChips ? [`${DIFFICULTY[profile.save.difficulty].name}: ${this.diffChips > 0 ? '+' : ''}${this.diffChips}`] : []),
     ];

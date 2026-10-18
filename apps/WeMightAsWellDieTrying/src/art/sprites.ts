@@ -268,6 +268,16 @@ const ZOMBIE_LOOKS: Record<ZombieKind, (s: number) => Part[]> = {
     c('rotDark', [0, -11], 3.2, 5, 2, [10 + s, -10]), c('rotDark', [0, 11], 3.2, 5, 2, [10 - s, 10]), c('rotDark', [11 + s, -10], 3.6, 6, 2), c('rotDark', [11 - s, 10], 3.6, 6, 2),
     c('blood', [-1, 5], 1.6, 6.1), c('rot', [3, 0], 4, 8, 2.5), c('blood', [4, 1.5], 1, 10.6),
   ],
+  // Hunched over its swollen throat, a gob of bile in its mouth.
+  spitter: (s) => [
+    ...feet(s, 3.5, 3), c('shirt', [-1.5, -4], 2.8, 2, 2, [-1.5, 4]), c('rot', [-0.5, -4.5], 1, 4.5, 1, [2 + s, -5.5]), c('rot', [-0.5, 4.5], 1, 4.5, 1, [2 - s, 5.5]),
+    c('rot', [0.5, 0], 3.6, 6, 3), c('bile', [3, 0], 2.4, 6.6, 1.5), c('bile', [4.6, 0], 1, 7.8),
+  ],
+  // On its belly, legs dragging behind, pulling itself along on its arms.
+  crawler: (s) => [
+    c('pants', [-9, -2], 1.4, 1, 0.5, [-3, -1.5]), c('pants', [-9 + s, 2], 1.4, 1, 0.5, [-3, 1.5]), c('shirt', [-3, 0], 2.8, 1.6, 1.5, [1.5, 0]),
+    c('rot', [1, -3], 1, 2, 0.5, [7 + s * 2, -4]), c('rot', [1, 3], 1, 2, 0.5, [7 - s * 2, 4]), c('rot', [3.5, 0], 2.8, 2.6, 2), c('blood', [-6, 0], 1.2, 1.2),
+  ],
   hordemother: (s) => [
     ...feet(s, 4, 5), c('rot', [2, -9], 1.1, 4.5, 1, [9 + s, -8]), c('rot', [2, 9], 1.1, 4.5, 1, [9 - s, 8]),
     c('flesh', [-2, 0], 10, 2, 5),
@@ -275,6 +285,17 @@ const ZOMBIE_LOOKS: Record<ZombieKind, (s: number) => Part[]> = {
     c('rot', [8, 0], 3.2, 6, 2),
   ],
 };
+
+/** The common zombies again in other clothes, torn through to the rot beneath: `<kind><n>-walk` for each n from 1. Each
+ *  kind's clothes are its first material here, swapped for the others. */
+export const VARIANTS: Partial<Record<ZombieKind, [string, ...string[]]>> = {
+  normal: ['shirt', 'navy', 'red', 'shirtTan', 'teal'], fast: ['shirtTan', 'shirt', 'urban'], jumper: ['pants', 'navy'], screamer: ['shirtPale', 'red'],
+};
+const torn = (n: number): Part[] => [c('rot', [-1.5 + (n % 2), -2.5 + n], 1.1, 2.3, 0.5), c('blood', [-2, 2 - n], 0.8, 2.4)];
+function variant(kind: ZombieKind, n: number, s: number): Part[] {
+  const [from, ...to] = VARIANTS[kind]!;
+  return [...ZOMBIE_LOOKS[kind](s).map((p) => (p.mat === from ? { ...p, mat: to[n - 1] } : p)), ...torn(n)];
+}
 
 /** One tile of a roadblock, drawn across (east-west); a roadblock is a row of these. */
 export function roadblockPiece(kind: 'plastic' | 'wood' | 'sandbags' | 'cement' | 'police', n: number): Part[] {
@@ -312,14 +333,23 @@ const box = (mat: string, w = 4, h = 2.5): Part[] => [c(mat, [-w, -h], 2.6, 2, 1
 /** Someone who lived here, from above, built like a soldier but in their own clothes: shoes, a coat over the
  *  shoulders, arms, a head of hair (or a hat), maybe a backpack, a bag or a case in one hand, or an umbrella over it
  *  all. One walking step (s = 1 or -1). The game's civilians: CIVS normal looks, then UMBRELLAS under umbrellas. */
-interface Civ { coat: string; hair: string; hat?: string; pack?: string; carry?: string; umbrella?: string }
+interface Civ { coat: string; hair: string; hat?: string; pack?: string; carry?: string; umbrella?: string; small?: boolean; cane?: boolean; cross?: boolean }
 const CIVS: Civ[] = [
   { coat: 'navy', hair: 'black', carry: 'brown' }, { coat: 'red', hair: 'brown', pack: 'teal' }, { coat: 'shirtTan', hair: 'black' },
   { coat: 'teal', hair: 'shirtPale', carry: 'black' }, { coat: 'maroon', hair: 'snow', hat: 'urban' }, { coat: 'urban', hair: 'brown', pack: 'hivis' },
   { coat: 'cream', hair: 'black', carry: 'red' },
   { coat: 'navy', hair: 'black', umbrella: 'snow' }, { coat: 'red', hair: 'brown', umbrella: 'navy' }, { coat: 'urban', hair: 'black', umbrella: 'red' },
+  // Those left behind in the buildings, to be brought out (civ10 to civ12): a kid with a backpack, an old man with a cane
+  // and a hat, a nurse in white with a red cross on her back.
+  { coat: 'hivis', hair: 'brown', pack: 'red', small: true }, { coat: 'brown', hair: 'snow', hat: 'urban', cane: true }, { coat: 'snow', hair: 'black', cross: true },
 ];
+/** The looks of the civilians to bring out, as `civ<k>-walk` sprites. */
+export const RESCUED = [10, 11, 12];
 function civilian(l: Civ, s: number): Part[] {
+  const parts = person(l, s);
+  return l.small ? parts.map((p) => ({ ...p, a: [p.a[0] * 0.72, p.a[1] * 0.72] as Vec, b: p.b && ([p.b[0] * 0.72, p.b[1] * 0.72] as Vec), r: p.r * 0.75, z: p.z * 0.8 })) : parts;
+}
+function person(l: Civ, s: number): Part[] {
   return [
     c('shoe', [s * 2.5, -2.2], 1.5, 1), c('shoe', [-s * 2.5, 2.2], 1.5, 1),
     ...(l.pack ? [c(l.pack, [-3.6, -2], 2, 2.5, 2, [-3.6, 2])] : []),
@@ -329,6 +359,8 @@ function civilian(l: Civ, s: number): Part[] {
     c('skin', [0.6, 0], 2.9, 5.4, 2.2), c(l.hair, [-0.5, 0], 2.7, 6, 2),
     ...(l.hat ? [c(l.hat, [0, 0], 3.3, 6.6, 1.4)] : []),
     ...(l.umbrella ? [c(l.umbrella, [1, 0], 6.2, 9, 2), c('metal', [1, 0], 0.6, 11.2)] : []),
+    ...(l.cane ? [c('brown', [2.5 + s, 5.6], 0.7, 3.8, 0, [5.5 + s, 6.2])] : []),
+    ...(l.cross ? [c('red', [-1.6, -2], 0.6, 4.2, 0, [-1.6, 2]), c('red', [-3.2, 0], 0.6, 4.2, 0, [0, 0])] : []),
   ];
 }
 
@@ -538,6 +570,7 @@ export function frames() {
   for (const kind of Object.keys(zombieData) as ZombieKind[]) {
     const size = kind === 'brute' || kind === 'hordemother' ? BIG : SIZE;
     for (const s of [1, -1]) out.push({ anim: `${kind}-walk`, fps: kind === 'fast' ? 8 : 4, size, rgba: draw(ZOMBIE_LOOKS[kind](s), size, 0, false) });
+    for (let n = 1; n < (VARIANTS[kind]?.length ?? 0); n++) for (const s of [1, -1]) out.push({ anim: `${kind}${n}-walk`, fps: kind === 'fast' ? 8 : 4, size, rgba: draw(variant(kind, n, s), size, 0, false) });
   }
   for (const n of [0, 1]) out.push({ anim: 'plastic', fps: 0, size: SIZE, rgba: draw(roadblockPiece('plastic', n), SIZE, 0, true) });
   for (const kind of ['wood', 'sandbags', 'cement'] as const) out.push({ anim: kind, fps: 0, size: SIZE, rgba: draw(roadblockPiece(kind, 0), SIZE, 0, true) });

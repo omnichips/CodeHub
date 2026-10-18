@@ -1215,6 +1215,39 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
           jeepney(px + T / 2, py + T / 2, along ? 0 : Math.PI / 2, r);
         }
       }
+    // Main Street: a diner with its chrome and neon, a gas station's pumps under their canopy. New York: yellow cabs, steam
+    // pouring from orange-and-white stacks over the vents. The White House: floodlights on the lawn, the Secret Service's
+    // black cars at the gate. (Each the first few places that fit, by the tile.)
+    let diner = 0, gas = 0, flood = 0, service = 0;
+    for (let y = 1; y < h - 1; y++)
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x, r = rng(seedOf(x, y, 131)), px = x * T, py = y * T, cx = px + T / 2, cy = py + T / 2;
+        if (!open(x, y)) continue;
+        if (city === 'Main Street' && wall[i] && !built(x, y + 1) && diner < 3 && r() < 0.03 && built(x + 1, y) && built(x - 1, y)) {
+          diner++;
+          rect('#c9473a', px - T, py + T - 10, 3 * T, 3); for (let k = px - T; k < px + 2 * T; k += 4) rect('#e2dccb', k, py + T - 10, 2, 3); // a striped awning
+          rect('#9aa0a4', px - T, py + T - 7, 3 * T, 1); // chrome
+          rect(P.outline, px + 1, py + T - 16, 14, 5); rect('#ff4fa0', px + 2, py + T - 15, 12, 3);
+          shown.push({ kind: 'neon', x: px + 8, y: py + T - 14, n: 0xff4fa0 });
+        }
+        if (city === 'Main Street' && side[i] && isRoad(x, y + 1) && !built(x, y - 1) && gas < 2 && r() < 0.01) {
+          gas++;
+          rect('rgba(0,0,0,0.3)', px - 6 + 3, py - 10 + 3, 3 * T, 12); rect(P.outline, px - 7, py - 11, 3 * T + 2, 14); rect('#e2dccb', px - 6, py - 10, 3 * T, 12); rect('#c9473a', px - 6, py - 10, 3 * T, 3); // the canopy
+          for (const k of [0, 1, 2]) box(px - 2 + k * 15, py + 6, 5, 7, ['#c9473a', '#3f5a7a', '#4f8a86'][k], '#f2f2ea'); // the pumps
+        }
+        if (city === 'New York' && road[i] && r() < 0.005) cab(cx, cy, runX(x, y)[1] - runX(x, y)[0] > 4 * S ? 0 : Math.PI / 2);
+        if (city === 'New York' && road[i] && r() < 0.0025) {
+          // A Con Ed stack: orange and white, steam pouring off it.
+          disc('rgba(0,0,0,0.35)', cx + 2, cy + 2, 4); disc(P.outline, cx, cy, 4); disc('#f08a28', cx, cy, 3.2); rect('#f2f2ea', cx - 3, cy - 1, 6, 2);
+          shown.push({ kind: 'vent', x: cx, y: cy });
+        }
+        if (city === 'White House' && (side[i] || ch(x, y) === ',' || isGreen(x, y)) && flood < 6 && r() < 0.004) {
+          flood++;
+          rect('rgba(0,0,0,0.35)', cx + 1, cy - 1, 3, 12); rect(P.metal1, cx - 1, cy - 10, 2, 12); box(cx - 4, cy - 13, 8, 4, P.metal1, '#f2f2ea');
+          shown.push({ kind: 'flood', x: cx, y: cy });
+        }
+        if (city === 'White House' && road[i] && service < 4 && r() < 0.006) { service++; suv(cx, cy, runX(x, y)[1] - runX(x, y)[0] > 4 * S ? 0 : Math.PI / 2); }
+      }
     // Mexico City: strings of papel picado across the Zocalo, every few rows of it.
     if (city === 'Mexico City')
       for (let y = 2; y < h - 2; y += 5 * S)
@@ -1235,10 +1268,28 @@ export function paintMap(scene: Phaser.Scene, map: MapData, grid: Grid, key: str
         }
   }
 
+  /** A New York cab from above: yellow, the checker strip, the light on its roof. */
+  function cab(x: number, y: number, a: number) {
+    c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S); // a car's size on a map drawn S times over
+    rect('rgba(0,0,0,0.35)', -9, -3, 20, 9); rect(P.outline, -11, -5, 22, 10); rect('#f0c030', -10, -4, 20, 8);
+    rect('#2c2e30', -4, -3, 9, 6); rect('#f0c030', -2, -3, 4, 6); // windows, the roof between
+    for (let k = -10; k < 10; k += 2) rect(k % 4 ? '#141516' : '#f2f2ea', k, -4, 2, 1); // checkers
+    rect('#f2f2ea', -1, -1, 3, 2); // the roof light
+    c.restore();
+  }
+  /** A Secret Service car from above: black, tinted glass, red and blue lights in the grille. */
+  function suv(x: number, y: number, a: number) {
+    c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S);
+    rect('rgba(0,0,0,0.4)', -10, -4, 23, 11); rect(P.outline, -12, -6, 24, 12); rect('#1c1e22', -11, -5, 22, 10);
+    rect('#3a4048', -5, -4, 11, 8); rect('#2a2e34', -3, -4, 6, 8);
+    rect('#ff3b2e', 10, -3, 1, 2); rect('#3b7bff', 10, 1, 1, 2);
+    c.restore();
+  }
+
   /** A jeepney from above: long, painted loud, chrome on the bonnet, a roof rack. */
   function jeepney(x: number, y: number, a: number, r: () => number) {
     const L = 22, B = 9, body = ['#c9473a', '#3f5a7a', '#f0c860', '#4f8a86', '#e2dccb'][(r() * 5) | 0];
-    c.save(); c.translate(x, y); c.rotate(a);
+    c.save(); c.translate(x, y); c.rotate(a); c.scale(S, S);
     rect('rgba(0,0,0,0.35)', -L / 2 + 2, -B / 2 + 2, L, B);
     rect(P.outline, -L / 2 - 1, -B / 2 - 1, L + 2, B + 2);
     rect(body, -L / 2, -B / 2, L, B);

@@ -103,7 +103,8 @@
       #menu > * { position: relative; z-index: 1; }
 
       /* The main menu. The title: the story's font stamped in ink, the big line flickering now and then like a sign. */
-      #menu .main { width: min(400px, 100%); overflow: visible; } /* short enough not to scroll; its paper pokes out a little */
+      #menu .main { width: min(400px, 100%); overflow: visible; max-height: none; }
+      #menu .main > * { flex-shrink: 0; } /* never squashed: the menu scales down whole instead (Menu.fit) */ /* short enough not to scroll; its paper pokes out a little */
       #menu .logo { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 0; }
       #menu .logo canvas { display: block; max-width: 100%; image-rendering: pixelated; }
       #menu .logo canvas:last-child { transform: rotate(-1.5deg); transform-origin: left; animation: sign 9s 3s infinite; }
@@ -457,6 +458,22 @@
       #menu .book .entry p { margin: 2px 0; line-height: 1.35; font-weight: 500; color: #5a5040; }
       #menu .book .entry small { color: #6b6250; }
       #menu .book .entry.locked { opacity: 0.6; }
+      /* Patch notes, statistics and debug on the same paper: sections as typed slips, the table ruled in ink, buttons as tags. */
+      #menu .book section { background: #f6f1e2; border: 0; padding: 8px 12px; box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.35); }
+      #menu .book section h3 { margin: 0; color: #2e2a22; border: 0; text-transform: none; letter-spacing: 0; font-size: calc(14px * var(--text, 1)); }
+      #menu .book section small { color: #6b6250; }
+      #menu .book section ul { color: #3a3428; }
+      #menu .book table { background: #f6f1e2; border: 2px solid #2e2a22; color: #2e2a22; }
+      #menu .book table th, #menu .book table td { border-bottom: 1px solid #b9b2a0; }
+      #menu .book tr > th:first-child { color: #6b6250; }
+      #menu .book tr:first-child th { color: #2e2a22; border-bottom: 2px solid #2e2a22; }
+      #menu .book > button, #menu .book .row button, #menu .book .seg button { color: #2e2a22; background: #e0cc62; border: 0; border-top: 4px solid #cbb84e; box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.4); text-align: left; }
+      #menu .book > button.go { color: #f2e6d6; background: #9c2f28; border-top-color: #5e1d18; }
+      #menu .book .seg button[aria-pressed="true"] { background: #f5d27a; box-shadow: inset 0 -3px 0 #b23a30; }
+      #menu .book .row { background: transparent; border: 0; color: #2e2a22; }
+      #menu .book .chips, #menu .book .note { color: #8a5a10; }
+      #menu .notes.book, #menu .debug.book { width: min(620px, 100%); gap: 8px; overflow-y: auto; }
+      #menu .stats.book { width: min(620px, 100%); }
       #menu .book .head button { color: #2e2a22; background: #c9a86a; border-color: #9c7f48; }
       /* Settings, Controls: the keys, each one's key pressed to change it. */
       #menu .form .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 16px; }

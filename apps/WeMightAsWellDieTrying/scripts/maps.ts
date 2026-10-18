@@ -304,6 +304,8 @@ function waves(p: Plan) {
     if (f >= 0.5) spawn.hordemother = Math.round((2 + 3 * f) * (p.mix?.hordemother ?? 1));
     if (f >= 0.6) spawn.brute = Math.round((k === n - 1 ? 8 : 2 + 4 * f) * (p.mix?.brute ?? 1));
     spawn.normal = total - Object.values(spawn).reduce((a, b) => a + b, 0);
+    // Spitters and crawlers from the third wave, a few each (added on top, as they were first put in).
+    if (k >= 2) { spawn.spitter = Math.max(1, Math.round(spawn.normal * 0.015)); spawn.crawler = Math.max(2, Math.round(spawn.normal * 0.03)); }
     out.push({ duration: Math.round(34 + 24 * f), spawn: Object.fromEntries(['normal', ...Object.keys(spawn).filter((z) => z !== 'normal')].map((z) => [z, spawn[z]])) });
   }
   return { gap: 75, waves: out }; // 15 s between waves at 1× (PACE 5): time to bring civilians out

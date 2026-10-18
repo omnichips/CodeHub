@@ -42,6 +42,8 @@ export interface UnitStats {
 export interface ZombieStats {
   name: string; hp: number; speed: number; radius: number; leak: number; sight: number; dps: number;
   jumps?: boolean; armor?: number; smash?: number;
+  low?: boolean; // a crawler: under wire and spikes, and bullets at a body on the ground land less
+  spit?: { every: number; range: number; damage: number }; // a spitter: hits a soldier, at a window too
   scream?: { every: number; radius: number; boost: number; time: number };
   burst?: { radius: number; damage: number; boost: number; time: number };
   shield?: { radius: number; ahead: number };
@@ -108,7 +110,8 @@ export interface Soldier {
   rateBy: number; // extra ammo
   incendiary: boolean;
   cover: number; // sandbag nest: share of damage he still takes
-  indoor: boolean; // at a window or on a roof: cannot die, never targeted, longer range, less damage
+  indoor: boolean; // at a window or on a roof: cannot die, never targeted (but by spit), longer range, less damage
+  spatAt?: number; // when a spitter last hit him: he goes for spitters first for a while
   kills: number; // zombies he has killed this run (his shots, his shells, the fires he lit)
   leaving?: boolean; // pulled out mid-wave: walking back to the safe zone, then back in the bar
   name: string; // his surname, for his card and the memorial
@@ -132,6 +135,7 @@ export interface Civilian {
   walking: boolean;
   dest?: { x: number; y: number; field: Float32Array };
 }
+const SPAT_FOR = 10; // seconds of fight a soldier spat on goes for spitters first
 export const CIVILIAN_HOLD = 15; // seconds of fight a soldier must hold the door: 3 s at 1× (PACE 5)
 const CIVILIAN = { hp: 60, speed: 34, radius: 4, reach: 22 }; // reach: how near the door a soldier must stand
 
@@ -233,6 +237,7 @@ export class World {
   shots: Shot[] = [];
   blasts: Blast[] = [];
   screams: Scream[] = [];
+  spits: { x0: number; y0: number; x1: number; y1: number; age: number }[] = []; // globs in the air, for the screen
   projectiles: Projectile[] = [];
   structures: Structure[] = [];
   zones: Zone[] = [];
@@ -309,6 +314,22 @@ export class World {
   }
 
   get waves() { return this.plan.waves.length; }
+  /** Seconds of fight left of the break before the next wave (0 while a wave is still coming in, or after the last). */
+  get breakLeft() {
+    const def = this.plan.waves[this.wave];
+    if (this.phase !== 'wave' || !def || this.wave >= this.plan.waves.length - 1 || this.spawned < this.queue.length || this.waveClock < def.duration) return 0;
+    return Math.max(0, def.duration + this.plan.gap - this.waveClock);
+  }
+
+  /** Cuts the break short: the next wave comes now. */
+  skipBreak() {
+    if (this.breakLeft <= 0) return false;
+    this.waveClock = this.plan.waves[this.wave].duration + this.plan.gap;
+    this.skips++;
+    return true;
+  }
+  skips = 0; // breaks cut short, each paying a little
+
   /** Zombies still to deal with: alive now, still to pour in this wave, and every wave after it. */
   get left() {
     let n = this.living + this.queue.length - this.spawned;
@@ -797,7 +818,7 @@ export class World {
     this.zdy[i] = 1;
     this.zhp[i] = z.hp * this.hpBy;
     this.zhit[i] = this.zburn[i] = this.zboost[i] = 0;
-    this.zclock[i] = z.scream?.every ?? z.brood?.every ?? 0;
+    this.zclock[i] = z.scream?.every ?? z.brood?.every ?? z.spit?.every ?? 0;
     this.zkind[i] = kind;
     this.zroute[i] = -1;
     this.zprog[i] = 0;
@@ -910,7 +931,7 @@ export class World {
   }
 
   private age(dt: number) {
-    for (const list of [this.shots, this.blasts, this.screams] as { age: number }[][]) {
+    for (const list of [this.shots, this.blasts, this.screams, this.spits] as { age: number }[][]) {
       let k = 0;
       for (const e of list) if ((e.age += dt) < (list === this.shots ? SHOT_LIFE : BLAST_LIFE)) list[k++] = e;
       list.length = k;
@@ -965,12 +986,12 @@ export class World {
         this.damage(i, this.zburnDps[i] * dt, 'fire');
         if (!this.alive[i]) continue;
       }
-      if (z.scream || z.brood) this.special(i, z, dt);
+      if (z.scream || z.brood || z.spit) this.special(i, z, dt);
       // What the ground does to it: wire and spikes underfoot, fire, smoke, a live puddle, a lure.
       let slow = 1, lure: Zone | undefined, lureD = Infinity;
       const tile = this.grid.at(x, y), st = tile >= 0 ? this.structById.get(this.structAt[tile]) : undefined;
-      if (st && !z.jumps && st.kind === 'wire') slow *= this.stats.structs.wire.slow!;
-      if (st && !z.jumps && st.kind === 'spikes') {
+      if (st && !z.jumps && !z.low && st.kind === 'wire') slow *= this.stats.structs.wire.slow!;
+      if (st && !z.jumps && !z.low && st.kind === 'spikes') {
         const sp = this.stats.structs.spikes;
         this.by = 'spikes';
         this.damage(i, sp.dps! * (this.zkind[i] === FAST ? sp.fastBy! : 1) * dt, 'dot');
@@ -1057,6 +1078,18 @@ export class World {
       this.screams.push({ x, y, r: z.scream.radius, age: 0 });
       this.noise('scream', x, y);
       for (const j of this.within(x, y, z.scream.radius)) if (j !== i) this.boost(j, z.scream.boost, z.scream.time);
+    } else if (z.spit) {
+      // Spits at the nearest soldier in range, at a window too: it hurts, never kills one indoors, and he turns on spitters.
+      let target: Soldier | undefined, best = z.spit.range;
+      for (const s of this.soldiers) { const d = Math.hypot(s.x - x, s.y - y); if (!s.dead && d < best) { best = d; target = s; } }
+      if (!target) { this.zclock[i] = 0.5; return; }
+      this.zclock[i] = z.spit.every;
+      this.spits.push({ x0: x, y0: y, x1: target.x, y1: target.y, age: 0 });
+      this.noise('spit', x, y);
+      target.spatAt = this.time;
+      target.hp -= z.spit.damage * (target.indoor ? 1 : target.cover);
+      if (target.indoor) target.hp = Math.max(1, target.hp);
+      else if (target.hp <= 0) { target.hp = 0; target.dead = true; }
     } else if (z.brood) {
       this.zclock[i] = z.brood.every;
       for (let k = 0; k < z.brood.count; k++) {
@@ -1276,6 +1309,7 @@ export class World {
   private damage(j: number, amount: number, how: 'bullet' | 'pierce' | 'splash' | 'fire' | 'dot') {
     const z = ZOMBIES[this.zkind[j]];
     if (z.armor && (how === 'bullet' || how === 'fire')) amount *= z.armor;
+    if (z.low && (how === 'bullet' || how === 'pierce')) amount *= 0.7; // a crawler, low on the ground
     if (how !== 'fire' && how !== 'dot') this.zhit[j] = 0.1;
     if ((this.zhp[j] -= amount) > 0) return;
     this.kill(j);
@@ -1481,8 +1515,10 @@ export class World {
   private markAngle(s: Soldier) {
     const marks = this.inCone(s, this.rangeOf(s));
     if (!marks.length) return s.angle;
+    const spat = s.spatAt !== undefined && this.time - s.spatAt < SPAT_FOR;
     const score = (j: number) => {
       const d = Math.hypot(this.zx[j] - s.x, this.zy[j] - s.y), z = ZOMBIES[this.zkind[j]];
+      if (spat && z.spit) return 1e9 - d; // spat on: the nearest spitter first
       return s.priority === 'nearest' ? -d : s.priority === 'farthest' ? d : s.priority === 'highest HP' ? this.zhp[j] : s.priority === 'fastest' ? z.speed : -z.speed;
     };
     const j = marks.reduce((a, b) => (score(b) > score(a) ? b : a));

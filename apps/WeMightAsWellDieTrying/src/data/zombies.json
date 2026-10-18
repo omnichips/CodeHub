@@ -8,5 +8,7 @@
   "armored": { "name": "Armored", "hp": 216, "speed": 12, "radius": 7, "leak": 2, "sight": 64, "dps": 14, "armor": 0.35 },
   "tanky": { "name": "Tanky", "hp": 720, "speed": 8, "radius": 9, "leak": 3, "sight": 56, "dps": 20 },
   "brute": { "name": "Brute", "hp": 2640, "speed": 9, "radius": 12, "leak": 3, "sight": 72, "dps": 40, "smash": 8 },
-  "hordemother": { "name": "Hordemother", "hp": 1080, "speed": 7, "radius": 11, "leak": 3, "sight": 56, "dps": 20, "brood": { "every": 3, "count": 2, "kind": "normal" } }
+  "hordemother": { "name": "Hordemother", "hp": 1080, "speed": 7, "radius": 11, "leak": 3, "sight": 56, "dps": 20, "brood": { "every": 3, "count": 2, "kind": "normal" } },
+  "spitter": { "name": "Spitter", "hp": 90, "speed": 11, "radius": 6, "leak": 1, "sight": 64, "dps": 8, "spit": { "every": 4, "range": 110, "damage": 18 } },
+  "crawler": { "name": "Crawler", "hp": 70, "speed": 12, "radius": 5, "leak": 1, "sight": 48, "dps": 10, "low": true }
 }

@@ -13,7 +13,7 @@ import whiteHouse from '../data/maps/white-house.json' with { type: 'json' };
 import type { MapData } from '../sim/grid.ts';
 import { UNITS, type WavePlan } from '../sim/world.ts';
 import { build } from './progress.ts';
-import { SLOTS, fresh, load, loadSettings, store, storeSettings } from './save.ts';
+import { DIFFICULTY, SLOTS, fresh, load, loadSettings, store, storeSettings } from './save.ts';
 
 /** Every slot: its save, or undefined if empty. */
 export const saves = () => Array.from({ length: SLOTS }, (_, k) => load(k));
@@ -53,6 +53,11 @@ export type Weather = 'clear' | 'rain' | 'fog' | 'night' | 'dusk' | 'haze' | 'du
 export const WEATHER: Record<string, Weather> = { london: 'rain', chicago: 'fog', tokyo: 'night', rome: 'dusk', manila: 'haze', mexico: 'dust' };
 export const weatherOf = (id: string): Weather => WEATHER[id] ?? 'clear';
 export const blinds = (w: Weather) => w === 'rain' || w === 'fog';
+/** The weather in a few words, with what it does on the save's difficulty: "Rain: -5% range". */
+export function weatherLine(id: string) {
+  const w = weatherOf(id), name = w[0].toUpperCase() + w.slice(1);
+  return blinds(w) ? `${name}: -${Math.round(DIFFICULTY[profile.save.difficulty].weather * 100)}% range` : w === 'clear' ? 'Clear' : `${name}: no effect`;
+}
 
 /** Open once the map before it is cleared, or if cleared already (a save from before the maps were put in this order). */
 export const unlocked = (k: number) => k === 0 || !!profile.save.cleared[MAPS[k - 1].id] || !!profile.save.cleared[MAPS[k].id];

@@ -5,7 +5,7 @@
 // drawing, so a keyboard and a screen reader find it too: each city, the menu tag, the requisitions clipboard (the
 // skill tree), the notebook (the story), the field manual, the settings sticky note and the radio. Hovered, a thing lifts into the light and a
 // city shows its index card; on a touch screen the first tap shows the card and the second opens the city.
-import { MAPS, perSoldier, profile, unlocked } from '../meta/profile.ts';
+import { MAPS, perSoldier, profile, unlocked, weatherLine } from '../meta/profile.ts';
 import { BAYER, Pen } from '../story/draw.ts';
 import { measure } from '../story/font.ts';
 import { squadPhoto, PHOTO } from '../story/faces.ts';
@@ -196,6 +196,7 @@ export function board(act: BoardActions): HTMLElement {
     const lines = [
       st === 'held' ? 'Held' : st === 'current' ? 'Current mission' : 'Locked',
       st === 'locked' ? `Clear ${MAPS[k - 1].name} first` : `${perSoldier(k)} per soldier`,
+      weatherLine(m.id),
       ...(e ? [`had ${fmt(e.needed)} · got ${e.got === null ? e.gotLabel ?? '?' : fmt(e.got)}`] : []),
       ...(e?.note && e.note !== 'names' ? [e.note] : []),
     ];

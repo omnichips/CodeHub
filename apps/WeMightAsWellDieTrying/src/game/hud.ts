@@ -21,6 +21,7 @@ export interface HudState {
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
+  breakLeft: number; // real seconds left of the break between waves, 0 for none
   progress?: { wave: number; waves: number; done: number; left: number }; // during a wave: how far through the horde
   card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[] }; // the soldier picked
   end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string };
@@ -41,6 +42,7 @@ interface Handlers {
   menu(to: 'menu' | 'tree'): void;
   retreat(): void;
   skip(): void; // skips the guided start
+  nextWave(): void;
 }
 
 const TABS: [Group, string][] = [['units', 'Units'], ['build', 'Build'], ['strikes', 'Strikes']];
@@ -57,6 +59,7 @@ export class Hud {
   private readonly status: HTMLElement[];
   private readonly start: HTMLButtonElement;
   private readonly restore: HTMLButtonElement;
+  private readonly nextWave: HTMLButtonElement;
   private readonly notices: HTMLElement;
   private readonly speeds: HTMLElement;
   private readonly debug: HTMLElement;
@@ -94,6 +97,7 @@ export class Hud {
     const panel = el('div', { className: 'panel', hidden: true }, el('small', {}, 'Debug'), routes, win, leaks);
     this.debug = el('div', { className: 'debug' }, panel, el('button', { type: 'button', className: 'menu', textContent: 'Debug', onclick: () => (panel.hidden = !panel.hidden) }));
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
+    this.nextWave = el('button', { type: 'button', className: 'go next', hidden: true, title: 'Skip the rest of the break: +2% of your kill chips', onclick: () => on.nextWave() });
     this.restore = el('button', { type: 'button', textContent: 'Last setup', title: 'Put everything back where it was last time', onclick: () => on.setup() });
     this.notices = el('div', { className: 'notices' });
     this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n === 0.5 ? '½×' : n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
@@ -142,7 +146,7 @@ export class Hud {
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
       this.vignette,
-      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.progress, this.notices, this.card,
+      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.nextWave, this.speeds), this.progress, this.notices, this.card,
       el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.debug, this.end, this.hint, this.banners, this.keys,
     );
   }
@@ -214,6 +218,8 @@ export class Hud {
     this.start.hidden = !s.planning;
     this.restore.hidden = !s.planning || !s.restore;
     this.speeds.hidden = s.planning;
+    this.nextWave.hidden = !s.breakLeft || !!s.end;
+    if (s.breakLeft) text(this.nextWave, `Next wave now · ${Math.ceil(s.breakLeft)}s`);
     [...this.speeds.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i] === s.speed)));
     this.debug.querySelector('.panel button')!.setAttribute('aria-pressed', String(s.routes));
     this.debug.querySelector('.leaks')!.setAttribute('aria-pressed', String(s.unlimited));
