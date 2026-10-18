@@ -63,9 +63,17 @@ function curl(p: Pen, x2: number, y2: number, n: number, under: string, flap: st
     }
 }
 
+/** A medal: its ribbon in two colours, a disc hung from it (gold, or grey while not yet earned). 7 × 12 art pixels. */
+export function medal(p: Pen, x: number, y: number, [a, b]: readonly [string, string], earned = true) {
+  p.rect(x + 1, y, 5, 5, earned ? a : '#5f625e'); p.rect(x + 3, y, 1, 5, earned ? b : '#8d918b');
+  const [face, dark, hi] = earned ? ['#d6a23e', '#8a6420', '#f8dc8c'] : ['#6b6a64', '#4a4a46', '#8a8a84'];
+  p.rect(x + 1, y + 5, 5, 7, dark); p.rect(x, y + 6, 7, 5, dark); p.rect(x + 1, y + 6, 5, 5, face); p.px(x + 2, y + 7, hi);
+}
+
 /** The save's dossier: a manila folder, CONTINUE on its tab, the save's name, a pip for each city (red and crossed:
- *  lost; gold: the one it is on), its chips and cities, the day stamped on it. Hovered, the sheet inside slides up. */
-export function dossier(name: string, pips: ('held' | 'next' | '')[], line: string, day: number) {
+ *  lost; gold: the one it is on), its chips and cities, the day stamped on it, the save's medals pinned to its front.
+ *  Hovered, the sheet inside slides up. */
+export function dossier(name: string, pips: ('held' | 'next' | '')[], line: string, day: number, medals: readonly (readonly [string, string])[] = []) {
   const W = 196, H = 66;
   return (p: Pen, lift: number, t: number) => {
     const up = Math.round(lift * 8);
@@ -93,6 +101,8 @@ export function dossier(name: string, pips: ('held' | 'next' | '')[], line: stri
     // The day, stamped in red ink.
     const label = `DAY ${day}`, sw = measure(label, 'person') + 8;
     p.rect(W - 12 - sw, fy + 5, sw, 13, RED); p.rect(W - 11 - sw, fy + 6, sw - 2, 11, '#c9a86a'); p.text(label, W - 8 - sw, fy + 8, RED);
+    // Its medals, pinned along the bottom right (as many as fit, newest last).
+    medals.slice(-7).forEach((m, k, all) => medal(p, W - 14 - (all.length - 1 - k) * 9, fy + 24, m));
   };
 }
 
@@ -156,6 +166,45 @@ export function stickyNote() {
   };
 }
 
+/** A sticky note like the settings' with a picture drawn on it and `label` under: `col`/`top` its paper, `flap` its
+ *  curling corner. Hovered, it lifts, its corner curls and `icon` (drawn round cx, cy) moves as it likes. */
+function iconNote(label: string, [col, top, flap, ink]: [string, string, string, string], icon: (p: Pen, cx: number, cy: number, lift: number, t: number) => void) {
+  const W = Math.max(58, measure(label, 'person') + 16), H = 48;
+  return [W, H, (p: Pen, lift: number, t: number) => {
+    const y = 2 - Math.round(lift * 2), w = W - 4, h = H - 6;
+    p.dither(3, 5, w, h, 0.55 + lift * 0.1, SHADOW);
+    p.rect(0, y, w, h, col); p.rect(0, y, w, 6, top);
+    icon(p, Math.floor(w / 2), y + 18, lift, t);
+    p.text(label, Math.floor((w - measure(label, 'person')) / 2), y + 31, ink);
+    curl(p, w, y + h, Math.round(4 + lift * 9), '#140c0a', flap);
+  }] as const;
+}
+
+/** Medals: a yellow note, a medal on it swinging from its ribbon when hovered. */
+export function medalNote() {
+  return iconNote('MEDALS', ['#e0cc62', '#cbb84e', '#c8b44a', '#3a3418'], (p, cx, cy, lift, t) => {
+    const a = Math.sin(t * 7) * 0.45 * lift, dx = Math.round(Math.sin(a) * 6), dy = Math.round((1 - Math.cos(a)) * 3);
+    for (let k = 0; k <= 6; k++) { const x = cx + Math.round((dx * k) / 6); p.rect(x - 2, cy - 9 + k, 2, 1, '#2f4a6a'); p.rect(x, cy - 9 + k, 2, 1, '#c9473a'); } // the ribbon
+    const mx = cx + dx, my = cy + 2 + dy;
+    for (let v = -4; v <= 4; v++) for (let u = -4; u <= 4; u++) { const r = Math.hypot(u, v); if (r <= 4.3) p.px(mx + u, my + v, r > 3.3 ? '#8a6420' : u + v < -1 ? '#f8dc8c' : '#d6a23e'); }
+    p.px(mx, my - 1, '#8a6420'); p.px(mx - 1, my, '#8a6420'); p.px(mx + 1, my, '#8a6420'); p.px(mx, my + 1, '#8a6420'); // a star struck in it
+    p.rect(cx - 1, cy - 11, 3, 2, '#5f625e'); // the pin it hangs from
+  });
+}
+
+/** The field manual: a green note, a book on it whose cover swings open when hovered, showing its pages. */
+export function manualNote() {
+  return iconNote('FIELD MANUAL', ['#b8d89a', '#a2c484', '#94b878', '#22341a'], (p, cx, cy, lift) => {
+    const x = cx - 8, y = cy - 8, W = 16, H = 15;
+    p.rect(x, y + 1, W, H, '#1c2a14'); // its back
+    p.rect(x + 1, y + 2, W - 2, H - 2, '#efe9d6'); // the pages
+    for (let l = 0; l < 4; l++) p.rect(x + 4, y + 5 + l * 3, W - 7, 1, '#9a9280');
+    const cw = Math.max(2, Math.round((W - 1) * (1 - lift * 0.75))); // the cover, narrower as it swings open toward you
+    p.rect(x, y, cw, H, '#4a6a2f'); p.rect(x, y, cw, 1, '#6e8f48'); p.rect(x, y, 2, H, '#2e4420');
+    if (cw > 9) { p.rect(x + 4, y + 5, cw - 7, 3, '#c4a058'); p.rect(x + 5, y + 6, cw - 9, 1, '#4a6a2f'); } // the label on it
+  });
+}
+
 /** The latest patch notes as a newspaper clipping: torn top and bottom, NEWS and the date, the headline, a red
  *  NEW stamp while unread. Hovered, it lifts and its corner curls. */
 export function clipping(title: string, date: string, unread: boolean) {
@@ -188,8 +237,9 @@ function postit(p: Pen, x: number, y: number, w: number, lines: string[], ink: s
 
 /** A save's folder for the New save and Load save screens: a manila folder (blue-grey while its slot is empty, brown
  *  while it would be written over) with its slot on the tab, the save's name, a pip for each city, a paperclipped sheet
- *  inside and a post-it on it. Hovered, the sheet slides up out of it and the post-it flutters. */
-export function slotFolder(o: { slot: number; title: string; line: string; pips?: ('held' | 'next' | '')[]; kind: 'save' | 'empty' | 'danger'; note: string[]; noteInk?: string }) {
+ *  inside, a post-it on it, and a photo of the city it is on pinned to the front. Hovered, the sheet slides up out of
+ *  it and the post-it flutters. */
+export function slotFolder(o: { slot: number; title: string; line: string; pips?: ('held' | 'next' | '')[]; kind: 'save' | 'empty' | 'danger'; note: string[]; noteInk?: string; photo?: HTMLCanvasElement }) {
   const W = 214, H = 68, [back, front, edge] = { save: ['#b08d52', '#c9a86a', '#9c7f48'], empty: ['#7c8a92', '#9aa8ae', '#5e6a70'], danger: ['#8c5236', '#a96a48', '#6e3e28'] }[o.kind];
   return (p: Pen, lift: number, t: number) => {
     const up = Math.round(lift * 9);
@@ -212,6 +262,16 @@ export function slotFolder(o: { slot: number; title: string; line: string; pips?
       if (s === 'held') for (let d = 0; d < 4; d++) { p.px(x + 2 + d, y + 1 + d, '#f2e6d6'); p.px(x + 5 - d, y + 1 + d, '#f2e6d6'); }
     });
     p.text(o.line, 9, fy + 27, o.kind === 'empty' ? '#3a444a' : '#5a4a2a');
+    if (o.photo) {
+      // The city, a little photo with a white border, pinned on.
+      const x = W - 101, y = fy + 5;
+      p.dither(x + 2, y + 2, 36, 27, 0.5, SHADOW);
+      p.rect(x, y, 36, 27, '#efe9d6');
+      p.c.imageSmoothingEnabled = true;
+      p.c.drawImage(o.photo, x + 2, y + 2, 32, 20);
+      p.c.imageSmoothingEnabled = false;
+      p.rect(x + 16, y - 1, 3, 3, '#7a2620'); p.px(x + 17, y - 1, '#f08a78');
+    }
     postit(p, W - 64, 4, 56, o.note, o.noteInk ?? '#3a3418', lift * 3 + Math.sin(t * 2.2) * 0.4 * lift);
   };
 }
@@ -364,13 +424,13 @@ export function checkBox(label: string, on: () => boolean, ink = INK) {
 }
 
 /** A fader like the radio's: a slot with its marks, a knob at `value` (0 to 1), the level on an amber display. */
-export function faderArt(p: Pen, value: number, focused: boolean) {
+export function faderArt(p: Pen, value: number, focused: boolean, shown = value * 100) {
   const W = 124, H = 18, x0 = 4, x1 = 88, at = Math.round(x0 + (x1 - x0) * value);
   p.c.clearRect(0, 0, W, H);
   p.rect(x0 - 2, 7, x1 - x0 + 4, 5, '#141516'); p.rect(x0, 9, at - x0, 1, '#c4a058'); // the slot, lit up to the knob
   for (let k = 0; k <= 10; k++) p.rect(x0 + Math.round(((x1 - x0) * k) / 10), k % 5 ? 14 : 13, 1, k % 5 ? 2 : 3, '#5a3a40');
   p.rect(at - 3, 2, 7, 13, '#141516'); p.rect(at - 2, 3, 5, 11, focused ? '#dcddd3' : '#9aa0a4'); p.rect(at - 2, 3, 5, 1, '#f2f2ea'); p.rect(at - 2, 8, 5, 1, '#3a3d40'); // the knob
-  p.rect(94, 2, 28, 14, '#1a1c14'); p.text(String(Math.round(value * 100)).padStart(3, '0'), 97, 5, '#d6a23e', 'jec');
+  p.rect(94, 2, 28, 14, '#1a1c14'); p.text(String(Math.round(shown)).padStart(3, '0'), 97, 5, '#d6a23e', 'jec');
 }
 
 /** Parched paper, as a tile: mottled tan, darker blotches where it has browned, fibres. */
@@ -383,5 +443,19 @@ export function parchment() {
       img.data.set([228 * k, 204 * k, 152 * k, 255], (y * S + x) * 4);
     }
   g.putImageData(img, 0, 0);
+  return cv.toDataURL();
+}
+
+/** A tile of concrete brick wall, as an image URL: grey bricks in running bond, mortar between, flecked and stained. */
+export function brickTile() {
+  const W = 64, H = 32, cv = el('canvas', { width: W, height: H }), p = new Pen(cv.getContext('2d')!), tones = ['#7a786f', '#6d6b63', '#85837a', '#74726a'];
+  p.rect(0, 0, W, H, '#2a2927'); // the mortar
+  for (let row = 0; row < 4; row++)
+    for (let k = -1; k < 5; k++) {
+      const x = k * 16 + (row % 2 ? 8 : 0), y = row * 8, tone = tones[Math.floor(roll(k + row * 7, row) * 4)];
+      p.rect(x + 1, y + 1, 15, 7, tone); p.rect(x + 1, y + 1, 15, 1, '#97958b'); p.rect(x + 1, y + 7, 15, 1, '#4f4d48'); // lit on top, shaded under
+      for (let s = 0; s < 5; s++) p.px(x + 2 + roll(s, k + row * 11) * 13, y + 2 + roll(k + row * 11, s) * 5, s % 2 ? '#57554f' : '#9a988e'); // flecks
+    }
+  for (const [x, y] of [[0, 0], [W - 1, H - 1]]) p.px(x, y, '#2a2927');
   return cv.toDataURL();
 }

@@ -2,10 +2,14 @@
 import Phaser from 'phaser';
 import palette from './data/palette.json' with { type: 'json' };
 import { watchForCrashes } from './game/crash.ts';
+import { startLoading } from './game/loading.ts';
+import { applyScale } from './game/settings.ts';
 import { Menu } from './game/menu.ts';
 import { Game } from './game/scene.ts';
 import { View } from './viewer.ts';
 
+startLoading();
+applyScale();
 const q = new URLSearchParams(location.search);
 // Offline play once installed; only a built game has the worker (see vite.config.ts).
 if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');

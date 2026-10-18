@@ -4,6 +4,9 @@ import palette from '../data/palette.json' with { type: 'json' };
 import { bake, icon, load } from '../art/atlas.ts';
 import { NODE, NODES, PACE, payout, build, type Build, type Payout } from '../meta/progress.ts';
 import { MAPS, persist, profile } from '../meta/profile.ts';
+import { DIFFICULTY, KEY_ACTIONS, type KeyAction } from '../meta/save.ts';
+import { keyName } from './settings.ts';
+import { award } from '../meta/medals.ts';
 import type { MapData } from '../sim/grid.ts';
 import { ambience } from './ambience.ts';
 import { DEBUG_EACH, DEBUG_MAP, DEBUG_STRIKES, debugView } from './debugmap.ts';
@@ -17,6 +20,7 @@ import {
 import { Hud, type Group } from './hud.ts';
 import { settingsSheet } from './settings.ts';
 import { city, hordeLevel, music, play } from './sound.ts';
+import { startLoading, stopLoading } from './loading.ts';
 import { pose, runScene, stopScene, unseen, type View } from '../story/player.ts';
 import { LOST_LINES } from '../story/storyConfig.ts';
 
@@ -39,6 +43,7 @@ const MAX_ZOOM = 4;
 const HUD_TOP = 56, HUD_BOTTOM = 104; // screen pixels the status row and the bar cover, until the HUD is there to measure
 const LIFT = 36; // a finger drags things this far above itself, so it does not hide where they go
 const GRAB = { touch: 34, mouse: 22 }; // how near (screen pixels) a soldier or his handle has to be to pick it up
+const ZOMBIES_BY = Object.fromEntries(ZOMBIE_KINDS.map((k, i) => [k, ZOMBIES[i]]));
 const WALK = ZOMBIE_KINDS.map((k) => [`${k}-walk/0`, `${k}-walk/1`]);
 const PIECES = new Set(['plastic', 'wood', 'sandbags', 'cement', 'police', 'wire', 'spikes']); // drawn tile by tile; the rest as one sprite
 
@@ -89,6 +94,13 @@ export class Game extends Phaser.Scene {
   loadout: Record<string, number> = {};
   ids: string[] = [];
   paid?: Payout; // the chips this run paid, once it is over
+  diffChips = 0; // of which the save's difficulty added (or took off, on Easy)
+  medals: string[] = []; // medals this fight earned
+  gray?: Phaser.FX.ColorMatrix; // drains the colour as leaks mount
+  grayAt = 0; // how drained it is now, 0 to 1
+  peak = 0; // the most soldiers standing at once this fight, for the red at the screen's edges
+  lastSpeed = 1; // the speed to go back to when unpaused by key
+  metAt = 0; // when the field manual last looked for anyone new
   corpses: { body: Phaser.GameObjects.Image; splat?: Phaser.GameObjects.Image; born: number }[] = [];
   tutorial = -1; // step of the guided start, or -1
   turned = false; // roadblocks and structures dragged from the bar go down turned (R turns them)
@@ -128,10 +140,15 @@ export class Game extends Phaser.Scene {
       for (const u of Object.values(this.build.stats.usables)) u.charges = DEBUG_STRIKES;
       this.build.stats.leakLimit = 99999;
     }
+    // The save's difficulty: fewer or more leaks allowed, zombies tougher or weaker, more or fewer of them.
+    const diff = DIFFICULTY[this.debug ? 'normal' : save.difficulty];
+    this.build.stats.leakLimit = Math.max(1, Math.round(this.build.stats.leakLimit * diff.leaks));
     this.loadout = this.build.loadout;
     this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
+    this.world.hpBy = diff.hp;
+    this.world.countBy = diff.count;
     if (this.unlimited) this.world.leakLimit = Infinity;
-    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, corpses: [], fallen: new Set(), downs: [] });
+    Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, diffChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
     this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
@@ -181,11 +198,21 @@ export class Game extends Phaser.Scene {
     this.setZoom(this.cameras.main.zoom); // again, now the bars can be measured
     music('game');
     city(this.mapId);
-    this.input.keyboard?.on('keydown-R', () => {
-      if (this.drag?.kind === 'place') this.turned = !this.turned;
-      else if (this.canTurn) this.act('Turn');
-    });
+    // The keyboard's shortcuts (Settings, Controls), unless a scene, a question or the settings are up.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || this.inStory || document.querySelector('.dialog') || !document.getElementById('menu')!.hidden) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key, keys = profile.settings.keys, a = (Object.keys(keys) as KeyAction[]).find((x) => keys[x] === key);
+      if (!a) return;
+      e.preventDefault();
+      this.key(a);
+    };
+    addEventListener('keydown', onKey);
+    this.events.once('shutdown', () => removeEventListener('keydown', onKey));
+    // As the line breaks (leaks toward the limit) the colour drains out of the city.
+    this.gray = this.game.renderer.type === Phaser.WEBGL ? this.cameras.main.postFX?.addColorMatrix() : undefined;
+    this.grayAt = 0;
     this.cameras.main.setBackgroundColor('#000000').fadeIn(500); // off the map is black
+    stopLoading();
     this.hud.banner(m.name, this.debug ? 'Lines are routes. Green: on one; yellow: following; red: making for one' : this.tutorial >= 0 ? 'Learn the ropes here' : '');
     // The city's Before scene the first time it is opened (Main Street's is the Opening).
     const before = m === MAPS[0] ? 'opening' : `before:${m.id}`;
@@ -300,12 +327,46 @@ export class Game extends Phaser.Scene {
       if (!s.dead || this.fallen.has(s)) continue;
       this.fallen.add(s);
       this.downs.push({ x: s.x, y: s.y, at: this.time.now });
-      if (!this.muted) { // his cry, then someone on the radio
+      if (!this.muted) { // his cry, then the radio's beep and someone on it
         play('fallen', this.near(s.x, s.y));
-        this.time.delayedCall(700, () => play('say-down'));
+        this.shake(140, 0.003);
+        this.time.delayedCall(500, () => play('police'));
+        this.time.delayedCall(900, () => play('say-down'));
       }
       this.hud.notice(`${this.world.stats.units[s.kind].name} down`, () => this.cameras.main.pan(s.x, s.y, 350, 'Sine.easeInOut'));
     }
+  }
+
+  /** What a shortcut does. */
+  key(a: KeyAction) {
+    const w = this.world, sel = this.selected;
+    if (a === 'pause' && w.phase === 'wave') { if (this.speed) { this.lastSpeed = this.speed; this.speed = 0; } else this.speed = this.lastSpeed || 1; }
+    if (a === 'start') this.begin();
+    if (a.startsWith('speed')) { const n = this.build.speeds[Number(a.slice(5)) - 1]; if (n) this.speed = this.lastSpeed = n; }
+    if (a === 'units' || a === 'build' || a === 'strikes') this.hud.tab(a);
+    if (a === 'turn') { if (this.drag?.kind === 'place') this.turned = !this.turned; else if (this.canTurn) this.act('Turn'); }
+    if (a === 'remove' && w.phase === 'plan' && sel && !(isBlock(sel) && sel.prop)) this.act('Remove');
+    if (a === 'retreat' && isSoldier(sel)) this.act(w.phase === 'plan' ? 'Remove' : 'Retreat');
+    if (a === 'deselect') this.selected = this.armed = this.pending = this.strikeAim = undefined;
+    if (a === 'help') this.hud.toggleKeys((Object.keys(KEY_ACTIONS) as KeyAction[]).map((k) => [keyName(profile.settings.keys[k]), KEY_ACTIONS[k][1]]));
+  }
+
+  /** A jolt of the camera (a big blast, a soldier falling), unless shake is off or the device asks for less motion. */
+  shake(ms: number, power: number) {
+    if (profile.settings.shake && !matchMedia('(prefers-reduced-motion: reduce)').matches) this.cameras.main.shake(ms, power);
+  }
+
+  /** Now and then: any zombie or soldier on the map not yet in the save's field manual goes in it, with a notice. */
+  meet() {
+    if (this.debug || this.time.now - this.metAt < 1000) return;
+    this.metAt = this.time.now;
+    const w = this.world, met = profile.save.met, kinds = new Set<string>(w.soldiers.filter((s) => !s.owner).map((s) => s.kind));
+    for (let i = 0; i < w.n; i++) if (w.alive[i]) kinds.add(ZOMBIE_KINDS[w.zkind[i]]);
+    const fresh = [...kinds].filter((k) => !met.includes(k));
+    if (!fresh.length) return;
+    met.push(...fresh);
+    persist();
+    for (const k of fresh) if (k in ZOMBIES_BY) this.hud.notice(`Field manual: ${ZOMBIES_BY[k].name} added`, () => {});
   }
 
   /** Back to the menu (or straight to the skill web). Leaving mid-fight is a retreat, paid as a loss. */
@@ -324,6 +385,7 @@ export class Game extends Phaser.Scene {
 
   /** Fades out to the save's screen (its cities) or its skill web. */
   fadeTo(to: 'menu' | 'tree') {
+    startLoading();
     this.hud.destroy();
     this.cameras.main.fadeOut(300);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('menu', { open: to === 'menu' ? 'save' : 'tree' }));
@@ -336,11 +398,18 @@ export class Game extends Phaser.Scene {
     if (this.debug) { this.paid = { total: 0, base: 0, timeBonus: 0, leakBonus: 0, firstClear: 0 }; return; } // a test: nothing paid or kept
     const won = w.phase === 'won';
     this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain, level: MAPS.findIndex((x) => x.id === this.mapId) + 1 });
+    this.diffChips = Math.round(this.paid.total * (DIFFICULTY[save.difficulty].chips - 1)); // the difficulty's share, on top or taken off
+    this.paid.total += this.diffChips;
     save.chips += this.paid.total;
     if (won) save.cleared[this.mapId] = true;
     else this.lostLine = LOST_LINES[Math.floor(Math.random() * LOST_LINES.length)];
     const st = save.stats;
     Object.assign(st, { runs: st.runs + 1, wins: st.wins + (won ? 1 : 0), kills: st.kills + w.kills, leaks: st.leaks + w.leaks, chips: st.chips + this.paid.total, time: st.time + Math.round(w.time) });
+    this.medals = award({
+      won, map: this.mapId, last: this.mapId === MAPS.at(-1)!.id, leaks: w.leaks, leakLimit: w.leakLimit, fallen: this.fallen.size,
+      best: Math.max(0, ...w.soldiers.map((s) => s.kills)), timeBonus: this.paid.timeBonus > 0,
+    }, save);
+    if (this.medals.length) this.time.delayedCall(600, () => play('thud', 0.5));
     persist();
   }
 
@@ -628,6 +697,7 @@ export class Game extends Phaser.Scene {
     if (isSoldier(sel) && action.startsWith('Target')) sel.priority = PRIORITIES[(PRIORITIES.indexOf(sel.priority) + 1) % PRIORITIES.length];
     if (isSoldier(sel) && action === 'Deploy turret') this.pending = sel;
     if (action === 'Cancel') this.pending = this.strikeAim = undefined;
+    if (isSoldier(sel) && action === 'Retreat' && w.retreatSoldier(sel)) this.selected = undefined;
     if (!sel || isSoldier(sel)) {
       if (action === 'Remove' && isSoldier(sel)) w.removeSoldier(sel);
     } else if (isBlock(sel)) {
@@ -694,6 +764,7 @@ export class Game extends Phaser.Scene {
     this.settle();
     this.spill();
     this.reportFallen();
+    this.meet();
     if (this.tutorial >= 0) this.stepTutorial();
     const sel = this.selected;
     if (sel && (isSoldier(sel) ? sel.dead || !w.soldiers.includes(sel) : isBlock(sel) ? !w.roadblocks.includes(sel) : !w.structures.includes(sel))) this.selected = undefined;
@@ -726,7 +797,10 @@ export class Game extends Phaser.Scene {
    *  now and then one of them groans. */
   listen(delta: number) {
     const w = this.world, fighting = w.phase === 'wave';
-    for (const s of w.sounds) play(s.kind, this.near(s.x, s.y), s.size);
+    for (const s of w.sounds) {
+      play(s.kind, this.near(s.x, s.y), s.size);
+      if (!this.muted && (s.kind === 'blast' || s.kind === 'a10' || s.kind === 'napalm') && this.near(s.x, s.y) > 0.6) this.shake(200, 0.005);
+    }
     w.sounds.length = 0;
     hordeLevel(fighting ? this.seen / 120 : 0);
     if (fighting && this.speed && Math.random() < (delta / 1000) * Math.min(1.5, this.seen / 30)) play('groan', 0.5 + Math.random() * 0.5);
@@ -842,7 +916,9 @@ export class Game extends Phaser.Scene {
       }
       e.label.setVisible(planning);
     }
-    const paint = hex(palette.paint), light = hex(palette.flash1), bad = hex(palette.blood1), dark = hex(palette.outline);
+    // Good and bad in blue and orange for colour-blind eyes, green and red otherwise.
+    const cb = profile.settings.colorblind, good = cb ? 0x3b8fd9 : hex(palette.rot2);
+    const paint = hex(palette.paint), light = hex(palette.flash1), bad = cb ? 0xf08a28 : hex(palette.blood1), dark = hex(palette.outline);
     const flame = hex(palette.flash0), metal = hex(palette.metal2), smoke = hex(palette.metal2), water = hex(palette.cloth1);
     const tileRect = (g: Phaser.GameObjects.Graphics, i: number) => g.strokeRect((i % w.grid.w) * T, Math.floor(i / w.grid.w) * T, T, T);
 
@@ -988,7 +1064,7 @@ export class Game extends Phaser.Scene {
     // Health bars, only once something is hurt.
     const bar = (x: number, y: number, frac: number) => {
       top.fillStyle(dark, 1).fillRect(x - 8, y, 16, 3);
-      top.fillStyle(frac > 0.5 ? hex(palette.rot2) : bad, 1).fillRect(x - 8, y, 16 * frac, 3);
+      top.fillStyle(frac > 0.5 ? good : bad, 1).fillRect(x - 8, y, 16 * frac, 3);
     };
     for (const s of w.soldiers) if (!s.dead && s.hp < this.world.stats.units[s.kind].hp) bar(s.x, s.y - 14, s.hp / this.world.stats.units[s.kind].hp);
     for (const rb of w.roadblocks) {
@@ -1036,6 +1112,12 @@ export class Game extends Phaser.Scene {
 
   updateHud() {
     const w = this.world, sel = this.selected, planning = w.phase === 'plan', waving = w.phase === 'wave';
+    // The red at the edges as the squad thins (from 60% of the most standing at once), and the colour draining as leaks mount.
+    const standing = w.soldiers.filter((s) => !s.dead && !s.owner).length;
+    this.peak = Math.max(this.peak, standing);
+    this.hud.hurt(waving && this.peak >= 2 ? Math.max(0, Math.min(1, (0.6 - standing / this.peak) / 0.6)) : 0);
+    const drain = this.debug || !Number.isFinite(w.leakLimit) ? 0 : Math.min(1, w.leaks / Math.max(1, w.leakLimit));
+    if (this.gray && Math.abs(drain - this.grayAt) > 0.01) { this.grayAt = drain; this.gray.reset(); this.gray.grayscale(drain); }
     const summary = `${w.kills} kills · ${w.leaks} leaks · ${clock(w.time)}`;
     const ids = this.ids;
     let selection = '';
@@ -1043,7 +1125,7 @@ export class Game extends Phaser.Scene {
     if (this.strikeAim) selection = 'Drag from the mark the way the A-10 flies';
     else if (this.pending) selection = 'Tap where the turret goes';
     else if (this.armed) selection = `Tap the map: ${nameOf(this.armed)}`;
-    else if (isSoldier(sel)) selection = `${this.world.stats.units[sel.kind].name} · ${sel.indoor ? 'indoors' : `${Math.ceil(sel.hp)} HP`}`;
+    else if (isSoldier(sel)) selection = ''; // he has his card instead (below)
     else if (isBlock(sel)) selection = `${this.world.stats.roadblocks[sel.kind].name} · ${sel.prop ? (sel.haul ? 'a soldier is on his way' : 'drag it: a soldier moves it') : `${Math.ceil(sel.hp)} HP`}`;
     else if (sel) selection = this.world.stats.structs[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
     if (waving && w.wave !== this.shownWave) {
@@ -1054,7 +1136,7 @@ export class Game extends Phaser.Scene {
     const turnable = (isBlock(sel) && !sel.prop && !this.world.stats.roadblocks[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
     this.canTurn = (planning && turnable) || (isBlock(sel) && !!sel.prop);
     this.hud.update({
-      status: [planning ? '' : `Wave ${Math.min(w.wave + 1, w.waves)}/${w.waves}${this.time.now - this.behind < 1500 ? ' · slowed' : ''}`, `Leaks ${w.leaks}/${Number.isFinite(w.leakLimit) ? w.leakLimit : '∞'}`, `${w.kills} kills`],
+      status: [!planning && this.time.now - this.behind < 1500 ? 'Slowed' : '', `Leaks ${w.leaks}/${Number.isFinite(w.leakLimit) ? w.leakLimit : '∞'}`, `${w.kills} kills`],
       warn: w.leaks >= w.leakLimit * 0.7,
       counts: Object.fromEntries(ids.map((id) => [id, this.available(id)])),
       // A strike can only be called in once the wave is on, and not again until it has cooled down.
@@ -1076,11 +1158,26 @@ export class Game extends Phaser.Scene {
         ...(planning && turnable ? ['Turn'] : []),
         ...(isBlock(sel) && sel.prop ? ['Turn'] : []),
         ...(planning && sel && !(isBlock(sel) && sel.prop) ? ['Remove'] : []),
+        ...(waving && isSoldier(sel) && !sel.owner && !this.world.stats.units[sel.kind].fixed ? [sel.leaving ? 'Retreating…' : 'Retreat'] : []),
       ],
-      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won' },
+      progress: waving ? { wave: Math.min(w.wave + 1, w.waves), waves: w.waves, done: w.kills + w.leaks, left: w.left } : undefined,
+      card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? this.cardOf(sel) : undefined,
+      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals },
       tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : '',
     });
   }
+
+  /** The picked soldier's card: his photo, health, kills, where he stands and his class's upgrades bought. */
+  cardOf(s: Soldier) {
+    const u = this.world.stats.units[s.kind], owned = this.debug ? {} : profile.save.skills;
+    const upgrades = NODES.filter((n) => n.id.startsWith(`${s.kind}.`) && !n.id.endsWith('.more') && (owned[n.id] ?? 0) > 0)
+      .map((n) => `${n.name.replace(/^[^:]*:s*/, '')} ${owned[n.id]}/${n.max}`);
+    return {
+      kind: s.kind, name: u.name, icon: (this.icons[s.kind] ??= icon(this, `${s.kind}-idle-6/0`)), hp: s.indoor ? u.hp : s.hp, max: u.hp, kills: s.kills,
+      where: s.leaving ? 'falling back' : s.indoor ? 'indoors, safe' : `${Math.ceil(s.hp)} HP`, upgrades,
+    };
+  }
+  icons: Record<string, string> = {}; // each soldier's photo for his card, made once
 
   /** Who made the kills, most first: each soldier class (how many of them), structure and strike. */
   killers() {
@@ -1100,6 +1197,7 @@ export class Game extends Phaser.Scene {
       ...(this.build.chipGain > 1 ? [`Chip gain ${pc(this.build.chipGain - 1)}`] : []),
       ...(p.minimum ? [`Minimum pay: ${p.minimum} chips`] : []),
       ...(p.firstClear ? [`First clear +${p.firstClear}`] : []),
+      ...(this.diffChips ? [`${DIFFICULTY[profile.save.difficulty].name}: ${this.diffChips > 0 ? '+' : ''}${this.diffChips}`] : []),
     ];
   }
 }

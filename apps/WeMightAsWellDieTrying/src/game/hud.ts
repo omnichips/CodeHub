@@ -2,6 +2,8 @@
 // controls, a Debug button (the horde's routes on or off), the bar
 // you drag soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start
 // tip, notices when a soldier falls, and the end-of-run panel with the chips the run paid and who made the kills.
+import { ask } from './dialog.ts';
+
 export type Group = 'units' | 'build' | 'strikes';
 export interface BarItem { id: string; name: string; group: Group; icon: string; desc: string }
 export interface HudState {
@@ -19,7 +21,9 @@ export interface HudState {
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
-  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean };
+  progress?: { wave: number; waves: number; done: number; left: number }; // during a wave: how far through the horde
+  card?: { kind: string; name: string; icon: string; hp: number; max: number; kills: number; where: string; upgrades: string[] }; // the soldier picked
+  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[] };
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
@@ -62,10 +66,14 @@ export class Hud {
   private readonly actions: HTMLElement;
   private readonly tip: HTMLElement;
   private readonly tipText: HTMLElement;
-  private readonly confirm: HTMLElement;
   private readonly end: HTMLElement;
   private readonly hint: HTMLElement;
   private readonly banners: HTMLElement;
+  private readonly progress: HTMLElement;
+  private readonly vignette: HTMLElement;
+  private readonly keys: HTMLElement;
+  private readonly card: HTMLElement;
+  private cardKind = '';
   private readonly on: Handlers;
   private group: Group = 'units';
   private shown = '';
@@ -78,7 +86,7 @@ export class Hud {
     this.speedList = [0, ...speeds];
     root.classList.toggle('lefty', lefty);
     this.status = [el('span'), el('span'), el('span')];
-    const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : (this.confirm.hidden = false)) });
+    const menu = el('button', { type: 'button', className: 'menu', textContent: 'Menu', onclick: () => (this.planning ? on.menu('menu') : this.askRetreat()) });
     const settings = el('button', { type: 'button', className: 'menu', textContent: 'Settings', onclick: () => on.settings() });
     const routes = el('button', { type: 'button', textContent: 'Routes', title: 'Show the lines the horde keeps to', onclick: () => on.routes() });
     const win = el('button', { type: 'button', textContent: 'Win now', title: 'End the fight as won', onclick: () => on.win() });
@@ -126,18 +134,42 @@ export class Hud {
     this.actions = el('div', { className: 'actions' });
     this.tipText = el('p');
     this.tip = el('div', { className: 'tip', hidden: true }, this.tipText, el('button', { type: 'button', textContent: 'Skip', onclick: () => on.skip() }));
-    this.confirm = el('div', { className: 'end', hidden: true },
-      el('h2', {}, 'Retreat?'), el('p', {}, 'It counts as a loss: you keep half the chips from your kills.'),
-      el('div', { className: 'row' }, el('button', { type: 'button', textContent: 'Keep fighting', onclick: () => (this.confirm.hidden = true) }), el('button', { type: 'button', className: 'go', textContent: 'Retreat', onclick: () => on.retreat() })));
     this.end = el('div', { className: 'end', hidden: true });
+    this.progress = el('div', { className: 'progress', hidden: true, role: 'progressbar', ariaLabel: 'The horde' }, el('b'), el('span', { className: 'fill' }, el('i')), el('small'));
+    this.card = el('div', { className: 'card', hidden: true });
+    this.vignette = el('div', { className: 'vignette', ariaHidden: 'true' });
+    this.keys = el('div', { className: 'keysheet', hidden: true, onclick: () => (this.keys.hidden = true) });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
-      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.notices,
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.debug, this.confirm, this.end, this.hint, this.banners,
+      this.vignette,
+      el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.speeds), this.progress, this.notices, this.card,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.debug, this.end, this.hint, this.banners, this.keys,
     );
   }
 
   destroy() { this.root.replaceChildren(); }
+
+  /** Opens a tab of the bar: soldiers, things to build, or strikes. */
+  tab(group: Group) {
+    if (this.tabs.some((t) => TABS.find(([, l]) => l === t.textContent)?.[0] === group)) this.group = group;
+  }
+
+  /** The red at the screen's edges as the squad thins (0 to 1). */
+  hurt(level: number) { this.vignette.style.setProperty('--hurt', level.toFixed(2)); }
+
+  /** The keyboard's shortcuts, over the fight, until tapped or toggled again. */
+  toggleKeys(lines: [string, string][]) {
+    this.keys.hidden = !this.keys.hidden;
+    if (!this.keys.hidden) this.keys.replaceChildren(el('div', {}, el('h2', {}, 'Keys'), el('dl', {}, ...lines.flatMap(([k, what]) => [el('dt', {}, k), el('dd', {}, what)])), el('small', {}, 'Change them in Settings, Controls.')));
+  }
+
+  /** Leaving mid-wave: asked first, on paper. */
+  askRetreat() {
+    ask('Retreat?', 'It counts as a loss: you keep half the chips from your kills.', [
+      { label: 'Retreat', go: true, act: () => this.on.retreat() },
+      { label: 'Keep fighting', act: () => {} },
+    ]);
+  }
 
   /** How much of the game's canvas (`canvas`, on the page) is out of sight at the top and bottom, in CSS pixels: under
    *  the status row and time controls, under the bar, or off the part of the page on screen (`seen`). Measured, since a
@@ -168,9 +200,9 @@ export class Hud {
   explain(name: string, desc: string, at: { left: number; top: number; width: number; bottom: number }) {
     this.hint.replaceChildren(el('b', {}, name), el('p', {}, desc));
     this.hint.hidden = false;
-    const w = this.hint.offsetWidth, h = this.hint.offsetHeight;
-    this.hint.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, at.left + at.width / 2 - w / 2))}px`;
-    this.hint.style.top = `${at.top - h - 8 < 8 ? at.bottom + 8 : at.top - h - 8}px`;
+    const z = parseFloat(getComputedStyle(this.root).zoom) || 1, w = this.hint.offsetWidth * z, h = this.hint.offsetHeight * z; // the HUD's own pixels are scaled by the controls size
+    this.hint.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, at.left + at.width / 2 - w / 2)) / z}px`;
+    this.hint.style.top = `${(at.top - h - 8 < 8 ? at.bottom + 8 : at.top - h - 8) / z}px`;
   }
   unexplain() { this.hint.hidden = true; }
 
@@ -200,17 +232,41 @@ export class Hud {
         ...s.actions.map((a) => el('button', { type: 'button', textContent: a, onclick: () => this.on.action(a) })),
       );
     }
+    // How far through the horde: the wave, a bar filling as they fall, how many are left.
+    this.progress.hidden = !s.progress || !!s.end;
+    if (s.progress) {
+      const { wave, waves, done, left } = s.progress, share = done / Math.max(1, done + left);
+      text(this.progress.children[0] as HTMLElement, `Wave ${wave}/${waves}`);
+      (this.progress.querySelector('i') as HTMLElement).style.transform = `scaleX(${share})`;
+      text(this.progress.children[2] as HTMLElement, `${left.toLocaleString()} left`);
+      this.progress.ariaValueNow = String(Math.round(share * 100));
+    }
+    // The soldier picked: his photo pinned to a card, his health, kills and his class's upgrades.
+    this.card.hidden = !s.card || !!s.end;
+    if (s.card) {
+      const c = s.card;
+      if (c.kind !== this.cardKind) {
+        this.cardKind = c.kind;
+        this.card.replaceChildren(
+          el('div', { className: 'photo' }, el('img', { src: c.icon, alt: '' })),
+          el('div', { className: 'body' }, el('b', {}, c.name), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, c.upgrades.join(' · ') || 'No upgrades yet')));
+      }
+      const hp = this.card.querySelector('.hp i') as HTMLElement | null;
+      if (hp) { hp.style.transform = `scaleX(${Math.max(0, c.hp / c.max)})`; hp.classList.toggle('low', c.hp / c.max <= 0.5); }
+      const stat = this.card.querySelector('.stat') as HTMLElement | null;
+      if (stat) text(stat, `${c.where} · ${c.kills} kill${c.kills === 1 ? '' : 's'}`);
+    } else this.cardKind = '';
     this.tip.hidden = !s.tip || !!s.end;
     text(this.tipText, s.tip);
     this.end.hidden = !s.end;
     if (s.end && !this.end.childElementCount) {
-      this.confirm.hidden = true;
       this.end.append(
         el('h2', {}, s.end.title), ...(s.end.quote ? [el('p', { className: 'quote' }, `“${s.end.quote}”`)] : []), el('p', {}, s.end.detail),
         // What the run paid, and beside it who made the kills.
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),
-          ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : [])),
+          ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : []),
+          ...(s.end.medals.length ? [el('div', { className: 'medals' }, el('h3', {}, 'Medals earned'), el('ul', { className: 'chips' }, ...s.end.medals.map((line) => el('li', {}, line))))] : [])),
         ...(s.end.won ? [el('button', { type: 'button', className: 'go continue', textContent: 'Continue', onclick: () => this.on.next() })] : []),
         el('div', { className: 'row' },
           el('button', { type: 'button', textContent: 'Menu', onclick: () => this.on.menu('menu') }),

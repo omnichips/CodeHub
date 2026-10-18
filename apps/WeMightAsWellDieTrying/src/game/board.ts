@@ -3,7 +3,7 @@
 // route between them. The rest is what the story left behind: Nora's words on a sticky note, the squad's snapshot with
 // the gone crossed out, the day on a calendar, Reyes's notebook. What can be pressed is an invisible button over its
 // drawing, so a keyboard and a screen reader find it too: each city, the menu tag, the requisitions clipboard (the
-// skill tree), the notebook (the story), the settings sticky note and the radio. Hovered, a thing lifts into the light and a
+// skill tree), the notebook (the story), the field manual, the settings sticky note and the radio. Hovered, a thing lifts into the light and a
 // city shows its index card; on a touch screen the first tap shows the card and the second opens the city.
 import { MAPS, perSoldier, profile, unlocked } from '../meta/profile.ts';
 import { BAYER, Pen } from '../story/draw.ts';
@@ -14,6 +14,7 @@ import { story } from '../story/record.ts';
 import { STORY } from '../story/storyConfig.ts';
 import { DEPARTURES, MEMBERS, type Member } from '../story/types.ts';
 import { el } from './hud.ts';
+import { brickTile } from './paper.ts';
 import { play } from './sound.ts';
 
 const BW = 540, BH = 360;
@@ -53,6 +54,7 @@ export interface BoardActions {
   tree(): void;
   story(): void;
   settings(): void;
+  manual(): void; // the field manual
   /** A city's picture as the old cards had it (painted on demand: costly, so asked for one a frame). */
   thumb(id: string): HTMLCanvasElement;
 }
@@ -71,6 +73,7 @@ export function board(act: BoardActions): HTMLElement {
   const canvas = el('canvas', { width: BW, height: BH, ariaHidden: 'true' }), c = canvas.getContext('2d')!, pen = new Pen(c);
   c.imageSmoothingEnabled = false;
   const stage = el('div', { className: 'stage' }, canvas), root = el('div', { className: 'board' }, stage);
+  root.style.setProperty('--brick', `url(${brickTile()})`);
   const fixed = paintFixed(), light = paintLight();
   const pics: (HTMLCanvasElement | undefined)[] = [];
 
@@ -86,6 +89,7 @@ export function board(act: BoardActions): HTMLElement {
     { id: 'story', label: 'Story', x: 126, y: 288, w: 66, h: 58, draw: notebook, press: act.story },
     { id: 'radio', label: 'Radio', x: 474, y: 258, w: 58, h: 90, draw: radio, press: () => { play('police'); setTimeout(() => play('static'), 380); } },
     { id: 'settings', label: 'Settings', x: 476, y: 194, w: 46, h: 46, draw: settingsNote, press: act.settings },
+    { id: 'manual', label: 'Field manual', x: 386, y: 294, w: 38, h: 46, draw: manualBook, press: act.manual },
   );
   const lift = new Map(things.map((x) => [x.id, 0]));
   let hover: string | undefined, touch = false;
@@ -120,6 +124,7 @@ export function board(act: BoardActions): HTMLElement {
     if (flicker <= 0 && Math.random() < dt * 0.12) flicker = 0.05 + Math.random() * 0.15; // the bulb catches now and then
     flicker -= dt;
 
+    c.clearRect(0, 0, BW, BH);
     c.drawImage(fixed, 0, 0);
     route(t);
     c.drawImage(light, 0, 0);
@@ -132,8 +137,10 @@ export function board(act: BoardActions): HTMLElement {
     strings(t);
     // Lit over the lamp's light: the current city's glow, the thing hovered, the bulb, the radio's LED, dust and a moth.
     if (current >= 0) { const y = CARD_Y[current] - Math.round(lift.get(MAPS[current].id)! * 3); glow(pen, cardX(current) + CW / 2, y + CH / 2, 40, '#f5c060', 0.28 + Math.sin(t * 2.4) * 0.06); }
-    if (lit) { lit.draw(pen, lift.get(lit.id)!, t); if (MAPS.some((m) => m.id === lit.id)) indexCard(MAPS.findIndex((m) => m.id === lit.id)); }
-    if (current >= 0 && lit?.id !== MAPS[current].id) card(pen, current, lift.get(MAPS[current].id)!, t, true);
+    // A card drawn over the string covers where it crosses it, so the string is drawn again over it, up to its pin.
+    const litCity = lit ? MAPS.findIndex((m) => m.id === lit.id) : -1;
+    if (lit) { lit.draw(pen, lift.get(lit.id)!, t); if (litCity >= 0) { strings(t, litCity); indexCard(litCity); } }
+    if (current >= 0 && lit?.id !== MAPS[current].id) { card(pen, current, lift.get(MAPS[current].id)!, t, true); strings(t, current); }
     lamp(flicker > 0);
     if (Math.floor(t * 1.4) % 2 === 0) { pen.led(474 + 46, 262 + 9, 3, 2, '#ff3b2e'); pen.led(474 + 47, 262 + 9, 1, 1, '#ffb0a0'); }
     for (const m of motes) {
@@ -199,9 +206,11 @@ export function board(act: BoardActions): HTMLElement {
   }
 
   // ---- The red string, card to card, sagging and swaying a little ----
-  function strings(t: number) {
+  /** All the string, or (`only`) just the two lengths that meet at one city's pin. */
+  function strings(t: number, only?: number) {
     const at = (k: number) => [cardX(k) + CW / 2, CARD_Y[k] + 1 - Math.round(lift.get(MAPS[k].id)! * 3)];
     for (let k = 0; k < MAPS.length - 1; k++) {
+      if (only !== undefined && k !== only && k + 1 !== only) continue;
       const [x0, y0] = at(k), [x1, y1] = at(k + 1), sag = 5 + Math.sin(t * 0.9 + k * 1.7) * 1;
       const n = Math.ceil(Math.abs(x1 - x0) + Math.abs(y1 - y0));
       for (let i = 0; i <= n; i++) {
@@ -326,6 +335,30 @@ export function board(act: BoardActions): HTMLElement {
     pin(p, x + 23, y + 2, ...PINS.held, lift);
   }
 
+  /** The field manual: a little spiral notepad tucked against the squad's snapshot, its kraft back showing, wire rings
+   *  along the top, FIELD MANUAL pencilled on the top page. Hovered, it lifts and the top page flips up over the rings:
+   *  under it, a zombie sketched and how many pages are filled in. */
+  function manualBook(p: Pen, lift: number) {
+    const x = 388, y = 298 - Math.round(lift * 2), w = 34, h = 40;
+    p.dither(x + 3, 301, w, h, 0.55, '#120a05');
+    p.rect(x + 2, y + 2, w, h, '#a8875a'); p.rect(x + 2, y + h + 1, w, 1, '#7a6040'); // the kraft back, peeking out
+    const page = (top: number, hh: number) => { p.rect(x, top, w, hh, '#f6f3ea'); p.rect(x + w - 1, top, 1, hh, '#d8d2c0'); for (let ly = top + 6; ly < top + hh - 2; ly += 4) p.rect(x + 2, ly, w - 4, 1, '#c3cbd2'); };
+    page(y + 3, h - 2); p.rect(x, y + h, w, 1, '#c6bfa8'); // the pages under
+    // Under the top page: a zombie in pencil, arms out, and the count.
+    p.rect(x + 6, y + 10, 4, 4, '#5a5040'); p.rect(x + 5, y + 15, 6, 10, '#5a5040'); p.rect(x + 11, y + 16, 6, 2, '#5a5040'); p.rect(x + 5, y + 25, 2, 7, '#5a5040'); p.rect(x + 9, y + 25, 2, 7, '#5a5040');
+    const met = profile.save.met.filter((k) => k !== 'turret').length;
+    p.text(String(met), x + 20, y + 22, RED);
+    // The top page, flipping up from the bottom as it lifts.
+    const hh = Math.max(0, Math.round((h - 2) * (1 - lift * 0.85)));
+    if (hh > 0) {
+      page(y + 3, hh);
+      if (hh > 26) { p.text('FIELD', x + 4, y + 9, INK); p.text('MANUAL', x + 2, y + 18, INK); }
+      if (hh < h - 3) p.rect(x, y + 3 + hh, w, 1, '#9a9280'); // its edge, turned up
+    }
+    // The wire rings along the top.
+    for (let rx = x + 2; rx < x + w - 2; rx += 4) { p.rect(rx, y, 2, 1, '#1c1c1c'); p.rect(rx, y + 1, 1, 4, '#1c1c1c'); p.rect(rx + 2, y + 1, 1, 4, '#3a3a3a'); p.px(rx + 1, y + 4, '#8a8a8a'); }
+  }
+
   function radio(p: Pen, lift: number, t: number) {
     const x = 474, y = 262, wob = lift > 0.05 ? Math.sin(t * 9) * lift * 3 : Math.sin(t * 0.8) * 0.6;
     // The antenna.
@@ -359,8 +392,7 @@ export function board(act: BoardActions): HTMLElement {
   // ---- Painted once: the wall, the frame, the cork, the world map and every paper that never moves ----
   function paintFixed() {
     const cv = el('canvas', { width: BW, height: BH }), g = cv.getContext('2d')!, p = new Pen(g);
-    p.rect(0, 0, BW, BH, '#120e0b');
-    for (let x = 0; x < BW; x += 18) p.rect(x, 0, 1, BH, '#0d0a08'); // the wall's boards
+    // (The wall behind the board is the brick the page paints, index.html .board: this canvas is clear round the frame.)
     // The frame.
     p.rect(4, 10, 532, 346, '#3a2516'); p.rect(5, 11, 530, 344, '#5a3a22'); p.rect(5, 11, 530, 1, '#8a6238'); p.rect(5, 11, 1, 344, '#74502e');
     p.rect(8, 14, 524, 338, '#3a2516');

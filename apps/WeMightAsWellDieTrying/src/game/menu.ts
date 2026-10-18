@@ -6,17 +6,22 @@
 import Phaser from 'phaser';
 import { bake, load } from '../art/atlas.ts';
 import { MAPS, lastPlayed, open, persist, profile, saves } from '../meta/profile.ts';
-import { NODES } from '../meta/progress.ts';
+import { NODE, NODES } from '../meta/progress.ts';
 import notes from '../data/patchnotes.json' with { type: 'json' };
 import { Grid, type MapData } from '../sim/grid.ts';
-import { exportSave, fresh, noStats, parse, remove, type Save, type Stats } from '../meta/save.ts';
+import { DIFFICULTY, exportSave, fresh, noStats, parse, remove, type Difficulty, type Save, type Stats } from '../meta/save.ts';
+import { ask } from './dialog.ts';
 import { el } from './hud.ts';
+import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
 import { board } from './board.ts';
 import { DEBUG_MAP, debugView } from './debugmap.ts';
 import { HELI_RES, mapAnims, textures } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
-import { clipping, dossier, folder, filmFrame, noteTag, pixelButton, slotFolder, stickyNote } from './paper.ts';
+import { clipping, dossier, manualNote, medalNote, folder, filmFrame, medal, noteTag, pixelButton, pixelCanvas, slotFolder, stickyNote } from './paper.ts';
+import { MEDALS } from '../meta/medals.ts';
+import { icon } from '../art/atlas.ts';
+import { UNITS, ZOMBIES, ZOMBIE_KINDS } from '../sim/world.ts';
 import { routesOf } from '../sim/routes.ts';
 import { settingsSheet } from './settings.ts';
 import { music, play, retune } from './sound.ts';
@@ -28,14 +33,27 @@ import { playScene, pose } from '../story/player.ts';
 import { order } from '../story/text.ts';
 import { mapOf } from '../story/types.ts';
 
-export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'story';
+export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'story' | 'medals' | 'manual';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
 const SQUAD = ['rifleman', 'sniper', 'shotgunner', 'marksman', 'grenadier', 'medic']; // as many stand as the story has left
 const STATS: [keyof Stats, string][] = [['runs', 'Runs'], ['wins', 'Wins'], ['kills', 'Kills'], ['leaks', 'Leaks'], ['chips', 'Chips earned'], ['time', 'Time fighting']];
 
 const THUMB_W = 240, THUMB_H = 150;
-const THUMBS = new Map<string, HTMLCanvasElement>(); // `${map}-${blood}`: painted once a session
+const THUMBS = new Map<string, HTMLCanvasElement>(); // `${map}-${blood}`: painted once a session, or baked
+/** The thumbnails baked ahead of time (scripts/thumbs.ts), loaded as the game starts so the board need not paint them.
+ *  One missing (a new map, or art changed and not baked again) is painted as before. */
+const BAKED = import.meta.glob('../art/thumbs/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+if (!new URLSearchParams(location.search).has('thumbs'))
+  for (const [path, url] of Object.entries(BAKED)) {
+    const img = new Image();
+    img.onload = () => {
+      const cv = el('canvas', { width: img.width, height: img.height });
+      cv.getContext('2d')!.drawImage(img, 0, 0);
+      THUMBS.set(path.slice(path.lastIndexOf('/') + 1, -5), cv);
+    };
+    img.src = url;
+  }
 /** A doubled map at half size, as it was designed: it looks the same in a thumbnail, for a quarter of the painting. */
 const half = (m: MapData): MapData => ((m.scale ?? 1) < 2 ? m : {
   ...m, scale: m.scale! / 2, props: [], rows: m.rows.filter((_, y) => y % 2 === 0).map((r) => [...r].filter((_, x) => x % 2 === 0).join('')),
@@ -62,6 +80,26 @@ function standing(s: Save | undefined) {
   const behind = Object.values(s?.story.notebook ?? {}).reduce((n, e) => n + (e.got === null ? 0 : e.needed - e.got), 0);
   return { next, day: row.day, squad: row.squad, behind };
 }
+
+/** A post-it to press (Export, Delete, Medals and the like). */
+const tagNote = (label: string, col: string, dark: string, ink: string, press: () => void) => { const [w, h, draw] = noteTag(label, col, dark, ink); return pixelButton(label, w, h, draw, press, 'tag'); };
+
+/** What the field manual says of each zombie. */
+const ZOMBIE_NOTES: Record<string, string> = {
+  normal: 'Slow, and never alone. Most of every horde.',
+  fast: 'Half the health, twice the speed. First to the line.',
+  jumper: 'Leaps over roadblocks instead of going round or through them.',
+  screamer: 'Screams every few seconds: every zombie near it speeds up.',
+  bloater: 'Bursts when it dies, hurting the zombies round it. The rest lurch forward.',
+  intelligent: 'Walks behind the others and steers them ahead of it, as a shield.',
+  armored: 'Bullets and fire barely scratch it. Blasts and piercing rounds do.',
+  tanky: 'Slow, and soaks up a magazine or three.',
+  brute: 'Huge. Tears through roadblocks eight times as fast as the rest.',
+  hordemother: 'Gives birth to two more every few seconds as it walks.',
+};
+
+/** The city a save is on (the last one, once every city is behind it). */
+const cityOf = (s: Save) => MAPS[standing(s).next >= 0 ? standing(s).next : MAPS.length - 1];
 
 /** A line of the story's font stamped in ink: each pixel a `B`-pixel block, chipped here and there, the ink uneven,
  *  over its shadow. `seed` keeps its chips the same every time. */
@@ -112,12 +150,13 @@ export class Menu extends Phaser.Scene {
   shots: { x0: number; y0: number; x1: number; y1: number; t: number }[] = [];
   root!: HTMLElement;
   note = ''; // a line saying what the last cheat did
+  bookFrom: Screen = 'menu'; // where the medals and the field manual go back to
   settingsFrom: Screen = 'menu'; // where Settings goes back to: the main menu or a save's cities
   intro = true; // the first time the main menu shows: the title stamped on, the rest after it
 
   constructor() { super('menu'); }
 
-  init(data: { open?: Screen }) { this.open = data.open ?? 'menu'; this.intro = true; }
+  init(data: { open?: Screen }) { this.open = data.open ?? 'menu'; this.intro = true; this.current = undefined; }
 
   preload() { load(this); }
 
@@ -176,6 +215,13 @@ export class Menu extends Phaser.Scene {
     this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; });
     this.show(this.open);
     music('menu');
+    // Baking the thumbnails (scripts/thumbs.ts): every map painted, with blood and without, handed to the script.
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has('thumbs')) {
+      const out: Record<string, string> = {};
+      for (const blood of [true, false]) for (const m of MAPS) { profile.settings.gore = blood ? 'normal' : 'none'; out[`${m.id}-${blood}`] = this.thumbnail(m.id).toDataURL('image/webp', 0.9); }
+      Object.assign(window, { thumbs: out });
+    }
+    stopLoading();
   }
 
   /** A little farther out than a fight starts (it shows 480 pixels of map top to bottom), never past the map's edges. */
@@ -264,14 +310,26 @@ export class Menu extends Phaser.Scene {
     h.beacon.setPosition(x - Math.cos(h.a) * 4 * SIZE, y - Math.sin(h.a) * 4 * SIZE).setScale(SIZE * 0.45).setAlpha((t * 2.2) % 1 < 0.15 ? 0.9 : 0);
   }
 
+  /** Changes screen: a wipe across between two different ones (not on the first, nor redrawing the same one). */
   show(screen: Screen): void {
-    if (screen === 'tree') return skillWeb(this, this.root, () => this.show('save'));
-    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog() }[screen]();
+    const was = this.current;
+    this.current = screen;
+    if (was && was !== screen && screen !== 'tree' && !loadingActive() && this.root.childElementCount) wipe(() => this.showNow(screen));
+    else this.showNow(screen);
+  }
+  current?: Screen;
+
+  showNow(screen: Screen): void {
+    if (screen === 'tree') return whileLoading(() => skillWeb(this, this.root, () => this.show('save')));
+    if ((screen === 'new' || screen === 'load') && !loadingActive() && saves().some((s) => s && !THUMBS.has(`${cityOf(s).id}-${profile.settings.gore !== 'none'}`)))
+      return whileLoading(() => this.showNow(screen));
+    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
     this.root.replaceChildren(...[panel].flat()); // each panel slides in (CSS)
   }
 
   /** Fades the menu out and the city in. */
   play(map: string) {
+    startLoading();
     this.root.classList.add('leaving');
     this.cameras.main.fadeOut(350);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('game', { map }));
@@ -289,12 +347,18 @@ export class Menu extends Phaser.Scene {
       el('p', { className: 'tagline' }, `Day ${at.day} · ${at.behind ? `${at.behind.toLocaleString('en-US')} left behind` : 'hold the line'}`),
       // Straight back into the save played last: its dossier, a pip for each city (lost, the one it is on, to come).
       ...(last ? [pixelButton(`Continue: ${last.name}, ${summary(last)}`, 196, 66,
-        dossier(last.name, MAPS.map((m, i) => (last.cleared[m.id] ? 'held' : i === at.next ? 'next' : '')), `${last.chips} chips   ${MAPS.filter((m) => last.cleared[m.id]).length}/${MAPS.length} cities`, at.day),
+        dossier(last.name, MAPS.map((m, i) => (last.cleared[m.id] ? 'held' : i === at.next ? 'next' : '')), `${last.chips} chips   ${MAPS.filter((m) => last.cleared[m.id]).length}/${MAPS.length} cities`, at.day,
+          MEDALS.filter((m) => last.medals[m.id]).sort((a, b) => last.medals[a.id] - last.medals[b.id]).map((m) => m.ribbon)),
         () => { open(k); this.show('save'); }, 'dossier')] : []),
       el('div', { className: 'pair' },
         pixelButton('New save', 94, 44, last ? folder('NEW SAVE', '#4a5032', '#2e3220', 3) : folder('NEW SAVE', '#9c2f28', '#5e1d18', 3), () => this.show('new')),
         pixelButton('Load save', 94, 44, folder('LOAD SAVE', '#2f3a54', '#1c2333', 8), () => this.show('load'))),
-      pixelButton('Settings', 58, 48, stickyNote(), () => { this.settingsFrom = 'menu'; this.show('settings'); }, 'sticky'),
+      // Settings, and beside it the last save's medals and field manual as post-its.
+      el('div', { className: 'tags' },
+        pixelButton('Settings', 58, 48, stickyNote(), () => { this.settingsFrom = 'menu'; this.show('settings'); }, 'sticky'),
+        ...(last ? [
+          pixelButton('Medals', ...medalNote(), () => { open(k); this.bookFrom = 'menu'; this.show('medals'); }, 'sticky'),
+          pixelButton('Field manual', ...manualNote(), () => { open(k); this.bookFrom = 'menu'; this.show('manual'); }, 'sticky')] : [])),
     );
     [...panel.children].forEach((c, i) => (c as HTMLElement).style.setProperty('--i', String(i)));
     if (intro) setTimeout(() => play('thud', 0.5), 700); // the title landing
@@ -329,40 +393,49 @@ export class Menu extends Phaser.Scene {
       const text = await file.files?.[0]?.text();
       file.value = '';
       const save = text === undefined ? undefined : parse(text);
-      if (!save) return alert('That file is not a Die Trying save.');
+      if (!save) return ask('Not a save', 'That file is not a Die Trying save.', [{ label: 'OK', act: () => {} }]);
       open(into, save);
       again();
     };
     const pips = (s: Save) => MAPS.map((m, i) => (s.cleared[m.id] ? 'held' : i === MAPS.findIndex((x) => !s.cleared[x.id]) ? 'next' : '') as 'held' | 'next' | '');
-    const line = (s: Save) => `${s.chips} chips   ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length} cities`;
+    const line = (s: Save) => `${s.chips} chips  ${MAPS.filter((m) => s.cleared[m.id]).length}/${MAPS.length}  ${DIFFICULTY[s.difficulty].name.toUpperCase()}`;
+    const photo = (s: Save) => this.thumbnail(cityOf(s).id);
     const date = (s: Save) => new Date(s.played).toISOString().slice(0, 10);
-    const tag = (label: string, col: string, dark: string, ink: string, press: () => void) => { const [w, h, draw] = noteTag(label, col, dark, ink); return pixelButton(label, w, h, draw, press, 'tag'); };
     const row = (s: Save | undefined, k: number) => {
       if (mode === 'new') {
         const b = pixelButton(s ? `Slot ${k + 1}: overwrite ${s.name}` : `Slot ${k + 1}: empty`, 214, 68, slotFolder(s
-          ? { slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'danger', note: ['WILL BE', 'LOST!'], noteInk: '#8a2a20' }
+          ? { slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'danger', note: ['WILL BE', 'LOST!'], noteInk: '#8a2a20', photo: photo(s) }
           : { slot: k + 1, title: 'Empty', line: 'Nothing saved here', kind: 'empty', note: ['START', 'HERE'] }), () => {
-          if (s && !confirm(`Start over in this slot? "${s.name}" (${summary(s)}) will be gone. Export it first if you might want it back.`)) return;
-          open(k, fresh(`Save ${k + 1}`));
-          this.show('save');
+          // How hard, then into the new save.
+          const start = () => ask('How hard?', 'Pick a difficulty for this save. It stays with the save.', [
+            ...(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => ({ label: DIFFICULTY[d].name, note: DIFFICULTY[d].desc, go: d === 'normal', act: () => { open(k, fresh(`Save ${k + 1}`, d)); this.show('save'); } })),
+            { label: 'Cancel', act: () => {} },
+          ]);
+          if (!s) return start();
+          ask('Start over?', `"${s.name}" (${summary(s)}) in Slot ${k + 1} will be gone. Export it first if you might want it back.`, [
+            { label: 'Start over', go: true, act: start },
+            { label: 'Keep it', act: () => {} },
+          ]);
         });
         return el('div', { className: 'slotrow' }, b);
       }
       if (!s) {
         const b = pixelButton(`Slot ${k + 1}: empty`, 214, 68, slotFolder({ slot: k + 1, title: 'Empty', line: 'Nothing saved here', kind: 'empty', note: ['NO', 'SAVE'] }), () => {});
         b.disabled = true;
-        return el('div', { className: 'slotrow' }, b, el('div', { className: 'tags' }, tag('IMPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => { into = k; file.click(); })));
+        return el('div', { className: 'slotrow' }, b, el('div', { className: 'tags' }, tagNote('IMPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => { into = k; file.click(); })));
       }
       return el('div', { className: 'slotrow' },
-        pixelButton(`${s.name}, ${summary(s)}`, 214, 68, slotFolder({ slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'save', note: ['PLAYED', date(s)] }), () => { open(k); this.show('save'); }),
+        pixelButton(`${s.name}, ${summary(s)}`, 214, 68, slotFolder({ slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'save', note: ['PLAYED', date(s)], photo: photo(s) }), () => { open(k); this.show('save'); }),
         el('div', { className: 'tags' },
-          tag('EXPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => exportSave(s)),
-          tag('DELETE', '#e59aa6', '#c97a87', '#4a1e28', () => {
-            if (!confirm(`Delete "${s.name}" (${summary(s)})? This cannot be undone.`)) return;
-            remove(k);
-            if (profile.slot === k) profile.save = fresh(`Save ${k + 1}`); // not written until played
-            again();
-          })));
+          tagNote('EXPORT', '#9ad0e0', '#7ab4c8', '#1c3a48', () => exportSave(s)),
+          tagNote('DELETE', '#e59aa6', '#c97a87', '#4a1e28', () => ask('Delete this save?', `"${s.name}" (${summary(s)}). This cannot be undone.`, [
+            { label: 'Delete', go: true, act: () => {
+              remove(k);
+              if (profile.slot === k) profile.save = fresh(`Save ${k + 1}`); // not written until played
+              again();
+            } },
+            { label: 'Keep it', act: () => {} },
+          ]))));
     };
     return el('div', { className: 'panel slots' }, this.head(mode === 'new' ? 'New save' : 'Load save', 'menu'), ...saves().map(row), file);
   }
@@ -375,6 +448,7 @@ export class Menu extends Phaser.Scene {
       tree: () => this.show('tree'),
       story: () => this.show('story'),
       settings: () => { this.settingsFrom = 'save'; this.show('settings'); },
+      manual: () => { this.bookFrom = 'save'; this.show('manual'); },
       thumb: (id) => this.thumbnail(id),
     });
   }
@@ -399,6 +473,27 @@ export class Menu extends Phaser.Scene {
     this.textures.remove(key); // only the thumbnail is kept
     THUMBS.set(`${id}-${blood}`, out);
     return out;
+  }
+
+  /** The save's medals: each pinned with its name and what earns it, grey until earned. */
+  medals(): HTMLElement {
+    const got = profile.save.medals;
+    const rows = MEDALS.map((m) => el('div', { className: `entry${got[m.id] ? '' : ' locked'}` },
+      pixelCanvas(9, 13, (p) => medal(p, 1, 0, m.ribbon, !!got[m.id])),
+      el('div', {}, el('b', {}, m.name), el('p', {}, m.desc), el('small', {}, got[m.id] ? `Earned ${new Date(got[m.id]).toISOString().slice(0, 10)}` : 'Not yet'))));
+    return el('div', { className: 'panel book' }, this.head(`Medals · ${Object.keys(got).length}/${MEDALS.length}`, this.bookFrom), el('div', { className: 'entries' }, ...rows));
+  }
+
+  /** The save's field manual: a page for every zombie and soldier, filled in once met in a fight. */
+  manual(): HTMLElement {
+    const met = new Set(profile.save.met);
+    const page = (id: string, frame: string, name: string, stats: string, note: string) => el('div', { className: `entry${met.has(id) ? '' : ' locked'}` },
+      met.has(id) ? el('img', { src: icon(this, frame), alt: '' }) : el('span', { className: 'unknown' }, '?'),
+      el('div', {}, el('b', {}, met.has(id) ? name : 'Not met yet'), ...(met.has(id) ? [el('small', {}, stats), el('p', {}, note)] : [el('p', {}, 'Meet it in a fight to fill in this page.')])));
+    const zombies = ZOMBIE_KINDS.map((k, i) => { const z = ZOMBIES[i]; return page(k, `${k}-walk/0`, z.name, `HP ${z.hp} · speed ${z.speed} · a leak costs ${z.leak}`, ZOMBIE_NOTES[k] ?? ''); });
+    const soldiers = Object.entries(UNITS).filter(([k]) => k !== 'turret').map(([k, u]) => page(k, `${k}-idle-6/0`, u.name, `HP ${u.hp}${u.range ? ` · range ${u.range}` : ''}${u.damage ? ` · damage ${u.damage}` : ''}`, NODE.get(k)?.desc ?? ''));
+    return el('div', { className: 'panel book' }, this.head(`Field manual · ${zombies.concat(soldiers).filter((e) => !e.classList.contains('locked')).length}/${zombies.length + soldiers.length}`, this.bookFrom),
+      el('h3', {}, 'The horde'), el('div', { className: 'entries' }, ...zombies), el('h3', {}, 'Your soldiers'), el('div', { className: 'entries' }, ...soldiers));
   }
 
   /** Every scene of the story in order; the ones this save has seen can be played again. */

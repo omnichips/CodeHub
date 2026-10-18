@@ -338,7 +338,7 @@ function clip(name: string, near: number) {
   if (!ctx || ctx.state !== 'running' || !buf || near < 0.05) return;
   const now = ctx.currentTime;
   const talk = name.startsWith('say-');
-  if (talk && profile.settings.voices !== 'acting') return; // the soldiers only talk with Voices on Voice acting
+  if (talk && profile.settings.voices === 'off') return; // the soldiers talk unless Voices is Off
   if (now - (lastClip[name] ?? -1e9) < k.window || (playing[name] ?? 0) >= k.voices || voices >= MAX_VOICES || (talk && now < talking)) return;
   lastClip[name] = now;
   if (talk) talking = now + take[2] - take[1];

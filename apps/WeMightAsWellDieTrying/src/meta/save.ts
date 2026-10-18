@@ -17,8 +17,25 @@ export interface Settings {
   dust: number; // 0 to 1: how much dust blows across the screen
   mix: boolean; // play alongside other apps' music (Spotify): the game's music off, and on an iPhone its sound follows the silent switch
   story: 'full' | 'short' | 'off'; // the cutscenes: all of them, their words only, or none (their notebook pages are still written)
-  voices: 'blips' | 'acting' | 'off'; // how people sound: a blip a letter in the story, the recorded voices (the story's and the soldiers'), or neither
+  voices: 'blips' | 'acting' | 'off'; // how the story sounds: a blip a letter, or the recorded voices; the soldiers' calls play with either, Off is neither
+  shake: boolean; // the screen shakes at big blasts and when a soldier falls
+  colorblind: boolean; // blue and orange where the map says good and bad, not green and red
+  ui: number; // the fight's controls, this times their size (UI_SCALE)
+  text: number; // all text, this times its size (TEXT_SIZE)
+  keys: Record<KeyAction, string>; // the key for each shortcut (KeyboardEvent.key)
 }
+
+/** What a key can do in a fight, the key it starts on, and what the cheat sheet calls it. */
+export const KEY_ACTIONS = {
+  pause: [' ', 'Pause or go on'], start: ['Enter', 'Start the wave'],
+  speed1: ['1', 'Slowest speed'], speed2: ['2', 'Speed 2'], speed3: ['3', 'Speed 3'], speed4: ['4', 'Fastest speed'],
+  units: ['q', 'Units tab'], build: ['w', 'Build tab'], strikes: ['e', 'Strikes tab'],
+  turn: ['r', 'Turn what is picked'], remove: ['Delete', 'Remove what is picked'], retreat: ['x', 'Pull the picked soldier out'],
+  deselect: ['Escape', 'Let go of what is picked'], help: ['?', 'Show these keys'],
+} as const;
+export type KeyAction = keyof typeof KEY_ACTIONS;
+export const UI_SCALE = [0.8, 1.5] as const;
+export const TEXT_SIZE = [0.85, 1.4] as const;
 export interface Stats {
   runs: number;
   wins: number;
@@ -38,7 +55,18 @@ export interface Save {
   setups: Record<string, Setup>; // each city's defence as it was last started, to put down again
   played: number; // when it was last opened, ms since 1970
   story: StoryState; // scenes seen and the notebook's pages
+  difficulty: Difficulty; // chosen when the save is started
+  medals: Record<string, number>; // medals earned (game/medals.ts), and when, ms since 1970
+  met: string[]; // the zombies and soldiers met in a fight, for the field manual
 }
+
+export type Difficulty = 'easy' | 'normal' | 'hard';
+/** What each difficulty does to a fight: zombie health and numbers, how many leaks lose it, the chips it pays. */
+export const DIFFICULTY: Record<Difficulty, { name: string; hp: number; count: number; leaks: number; chips: number; desc: string }> = {
+  easy: { name: 'Easy', hp: 0.75, count: 1, leaks: 1.5, chips: 0.8, desc: 'Weaker zombies, more leaks allowed, fewer chips.' },
+  normal: { name: 'Normal', hp: 1, count: 1, leaks: 1, chips: 1, desc: 'The fight as it was meant.' },
+  hard: { name: 'Hard', hp: 1.3, count: 1.25, leaks: 0.75, chips: 1.25, desc: 'Tougher zombies, more of them, fewer leaks allowed, more chips.' },
+};
 
 export const SLOTS = 3;
 /** The choices for how many dead bodies may lie about at once. */
@@ -48,11 +76,13 @@ const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory() });
-export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips' });
+export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [] });
+export const defaultKeys = () => Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k])) as Record<KeyAction, string>;
+export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips', shake: true, colorblind: false, ui: 1, text: 1, keys: defaultKeys() });
 
 const pick = <T extends string>(v: unknown, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 const unit = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : fallback);
+const within = (v: unknown, [lo, hi]: readonly [number, number], fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback);
 const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
 const list = (v: unknown) => (Array.isArray(v) ? v.slice(0, 500) : []).filter((o): o is Record<string, unknown> => !!o && typeof o === 'object');
 const finite = (o: Record<string, unknown>, ...keys: string[]) => keys.every((k) => typeof o[k] === 'number' && Number.isFinite(o[k]));
@@ -112,6 +142,9 @@ export function parse(text: string): Save | undefined {
     played: count(r.played) || Date.now(), // version 1 never said
     // The story came in version 5: a city cleared before it counts its scenes as seen.
     story: r.version < 5 ? fromCleared(cleared) : storyFrom(r.story),
+    difficulty: pick(r.difficulty, ['easy', 'normal', 'hard'] as const, 'normal'), // saves from before difficulty were Normal
+    medals: Object.fromEntries(Object.entries(r.medals && typeof r.medals === 'object' ? r.medals : {}).filter(([, v]) => typeof v === 'number' && Number.isFinite(v)).slice(0, 100)) as Record<string, number>,
+    met: (Array.isArray(r.met) ? r.met : []).filter((v): v is string => typeof v === 'string').slice(0, 100),
   };
 }
 
@@ -130,6 +163,11 @@ export function settingsFrom(raw: unknown): Settings {
     mix: s.mix === true,
     story: pick(s.story, ['full', 'short', 'off'] as const, base.story),
     voices: pick(s.voices, ['blips', 'acting', 'off'] as const, base.voices),
+    shake: s.shake !== false,
+    colorblind: s.colorblind === true,
+    ui: within(s.ui, UI_SCALE, base.ui),
+    text: within(s.text, TEXT_SIZE, base.text),
+    keys: { ...base.keys, ...Object.fromEntries(Object.entries(s.keys && typeof s.keys === 'object' ? s.keys : {}).filter(([a, k]) => a in KEY_ACTIONS && typeof k === 'string' && k.length > 0 && k.length <= 20)) },
   };
 }
 

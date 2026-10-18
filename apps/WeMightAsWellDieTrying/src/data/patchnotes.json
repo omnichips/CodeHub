@@ -1,159 +1,177 @@
 [
-  {
-    "date": "2026-10-18 14:48",
-    "title": "Paper and evacuations",
-    "notes": [
-      "The main menu shows the city your save is on: its zombies walk the horde's routes and what is left of the squad fires down at them. The title is stamped on bigger, and every button is pixel-art paper: the save's dossier, ring-bound folders, a sticky note for settings, the news clipping in the corner.",
-      "New save and Load save are folders with post-its; the story is a reel of film frames; the skill tree is a requisitions sheet on the cork wall, its skills yellow cards on red string, a pile of chips counting down as you spend and APPROVED stamped on what you buy.",
-      "Settings is a sheet of parched paper: tabs for Sound, Display, Story and Controls, faders like the radio's, boxes ticked in pen, and little live pictures of gore, bodies and dust.",
-      "The safe zones show how their people are to get out, as the story has it: school buses on Main Street, a ferry in Chicago, three ships each in New York and Manila (riding the water), metro stairs in Rome and the subway in Tokyo with people going down, an army convoy in London.",
-      "Every safe zone is a camp now: people (no more circles), tents, cookfires, sleeping bags, aid tables, toilets, cars and crates, with junk piled where it meets the street.",
-      "The war room's squad photo is the one from the cutscenes."
-    ]
-  },
-  {
-    "date": "2026-10-18 02:49",
-    "title": "The war room",
-    "notes": [
-      "The cities are now pinned to a war-room board under a hanging lamp: each city a photo on a red string, a map of the world with the route between them, the squad's snapshot with the gone crossed out, the day on a calendar, and Nora's words on a sticky note.",
-      "Hover a city to lift it into the light and read its index card: how it stands, how many zombies per soldier, and its page of the notebook once you have seen it. On a phone, tap once to read it and again to go.",
-      "The skill tree is the requisitions clipboard, the story is Reyes's notebook, and settings is the pink sticky note. The radio answers when pressed.",
-      "Real recordings for the rifle, marksman, sniper, shotgun, flamethrower, bazooka, mortar, small blasts, roadblocks giving way and soldiers going down. The missile launches when called in and lands with a blast.",
-      "New music: Winter on the Wire in the fights, Broken Nylon Prayer in the cutscenes. Every city has its own sound under the fight (wind, rain, trains, a river, crowds), and every cutscene place its own; it drops low on the radio, notebook and photo shots. The horde's footsteps under its growl.",
-      "A beep on the radio before Nora or JEC speaks. A revolver's click on every button.",
-      "A big Continue button after a win: on to the next city.",
-      "New soldiers no longer need other soldiers' upgrades bought first: only the card before them. Every run pays at least 5 chips × the city's number.",
-      "In the skill tree, close a card's description with its ✕ or by tapping outside it, and the description no longer gets squeezed."
-    ]
-  },
-  {
-    "date": "2026-10-17 21:53",
-    "title": "Faces, blips and the photo",
-    "notes": [
-      "The story's text box is bigger, and whoever is talking shows in a framed 32-pixel portrait at its left: head turned toward the words, a bold outline, caps, badges, beards, glasses and all.",
-      "Faces show how a line is said: happy, sad, angry, worried, shocked or stern, with brows, eyes and mouth to match (and a tear, or a bead of sweat). The radio's signal bars drop when the news is bad.",
-      "Settings > Voices: Blips (the new default), Voice acting or Off. Blips gives everyone a voice of their own, a short note a letter as the words type, lower when angry or sad. Voice acting plays the recorded lines, and the soldiers only call out over the radio with it on.",
-      "The little squad figures at the bottom left are gone. After every city, a snapshot of the squad from before it all, fooling about in the station pantry (Pike giving Dunne bunny ears); whoever is gone has a red X over them, the newest drawn in as you watch.",
-      "Letters lost to a bad radio signal no longer stay lost: each crackles for a moment, then the right letter pops in.",
-      "The notebook keeps every city: each page lists all the counts so far, with the new one written in under them.",
-      "The whole story is rewritten: new lines in every scene, said with feeling.",
-      "New in the scenes: a rubber boat heads out from the Chicago pier, a helicopter carries the V.I.P.s out of New York, Pike speaks up before he boards the train in Tokyo, and the Ending has a new moment at the White House's upstairs window."
-    ]
-  },
-  {
-    "date": "2026-10-17 09:12",
-    "title": "Routes, voices and a living city",
-    "notes": [
-      "The horde keeps to routes now: invisible lines from each way in to the safe zone, a few per way in, so the long way round gets walked too. A zombie pushed off its route follows the ones nearer it, and makes its own way back when there is no one to follow.",
-      "Guns fire as often as their card says (they had been firing 5 times as fast since the speed-up) and hit a quarter softer. The zombies stay fast.",
-      "Soldiers answer over the radio when you pick them.",
-      "The flamethrower throws real fire: pixel flames that lick and flicker.",
-      "Skill tree: deeper skills cost much more, and many need others fully bought first. A new soldier needs three.",
-      "Every soldier gets a second set of upgrades: unlock, +1, range / damage / fire rate, +1 (needing all three), the same three again, then toughness and his perk. Each level is half as strong as before (range +4%, damage +8%, fire rate +6%, healing and repairs +10%), so both sets together match one set of old. Lines on the tree join every upgrade a card needs into it.",
-      "Strikes play out at their old pace again, in real time, so the missile and the A-10 land with their sound.",
-      "Strikes take their time and look the part, drawn to scale: the missile comes in low on its smoke, the A-10 flies in, strafes and flies off, a jet drops napalm canisters that tumble down, the barrage's shells drop onto their marks.",
-      "The A-10: put its mark down, then drag the way it should fly and let go.",
-      "Finer flames from the flamethrower.",
-      "The fight's music no longer plays its last 5 seconds.",
-      "The city moves: lamps glow and some blink, traffic lights change, Tokyo's screens flicker, water ripples, the fountain sprays, trees stir, the Zocalo flag flies, litter blows about, and birds take off when zombies come.",
-      "Rounded curbs and lawn corners where streets meet.",
-      "Settings > Debug: a route test map with everything unlocked, and a switch to show the routes on every map.",
-      "A soldier who falls cries out, and someone calls it in on the radio. Roadblocks crunch when they give way.",
-      "Settings right in the fight, in a window (the fight pauses while it is open). The Map button and the 'Plan your defence' tag are gone. A Debug button in the corner shows the routes.",
-      "Dust blowing across the screen, with its own slider. 'Play over other apps' music' lets Spotify keep playing on your phone.",
-      "Ground joins up: street corners are cut on the slant, diagonal streets and paths (Tokyo, the White House lawn) run in one clean slant instead of steps, streets that jog sideways (Rome) slant across smoothly, building corners are rounded. Roads are marked properly: a double yellow line down the middle, white dashes between lanes.",
-      "Trees are two tiles across. Some buildings have burned out and some are still burning.",
-      "Safe zones are camps now: a fence, tents, and a Chinook that now and then takes off, flies off the map and comes back in from the other side to land.",
-      "A few of the dead lie where they fell across each city: civilians and soldiers, full size.",
-      "Window and roof spots are marked with a pulsing amber reticle.",
-      "Chicago: the towers no longer glow in the dark, and the lone one at the bottom right is gone. Manila: the west alley now runs on into the market, and the east one up into the east street; zombies use both. Tokyo: the station roof is in the shade with the rest of its block.",
-      "Rome: a paved walk runs between the park and the road (no more stray steps of grass), the park runs on down under the Colosseum where a sliver of building was, and no crosswalks are painted in the middle of the bends.",
-      "The Chinook is drawn properly: shaded, panelled and riveted, its engines either side of the tall rear pylon, a framed cockpit, nav lights and a star; yellow blade tips, a blur when the rotors run fast, and a red beacon flashing while its engines run.",
-      "The story begins: Commander Reyes, promoted over the radio on the first night. A scene plays the first time you open a city and the first time you hold it, eighteen in all, each drawn in pixels: the street on the first night, the Chicago pier, the New York harbor, the Manila alleys in the rain, the Zocalo, the Colosseum, the Shibuya crossing, the bridge over the Thames, and the White House lawn at dawn. The colour drains out of them city by city. Hold anywhere to skip; tap to move the words on. Settings > Story scenes: Full, Short (words only) or Off. Replay any scene you have seen from Story, inside a save. Cities you cleared before count as seen.",
-      "A lost run ends with a line from the Commander.",
-      "Everyone in the story speaks: every line is voiced, each character in a voice of their own (the radio sounds like a radio, and Nora breaks up as the signal fails). Whoever is talking shows in a portrait by their words, with their name; voices on the radio show the handset, JEC its seal.",
-      "The maps play their part in the story too: the ways in flash once on Main Street, lights trace the way through Manila (fewer after), the train waits at Rome's dip, and rain falls over Tokyo.",
-      "The Debug button in a fight has Win now and Unlimited leaks (it stays on through Play again).",
-      "The notebook gets bloodier page by page (less with Gore on Some, none with it off). A notebook page is never cut off before it is written (New York's and London's were).",
-      "Words Nora loses to a bad signal crackle as static in their place, instead of leaving the line squashed.",
-      "Settings > Debug: Replay the story from the start."
-    ]
-  },
-  {
-    "date": "2026-10-16 14:55",
-    "title": "Patch notes",
-    "notes": [
-      "Patch notes, right here: the icon in the top right of the main menu, with a red dot when there is something new.",
-      "The build line in Settings now shows Philippine time."
-    ]
-  },
-  {
-    "date": "2026-10-16 14:48",
-    "title": "iPhone fixes",
-    "notes": [
-      "The bottom of the map can be reached again on iPhones: Safari no longer zooms the page itself on a pinch.",
-      "The view measures the screen again after the phone turns."
-    ]
-  },
-  {
-    "date": "2026-10-16 14:35",
-    "title": "Music",
-    "notes": [
-      "Music: The Last Floorboard over a city in panic on the menu, the city in panic in a fight, crossfading between them.",
-      "Sound now works on phones, and on an iPhone with the silent switch on.",
-      "Music volume in Settings.",
-      "Lighter menu; New save and Load save side by side; Statistics moved into Settings.",
-      "Zoomed out, the bottom of the map always clears the bar."
-    ]
-  },
-  {
-    "date": "2026-10-16 14:13",
-    "title": "Bigger maps, new cities",
-    "notes": [
-      "Every map is twice as big: room for the horde.",
-      "Queens is now Manila's slums, Brooklyn is Chicago, Central Park is Mexico City; the White House is bigger, its lawn longer.",
-      "Fire, smoke and steam on the maps; the menu is a ruined city, burning.",
-      "Phones: tap a unit, then tap the map; dragged things sit above your finger; a Map button to see the whole city.",
-      "Speeds: 1/2, 1, 2 and 5 (the old 5x is the new 1x). Zombies have 20% more HP. Fewer chips, dearer skills.",
-      "Continue in the main menu; Settings from the city list, with a storage bar.",
-      "Fixed a crowd of zombies freezing in place."
-    ]
-  },
-  {
-    "date": "2026-10-16 00:35",
-    "title": "Skill tree and four new cities",
-    "notes": [
-      "The skill web is now a tree of cards; a soldier's card has an eye to watch him fight.",
-      "The cities are a grid of cards with pictures of their maps.",
-      "London, the White House, Rome and Tokyo replace four New York maps."
-    ]
-  },
-  {
-    "date": "2026-10-15 18:05",
-    "title": "Six new maps",
-    "notes": [
-      "Six new maps, recorded sounds, and fixes for the freeze at 10x."
-    ]
-  },
-  {
-    "date": "2026-10-15 14:46",
-    "title": "Sound and a playtest pass",
-    "notes": [
-      "Sound, three maps, the levelled skill web and a big round of fixes from playtesting."
-    ]
-  },
-  {
-    "date": "2026-10-15 11:38",
-    "title": "Skills, saves and New York",
-    "notes": [
-      "The skill web, chips, save slots, the menu and settings, the New York map; install it as an app."
-    ]
-  },
-  {
-    "date": "2026-10-15 01:23",
-    "title": "The first build",
-    "notes": [
-      "The game: the art, the engine, every soldier and zombie, structures and strikes."
-    ]
-  }
+ {
+  "date": "2026-10-18 17:43",
+  "title": "Folders in the field",
+  "notes": [
+   "A loading screen: a soldier running over a progress bar, with a tip under it, when the game starts and between the menu and a fight. Menu screens change with a black sweep.",
+   "The fight's controls are paper now: manila folder tabs, the bar a folder with each soldier's photo pinned in it, post-its for actions, the end of a fight a report in a folder.",
+   "A bar under the status shows the wave and how many of the horde are left.",
+   "Tap a soldier to see his card: his photo, health, kills and his class's upgrades. Mid-wave you can pull him out: he walks back to the safe zone and returns to the bar.",
+   "Difficulty: Easy, Normal or Hard, picked when you start a save. Hard has tougher zombies and more of them, and pays more chips.",
+   "Medals, pinned to your save's dossier, and a field manual that fills in a page for each zombie and soldier you meet. Both are sticky notes beside Settings on the main menu, and the field manual is a little notepad on the war-room board.",
+   "Each save's folder has a photo of the city it is on.",
+   "The soldiers' radio calls play unless Voices is Off, and the radio beeps before \"Man down!\".",
+   "The screen shakes at big blasts, the edges go red as the squad thins, and the colour drains as the leaks mount.",
+   "Deleting a save, starting over and retreating ask on paper first.",
+   "New settings: screen shake, colour-blind colours, controls size, text size, and keyboard shortcuts you can change (press ? in a fight to see them).",
+   "The cities' pictures on the war-room board show at once instead of painting in one by one."
+  ]
+ },
+ {
+  "date": "2026-10-18 14:48",
+  "title": "Paper and evacuations",
+  "notes": [
+   "The main menu shows the city your save is on: its zombies walk the horde's routes and what is left of the squad fires down at them. The title is stamped on bigger, and every button is pixel-art paper: the save's dossier, ring-bound folders, a sticky note for settings, the news clipping in the corner.",
+   "New save and Load save are folders with post-its; the story is a reel of film frames; the skill tree is a requisitions sheet on the cork wall, its skills yellow cards on red string, a pile of chips counting down as you spend and APPROVED stamped on what you buy.",
+   "Settings is a sheet of parched paper: tabs for Sound, Display, Story and Controls, faders like the radio's, boxes ticked in pen, and little live pictures of gore, bodies and dust.",
+   "The safe zones show how their people are to get out, as the story has it: school buses on Main Street, a ferry in Chicago, three ships each in New York and Manila (riding the water), metro stairs in Rome and the subway in Tokyo with people going down, an army convoy in London.",
+   "Every safe zone is a camp now: people (no more circles), tents, cookfires, sleeping bags, aid tables, toilets, cars and crates, with junk piled where it meets the street.",
+   "The war room's squad photo is the one from the cutscenes."
+  ]
+ },
+ {
+  "date": "2026-10-18 02:49",
+  "title": "The war room",
+  "notes": [
+   "The cities are now pinned to a war-room board under a hanging lamp: each city a photo on a red string, a map of the world with the route between them, the squad's snapshot with the gone crossed out, the day on a calendar, and Nora's words on a sticky note.",
+   "Hover a city to lift it into the light and read its index card: how it stands, how many zombies per soldier, and its page of the notebook once you have seen it. On a phone, tap once to read it and again to go.",
+   "The skill tree is the requisitions clipboard, the story is Reyes's notebook, and settings is the pink sticky note. The radio answers when pressed.",
+   "Real recordings for the rifle, marksman, sniper, shotgun, flamethrower, bazooka, mortar, small blasts, roadblocks giving way and soldiers going down. The missile launches when called in and lands with a blast.",
+   "New music: Winter on the Wire in the fights, Broken Nylon Prayer in the cutscenes. Every city has its own sound under the fight (wind, rain, trains, a river, crowds), and every cutscene place its own; it drops low on the radio, notebook and photo shots. The horde's footsteps under its growl.",
+   "A beep on the radio before Nora or JEC speaks. A revolver's click on every button.",
+   "A big Continue button after a win: on to the next city.",
+   "New soldiers no longer need other soldiers' upgrades bought first: only the card before them. Every run pays at least 5 chips × the city's number.",
+   "In the skill tree, close a card's description with its ✕ or by tapping outside it, and the description no longer gets squeezed."
+  ]
+ },
+ {
+  "date": "2026-10-17 21:53",
+  "title": "Faces, blips and the photo",
+  "notes": [
+   "The story's text box is bigger, and whoever is talking shows in a framed 32-pixel portrait at its left: head turned toward the words, a bold outline, caps, badges, beards, glasses and all.",
+   "Faces show how a line is said: happy, sad, angry, worried, shocked or stern, with brows, eyes and mouth to match (and a tear, or a bead of sweat). The radio's signal bars drop when the news is bad.",
+   "Settings > Voices: Blips (the new default), Voice acting or Off. Blips gives everyone a voice of their own, a short note a letter as the words type, lower when angry or sad. Voice acting plays the recorded lines, and the soldiers only call out over the radio with it on.",
+   "The little squad figures at the bottom left are gone. After every city, a snapshot of the squad from before it all, fooling about in the station pantry (Pike giving Dunne bunny ears); whoever is gone has a red X over them, the newest drawn in as you watch.",
+   "Letters lost to a bad radio signal no longer stay lost: each crackles for a moment, then the right letter pops in.",
+   "The notebook keeps every city: each page lists all the counts so far, with the new one written in under them.",
+   "The whole story is rewritten: new lines in every scene, said with feeling.",
+   "New in the scenes: a rubber boat heads out from the Chicago pier, a helicopter carries the V.I.P.s out of New York, Pike speaks up before he boards the train in Tokyo, and the Ending has a new moment at the White House's upstairs window."
+  ]
+ },
+ {
+  "date": "2026-10-17 09:12",
+  "title": "Routes, voices and a living city",
+  "notes": [
+   "The horde keeps to routes now: invisible lines from each way in to the safe zone, a few per way in, so the long way round gets walked too. A zombie pushed off its route follows the ones nearer it, and makes its own way back when there is no one to follow.",
+   "Guns fire as often as their card says (they had been firing 5 times as fast since the speed-up) and hit a quarter softer. The zombies stay fast.",
+   "Soldiers answer over the radio when you pick them.",
+   "The flamethrower throws real fire: pixel flames that lick and flicker.",
+   "Skill tree: deeper skills cost much more, and many need others fully bought first. A new soldier needs three.",
+   "Every soldier gets a second set of upgrades: unlock, +1, range / damage / fire rate, +1 (needing all three), the same three again, then toughness and his perk. Each level is half as strong as before (range +4%, damage +8%, fire rate +6%, healing and repairs +10%), so both sets together match one set of old. Lines on the tree join every upgrade a card needs into it.",
+   "Strikes play out at their old pace again, in real time, so the missile and the A-10 land with their sound.",
+   "Strikes take their time and look the part, drawn to scale: the missile comes in low on its smoke, the A-10 flies in, strafes and flies off, a jet drops napalm canisters that tumble down, the barrage's shells drop onto their marks.",
+   "The A-10: put its mark down, then drag the way it should fly and let go.",
+   "Finer flames from the flamethrower.",
+   "The fight's music no longer plays its last 5 seconds.",
+   "The city moves: lamps glow and some blink, traffic lights change, Tokyo's screens flicker, water ripples, the fountain sprays, trees stir, the Zocalo flag flies, litter blows about, and birds take off when zombies come.",
+   "Rounded curbs and lawn corners where streets meet.",
+   "Settings > Debug: a route test map with everything unlocked, and a switch to show the routes on every map.",
+   "A soldier who falls cries out, and someone calls it in on the radio. Roadblocks crunch when they give way.",
+   "Settings right in the fight, in a window (the fight pauses while it is open). The Map button and the 'Plan your defence' tag are gone. A Debug button in the corner shows the routes.",
+   "Dust blowing across the screen, with its own slider. 'Play over other apps' music' lets Spotify keep playing on your phone.",
+   "Ground joins up: street corners are cut on the slant, diagonal streets and paths (Tokyo, the White House lawn) run in one clean slant instead of steps, streets that jog sideways (Rome) slant across smoothly, building corners are rounded. Roads are marked properly: a double yellow line down the middle, white dashes between lanes.",
+   "Trees are two tiles across. Some buildings have burned out and some are still burning.",
+   "Safe zones are camps now: a fence, tents, and a Chinook that now and then takes off, flies off the map and comes back in from the other side to land.",
+   "A few of the dead lie where they fell across each city: civilians and soldiers, full size.",
+   "Window and roof spots are marked with a pulsing amber reticle.",
+   "Chicago: the towers no longer glow in the dark, and the lone one at the bottom right is gone. Manila: the west alley now runs on into the market, and the east one up into the east street; zombies use both. Tokyo: the station roof is in the shade with the rest of its block.",
+   "Rome: a paved walk runs between the park and the road (no more stray steps of grass), the park runs on down under the Colosseum where a sliver of building was, and no crosswalks are painted in the middle of the bends.",
+   "The Chinook is drawn properly: shaded, panelled and riveted, its engines either side of the tall rear pylon, a framed cockpit, nav lights and a star; yellow blade tips, a blur when the rotors run fast, and a red beacon flashing while its engines run.",
+   "The story begins: Commander Reyes, promoted over the radio on the first night. A scene plays the first time you open a city and the first time you hold it, eighteen in all, each drawn in pixels: the street on the first night, the Chicago pier, the New York harbor, the Manila alleys in the rain, the Zocalo, the Colosseum, the Shibuya crossing, the bridge over the Thames, and the White House lawn at dawn. The colour drains out of them city by city. Hold anywhere to skip; tap to move the words on. Settings > Story scenes: Full, Short (words only) or Off. Replay any scene you have seen from Story, inside a save. Cities you cleared before count as seen.",
+   "A lost run ends with a line from the Commander.",
+   "Everyone in the story speaks: every line is voiced, each character in a voice of their own (the radio sounds like a radio, and Nora breaks up as the signal fails). Whoever is talking shows in a portrait by their words, with their name; voices on the radio show the handset, JEC its seal.",
+   "The maps play their part in the story too: the ways in flash once on Main Street, lights trace the way through Manila (fewer after), the train waits at Rome's dip, and rain falls over Tokyo.",
+   "The Debug button in a fight has Win now and Unlimited leaks (it stays on through Play again).",
+   "The notebook gets bloodier page by page (less with Gore on Some, none with it off). A notebook page is never cut off before it is written (New York's and London's were).",
+   "Words Nora loses to a bad signal crackle as static in their place, instead of leaving the line squashed.",
+   "Settings > Debug: Replay the story from the start."
+  ]
+ },
+ {
+  "date": "2026-10-16 14:55",
+  "title": "Patch notes",
+  "notes": [
+   "Patch notes, right here: the icon in the top right of the main menu, with a red dot when there is something new.",
+   "The build line in Settings now shows Philippine time."
+  ]
+ },
+ {
+  "date": "2026-10-16 14:48",
+  "title": "iPhone fixes",
+  "notes": [
+   "The bottom of the map can be reached again on iPhones: Safari no longer zooms the page itself on a pinch.",
+   "The view measures the screen again after the phone turns."
+  ]
+ },
+ {
+  "date": "2026-10-16 14:35",
+  "title": "Music",
+  "notes": [
+   "Music: The Last Floorboard over a city in panic on the menu, the city in panic in a fight, crossfading between them.",
+   "Sound now works on phones, and on an iPhone with the silent switch on.",
+   "Music volume in Settings.",
+   "Lighter menu; New save and Load save side by side; Statistics moved into Settings.",
+   "Zoomed out, the bottom of the map always clears the bar."
+  ]
+ },
+ {
+  "date": "2026-10-16 14:13",
+  "title": "Bigger maps, new cities",
+  "notes": [
+   "Every map is twice as big: room for the horde.",
+   "Queens is now Manila's slums, Brooklyn is Chicago, Central Park is Mexico City; the White House is bigger, its lawn longer.",
+   "Fire, smoke and steam on the maps; the menu is a ruined city, burning.",
+   "Phones: tap a unit, then tap the map; dragged things sit above your finger; a Map button to see the whole city.",
+   "Speeds: 1/2, 1, 2 and 5 (the old 5x is the new 1x). Zombies have 20% more HP. Fewer chips, dearer skills.",
+   "Continue in the main menu; Settings from the city list, with a storage bar.",
+   "Fixed a crowd of zombies freezing in place."
+  ]
+ },
+ {
+  "date": "2026-10-16 00:35",
+  "title": "Skill tree and four new cities",
+  "notes": [
+   "The skill web is now a tree of cards; a soldier's card has an eye to watch him fight.",
+   "The cities are a grid of cards with pictures of their maps.",
+   "London, the White House, Rome and Tokyo replace four New York maps."
+  ]
+ },
+ {
+  "date": "2026-10-15 18:05",
+  "title": "Six new maps",
+  "notes": [
+   "Six new maps, recorded sounds, and fixes for the freeze at 10x."
+  ]
+ },
+ {
+  "date": "2026-10-15 14:46",
+  "title": "Sound and a playtest pass",
+  "notes": [
+   "Sound, three maps, the levelled skill web and a big round of fixes from playtesting."
+  ]
+ },
+ {
+  "date": "2026-10-15 11:38",
+  "title": "Skills, saves and New York",
+  "notes": [
+   "The skill web, chips, save slots, the menu and settings, the New York map; install it as an app."
+  ]
+ },
+ {
+  "date": "2026-10-15 01:23",
+  "title": "The first build",
+  "notes": [
+   "The game: the art, the engine, every soldier and zombie, structures and strikes."
+  ]
+ }
 ]

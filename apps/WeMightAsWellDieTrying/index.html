@@ -20,7 +20,7 @@
         --right: max(8px, env(safe-area-inset-right)); --bottom: max(8px, env(safe-area-inset-bottom));
       }
       html, body { margin: 0; height: 100%; background: #232526; overflow: hidden; touch-action: none; overscroll-behavior: none; }
-      body { font: 600 13px ui-monospace, Menlo, Consolas, monospace; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      body { font: 600 calc(13px * var(--text, 1)) ui-monospace, Menlo, Consolas, monospace; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       #game { position: fixed; inset: 0; }
       button {
         font: inherit; color: var(--ink); background: var(--olive); border: 2px solid var(--line);
@@ -46,12 +46,12 @@
       @media (hover: hover) { #hud .go:hover { background: #9c4f44; } }
       #hud .dock { bottom: var(--bottom); left: var(--left); display: flex; flex-direction: column; gap: 4px; max-width: min(62vw, calc(100vw - 260px)); }
       #hud .tabs { display: flex; gap: 4px; }
-      #hud .tab { min-height: 30px; padding: 0 10px; font-size: 12px; background: var(--panel); }
+      #hud .tab { min-height: 30px; padding: 0 10px; font-size: calc(12px * var(--text, 1)); background: var(--panel); }
       #hud .bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain; }
       #hud .bar::-webkit-scrollbar { display: none; }
       #hud .item { position: relative; flex: none; width: 54px; height: 54px; padding: 0; background: var(--panel); touch-action: pan-x; }
       #hud .item img { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; vertical-align: middle; }
-      #hud .item .count { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: var(--dim); }
+      #hud .item .count { position: absolute; right: 3px; bottom: 1px; font-size: calc(11px * var(--text, 1)); color: var(--dim); }
       #hud .item.empty { opacity: 0.4; }
       #hud .item::after { content: ''; position: absolute; inset: 0; background: rgba(20, 21, 22, 0.7); transform-origin: bottom; transform: scaleY(var(--cool, 0)); pointer-events: none; }
       #hud .actions { bottom: var(--bottom); right: calc(var(--right) + 74px); display: flex; gap: 6px; align-items: center; }
@@ -59,29 +59,29 @@
       #hud .debug { bottom: var(--bottom); right: var(--right); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
       #hud .debug .panel { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel); border: 2px solid var(--line); }
       #hud .debug .panel[hidden] { display: none; }
-      #hud .debug small { color: var(--dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      #hud .debug small { color: var(--dim); font-size: calc(11px * var(--text, 1)); letter-spacing: 0.08em; text-transform: uppercase; }
       #hud.lefty .debug { right: auto; left: var(--left); align-items: flex-start; }
       #hud .end {
         inset: 0; margin: auto; width: min(340px, 80vw); height: fit-content; max-height: calc(100% - 16px); overflow-y: auto; padding: 20px; text-align: center;
         background: var(--panel); border: 2px solid var(--line);
       }
-      #hud .end h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: 0.04em; }
+      #hud .end h2 { margin: 0 0 8px; font-size: calc(22px * var(--text, 1)); letter-spacing: 0.04em; }
       #hud .end p { margin: 0 0 16px; color: var(--dim); }
       #hud .end .quote { margin: -4px 0 12px; color: var(--ink); font-style: italic; }
       #hud .menu { pointer-events: auto; background: var(--panel); }
       #hud .tip { top: 64px; left: 50%; transform: translateX(-50%); width: min(460px, 70vw); display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--panel); border: 2px solid var(--flash, #c4a058); }
       #hud .tip p { margin: 0; flex: 1; line-height: 1.4; }
-      #hud .end .continue { display: block; width: 100%; min-height: 56px; margin: 0 0 10px; font-size: 18px; }
+      #hud .end .continue { display: block; width: 100%; min-height: 56px; margin: 0 0 10px; font-size: calc(18px * var(--text, 1)); }
       #hud .end .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       #hud .end .chips { list-style: none; margin: 0 0 6px; padding: 0; color: var(--dim); line-height: 1.6; }
-      #hud .end .total { font-size: 18px; color: var(--ink); }
-      #hud .end h3 { margin: 0 0 4px; font-size: 11px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
+      #hud .end .total { font-size: calc(18px * var(--text, 1)); color: var(--ink); }
+      #hud .end h3 { margin: 0 0 4px; font-size: calc(11px * var(--text, 1)); color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
       #hud .end:has(.cols) { width: min(560px, 92vw); }
       #hud .end .cols { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 32px; margin-bottom: 14px; }
       #hud .end .cols > div { min-width: 200px; }
       /* A soldier down: a line under the status, tap it to look. */
       #hud .notices { top: calc(var(--top) + 46px); left: var(--left); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; }
-      #hud .notices button { pointer-events: auto; min-height: 32px; font-size: 12px; background: var(--panel); border-color: #c9473a; color: #e8a093; animation: pop 0.15s ease-out; }
+      #hud .notices button { pointer-events: auto; min-height: 32px; font-size: calc(12px * var(--text, 1)); background: var(--panel); border-color: #c9473a; color: #e8a093; animation: pop 0.15s ease-out; }
       #hud.lefty .notices { left: auto; right: var(--right); align-items: flex-end; }
       /* Left-handed: the bar and actions swap sides, and so do the status and the time controls. */
       #hud.lefty .dock { left: auto; right: var(--right); align-items: flex-end; }
@@ -93,7 +93,7 @@
       #menu { position: fixed; inset: 0; display: flex; align-items: center; padding: var(--top) var(--right) var(--bottom) var(--left);
         background: linear-gradient(90deg, rgba(12, 12, 13, 0.86) 0, rgba(12, 12, 13, 0.6) 420px, rgba(12, 12, 13, 0.22) 100%); }
       #menu .panel { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); max-height: 100%; overflow-y: auto; margin-left: 4vw; }
-      #menu h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.04em; }
+      #menu h2 { margin: 0 0 4px; font-size: calc(20px * var(--text, 1)); letter-spacing: 0.04em; }
       /* Over the city, under the panels (not the board, the tree or a fight's settings): a vignette, and film grain. */
       #menu:not(.ingame):not(:has(.board, .web))::before { content: ''; position: absolute; inset: 0; pointer-events: none;
         background: radial-gradient(ellipse 80% 75% at 60% 45%, transparent 40%, rgba(6, 4, 3, 0.78) 100%); }
@@ -108,7 +108,7 @@
       #menu .logo canvas { display: block; max-width: 100%; image-rendering: pixelated; }
       #menu .logo canvas:last-child { transform: rotate(-1.5deg); transform-origin: left; animation: sign 9s 3s infinite; }
       @keyframes sign { 0%, 90%, 92%, 94%, 100% { opacity: 1; } 91%, 93.5% { opacity: 0.45; } }
-      #menu .tagline { margin: 0 0 6px; color: #c4a058; font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; }
+      #menu .tagline { margin: 0 0 6px; color: #c4a058; font-size: calc(13px * var(--text, 1)); letter-spacing: 0.16em; text-transform: uppercase; }
       /* What to press: pixel-art paper like the war-room board's (game/paper.ts), each a button round its canvas. */
       #menu button.px { display: block; padding: 0; min-width: 0; min-height: 0; line-height: 0; background: none; border: 0; }
       #menu button.px canvas { display: block; max-width: 100%; image-rendering: pixelated; }
@@ -128,7 +128,7 @@
       #menu .aside { position: absolute; right: var(--right); top: var(--top); }
       @media (max-width: 760px) { #menu .aside canvas { width: 160px !important; } }
       /* The build, and the sound on or off. */
-      #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: 11px; }
+      #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: calc(11px * var(--text, 1)); }
       #menu .foot .icon { display: grid; place-items: center; width: 40px; min-height: 36px; padding: 0; background: var(--panel); }
       #menu .foot .icon[aria-pressed="false"] { box-shadow: none; color: var(--dim); }
       #menu .foot svg { width: 18px; height: 18px; }
@@ -142,7 +142,9 @@
       @media (hover: hover) { #menu .go:not(:disabled):hover { background: #9c4f44; } }
       /* The cities: the war-room board (game/board.ts), pixel art scaled up whole, its things to press invisible buttons over it. */
       #menu:has(.board) { padding: 0; background: #0b0907; }
-      #menu .board { position: absolute; inset: 0; display: grid; place-items: center; animation: fade 0.3s ease-out; }
+      #menu .board { position: absolute; inset: 0; display: grid; place-items: center; animation: fade 0.3s ease-out; --u: calc(min(100vw, 150vh) / 540);
+        /* The wall behind the board: concrete brick (a tile at the board's own pixel size), fading out to black. --wall is how dark it goes at the edges. */
+        --wall: 1; background: radial-gradient(ellipse 70% 65% at 50% 48%, rgba(0, 0, 0, 0.1) 0, rgba(0, 0, 0, calc(var(--wall) * 0.95)) 100%), var(--brick) center top / calc(var(--u) * 64) calc(var(--u) * 32); image-rendering: pixelated; }
       #menu .board .stage { position: relative; width: min(100vw, 150vh); aspect-ratio: 3 / 2; }
       #menu .board canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
       #menu .board .hit { position: absolute; min-width: 0; min-height: 0; padding: 0; background: transparent; border: 0; touch-action: manipulation; }
@@ -151,8 +153,8 @@
       #menu .board .hit:focus-visible { outline: 2px solid #f5d27a; outline-offset: 1px; }
       #menu .notes { width: min(560px, 100%); gap: 6px; }
       #menu .notes section { background: var(--panel); border: 2px solid var(--line); padding: 8px 12px; }
-      #menu .notes h3 { margin: 0; font-size: 14px; }
-      #menu .notes small { color: var(--dim); font-size: 11px; }
+      #menu .notes h3 { margin: 0; font-size: calc(14px * var(--text, 1)); }
+      #menu .notes small { color: var(--dim); font-size: calc(11px * var(--text, 1)); }
       #menu .notes ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.45; font-weight: 500; }
       #menu button:disabled { opacity: 0.45; cursor: default; }
       #menu .settings { width: min(440px, 100%); gap: 6px; }
@@ -179,8 +181,8 @@
       #menu .form .pencil { margin: 0; color: #5a4024; font-style: italic; }
       #menu .form .sheetfoot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
       #menu .form .storage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1 1 260px; }
-      #menu .form .storage small { width: 100%; color: #5a4024; font-size: 11px; }
-      #menu .form .build { position: absolute; right: 12px; bottom: 4px; margin: 0; color: rgba(58, 38, 20, 0.55); font-size: 10px; font-style: italic; transform: rotate(-2deg); }
+      #menu .form .storage small { width: 100%; color: #5a4024; font-size: calc(11px * var(--text, 1)); }
+      #menu .form .build { position: absolute; right: 12px; bottom: 4px; margin: 0; color: rgba(58, 38, 20, 0.55); font-size: calc(10px * var(--text, 1)); font-style: italic; transform: rotate(-2deg); }
       /* During a fight: the same sheet, a little smaller. */
       #menu .form.window { width: min(560px, 100%); max-height: calc(100% - 16px); padding: 14px 16px 18px; zoom: 0.9; }
       @media (max-width: 760px), (max-height: 500px) { #menu .form { padding: 12px 12px 18px; } #menu .formhead h2 canvas:last-child { width: 72px !important; } }
@@ -196,7 +198,7 @@
       #menu .storage .meter { flex: 1; min-width: 120px; height: 10px; background: #2c2e30; border: 2px solid #4a4c4e; }
       #menu .storage .meter i { display: block; height: 100%; background: #c4a058; transition: width 0.4s ease-out; }
       #menu .storage .meter i.full { background: var(--warn); }
-      #menu .storage small { width: 100%; color: var(--dim); font-size: 11px; }
+      #menu .storage small { width: 100%; color: var(--dim); font-size: calc(11px * var(--text, 1)); }
 
       /* Skill tree: requisitions. Index tabs and the chips up top; the cork wall, a sheet clipped to it with the skills'
          cards pinned on in red string; the picked card's note at the bottom. */
@@ -247,7 +249,7 @@
       @keyframes bought { 30% { transform: scale(1.12) rotate(2deg); } }
       #menu .node .ripple { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: rgba(46, 42, 34, 0.25); pointer-events: none; animation: ripple 0.5s ease-out forwards; }
       @keyframes ripple { to { transform: scale(32); opacity: 0; } }
-      #menu .plane .spent { position: absolute; z-index: 2; font: 700 15px ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: #b23a30; text-shadow: 2px 2px 0 #efe9d6; pointer-events: none; animation: spent 0.9s ease-out forwards; }
+      #menu .plane .spent { position: absolute; z-index: 2; font: 700 calc(15px * var(--text, 1)) ui-monospace, Menlo, Consolas, monospace; font-style: normal; color: #b23a30; text-shadow: 2px 2px 0 #efe9d6; pointer-events: none; animation: spent 0.9s ease-out forwards; }
       @keyframes spent { to { transform: translateY(-30px); opacity: 0; } }
       /* The picked card's note: paper pinned at the bottom, its writing in ink, what it takes on a post-it. */
       #menu .info { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: min(640px, calc(100vw - 16px)); box-sizing: border-box;
@@ -280,7 +282,7 @@
       #menu .demo p { margin: 0; color: var(--dim); line-height: 1.35; }
       @keyframes fade { from { opacity: 0; } }
       /* A phone held upright: ask for it sideways (the game is landscape only). */
-      #turn { display: none; position: fixed; inset: 0; z-index: 10; flex-direction: column; gap: 20px; align-items: center; justify-content: center; background: #232526; text-align: center; font-size: 16px; }
+      #turn { display: none; position: fixed; inset: 0; z-index: 10; flex-direction: column; gap: 20px; align-items: center; justify-content: center; background: #232526; text-align: center; font-size: calc(16px * var(--text, 1)); }
       #turn .phone { width: 34px; height: 58px; border: 3px solid var(--ink); border-radius: 6px; animation: turn 2.4s ease-in-out infinite; }
       @keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
       @media (prefers-reduced-motion: reduce) { #turn .phone { animation: none; transform: rotate(-90deg); } }
@@ -291,8 +293,8 @@
       /* The city's name at the start, each wave as it comes: in, a moment, out. */
       #hud .banner { inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
       #hud .banner > div { text-align: center; animation: banner 2.4s ease-out both; text-shadow: 3px 3px 0 var(--line); }
-      #hud .banner h2 { margin: 0; font-size: clamp(26px, 6vw, 48px); letter-spacing: 0.08em; text-transform: uppercase; color: #c9473a; }
-      #hud .banner p { margin: 4px 0 0; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; }
+      #hud .banner h2 { margin: 0; font-size: calc(clamp(26px, 6vw, 48px) * var(--text, 1)); letter-spacing: 0.08em; text-transform: uppercase; color: #c9473a; }
+      #hud .banner p { margin: 4px 0 0; font-size: calc(15px * var(--text, 1)); letter-spacing: 0.1em; text-transform: uppercase; }
       @keyframes banner { 0% { opacity: 0; transform: scale(1.25); } 14% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
       @keyframes pop { from { opacity: 0; transform: translateY(4px); } }
       /* Menu screens slide in; starting a game fades the menu away. */
@@ -313,7 +315,7 @@
       #menu .slotrow .tags button.px:nth-child(odd) { transform: rotate(-2deg); }
       #menu .slotrow .tags button.px:nth-child(even) { transform: rotate(1.5deg); }
       #menu .slot { display: flex; flex-direction: column; justify-content: center; text-align: left; padding: 6px 12px; min-height: 52px; }
-      #menu .slot small { color: var(--dim); font-size: 11px; }
+      #menu .slot small { color: var(--dim); font-size: calc(11px * var(--text, 1)); }
       /* Story: every scene a frame of film, in a grid in the middle of the screen. */
       #menu:has(.reel) { justify-content: center; }
       #menu .story { width: min(1120px, 100%); margin: 0; align-items: center; }
@@ -338,8 +340,137 @@
       #crash { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; gap: 10px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: rgba(20, 21, 22, 0.96); }
       #crash h2 { margin: 0; color: #c9473a; letter-spacing: 0.04em; }
       #crash p { margin: 0; color: var(--dim); }
-      #crash textarea { flex: 1; min-height: 80px; font: 500 11px ui-monospace, Menlo, Consolas, monospace; color: var(--ink); background: #141516; border: 2px solid var(--line); padding: 8px; resize: none; -webkit-user-select: text; user-select: text; }
+      #crash textarea { flex: 1; min-height: 80px; font: 500 calc(11px * var(--text, 1)) ui-monospace, Menlo, Consolas, monospace; color: var(--ink); background: #141516; border: 2px solid var(--line); padding: 8px; resize: none; -webkit-user-select: text; user-select: text; }
       #crash .row { display: flex; gap: 8px; }
+      /* Loading: black, a soldier running over a progress bar (game/loading.ts). */
+      #loading { position: fixed; inset: 0; z-index: 15; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #000; transition: opacity 0.3s, visibility 0.3s; }
+      #loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+      @keyframes run { to { transform: translateX(-3200px); } }
+      #loading .bar { width: min(260px, 60vw); height: 10px; border: 2px solid var(--dim); padding: 2px; }
+      #loading .bar i { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1); }
+      #loading p { margin: 0; max-width: min(420px, 86vw); min-height: 2.8em; text-align: center; font-size: calc(12px * var(--text, 1)); line-height: 1.4; color: var(--dim); }
+      /* The fight's controls as paper on a desk (game/hud.ts): manila folder tabs for Menu and Settings, typed slips for the
+         status, the bar a folder with each soldier's photo pinned in it, post-its for actions and tips. Scaled by the
+         Controls size setting (--ui). */
+      #hud { zoom: var(--ui, 1); --manila: #c9a86a; --manila-dark: #9c7f48; --paper: #efe9d6; --pen: #2e2a22; --red-ink: #b23a30; }
+      #hud .status span, #hud .actions .label { background: var(--paper); color: var(--pen); border: 0; border-bottom: 2px solid #b9b2a0; box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.5); }
+      #hud .status span:nth-of-type(odd) { transform: rotate(-1deg); }
+      #hud .status span:nth-of-type(even) { transform: rotate(0.8deg); }
+      #hud .status .warn { color: var(--red-ink); background: #f2d6cc; }
+      #hud .menu, #hud .tab { color: var(--pen); background: var(--manila); border: 0; border-bottom: 3px solid var(--manila-dark); border-radius: 6px 6px 0 0; box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.45); }
+      @media (hover: hover) { #hud .menu:hover, #hud .tab:hover { background: #ddbf82; } }
+      #hud .tabs { gap: 2px; padding-left: 6px; }
+      #hud .tab { min-height: 26px; transform: translateY(4px); transition: transform 0.12s; }
+      #hud .tab:nth-child(2) { background: #9ad0e0; border-bottom-color: #7ab4c8; }
+      #hud .tab:nth-child(3) { background: #f2b8c2; border-bottom-color: #d68794; }
+      #hud .tab[aria-pressed="true"] { transform: none; box-shadow: 2px 0 0 rgba(6, 4, 3, 0.45); font-weight: 800; }
+      /* The bar: a folder, open, each thing to put down a photo pinned in it. */
+      #hud .dock { gap: 0; }
+      #hud .bar { gap: 8px; padding: 10px 10px 8px; background: var(--manila); border-bottom: 3px solid var(--manila-dark); box-shadow: inset 0 3px 0 #ddbf82, 4px 6px 0 rgba(6, 4, 3, 0.5); }
+      #hud .item { background: var(--paper); border: 0; padding: 3px 3px 12px; height: 62px; box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.5); }
+      #hud .item:nth-child(odd) { transform: rotate(-2deg); }
+      #hud .item:nth-child(even) { transform: rotate(1.5deg); }
+      #hud .item img { background: #2c2e2f; }
+      #hud .item::before { content: ''; position: absolute; left: 50%; top: -3px; z-index: 1; width: 7px; height: 7px; margin-left: -3px; background: #c9473a; box-shadow: inset 2px 2px 0 #f08a78, 1px 1px 0 #7a2620; } /* its pin */
+      #hud .item .count { right: 4px; bottom: 0; color: var(--pen); font-weight: 800; }
+      #hud .item[aria-pressed="true"] { background: #f5d27a; box-shadow: 0 0 0 2px var(--red-ink), 2px 3px 0 rgba(60, 40, 10, 0.5); }
+      @media (hover: hover) { #hud .item:hover { background: #fffaea; } }
+      #hud .item::after { inset: 3px 3px 12px; }
+      /* Post-its for what can be done to the picked thing, and for the guided start. */
+      #hud .actions button { color: #3a3418; background: #e0cc62; border: 0; border-top: 4px solid #cbb84e; box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.5); }
+      @media (hover: hover) { #hud .actions button:hover { background: #ecd977; } }
+      #hud .tip { color: #3a3418; background: #e0cc62; border: 0; border-top: 6px solid #cbb84e; box-shadow: 3px 4px 0 rgba(6, 4, 3, 0.55); transform: translateX(-50%) rotate(-0.6deg); }
+      #hud .tip button { color: #3a3418; background: transparent; border: 2px solid #8a7a2a; }
+      #hud .speeds button, #hud .time > button:not(.go) { color: var(--pen); background: var(--paper); border: 0; border-bottom: 2px solid #b9b2a0; box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.45); }
+      #hud .speeds button[aria-pressed="true"] { background: #f5d27a; box-shadow: inset 0 -3px 0 var(--red-ink), 2px 3px 0 rgba(6, 4, 3, 0.45); }
+      #hud .go { color: #f2e6d6; background: var(--red-ink); border: 0; box-shadow: inset 0 0 0 2px #f2e6d6, 0 0 0 2px var(--red-ink), 3px 4px 0 rgba(6, 4, 3, 0.5); transform: rotate(-2deg); }
+      #hud .notices button { color: var(--red-ink); background: var(--paper); border: 0; border-left: 4px solid var(--red-ink); box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.5); }
+      /* The end of the fight: a report in a manila folder, REPORT on its tab. */
+      #hud .end { color: var(--pen); background: var(--paper); border: 0; border-top: 14px solid var(--manila); box-shadow: inset 0 0 0 6px var(--manila), 6px 8px 0 rgba(6, 4, 3, 0.6); overflow: visible; }
+      #hud .end::before { content: 'REPORT'; position: absolute; left: 14px; top: -30px; padding: 2px 14px; font-size: calc(11px * var(--text, 1)); letter-spacing: 0.12em; color: var(--red-ink); background: var(--manila); border-radius: 6px 6px 0 0; }
+      #hud .end p, #hud .end .chips, #hud .end h3 { color: #5a4a2a; }
+      #hud .end .quote, #hud .end .total { color: var(--pen); }
+      #hud .end button:not(.go) { color: var(--pen); background: var(--manila); border: 0; border-bottom: 3px solid var(--manila-dark); }
+      #hud .end .go { transform: none; }
+      #hud .end .medals li { color: var(--red-ink); }
+      /* How far through the horde: a strip of paper under the status, the wave, a bar inked in, how many are left. */
+      #hud .progress { top: calc(var(--top) + 46px); left: var(--left); display: flex; align-items: center; gap: 8px; width: min(340px, 46vw); padding: 5px 8px; box-sizing: border-box; color: var(--pen); background: var(--paper); box-shadow: 2px 3px 0 rgba(6, 4, 3, 0.5); pointer-events: none; }
+      #hud .progress b { white-space: nowrap; }
+      #hud .progress .fill { flex: 1; height: 8px; border: 2px solid var(--pen); background: #d8ceb2; }
+      #hud .progress .fill i { display: block; height: 100%; background: var(--red-ink); transform-origin: left; transition: transform 0.3s ease-out; }
+      #hud .progress small { white-space: nowrap; color: #5a4a2a; }
+      #hud:has(.progress:not([hidden])) .notices { top: calc(var(--top) + 84px); }
+      #hud.lefty .progress { left: auto; right: var(--right); }
+      /* The picked soldier: a manila card, his photo pinned to it. */
+      #hud .card { bottom: calc(var(--bottom) + 52px); right: var(--right); display: flex; gap: 10px; width: min(300px, 40vw); padding: 10px 12px 10px 10px; box-sizing: border-box; color: var(--pen); background: var(--manila); border-bottom: 3px solid var(--manila-dark); box-shadow: 4px 6px 0 rgba(6, 4, 3, 0.55); animation: pop 0.15s ease-out; pointer-events: none; }
+      #hud .card .photo { position: relative; flex: none; padding: 3px 3px 10px; background: var(--paper); box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.5); transform: rotate(-3deg); }
+      #hud .card .photo::before { content: ''; position: absolute; left: 50%; top: -3px; width: 7px; height: 7px; margin-left: -3px; background: #c9473a; box-shadow: inset 2px 2px 0 #f08a78, 1px 1px 0 #7a2620; }
+      #hud .card img { display: block; width: 44px; height: 44px; image-rendering: pixelated; background: #2c2e2f; }
+      #hud .card .body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+      #hud .card .hp { height: 6px; border: 2px solid var(--pen); background: #d8ceb2; }
+      #hud .card .hp i { display: block; height: 100%; background: #6f8f3a; transform-origin: left; transition: transform 0.2s; }
+      #hud .card .hp i.low { background: #c9473a; }
+      .cb #hud .card .hp i { background: #3b8fd9; }
+      .cb #hud .card .hp i.low { background: #f08a28; }
+      #hud .card small { color: #5a4a2a; line-height: 1.3; }
+      #hud .card .ups { font-size: calc(11px * var(--text, 1)); }
+      #hud.lefty .card { right: auto; left: var(--left); }
+      /* Red at the edges as the squad thins, beating slowly. */
+      #hud .vignette { inset: 0; pointer-events: none; opacity: var(--hurt, 0); transition: opacity 0.6s; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(150, 18, 12, 0.75) 100%); animation: beat 1.4s ease-in-out infinite; }
+      @keyframes beat { 50% { filter: brightness(1.35); } }
+      /* The keys, over the fight. */
+      #hud .keysheet { inset: 0; margin: auto; width: min(380px, 86vw); height: fit-content; max-height: calc(100% - 16px); overflow-y: auto; padding: 14px 18px; color: var(--pen); background: var(--paper); box-shadow: 6px 8px 0 rgba(6, 4, 3, 0.6); }
+      #hud .keysheet h2 { margin: 0 0 8px; }
+      #hud .keysheet dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 8px; }
+      #hud .keysheet dt { font-weight: 800; padding: 0 6px; border: 2px solid var(--pen); text-align: center; }
+      #hud .keysheet dd { margin: 0; }
+      #hud .keysheet small { color: #5a4a2a; }
+
+      /* A question on parched paper, over everything (game/dialog.ts). */
+      .dialog { position: fixed; inset: 0; z-index: 14; display: grid; place-items: center; padding: 16px; background: rgba(8, 6, 4, 0.6); animation: fade 0.15s ease-out; }
+      .dialog .sheet { position: relative; zoom: var(--ui, 1); width: min(420px, 100%); box-sizing: border-box; padding: 20px 22px 16px; color: #3a2614; background: #dcc28c var(--parch); background-size: 192px; image-rendering: pixelated;
+        border-bottom: 3px solid #8a6a3a; box-shadow: inset 0 0 22px rgba(110, 66, 20, 0.5), 6px 8px 0 rgba(6, 4, 3, 0.6); animation: pop 0.15s ease-out; transform: rotate(-0.5deg); }
+      .dialog .pin { position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; margin-left: -5px; background: #c9473a; box-shadow: inset 3px 3px 0 #f08a78, 2px 2px 0 #7a2620; }
+      .dialog h2 { margin: 0 0 6px; }
+      .dialog p { margin: 0 0 14px; line-height: 1.4; font-weight: 500; }
+      .dialog .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+      .dialog button { flex: 1 1 120px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 2px; padding: 6px 12px; text-align: left; color: #3a2614; background: #e9dcb6; border: 2px solid #8a6a3a; }
+      .dialog button small { font-weight: 500; font-size: calc(11px * var(--text, 1)); color: #5a4024; }
+      .dialog button.go { color: #f2e6d6; background: #9c2f28; border-color: #5e1d18; }
+      .dialog button.go small { color: #f2d6cc; }
+      @media (hover: hover) { .dialog button:hover { background: #f2e6c4; } .dialog button.go:hover { background: #b23a30; } }
+
+      /* The main menu's post-its under the dossier; the medals and the field manual, as pages of a book. */
+      #menu .main .tags { display: flex; gap: 12px; align-items: center; }
+      #menu .main .tags button.px:nth-child(2) { transform: rotate(-2deg); }
+      #menu .main .tags button.px:nth-child(3) { transform: rotate(1.5deg); }
+      #menu:has(.book) { justify-content: center; }
+      #menu .book { width: min(760px, 100%); margin: 0; padding: 16px 18px; box-sizing: border-box; color: #2e2a22; background: #e9e2cc; box-shadow: 6px 8px 0 rgba(6, 4, 3, 0.6); }
+      #menu .book h2, #menu .book h3 { color: #2e2a22; }
+      #menu .book h3 { margin: 8px 0 0; font-size: calc(12px * var(--text, 1)); letter-spacing: 0.1em; text-transform: uppercase; color: #6e2620; border-bottom: 2px solid #b9b2a0; }
+      #menu .book .entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+      #menu .book .entry { display: flex; gap: 10px; align-items: flex-start; padding: 8px; background: #f6f1e2; box-shadow: 2px 3px 0 rgba(60, 40, 10, 0.35); }
+      #menu .book .entry img { flex: none; width: 48px; height: 48px; image-rendering: pixelated; background: #2c2e2f; padding: 2px; }
+      #menu .book .entry canvas { flex: none; width: 27px !important; image-rendering: pixelated; }
+      #menu .book .entry .unknown { flex: none; display: grid; place-items: center; width: 52px; height: 52px; font-size: calc(22px * var(--text, 1)); color: #8a8270; background: #d8ceb2; }
+      #menu .book .entry p { margin: 2px 0; line-height: 1.35; font-weight: 500; color: #5a5040; }
+      #menu .book .entry small { color: #6b6250; }
+      #menu .book .entry.locked { opacity: 0.6; }
+      #menu .book .head button { color: #2e2a22; background: #c9a86a; border-color: #9c7f48; }
+      /* Settings, Controls: the keys, each one's key pressed to change it. */
+      #menu .form .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 16px; }
+      #menu .form .key { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      #menu .form .key button { min-height: 30px; min-width: 76px; color: #3a2614; background: #efe4c4; border: 2px solid #8a6a3a; }
+      #menu .form .key button.listening { background: #f5d27a; animation: beat 0.8s ease-in-out infinite; }
+      #menu .form .row { background: transparent; border: 0; padding: 0; }
+      #menu .form .row button { color: #3a2614; background: #e9dcb6; border: 2px solid #8a6a3a; }
+
+      /* Between menu screens: black sweeps across, the soldier running in it. */
+      #wipe { position: fixed; inset: 0; z-index: 13; display: grid; place-items: center; background: #000; pointer-events: none; transform: translateX(-101%); visibility: hidden; }
+      #wipe.go { visibility: visible; animation: wipe 0.6s cubic-bezier(0.6, 0, 0.4, 1) both; }
+      @keyframes wipe { 0% { transform: translateX(-101%); } 42%, 58% { transform: none; } 100% { transform: translateX(101%); } }
+      #wipe .run, #loading .run { width: 200px; height: 180px; overflow: hidden; -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent); mask-image: radial-gradient(closest-side, #000 70%, transparent); }
+      #wipe .run div, #loading .run div { width: 3200px; height: 180px; background: url(/loading-soldier.webp) 0 0 / 3200px 180px; animation: run 0.8s steps(16) infinite; }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -347,6 +478,8 @@
     <div id="game"></div>
     <div id="hud"></div>
     <div id="menu" hidden></div>
+    <div id="wipe" aria-hidden="true"><div class="run"><div></div></div></div>
+    <div id="loading"><div class="run"><div></div></div><div class="bar"><i></i></div><p></p></div>
     <div id="turn"><div class="phone"></div>Turn your phone sideways</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
