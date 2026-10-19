@@ -96,6 +96,10 @@ npm test         node --test over art, sim, meta, story tests
 - The war board's one-time tour (`board.ts` `tour`) rings each button; `save.boardTour` records it was shown.
 - Menu screen changes use `wipe()` (`loading.ts`): it slides out only after the new screen has painted.
 
+## Updates for installed copies
+
+- `sw.js` (written by vite.config.ts) caches the game and takes over at once. `main.ts` listens for `controllerchange` and opens the `#update` banner (Reload / Later); CSS hides it while the HUD is up, so it never offers a reload mid-fight. Only in a built game (the dev server has no worker).
+
 ## Build label
 
 - The main menu footer and Settings show `Build 0.1.1 (19102026.0100P)`; pressing it swaps to `19/10/2026 1:00 PM`. It is a fixed constant in `src/game/build.ts` (Philippine time): change it for each release. `__BUILD__` (vite, build time) is still used by the crash report.

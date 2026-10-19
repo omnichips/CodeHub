@@ -161,6 +161,12 @@
       @media (max-width: 760px) { #menu .aside canvas { width: 160px !important; } }
       /* The build, and the sound on or off. */
       #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: calc(11px * var(--text, 1)); }
+      /* A newer version is ready (main.ts): at the bottom, out of the way of a fight. */
+      #update { position: fixed; z-index: 14; left: 50%; bottom: var(--bottom); transform: translateX(-50%); display: none; align-items: center; gap: 10px; padding: 8px 12px; color: #3a3418; background: #e0cc62; border-top: 6px solid #cbb84e; box-shadow: 3px 4px 0 rgba(6, 4, 3, 0.55); }
+      #update.open { display: flex; animation: fade 0.3s ease-out; }
+      #hud:not(:empty) ~ #update { display: none; }
+      #update button { min-height: 34px; color: #3a3418; background: transparent; border: 2px solid #8a7a2a; }
+      #update button.go { background: #cbb84e; }
       #menu .buildtag { min-width: 0; min-height: 0; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; box-shadow: none; cursor: pointer; }
       #menu .buildtag:hover { color: var(--ink); background: transparent; }
       #menu .foot .icon { display: grid; place-items: center; width: 40px; min-height: 36px; padding: 0; background: var(--panel); }
@@ -647,6 +653,7 @@
     <div id="game"></div>
     <div id="hud"></div>
     <div id="menu" hidden></div>
+    <div id="update" role="status"><span>A new version is ready.</span><button type="button" class="go" onclick="location.reload()">Reload</button><button type="button" onclick="this.parentElement.classList.remove('open')">Later</button></div>
     <div id="wipe" aria-hidden="true"><div class="run"><div></div></div></div>
     <div id="loading"><div class="run"><div></div></div><div class="bar"><i></i></div><p></p></div>
     <div id="turn"><div class="phone"></div>Turn your phone sideways</div>

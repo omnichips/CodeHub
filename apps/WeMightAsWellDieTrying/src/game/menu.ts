@@ -355,7 +355,9 @@ export class Menu extends Phaser.Scene {
     if (!main) return;
     main.style.zoom = '';
     const cs = getComputedStyle(this.root), room = this.root.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom), need = main.scrollHeight;
-    if (need > room) main.style.zoom = String(Math.max(0.5, room / need));
+    const base = matchMedia('(pointer: coarse)').matches ? 0.8 : 1; // a phone: a fifth smaller, the menu took too much of the screen
+    const z = need * base > room ? Math.max(0.5, room / need) : base;
+    if (z !== 1) main.style.zoom = String(z);
   }
 
   /** The binder: Settings, Medals and the Field manual as pages behind index tabs, rings down its spine. */

@@ -13,7 +13,13 @@ startLoading();
 applyScale();
 const q = new URLSearchParams(location.search);
 // Offline play once installed; only a built game has the worker (see vite.config.ts).
-if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+// A newer version takes over while the game is open (an installed copy stays open for days): offer a reload. The banner
+// waits out a fight (CSS hides it while the HUD is up), and the first install is not an update.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const hadVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('./sw.js');
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadVersion) document.getElementById('update')?.classList.add('open'); });
+}
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

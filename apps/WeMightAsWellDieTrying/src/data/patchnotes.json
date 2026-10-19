@@ -1,5 +1,13 @@
 [
  {
+  "date": "2026-10-19 13:07",
+  "title": "Update prompt",
+  "notes": [
+   "When a new version comes out while the game is open (the home-screen app), a banner offers Reload. It waits until you are out of a fight.",
+   "The main menu is a fifth smaller on phones."
+  ]
+ },
+ {
   "date": "2026-10-19 13:00",
   "title": "Basic training",
   "notes": [
