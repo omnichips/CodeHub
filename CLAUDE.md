@@ -1,0 +1,1 @@
+Read AGENTS.md (repo root) first, and apps/WeMightAsWellDieTrying/AGENTS.md when working on the game. They are the single source of instructions for every coding agent, so edit them rather than this file.
