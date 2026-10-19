@@ -27,7 +27,7 @@ export interface HudState {
   focus?: { x: number; y: number; r: number }; // a circle (screen pixels) left lit, the rest of the screen dark
   spot: string; // a selector for the control the tip points at, or ''
   breakLeft: number; // real seconds left of the break between waves, 0 for none
-  card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[]; drivable: boolean; mark: string; driving: boolean }; // the soldier picked (drivable: the player can play as him; mark: the bookmark on his dossier, Remove while planning, Retreat mid-wave)
+  card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: { icon: IconName; value: string; label: string }[]; drivable: boolean; mark: string; driving: boolean }; // the soldier picked (drivable: the player can play as him; mark: the bookmark on his dossier, Remove while planning, Retreat mid-wave)
   end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string; drill?: boolean }; // drill: the tutorial is over, a plain black screen instead of the report
 }
 interface Handlers {
@@ -90,6 +90,11 @@ export class Hud {
   private readonly speeds: HTMLElement;
   private readonly debug: HTMLElement;
   private readonly speedList: number[];
+  private readonly pause: HTMLButtonElement;
+  private paused = false;
+  private lastSpeed = 1; // the speed to go back to after a pause
+  private readonly rate: HTMLElement; // the speed on the clock
+  private readonly list: HTMLElement; // the speeds it drops down
   private readonly tabs: HTMLButtonElement[];
   private readonly items = new Map<string, { button: HTMLElement; count: HTMLElement; group: Group }>();
   private readonly actions: HTMLElement;
@@ -136,11 +141,19 @@ export class Hud {
     const leaks = el('button', { type: 'button', className: 'leaks', textContent: 'Unlimited leaks', title: 'Leaks never lose the fight', onclick: () => on.leaks() });
     const panel = el('div', { className: 'panel', hidden: true }, el('small', {}, 'Debug'), routes, win, leaks);
     this.debug = el('div', { className: 'debug' }, icon('spider', 'Debug', () => (panel.hidden = !panel.hidden)), panel);
+    addEventListener('pointerdown', (e) => { if (!panel.hidden && !(e.target as Element).closest('.debug')) panel.hidden = true; }); // a press anywhere else closes it
     this.start = el('button', { type: 'button', className: 'go', textContent: 'Start', onclick: () => on.start() });
-    this.nextWave = el('button', { type: 'button', className: 'go next', hidden: true, title: 'Skip the rest of the break: +2% of your kill chips', onclick: () => on.nextWave() });
+    this.nextWave = el('button', { type: 'button', className: 'go next', hidden: true, title: 'Call the next wave now: +2% of your kill chips', onclick: () => on.nextWave() });
     this.restore = el('button', { type: 'button', textContent: 'Clear', title: 'Take back everything you have put down', onclick: () => this.askClear() });
     this.notices = el('div', { className: 'notices' });
-    this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n === 0.5 ? '½×' : n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
+    // Pause beside a clock; the clock drops down the speeds.
+    const fmt = (n: number) => (n === 0.5 ? '½×' : `${n}×`);
+    this.pause = el('button', { type: 'button', textContent: 'Pause', onclick: () => on.speed(this.paused ? this.lastSpeed : 0) }); // pressed again, it carries on
+    this.rate = el('span', { textContent: '1×' });
+    this.list = el('div', { className: 'list', hidden: true }, ...this.speedList.slice(1).map((n) => el('button', { type: 'button', textContent: fmt(n), onclick: () => { this.list.hidden = true; on.speed(n); } })));
+    const clock = el('button', { type: 'button', className: 'face', title: 'Game speed', ariaLabel: 'Game speed', onclick: () => { this.list.hidden = !this.list.hidden; } }, pixIcon('clock'), this.rate);
+    addEventListener('pointerdown', (e) => { if (!this.list.hidden && !(e.target as Element).closest('.clock')) this.list.hidden = true; });
+    this.speeds = el('div', { className: 'speeds' }, this.pause, el('div', { className: 'clock' }, clock, this.list));
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
     this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => {
@@ -315,8 +328,13 @@ export class Hud {
     this.restore.hidden = !s.planning || !s.placed;
     this.speeds.hidden = s.planning;
     this.nextWave.hidden = !s.breakLeft || !!s.end;
-    if (s.breakLeft) text(this.nextWave, `Next wave now · ${Math.ceil(s.breakLeft)}s`);
-    [...this.speeds.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i] === s.speed)));
+    if (s.breakLeft) text(this.nextWave, `Call Wave (${Math.ceil(s.breakLeft)}s)`);
+    this.pause.setAttribute('aria-pressed', String(s.speed === 0));
+    this.paused = s.speed === 0;
+    if (s.speed) this.lastSpeed = s.speed;
+    if (s.speed) text(this.rate, s.speed === 0.5 ? '½×' : `${s.speed}×`);
+    [...this.list.children].forEach((b, i) => b.setAttribute('aria-pressed', String(this.speedList[i + 1] === s.speed)));
+    if (s.planning) this.list.hidden = true;
     this.debug.querySelector('.panel button')!.setAttribute('aria-pressed', String(s.routes));
     this.debug.querySelector('.leaks')!.setAttribute('aria-pressed', String(s.unlimited));
     this.tabs.forEach((t) => t.setAttribute('aria-pressed', String(TABS.find(([, l]) => l === t.textContent)?.[0] === this.group)));
@@ -340,12 +358,12 @@ export class Hud {
     this.card.hidden = !s.card || !!s.end;
     if (s.card) {
       const c = s.card;
-      const key = `${c.kind}|${c.name}|${c.stats.join()}`;
+      const key = `${c.kind}|${c.name}|${c.stats.map((t) => t.value).join()}`;
       if (key !== this.cardKind) {
         this.cardKind = key;
         this.card.replaceChildren(
           el('div', { className: 'photo' }, el('img', { src: c.icon, alt: '' })),
-          el('div', { className: 'body' }, el('div', { className: 'head' }, el('b', {}, c.name), el('small', { className: 'role' }, c.role)), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, ...c.stats.map((t) => el('span', {}, t)))),
+          el('div', { className: 'body' }, el('div', { className: 'head' }, el('b', {}, c.name), el('small', { className: 'role' }, c.role)), el('span', { className: 'hp' }, el('i')), el('small', { className: 'stat' }), el('small', { className: 'ups' }, ...c.stats.map((t) => el('span', { title: t.label, ariaLabel: `${t.label} ${t.value}` }, pixIcon(t.icon), t.value)))),
           el('button', { type: 'button', className: 'bookmark', onclick: (e) => this.on.action((e.currentTarget as HTMLElement).textContent!) }),
           el('button', { type: 'button', className: 'drive', ariaLabel: 'Play as this soldier', onclick: () => this.on.drive() }, pixIcon('radio', 3)));
       }
@@ -358,9 +376,17 @@ export class Hud {
       const drive = this.card.querySelector('.drive') as HTMLButtonElement | null;
       if (drive) { drive.hidden = !c.drivable; drive.setAttribute('aria-pressed', String(c.driving)); drive.title = c.driving ? 'Back to the squad (Esc)' : 'Play as him: WASD or the stick to walk, the mouse or a finger to aim. He fires on his own'; }
       const stat = this.card.querySelector('.stat') as HTMLElement | null;
-      if (stat) text(stat, `${c.where} · ${c.kills} kill${c.kills === 1 ? '' : 's'}`);
+      if (stat) { // a heart and his health (or how he stands), a skull and his kills
+        const line = `${c.where}|${c.kills}`;
+        if (stat.dataset.line !== line) {
+          stat.dataset.line = line;
+          const hp = c.where.endsWith(' HP');
+          stat.replaceChildren(el('span', { title: 'Health' }, pixIcon('heart'), hp ? c.where.slice(0, -3) : c.where), el('span', { title: 'Kills' }, pixIcon('skull', 1), String(c.kills)));
+        }
+      }
     } else { this.cardKind = ''; this.root.classList.remove('driving'); }
     this.drill = !!s.drill;
+    this.peek.style.display = s.end ? 'none' : ''; // the eye sat over the report's title
     this.tip.hidden = !s.tip || !!s.end;
     if (s.tip !== this.tipFor) { this.tipFor = s.tip; this.tip.style.translate = ''; } // each note comes up in the middle
     text(this.tipText, s.tip);
@@ -379,7 +405,8 @@ export class Hud {
     if (s.end?.drill && !this.end.childElementCount)
       this.end.append(el('h2', {}, 'You finished the tutorial!'), el('button', { type: 'button', className: 'go', textContent: 'Proceed', onclick: () => this.on.next() }));
     if (s.end && !this.end.childElementCount) {
-      this.end.append(
+      // The report scrolls; the buttons stay under it, in reach on a short phone screen.
+      this.end.append(el('div', { className: 'scroll' },
         el('h2', {}, s.end.title), ...(s.end.quote ? [el('p', { className: 'quote' }, `“${s.end.quote}”`)] : []), el('p', {}, s.end.detail),
         // The fight in pencil: where they got through, where soldiers fell.
         el('figure', { className: 'sketch' }, el('img', { src: s.end.sketch, alt: 'A sketch of the city: red dots where zombies got through, crosses where soldiers fell' }),
@@ -388,12 +415,13 @@ export class Hud {
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),
           ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : []),
-          ...(s.end.medals.length ? [el('div', { className: 'medals' }, el('h3', {}, 'Medals earned'), el('ul', { className: 'chips' }, ...s.end.medals.map((line) => el('li', {}, line))))] : [])),
+          ...(s.end.medals.length ? [el('div', { className: 'medals' }, el('h3', {}, 'Medals earned'), el('ul', { className: 'chips' }, ...s.end.medals.map((line) => el('li', {}, line))))] : []))),
+        el('div', { className: 'buttons' },
         ...(s.end.won ? [el('button', { type: 'button', className: 'go continue', textContent: 'Continue', onclick: () => this.on.next() })] : []),
         el('div', { className: 'row' },
           el('button', { type: 'button', textContent: 'Menu', onclick: () => this.on.menu('menu') }),
           el('button', { type: 'button', textContent: 'Skill tree', onclick: () => this.on.menu('tree') }),
-          el('button', { type: 'button', className: 'go', textContent: 'Play again', onclick: () => this.on.again() })),
+          el('button', { type: 'button', className: 'go', textContent: 'Play again', onclick: () => this.on.again() }))),
       );
     }
   }

@@ -83,6 +83,27 @@ function radio() {
 const shell = (r: string[], fill = 'h') => r.map((row, y) => [...row].map((c, x) => c === 'h' ? 'j' : c === 'k' && [r[y - 1]?.[x], r[y + 1]?.[x], row[x - 1], row[x + 1]].every((n) => n && n !== '.') ? fill : c).join(''));
 
 export const ICONS = {
+  // The dossier's numbers, 8 by 8: damage, range, fire rate, health, healing, repair.
+  bullet: ['...kk...', '..kyyk..', '..kyyk..', '..kyyk..', '.kkkkkk.', '.kppppk.', '.kppppk.', '.kkkkkk.'],
+  range: ['...kk...', '..kkkk..', '.kk..kk.', 'kk.rr.kk', 'kk.rr.kk', '.kk..kk.', '..kkkk..', '...kk...'],
+  rate: ['...kkk..', '..kyyk..', '.kyyk...', 'kyyyyyk.', 'kkkyyk..', '...kyk..', '..kyk...', '..kk....'],
+  heart: ['.kk..kk.', 'krrkkrrk', 'krrrrrrk', 'krrrrrrk', '.krrrrk.', '..krrk..', '...kk...', '........'],
+  heal: ['..kkkk..', '..kzzk..', 'kkkzzkkk', 'kzzzzzzk', 'kzzzzzzk', 'kkkzzkkk', '..kzzk..', '..kkkk..'],
+  repair: ['.kk..kk.', '.kg..gk.', '.kkggkk.', '..kggk..', '..kggk..', '..kggk..', '..kggk..', '...kk...'],
+  clock: [
+    '....kkkk....',
+    '..kkwwwwkk..',
+    '.kwwwwwwwwk.',
+    '.kwwwwkwwwk.',
+    'kwwwwwkwwwwk',
+    'kwwwwwkkkwwk',
+    'kwwwwwwwwwwk',
+    'kwwwwwwwwwwk',
+    '.kwwwwwwwwk.',
+    '.kwwwwwwwwk.',
+    '..kkwwwwkk..',
+    '....kkkk....',
+  ],
   eye: [
     '................',
     '....kkkkkkkk....',

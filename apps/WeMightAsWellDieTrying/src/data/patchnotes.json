@@ -1,23 +1,17 @@
 [
  {
-  "date": "2026-10-19 13:07",
-  "title": "Update prompt",
+  "date": "2026-10-19 13:43",
+  "title": "Build 0.1.1",
   "notes": [
-   "When a new version comes out while the game is open (the home-screen app), a banner offers Reload. It waits until you are out of a fight.",
-   "The main menu is a fifth smaller on phones."
-  ]
- },
- {
-  "date": "2026-10-19 13:00",
-  "title": "Basic training",
-  "notes": [
-   "A new save asks if you want the tutorial: a drill at Site 9, a small military research facility. Each control gets a short note and a caution-tape box, and the fight stops while you read.",
-   "Tutorial notes can be dragged out of the way. Each new note comes back in the middle.",
-   "A new eye button at the top middle hides the controls along the bottom so you can see the street.",
-   "The drill ends with a horde nobody can hold. Losing is part of the job.",
+   "Tutorial: a new save asks if you want it. A drill at Site 9, a small research facility, with a short note and a caution-tape box for each control. The fight stops while you read, notes can be dragged out of the way, and the drill ends with a horde nobody can hold.",
    "The war board points out its buttons the first time you open it.",
-   "Screen changes on a phone no longer flash black and show the old screen again before the new one.",
-   "Playing as a soldier, he now always fires on his own. Your finger or the mouse only aims."
+   "Playing as a soldier on a touch screen: a thumb stick walks him, he always fires on his own, and your finger only aims.",
+   "An eye button at the top middle hides the bottom controls for a clear view.",
+   "A clock button drops down the game speeds, with Pause beside it (press Pause again to carry on). The next-wave button reads Call Wave (15s), and each wave is announced as a short line instead of a big banner.",
+   "Soldier dossiers show icons for damage, range, fire rate and health. Phone controls along the bottom are a fifth smaller, and the main menu too.",
+   "The end-of-fight report scrolls on a phone with its buttons always in reach. Menu now asks before it leaves.",
+   "Fixed a stuck pinch that made dragging the map zoom in and out. Screen changes no longer flash back to the old screen first. The installed app offers a reload when an update arrives.",
+   "Pressing the build label in the menu swaps it between the build code and the date."
   ]
  }
 ]

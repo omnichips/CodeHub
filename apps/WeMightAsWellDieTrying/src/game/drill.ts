@@ -75,7 +75,7 @@ export const DRILL: DrillStep[] = [
   { text: 'This is Clear. It picks up everything you have put down. Do not press it now, or you will have to place everything again.', spot: '.time button[title^="Take back"]' },
   { text: 'Ready? Press Start.', spot: '.time > .go:not(.next)', done: (g) => g.world.phase !== 'plan' },
   { text: 'Here they come! Your soldiers shoot by themselves.', when: (g) => g.world.time > 20 },
-  { text: 'These buttons pause the game or speed it up. Press 1× or 2× to keep going.',
+  { text: 'Pause stops the game. The clock lets you pick how fast it goes. Pick a speed to keep going.',
     spot: '.speeds', when: (g) => g.world.time > 40, done: (g) => g.speed > 0 },
   { text: 'Drag a soldier on the road to move him. Try it now.',
     when: (g) => g.world.time > 70, done: (g) => g.world.soldiers.some((s) => !!s.dest) },

@@ -3,7 +3,7 @@
 // All in Philippine time. Change `BUILD` for each release.
 import { el } from './hud.ts';
 
-const BUILD = { version: '0.1.1', at: '2026-10-19 13:00' }; // Philippine time, 24 hour
+const BUILD = { version: '0.1.1', at: '2026-10-19 13:43' }; // Philippine time, 24 hour
 
 const [date, time] = BUILD.at.split(' '), [y, mo, d] = date.split('-'), [h, mi] = time.split(':').map(Number);
 const h12 = h % 12 || 12, pm = h >= 12;

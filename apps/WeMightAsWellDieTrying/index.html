@@ -42,6 +42,11 @@
       #hud .time { top: var(--top); right: var(--right); display: flex; gap: 6px; }
       #hud .speeds { display: flex; gap: 4px; }
       #hud .speeds button { min-width: 40px; padding: 0 8px; }
+      #hud .clock { position: relative; }
+      #hud .clock .face { display: flex; align-items: center; gap: 6px; }
+      #hud .clock .face svg { width: 18px; height: 18px; }
+      #hud .clock .list { position: absolute; top: 100%; right: 0; z-index: 5; margin-top: 4px; display: flex; flex-direction: column; gap: 4px; }
+      #hud .clock .list[hidden] { display: none; }
       #hud .go { background: #7d3a33; padding: 0 22px; letter-spacing: 0.06em; text-transform: uppercase; }
       @media (hover: hover) { #hud .go:hover { background: #9c4f44; } }
       #hud .dock { bottom: var(--bottom); left: var(--left); display: flex; flex-direction: column; gap: 4px; max-width: min(62vw, calc(100vw - 260px)); }
@@ -54,7 +59,7 @@
       #hud .item .count { position: absolute; right: 3px; bottom: 1px; font-size: calc(11px * var(--text, 1)); color: var(--dim); }
       #hud .item.empty { opacity: 0.4; }
       #hud .item::after { content: ''; position: absolute; inset: 0; background: rgba(20, 21, 22, 0.7); transform-origin: bottom; transform: scaleY(var(--cool, 0)); pointer-events: none; }
-      #hud .actions { bottom: var(--bottom); right: calc(var(--right) + 74px); display: flex; gap: 6px; align-items: center; }
+      #hud .actions { bottom: var(--bottom); right: var(--right); display: flex; gap: 6px; align-items: center; }
       /* Debug, in the corner: a toggle for the horde's routes above it when opened. */
       #hud .debug { bottom: var(--bottom); right: var(--right); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
       #hud .debug .panel { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--panel); border: 2px solid var(--line); }
@@ -115,7 +120,7 @@
       #hud.lefty .notices { left: auto; right: var(--right); align-items: flex-end; }
       /* Left-handed: the bar and actions swap sides, and so do the status and the time controls. */
       #hud.lefty .dock { left: auto; right: var(--right); align-items: flex-end; }
-      #hud.lefty .actions { right: auto; left: calc(var(--left) + 74px); }
+      #hud.lefty .actions { right: auto; left: var(--left); }
       #hud.lefty .status { left: auto; right: var(--right); }
       #hud.lefty .time { right: auto; left: var(--left); }
 
@@ -450,6 +455,9 @@
       .cb #hud .card .hp i.low { background: #f08a28; }
       #hud .card small { color: #5a4a2a; line-height: 1.3; }
       #hud .card .ups { font-size: calc(11px * var(--text, 1)); }
+      #hud .card .ups span, #hud .card .stat span { display: inline-flex; align-items: center; gap: 3px; }
+      #hud .card .stat { display: flex; gap: 10px; }
+      #hud .card .ups svg, #hud .card .stat svg { flex: none; }
       #hud.lefty .card { right: auto; left: var(--left); }
       /* Red at the edges as the squad thins, beating slowly. */
       #hud .vignette { inset: 0; pointer-events: none; opacity: var(--hurt, 0); transition: opacity 0.6s; background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(150, 18, 12, 0.75) 100%); animation: beat 1.4s ease-in-out infinite; }
@@ -647,6 +655,31 @@
       #menu .form button:not(.px) { color: #2e2a22; background: #c9a86a; border: 0; border-bottom: 3px solid #9c7f48; box-shadow: none; min-height: 34px; }
       @media (hover: hover) { #menu .form button:not(.px):hover { background: #ddbf82; } }
       #menu .form button.listening { background: #e8a58a; }
+      /* A phone: the controls along the bottom a fifth smaller, each shrinking toward the corner it sits in. */
+      @media (pointer: coarse) {
+        #hud .dock { scale: 0.8; transform-origin: left bottom; }
+        #hud .card { scale: 0.8; transform-origin: right bottom; right: max(4px, env(safe-area-inset-right)); }
+        #hud .actions { scale: 0.8; transform-origin: right bottom; }
+        #hud:has(.card:not([hidden])) .actions { right: calc(var(--right) + (min(300px, 40vw) + 64px) * 0.8); }
+        #hud.lefty .dock { transform-origin: right bottom; }
+        #hud.lefty .card { transform-origin: left bottom; right: auto; left: max(4px, env(safe-area-inset-left)); }
+        #hud.lefty .actions { transform-origin: left bottom; }
+        #hud.lefty:has(.card:not([hidden])) .actions { right: auto; left: calc(var(--left) + (min(300px, 40vw) + 64px) * 0.8); }
+      }
+      /* The report: the writing scrolls, the buttons stay under it. (Its paper style above leaves overflow visible for the REPORT tab, so the scrolling is on the inside.) */
+      #hud .end:not(.finish) { display: flex; flex-direction: column; max-height: calc(100% - 68px); }
+      #hud .end .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+      #hud .end .buttons { flex: none; padding-top: 8px; }
+      @media (max-height: 520px) {
+        #hud .end:not(.finish) { padding: 10px 16px; }
+        #hud .end h2 { margin-bottom: 4px; }
+        #hud .end p { margin-bottom: 8px; }
+        #hud .end .sketch { margin-bottom: 6px; }
+        #hud .end .sketch img { max-width: min(170px, 40vw); }
+        #hud .end .chips { line-height: 1.35; }
+        #hud .end .cols { margin-bottom: 6px; }
+        #hud .end .continue { min-height: 44px; margin-bottom: 6px; }
+      }
     </style>
   </head>
   <body>

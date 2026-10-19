@@ -24,6 +24,7 @@ import { Hud, type Group } from './hud.ts';
 import { settingsSheet } from './settings.ts';
 import { city, hordeLevel, music, play } from './sound.ts';
 import { startLoading, stopLoading } from './loading.ts';
+import type { IconName } from './pixicons.ts';
 import type { View } from '../story/player.ts';
 // The story's player and its pictures are only fetched when a scene plays (they are a good part of the game's code).
 type StoryPlayer = typeof import('../story/player.ts');
@@ -262,7 +263,11 @@ export class Game extends Phaser.Scene {
     const onHold = hold(true), onRelease = hold(false);
     addEventListener('keydown', onHold);
     addEventListener('keyup', onRelease);
-    this.events.once('shutdown', () => { removeEventListener('keydown', onKey); removeEventListener('keydown', onHold); removeEventListener('keyup', onRelease); });
+    // Every finger off the screen: nothing is down, whatever Phaser was told (see downPointers).
+    const lifted = (e: TouchEvent) => { if (e.touches.length) return; for (const q of this.input.manager.pointers) if (q.wasTouch) q.isDown = false; if (this.drag?.kind === 'pinch') this.drag = undefined; };
+    addEventListener('touchend', lifted, true);
+    addEventListener('touchcancel', lifted, true);
+    this.events.once('shutdown', () => { removeEventListener('keydown', onKey); removeEventListener('keydown', onHold); removeEventListener('keyup', onRelease); removeEventListener('touchend', lifted, true); removeEventListener('touchcancel', lifted, true); });
     // As the line breaks (leaks toward the limit) the colour drains out of the city.
     this.gray = this.game.renderer.type === Phaser.WEBGL ? this.cameras.main.postFX?.addColorMatrix() : undefined;
     this.grayAt = 0;
@@ -396,7 +401,7 @@ export class Game extends Phaser.Scene {
       }
       buzz([60, 40, 60]);
       this.hud.notice(`${rank(s.kills)} ${s.name} down`, () => this.cameras.main.pan(s.x, s.y, 350, 'Sine.easeInOut'));
-      if (!this.debug && !s.owner) { // on the memorial
+      if (!this.debug && !this.drill && !s.owner) { // on the memorial
         const f = profile.save.fallen;
         f.push({ name: s.name, kind: s.kind, kills: s.kills, city: this.mapData.name, at: Date.now() });
         if (f.length > MEMORIAL) f.splice(0, f.length - MEMORIAL);
@@ -446,7 +451,7 @@ export class Game extends Phaser.Scene {
 
   /** Now and then: any zombie or soldier on the map not yet in the save's field manual goes in it, with a notice. */
   meet() {
-    if (this.debug || this.time.now - this.metAt < 1000) return;
+    if (this.debug || this.drill || this.time.now - this.metAt < 1000) return;
     this.metAt = this.time.now;
     const w = this.world, met = profile.save.met, kinds = new Set<string>(w.soldiers.filter((s) => !s.owner).map((s) => s.kind));
     for (let i = 0; i < w.n; i++) if (w.alive[i]) kinds.add(ZOMBIE_KINDS[w.zkind[i]]);
@@ -625,7 +630,13 @@ export class Game extends Phaser.Scene {
     this.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => this.zoomAt(p.x, p.y, this.cameras.main.zoom * (dy > 0 ? 0.88 : 1.12)));
   }
 
-  downPointers() { return this.input.manager.pointers.filter((p) => p.isDown); }
+  /** The fingers or buttons down. A finger lifted where Phaser never heard of it (over a button, off the page, a system
+   *  gesture) can stay "down" for good, and then every drag was a pinch with a finger that is not there: so a touch
+   *  counts only if the phone itself lists it among the fingers on the screen (`latest` is the pointer just heard from). */
+  downPointers(latest?: Phaser.Input.Pointer) {
+    const live = (latest?.event as TouchEvent | undefined)?.touches;
+    return this.input.manager.pointers.filter((p) => p.isDown && (!p.wasTouch || !live || Array.from(live).some((t) => t.identifier === p.identifier)));
+  }
 
   /** Plays as the picked soldier: only mid-wave, and not a turret, a soldier fixed in place, one indoors or one falling back. */
   canDrive(s: Thing | undefined): s is Soldier {
@@ -654,7 +665,7 @@ export class Game extends Phaser.Scene {
       this.pointer = { x: p.x, y: p.y };
       return;
     }
-    const cam = this.cameras.main, down = this.downPointers();
+    const cam = this.cameras.main, down = this.downPointers(p);
     if (this.drag?.kind === 'place') return;
     if (down.length >= 2) {
       // A second finger turns whatever the first was doing into a pinch.
@@ -719,8 +730,8 @@ export class Game extends Phaser.Scene {
     if (!d && p.wasTouch === false) this.hover(p);
     if (!d || d.kind === 'place') return;
     if (d.kind === 'pinch') {
-      const down = this.downPointers();
-      if (down.length < 2) return;
+      const down = this.downPointers(p);
+      if (down.length < 2) { this.drag = undefined; return; } // a finger went missing: no more pinch
       const [a, b] = down, x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
       this.zoomAt(x, y, (d.zoom * Math.hypot(a.x - b.x, a.y - b.y)) / d.dist);
       cam.scrollX -= (x - d.x) / cam.zoom;
@@ -747,7 +758,7 @@ export class Game extends Phaser.Scene {
     const d = this.drag;
     if (!d || d.kind === 'place') return;
     if (d.kind === 'pinch') {
-      if (!this.downPointers().length) this.drag = undefined;
+      if (!this.downPointers(p).length) this.drag = undefined;
       return;
     }
     this.drag = undefined;
@@ -1419,7 +1430,7 @@ export class Game extends Phaser.Scene {
     else if (sel) selection = this.world.stats.structs[sel.kind].name + (sel.kind === 'puddle' ? (w.powered(sel) ? ' · live' : ' · needs a generator') : '');
     if (waving && w.wave !== this.shownWave) {
       this.shownWave = w.wave;
-      this.hud.banner(`Wave ${w.wave + 1} of ${w.waves}`, w.wave ? 'More of them' : 'Here they come');
+      this.hud.notice(`Wave ${w.wave + 1} of ${w.waves}: ${w.wave ? 'more of them' : 'here they come'}`, () => {}); // a line with the other news, not a banner over the street
       play('alarm');
     }
     const turnable = (isBlock(sel) && !sel.prop && !this.world.stats.roadblocks[sel.kind].fixed) || (!!sel && !isSoldier(sel) && !isBlock(sel) && (sel.kind === 'wire' || sel.kind === 'spikes' || sel.kind === 'rigged'));
@@ -1469,9 +1480,10 @@ export class Game extends Phaser.Scene {
   cardOf(s: Soldier) {
     const w = this.world, u = w.stats.units[s.kind], n = (v: number) => (v >= 10 ? Math.round(v) : Math.round(v * 10) / 10);
     // What he does in numbers, as he stands (upgrades, a tower or ammo near him, indoors, the weather all counted).
-    const stats = u.weapon === 'heal' ? [`Heals ${n(u.heal! * PACE)} HP/s`, `Reach ${n(u.range)}`]
-      : u.weapon === 'repair' ? [`Repairs ${n(u.repair! * PACE)} HP/s`, `Reach ${n(u.range)}`]
-      : [`Damage ${n(u.damage! * (s.indoor ? w.stats.indoor.damageBy : 1))}`, `Range ${n(indirect(u) ? u.range : w.rangeOf(s))}`, `Fire rate ${n(u.fireRate! * s.rateBy * PACE)}/s`];
+    const st = (icon: IconName, value: string, label: string) => ({ icon, value, label });
+    const stats = u.weapon === 'heal' ? [st('heal', `${n(u.heal! * PACE)}/s`, 'Heals HP per second'), st('range', n(u.range).toString(), 'Reach')]
+      : u.weapon === 'repair' ? [st('repair', `${n(u.repair! * PACE)}/s`, 'Repairs HP per second'), st('range', n(u.range).toString(), 'Reach')]
+      : [st('bullet', n(u.damage! * (s.indoor ? w.stats.indoor.damageBy : 1)).toString(), 'Damage'), st('range', n(indirect(u) ? u.range : w.rangeOf(s)).toString(), 'Range'), st('rate', `${n(u.fireRate! * s.rateBy * PACE)}/s`, 'Fire rate')];
     return {
       kind: s.kind, name: `${rank(s.kills)} ${s.name}`, role: u.name, icon: (this.icons[s.kind] ??= icon(this, `${s.kind}-idle-6/0`)), hp: s.indoor ? u.hp : s.hp, max: u.hp, kills: s.kills,
       where: s.leaving ? 'falling back' : s.indoor ? 'indoors, safe' : `${Math.ceil(s.hp)} HP`, stats,

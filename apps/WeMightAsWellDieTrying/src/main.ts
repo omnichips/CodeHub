@@ -39,5 +39,13 @@ for (const e of ['gesturestart', 'gesturechange', 'gestureend']) document.addEve
 document.addEventListener('touchmove', (ev) => { if (ev.touches.length > 1) ev.preventDefault(); }, { passive: false });
 // It also reports the old size for a moment after the phone turns: measure again as it settles.
 const settle = () => { for (const ms of [100, 400, 1000]) setTimeout(() => game.scale.refresh(), ms); };
+// If the page itself got zoomed in anyway, the controls are partly off the screen. Rewriting the viewport tag makes
+// Safari snap back to full size.
+const meta = document.querySelector<HTMLMetaElement>('meta[name=viewport]')!, fixed = meta.content;
+visualViewport?.addEventListener('resize', () => {
+  if (!visualViewport || visualViewport.scale <= 1.01) return;
+  meta.content = fixed.replace('initial-scale=1', 'initial-scale=1.001');
+  setTimeout(() => { meta.content = fixed; }, 60);
+});
 addEventListener('orientationchange', settle);
 visualViewport?.addEventListener('resize', settle);
