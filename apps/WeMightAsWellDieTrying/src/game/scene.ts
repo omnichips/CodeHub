@@ -233,6 +233,7 @@ export class Game extends Phaser.Scene {
       }),
       menu: (to) => this.afterStory(() => this.leave(to)),
       retreat: () => this.retreat(),
+      walk: (dx, dy) => { for (const [k, on] of [['a', dx < -0.35], ['d', dx > 0.35], ['w', dy < -0.35], ['s', dy > 0.35]] as const) on ? this.held.add(k) : this.held.delete(k); },
       drive: () => this.drive(),
       skip: () => { if (this.tutorial >= 0) this.endTutorial(); else { this.civTip = false; civTipDone(); } },
       nextWave: () => this.world.skipBreak(),

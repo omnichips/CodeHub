@@ -223,8 +223,14 @@ export class Menu extends Phaser.Scene {
     this.root.hidden = false;
     this.root.classList.remove('leaving');
     const refit = () => this.fit();
+    // A phone reports its size late (on load, after a turn, as the address bar settles): measure again as each arrives.
+    const later = () => { for (const ms of [100, 400, 1000]) setTimeout(refit, ms); };
     addEventListener('resize', refit);
-    this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; removeEventListener('resize', refit); });
+    addEventListener('orientationchange', later);
+    visualViewport?.addEventListener('resize', refit);
+    document.fonts?.ready.then(refit);
+    later();
+    this.events.once('shutdown', () => { this.root.replaceChildren(); this.root.hidden = true; removeEventListener('resize', refit); removeEventListener('orientationchange', later); visualViewport?.removeEventListener('resize', refit); });
     this.show(this.open);
     music('menu');
     // Baking the thumbnails (scripts/thumbs.ts): every map painted, with blood and without, handed to the script.

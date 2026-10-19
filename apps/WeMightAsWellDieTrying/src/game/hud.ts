@@ -41,6 +41,7 @@ interface Handlers {
   next(): void; // won: on to the next city (the board, after the last)
   menu(to: 'menu' | 'tree'): void;
   retreat(): void;
+  walk(dx: number, dy: number): void; // the on-screen stick, each -1 to 1
   drive(): void; // play as the soldier picked, or go back to the whole squad
   skip(): void; // skips the guided start
   nextWave(): void;
@@ -168,12 +169,22 @@ export class Hud {
     this.card = el('div', { className: 'card', hidden: true });
     this.vignette = el('div', { className: 'vignette', ariaHidden: 'true' });
     this.pxvig = el('div', { className: 'pxvig', ariaHidden: 'true' });
+    // The thumb stick for playing as a soldier on a touch screen: drag the knob, he walks; the other thumb aims and shoots on the map.
+    const knob = el('i'), stick = el('div', { className: 'stick', ariaHidden: 'true' }, knob), R = 44;
+    const pull = (e: PointerEvent) => {
+      const r = stick.getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2, d = Math.min(R, Math.hypot(x, y)) / (Math.hypot(x, y) || 1);
+      knob.style.transform = `translate(${x * d}px, ${y * d}px)`;
+      on.walk(x * d / R, y * d / R);
+    };
+    stick.onpointerdown = (e) => { stick.setPointerCapture(e.pointerId); pull(e); };
+    stick.onpointermove = (e) => { if (stick.hasPointerCapture(e.pointerId)) pull(e); };
+    stick.onpointerup = stick.onpointercancel = () => { knob.style.transform = ''; on.walk(0, 0); };
     this.keys = el('div', { className: 'keysheet', hidden: true, onclick: () => (this.keys.hidden = true) });
     this.banners = el('div', { className: 'banner' });
     root.replaceChildren(
       this.vignette,
       el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.nextWave, this.speeds, this.debug), this.notices, this.card,
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.end, this.hint, this.banners, this.keys, this.pxvig,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.end, this.hint, this.banners, this.keys, this.pxvig, stick,
     );
   }
 
