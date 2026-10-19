@@ -52,6 +52,7 @@ export interface Save {
   skills: Record<string, number>; // skill web node: levels bought
   cleared: Record<string, boolean>; // maps won
   tutorialDone: boolean;
+  boardTour: boolean; // the war board's buttons have been shown off, once
   stats: Stats;
   setups: Record<string, Setup>; // each city's defence as it was last started, to put down again
   played: number; // when it was last opened, ms since 1970
@@ -80,7 +81,7 @@ const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [], fallen: [] });
+export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, boardTour: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [], fallen: [] });
 export const defaultKeys = () => Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k])) as Record<KeyAction, string>;
 export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips', shake: true, haptics: true, colorblind: false, ui: 1, text: 1, keys: defaultKeys() });
 
@@ -140,6 +141,7 @@ export function parse(text: string): Save | undefined {
     skills,
     cleared,
     tutorialDone: r.tutorialDone === true,
+    boardTour: r.boardTour === true || Object.keys(cleared).length > 0, // a city held: the board is known already
     // Every map was made twice as big in version 4: a defence kept from before would land in the wrong places.
     setups: r.version < 4 ? {} : Object.fromEntries(Object.entries(r.setups && typeof r.setups === 'object' ? r.setups : {}).slice(0, 50).map(([id, v]) => [id, setupFrom(v)])),
     stats: { runs: count(st.runs), wins: count(st.wins), kills: count(st.kills), leaks: count(st.leaks), chips: count(st.chips), time: count(st.time) },

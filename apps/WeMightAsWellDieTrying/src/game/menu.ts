@@ -13,6 +13,7 @@ import { DIFFICULTY, exportSave, fresh, noStats, parse, remove, type Difficulty,
 import { ask } from './dialog.ts';
 import { el } from './hud.ts';
 import { pixIcon } from './pixicons.ts';
+import { buildTag } from './build.ts';
 import { loadingActive, startLoading, stopLoading, whileLoading, wipe } from './loading.ts';
 import { ambience } from './ambience.ts';
 import { atmosphere } from './atmosphere.ts';
@@ -418,7 +419,7 @@ export class Menu extends Phaser.Scene {
       mute.ariaPressed = String(s.master > 0);
       mute.replaceChildren(speaker(s.master > 0));
     };
-    return [panel, aside, el('div', { className: 'foot' }, el('span', {}, `Build ${__BUILD__}`), mute)];
+    return [panel, aside, el('div', { className: 'foot' }, buildTag('Build'), mute)];
   }
 
   /** What changed in each update, newest first. Opening them clears the icon's dot. */
@@ -451,8 +452,13 @@ export class Menu extends Phaser.Scene {
           ? { slot: k + 1, title: s.name, line: line(s), pips: pips(s), kind: 'danger', note: ['WILL BE', 'LOST!'], noteInk: '#8a2a20', photo: photo(s) }
           : { slot: k + 1, title: 'Empty', line: 'Nothing saved here', kind: 'empty', note: ['START', 'HERE'] }), () => {
           // How hard, then into the new save.
+          // Then the drill at Site 9, or straight to the war board.
+          const tutorial = (d: Difficulty) => ask('Play the tutorial?', 'A short drill at a military research facility: every control, one at a time, the fight paused while you read. New to the game? Play it.', [
+            { label: 'Play the tutorial', go: true, act: () => { open(k, fresh(`Save ${k + 1}`, d)); this.play('drill'); } },
+            { label: 'Skip it', act: () => { const s = fresh(`Save ${k + 1}`, d); s.tutorialDone = true; open(k, s); this.show('save'); } },
+          ]);
           const start = () => ask('How hard?', 'Pick a difficulty for this save. It stays with the save.', [
-            ...(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => ({ label: DIFFICULTY[d].name, note: DIFFICULTY[d].desc, go: d === 'normal', act: () => { open(k, fresh(`Save ${k + 1}`, d)); this.show('save'); } })),
+            ...(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => ({ label: DIFFICULTY[d].name, note: DIFFICULTY[d].desc, go: d === 'normal', act: () => tutorial(d) })),
             { label: 'Cancel', act: () => {} },
           ]);
           if (!s) return start();
@@ -608,7 +614,7 @@ export class Menu extends Phaser.Scene {
       cheat('+1,000 chips', 'Added 1,000 chips.', () => (s.chips += 1000)),
       cheat('Unlock every skill', 'Every skill is owned, every level.', () => (s.skills = Object.fromEntries(NODES.map((n) => [n.id, n.max])))),
       cheat('Unlock every city', 'Every city is cleared.', () => MAPS.forEach((m) => (s.cleared[m.id] = true))),
-      cheat('Replay the guided start', 'The guided start will run again on Main Street.', () => (s.tutorialDone = false)),
+      cheat('Show the war board tour again', 'The war board will point out its buttons next time it opens.', () => (s.boardTour = false)),
       // Every scene seen (in order, so the notebook fills in as it would), all of them to replay from Story.
       cheat('Unlock every cutscene', 'Every scene can be replayed from Story (they no longer play by themselves in this save).', () => order(story).forEach((id) => record(s.story, id))),
       cheat('Replay the story from the start', 'Every scene will play again, the notebook blank.', () => (s.story = noStory())),

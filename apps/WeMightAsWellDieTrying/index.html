@@ -72,6 +72,35 @@
       #hud .menu { pointer-events: auto; background: var(--panel); }
       #hud .tip { top: 64px; left: 50%; transform: translateX(-50%); width: min(460px, 70vw); display: flex; gap: 10px; align-items: center; padding: 10px 12px; background: var(--panel); border: 2px solid var(--flash, #c4a058); }
       #hud .tip p { margin: 0; flex: 1; line-height: 1.4; }
+      /* The drill rings the control its note is about, and the war board's tour does the same. */
+      /* The drill's yellow box round what the note is about; the note can be dragged out of the way. */
+      /* Caution tape round it: yellow and black stripes marching round the box. */
+      #hud .light { z-index: 20; padding: 7px; box-sizing: border-box; pointer-events: none; background: repeating-linear-gradient(45deg, #f5d27a 0 9px, #141516 9px 18px); background-size: 25.5px 25.5px;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude; animation: tape 0.7s linear infinite; }
+      @keyframes tape { to { background-position: 25.5px 0; } }
+      #hud .light[hidden] { display: none; }
+      #hud .dim { z-index: 19; border-radius: 50%; box-shadow: 0 0 0 100vmax rgba(6, 4, 3, 0.62); pointer-events: none; }
+      #hud .dim[hidden] { display: none; }
+      #hud .tip { z-index: 21; cursor: grab; touch-action: none; }
+      #hud .tip.moving { cursor: grabbing; }
+      /* The eye, top middle: hides the bottom controls. */
+      #hud .peek { top: var(--top); left: 50%; transform: translateX(-50%); z-index: 22; }
+      #hud.bare .dock, #hud.bare .actions, #hud.bare .card, #hud.bare .hint { visibility: hidden; pointer-events: none; }
+      #hud.bare .status, #hud.bare .time { opacity: 0.5; }
+      /* The drill done: black, a line and Proceed, no report. */
+      #hud .end.finish { inset: 0; width: auto; height: auto; max-height: none; margin: 0; display: grid; place-content: center; justify-items: center; gap: 24px; color: var(--ink); background: #000; border: 0; box-shadow: none; animation: fade 1.2s ease-out both; }
+      #hud .end.finish::before { display: none; }
+      #hud .end.finish h2 { font-size: calc(34px * var(--text, 1)); }
+      #hud .end.finish .go { min-width: 200px; min-height: 56px; font-size: calc(20px * var(--text, 1)); }
+      #menu .board .hit.spot { outline: 3px dashed #f5d27a; outline-offset: 3px; animation: spot 0.8s steps(2) infinite; }
+      @keyframes spot { 50% { outline-offset: 7px; } }
+      #menu .board .hit.spot { box-shadow: 0 0 0 100vmax rgba(6, 4, 3, 0.55); z-index: 1; }
+      #menu .board .tour { position: absolute; z-index: 2; width: min(300px, 70%); padding: 10px 12px; color: #3a3418; background: #e0cc62; border-top: 6px solid #cbb84e; box-shadow: 3px 4px 0 rgba(6, 4, 3, 0.55); font-size: calc(17px * var(--text, 1)); line-height: 1.3; }
+      #menu .board .tour p { margin: 0 0 8px; }
+      #menu .board .tour div { display: flex; gap: 8px; justify-content: flex-end; }
+      #menu .board .tour button { min-height: 34px; color: #3a3418; background: transparent; border: 2px solid #8a7a2a; }
+      #menu .board .tour button.go { background: #cbb84e; }
       #hud .end .continue { display: block; width: 100%; min-height: 56px; margin: 0 0 10px; font-size: calc(18px * var(--text, 1)); }
       #hud .end .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       #hud .end .chips { list-style: none; margin: 0 0 6px; padding: 0; color: var(--dim); line-height: 1.6; }
@@ -132,6 +161,8 @@
       @media (max-width: 760px) { #menu .aside canvas { width: 160px !important; } }
       /* The build, and the sound on or off. */
       #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: calc(11px * var(--text, 1)); }
+      #menu .buildtag { min-width: 0; min-height: 0; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; box-shadow: none; cursor: pointer; }
+      #menu .buildtag:hover { color: var(--ink); background: transparent; }
       #menu .foot .icon { display: grid; place-items: center; width: 40px; min-height: 36px; padding: 0; background: var(--panel); }
       #menu .foot .icon[aria-pressed="false"] { box-shadow: none; color: var(--dim); }
       #menu .foot svg { width: 18px; height: 18px; }
@@ -483,8 +514,10 @@
 
       /* Between menu screens: black sweeps across, the soldier running in it. */
       #wipe { position: fixed; inset: 0; z-index: 13; display: grid; place-items: center; background: #000; pointer-events: none; transform: translateX(-101%); visibility: hidden; }
-      #wipe.go { visibility: visible; animation: wipe 0.6s cubic-bezier(0.6, 0, 0.4, 1) both; }
-      @keyframes wipe { 0% { transform: translateX(-101%); } 42%, 58% { transform: none; } 100% { transform: translateX(101%); } }
+      #wipe.in { visibility: visible; animation: wipe-in 0.26s cubic-bezier(0.6, 0, 0.4, 1) both; }
+      #wipe.out { visibility: visible; animation: wipe-out 0.3s cubic-bezier(0.6, 0, 0.4, 1) both; }
+      @keyframes wipe-in { from { transform: translateX(-101%); } to { transform: none; } }
+      @keyframes wipe-out { from { transform: none; } to { transform: translateX(101%); } }
       #wipe .run, #loading .run { width: 200px; height: 180px; overflow: hidden; -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent); mask-image: radial-gradient(closest-side, #000 70%, transparent); }
       #wipe .run div, #loading .run div { width: 3200px; height: 180px; background: url(/loading-soldier.webp) 0 0 / 3200px 180px; animation: run 0.8s steps(16) infinite; }
       /* The wave, the city: a telegram, typed, stamped RECEIVED. */

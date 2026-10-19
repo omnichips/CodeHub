@@ -12,6 +12,7 @@ import { Grid, type MapData } from '../sim/grid.ts';
 import { ambience } from './ambience.ts';
 import { atmosphere, darkOut, weatherShade, type Atmosphere } from './atmosphere.ts';
 import { DEBUG_EACH, DEBUG_MAP, DEBUG_STRIKES, debugView } from './debugmap.ts';
+import { DRILL, DRILL_LEAKS, DRILL_LESSON, DRILL_LOADOUT, DRILL_MAP, DRILL_STRIKES } from './drill.ts';
 import { Flames } from './flame.ts';
 import { mapAnims } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
@@ -34,14 +35,6 @@ import { LOST_LINES } from '../story/storyConfig.ts';
 const ORDER = [...Object.keys(UNITS).filter((k) => k !== 'turret'), 'plastic', 'wood', 'sandbags', 'car', 'cement', ...Object.keys(STRUCTS), ...Object.keys(USABLES)];
 const QUALITY = { low: { corpses: 40, particles: 0.35 }, medium: { corpses: 120, particles: 0.7 }, high: { corpses: 300, particles: 1 } };
 const CORPSE_LIFE = { none: 0, some: 12 * PACE, normal: 30 * PACE }; // seconds of fight before a corpse fades (as long on screen as before PACE)
-const TUTORIAL = [
-  'Drag a Rifleman up from the bar onto a street, or tap him and then tap the street.',
-  'Tap him, then drag the round handle to aim his cone. Pull it farther out for a narrower, longer cone.',
-  'Press Start when you are ready. They come from the far end of the street.',
-  'Pause any time: you can still give orders while paused.',
-  'To fall back, drag a soldier to where he should go. He walks there.',
-  'Hold the line. Good luck.',
-];
 /** The tip for civilians, shown once on a device (the first fight with them) until one is brought out or it is skipped. */
 const CIV_TIP = 'A light by a door or a car: someone is still hiding there. Stand a soldier there for 3 seconds to bring them out, then tap or drag them to the safe zone.';
 const CIV_TIP_KEY = 'dietrying.civtip';
@@ -137,7 +130,10 @@ export class Game extends Phaser.Scene {
   lastSpeed = 1; // the speed to go back to when unpaused by key
   metAt = 0; // when the field manual last looked for anyone new
   corpses: { body: Phaser.GameObjects.Image; splat?: Phaser.GameObjects.Image; born: number }[] = [];
-  tutorial = -1; // step of the guided start, or -1
+  tutorial = -1; // step of the drill (game/drill.ts), or -1
+  tipOn = false; // the step's note is up (it waits for its moment first)
+  resume = 0; // the speed to go back to when the note that paused the fight is done
+  drill = false; // the tutorial map
   turned = false; // roadblocks and structures dragged from the bar go down turned (R turns them)
   canTurn = false; // the selection can be turned now
   shownWave = -1; // the last wave the banner announced
@@ -164,9 +160,10 @@ export class Game extends Phaser.Scene {
 
   create() {
     bake(this);
-    const m = this.mapId === DEBUG_MAP.id ? DEBUG_MAP : MAPS.find((x) => x.id === this.mapId) ?? MAPS[0], save = profile.save;
+    const m = this.mapId === DEBUG_MAP.id ? DEBUG_MAP : this.mapId === DRILL_MAP.id ? DRILL_MAP : MAPS.find((x) => x.id === this.mapId) ?? MAPS[0], save = profile.save;
     this.mapData = m.data;
     this.debug = m === DEBUG_MAP;
+    this.drill = m === DRILL_MAP;
     this.showRoutes = this.debug || debugView.routes;
     this.build = build(this.debug ? Object.fromEntries(NODES.map((n) => [n.id, n.max])) : save.skills);
     if (this.debug) {
@@ -175,19 +172,25 @@ export class Game extends Phaser.Scene {
       for (const u of Object.values(this.build.stats.usables)) u.charges = DEBUG_STRIKES;
       this.build.stats.leakLimit = 99999;
     }
+    if (this.drill) { // the same kit for everyone, whatever the save owns
+      this.build.loadout = { ...DRILL_LOADOUT };
+      for (const [k, u] of Object.entries(this.build.stats.usables)) u.charges = DRILL_STRIKES[k] ?? 0;
+    }
     // The save's difficulty: fewer or more leaks allowed, zombies tougher or weaker, more or fewer of them.
-    const diff = DIFFICULTY[this.debug ? 'normal' : save.difficulty];
-    this.build.stats.leakLimit = Math.max(1, Math.round(this.build.stats.leakLimit * diff.leaks));
+    const diff = DIFFICULTY[this.debug ? 'normal' : this.drill ? 'easy' : save.difficulty];
+    this.build.stats.leakLimit = this.drill ? DRILL_LEAKS : Math.max(1, Math.round(this.build.stats.leakLimit * diff.leaks));
     this.loadout = this.build.loadout;
     this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
     this.world.hpBy = diff.hp;
     this.world.countBy = diff.count;
     if (blinds(weatherOf(m.id))) this.world.sightBy = 1 - diff.weather;
-    if (!this.debug) this.world.placeCivilians(3);
+    if (!this.debug && !this.drill) this.world.placeCivilians(3);
     this.civTip = !this.debug && this.world.civilians.length > 0 && !civTipSeen();
     if (this.unlimited) this.world.leakLimit = Infinity;
     Object.assign(this, { shownWave: -1, hovered: undefined, speed: 1, acc: 0, selected: undefined, drag: undefined, pending: undefined, armed: undefined, zombies: [], soldiers: new Map(), blocks: new Map(), flyers: [], strikeAim: undefined, paid: undefined, sketch: undefined, beams: new Map(), diffChips: 0, civ: undefined, civState: new Map(), civSprites: new Map(), civChips: 0, skipChips: 0, medals: [], metAt: 0, peak: 0, lastSpeed: 1, corpses: [], fallen: new Set(), downs: [] });
-    this.tutorial = !save.tutorialDone && m === MAPS[0] ? 0 : -1;
+    this.tutorial = this.drill ? 0 : -1;
+    this.tipOn = false;
+    this.resume = 0;
     this.ids = ORDER.filter((id) => (isUsable(id) ? this.world.charges[id] : this.loadout[id] ?? 0) > 0);
     const horde = Number(new URLSearchParams(location.search).get('horde'));
     if (horde > 0) this.world.horde(Math.min(horde, 4000));
@@ -235,6 +238,7 @@ export class Game extends Phaser.Scene {
       retreat: () => this.retreat(),
       walk: (dx, dy) => { for (const [k, on] of [['a', dx < -0.35], ['d', dx > 0.35], ['w', dy < -0.35], ['s', dy > 0.35]] as const) on ? this.held.add(k) : this.held.delete(k); },
       drive: () => this.drive(),
+      tipNext: () => this.nextStep(),
       skip: () => { if (this.tutorial >= 0) this.endTutorial(); else { this.civTip = false; civTipDone(); } },
       nextWave: () => this.world.skipBreak(),
     });
@@ -264,10 +268,10 @@ export class Game extends Phaser.Scene {
     this.grayAt = 0;
     this.cameras.main.setBackgroundColor('#000000').fadeIn(500); // off the map is black
     stopLoading();
-    this.hud.banner(m.name, this.debug ? 'Lines are routes. Green: on one; yellow: following; red: making for one' : this.tutorial >= 0 ? 'Learn the ropes here' : weatherOf(m.id) === 'clear' ? '' : weatherLine(m.id));
+    this.hud.banner(m.name, this.debug ? 'Lines are routes. Green: on one; yellow: following; red: making for one' : this.drill ? 'Training drill' : weatherOf(m.id) === 'clear' ? '' : weatherLine(m.id));
     // The city's Before scene the first time it is opened (Main Street's is the Opening).
     const before = m === MAPS[0] ? 'opening' : `before:${m.id}`;
-    if (!this.debug && unseen(before)) this.tell(before, () => {});
+    if (!this.debug && !this.drill && unseen(before)) this.tell(before, () => {});
   }
 
   /** Plays a scene over the map, the HUD hidden and the fight still, then carries on. */
@@ -291,7 +295,7 @@ export class Game extends Phaser.Scene {
   afterStory(then: () => void) {
     if (this.inStory) return;
     const id = this.mapId === MAPS.at(-1)!.id ? 'ending' : `after:${this.mapId}`;
-    if (this.world.phase === 'won' && !this.debug && unseen(id)) this.tell(id, then);
+    if (this.world.phase === 'won' && !this.debug && !this.drill && unseen(id)) this.tell(id, then);
     else then();
   }
 
@@ -363,7 +367,7 @@ export class Game extends Phaser.Scene {
   begin() {
     const w = this.world;
     if (w.phase !== 'plan') return;
-    if (!this.debug && (w.soldiers.length || w.structures.length || w.roadblocks.some((rb) => !rb.prop))) {
+    if (!this.debug && !this.drill && (w.soldiers.length || w.structures.length || w.roadblocks.some((rb) => !rb.prop))) {
       profile.save.setups[this.mapId] = w.setup();
       persist();
     }
@@ -479,7 +483,11 @@ export class Game extends Phaser.Scene {
   settle() {
     const w = this.world, save = profile.save;
     if (this.paid || (w.phase !== 'won' && w.phase !== 'lost')) return;
-    if (this.debug) { this.paid = { total: 0, base: 0, timeBonus: 0, leakBonus: 0, firstClear: 0 }; return; } // a test: nothing paid or kept
+    if (this.debug || this.drill) { // a test, or the drill: nothing paid or kept, but the drill is done
+      this.paid = { total: 0, base: 0, timeBonus: 0, leakBonus: 0, firstClear: 0 };
+      if (this.drill) this.endTutorial();
+      return;
+    }
     const won = w.phase === 'won';
     this.paid = payout({ kills: w.kills, leaks: w.leaks, leakLimit: w.leakLimit, time: w.time, par: this.mapData.par, won, firstClear: won && !save.cleared[this.mapId], chipGain: this.build.chipGain, level: MAPS.findIndex((x) => x.id === this.mapId) + 1 });
     this.diffChips = Math.round(this.paid.total * (DIFFICULTY[save.difficulty].chips - 1)); // the difficulty's share, on top or taken off
@@ -502,28 +510,33 @@ export class Game extends Phaser.Scene {
   }
 
   endTutorial() {
+    if (this.tutorial >= 0 && this.tipOn && !this.speed && this.resume) this.speed = this.resume;
     this.tutorial = -1;
+    this.tipOn = false;
     profile.save.tutorialDone = true;
     persist();
   }
 
-  /** The guided start: each step waits until you have done it. */
+  /** The drill: each note waits for its moment, pauses the fight when it shows mid-wave, and goes once it is done
+   *  (or Next is pressed, for one with nothing to do). */
   stepTutorial() {
-    const w = this.world, s = w.soldiers[0];
-    const done = [
-      () => w.soldiers.length > 0,
-      () => !!s && (Math.abs(s.angle + Math.PI / 2) > 0.05 || Math.abs(s.reach - (s.kind === 'rifleman' ? 72 : s.reach)) > 4),
-      () => w.phase !== 'plan',
-      () => this.speed === 0,
-      () => w.soldiers.some((o) => o.dest),
-      () => w.time > (this.tutorialAt ??= w.time) + 5,
-    ][this.tutorial];
-    if (done?.()) {
-      this.tutorial++;
-      if (this.tutorial >= TUTORIAL.length) this.endTutorial();
+    const st = DRILL[this.tutorial], w = this.world;
+    if (!st) return this.endTutorial();
+    if (!this.tipOn) {
+      if (st.when && !st.when(this)) return;
+      this.tipOn = true;
+      if (w.phase === 'wave' && this.speed) { this.resume = this.speed; this.speed = 0; }
     }
+    if (st.done?.(this)) this.nextStep();
   }
-  tutorialAt?: number;
+
+  nextStep() {
+    if (this.tutorial < 0) return;
+    if (!this.speed && this.resume && this.world.phase === 'wave') this.speed = this.resume;
+    this.resume = 0;
+    this.tipOn = false;
+    if (++this.tutorial >= DRILL.length) this.endTutorial();
+  }
 
   // ---- Camera: pinch or wheel to zoom, drag empty ground (or two fingers, or right-drag) to pan ----
 
@@ -627,7 +640,7 @@ export class Game extends Phaser.Scene {
     this.driving = s;
     s.dest = undefined;
     this.armed = this.pending = this.strikeAim = this.drag = undefined;
-    this.world.control = { s, dx: 0, dy: 0, fire: false };
+    this.world.control = { s, dx: 0, dy: 0, fire: true }; // he always fires: the finger or the mouse only aims
   }
 
   stopDriving() {
@@ -639,7 +652,6 @@ export class Game extends Phaser.Scene {
   onDown(p: Phaser.Input.Pointer) {
     if (this.driving) { // the mouse is his gun: aim where it points, fire while it is down
       this.pointer = { x: p.x, y: p.y };
-      if (p.leftButtonDown() && this.world.control) this.world.control.fire = true;
       return;
     }
     const cam = this.cameras.main, down = this.downPointers();
@@ -731,7 +743,7 @@ export class Game extends Phaser.Scene {
   }
 
   onUp(p: Phaser.Input.Pointer) {
-    if (this.driving) { if (this.world.control && !p.leftButtonDown()) this.world.control.fire = false; return; }
+    if (this.driving) return;
     const d = this.drag;
     if (!d || d.kind === 'place') return;
     if (d.kind === 'pinch') {
@@ -1120,6 +1132,16 @@ export class Game extends Phaser.Scene {
       }
       e.label.setVisible(planning);
     }
+    // The drill's window step: every free window and roof pulses red.
+    if (this.tutorial >= 0 && this.tipOn && DRILL[this.tutorial].slots) {
+      const taken = new Set(w.soldiers.map((s) => w.grid.at(s.x, s.y))), beat = 0.5 + 0.5 * Math.sin(this.time.now / 180);
+      for (let i = 0; i < w.grid.slot.length; i++) {
+        if (!w.grid.slot[i] || taken.has(i)) continue;
+        const x = (i % w.grid.w) * T, y = Math.floor(i / w.grid.w) * T, grow = beat * 3;
+        top.fillStyle(red, 0.25 + 0.3 * beat).fillRect(x - grow, y - grow, T + grow * 2, T + grow * 2);
+        top.lineStyle(2, red, 0.7 + 0.3 * beat).strokeRect(x - grow, y - grow, T + grow * 2, T + grow * 2);
+      }
+    }
     // Good and bad in blue and orange for colour-blind eyes, green and red otherwise.
     const cb = profile.settings.colorblind, good = cb ? 0x3b8fd9 : hex(palette.rot2);
     const paint = hex(palette.paint), light = hex(palette.flash1), bad = cb ? 0xf08a28 : hex(palette.blood1), dark = hex(palette.outline);
@@ -1427,10 +1449,20 @@ export class Game extends Phaser.Scene {
         ...(planning && sel && !isSoldier(sel) && !(isBlock(sel) && sel.prop) ? ['Remove'] : []), // a soldier's is the bookmark on his dossier
       ],
       card: isSoldier(sel) && !this.strikeAim && !this.pending && !this.armed ? { ...this.cardOf(sel), drivable: this.canDrive(sel) || this.driving === sel, driving: this.driving === sel, mark: planning ? 'Remove' : waving && !sel.owner && !this.world.stats.units[sel.kind].fixed ? (sel.leaving ? 'Retreating…' : 'Retreat') : '' } : undefined,
-      end: this.paid && { title: w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won', medals: this.medals, sketch: (this.sketch ??= this.sketchMap()) },
-      tip: this.tutorial >= 0 ? TUTORIAL[this.tutorial] : this.civTip && waving && w.civilians.some((c) => c.state === 'inside') ? CIV_TIP : '',
+      end: this.paid && { title: this.drill ? 'The line broke' : w.phase === 'won' ? 'You held the line' : 'Overrun', detail: summary, quote: this.drill ? DRILL_LESSON : this.lostLine, chips: this.chipLines(this.paid), total: this.paid.total, killers: this.killers(), won: w.phase === 'won' || this.drill, medals: this.medals, sketch: (this.sketch ??= this.sketchMap()), drill: this.drill },
+      tip: this.tutorial >= 0 ? (this.tipOn ? DRILL[this.tutorial].text : '') : this.civTip && waving && w.civilians.some((c) => c.state === 'inside') ? CIV_TIP : '',
+      tipNext: this.tutorial >= 0 && this.tipOn && !DRILL[this.tutorial].done,
+      drill: this.drill,
+      focus: this.tutorial >= 0 && this.tipOn && DRILL[this.tutorial].focus && w.soldiers[0] ? this.focusOn(w.soldiers[0]) : undefined,
+      spot: this.tutorial >= 0 && this.tipOn ? DRILL[this.tutorial].spot ?? '' : '',
       breakLeft: w.breakLeft / PACE,
     });
+  }
+
+  /** The circle of screen round a soldier and the whole reach of his cone, for the drill to leave lit. */
+  focusOn(s: Soldier) {
+    const cam = this.cameras.main, c = this.game.canvas.getBoundingClientRect(), z = cam.zoom;
+    return { x: c.left + (s.x - cam.scrollX - cam.width / 2) * z + cam.width / 2, y: c.top + (s.y - cam.scrollY - cam.height / 2) * z + cam.height / 2, r: (s.reach + 28) * z };
   }
 
   /** The picked soldier's card: his photo, health, kills, where he stands and his class's upgrades bought. */

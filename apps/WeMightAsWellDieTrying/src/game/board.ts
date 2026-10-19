@@ -5,7 +5,7 @@
 // drawing, so a keyboard and a screen reader find it too: each city, the menu tag, the requisitions clipboard (the
 // skill tree), the notebook (the story), the field manual, the settings sticky note and the radio. Hovered, a thing lifts into the light and a
 // city shows its index card; on a touch screen the first tap shows the card and the second opens the city.
-import { MAPS, perSoldier, profile, unlocked, weatherLine } from '../meta/profile.ts';
+import { MAPS, perSoldier, persist, profile, unlocked, weatherLine } from '../meta/profile.ts';
 import { BAYER, Pen } from '../story/draw.ts';
 import { measure } from '../story/font.ts';
 import { squadPhoto, PHOTO } from '../story/faces.ts';
@@ -63,6 +63,39 @@ interface Thing { id: string; label: string; x: number; y: number; w: number; h:
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
+/** The first time a save's board opens: each button in turn, ringed, with a note on what it is for. Pressing a button
+ *  still works; Next moves on, Skip ends it. Shown once a save (the debug menu can show it again). */
+function tour(stage: HTMLElement, things: Thing[], hits: Map<string, HTMLButtonElement>, city: string) {
+  const steps: [string, string][] = [
+    ['tree', 'Requisitions. Spend the chips you earn on more soldiers, upgrades and strikes.'],
+    ['story', "Reyes's notebook: the story so far, every scene there to watch again."],
+    ['manual', 'The field manual: every zombie and soldier you have met, and the fallen.'],
+    ['settings', 'Settings: sound, controls, text size, gore.'],
+    ['back', 'Back to the main menu.'],
+    [city, 'Your next city. Tap its photo to see its card, and again to go. Good luck.'],
+  ];
+  const note = el('div', { className: 'tour', role: 'status' }), text = el('p');
+  let k = 0;
+  const end = () => { hits.forEach((b) => b.classList.remove('spot')); note.remove(); profile.save.boardTour = true; persist(); };
+  const next = el('button', { type: 'button', className: 'go', onclick: () => { k++; show(); } });
+  note.append(text, el('div', {}, el('button', { type: 'button', textContent: 'Skip', onclick: end }), next));
+  const show = () => {
+    if (k >= steps.length) return end();
+    const [id, words] = steps[k], th = things.find((t) => t.id === id)!;
+    hits.forEach((b, key) => b.classList.toggle('spot', key === id));
+    text.textContent = words;
+    next.textContent = k === steps.length - 1 ? 'Got it' : 'Next';
+    // Beside it: under it if it is high on the board, over it if low; kept on the board sideways.
+    const below = th.y + th.h / 2 < BH / 2;
+    Object.assign(note.style, {
+      left: `${Math.min(Math.max(0, ((th.x + th.w / 2) / BW) * stage.clientWidth - note.offsetWidth / 2), stage.clientWidth - note.offsetWidth)}px`,
+      top: below ? `${((th.y + th.h + 8) / BH) * 100}%` : '', bottom: below ? '' : `${((BH - th.y + 8) / BH) * 100}%`,
+    });
+  };
+  stage.append(note);
+  requestAnimationFrame(show); // once the board is on the page, to be measured
+}
+
 export function board(act: BoardActions): HTMLElement {
   const s = profile.save, rows = story.maps;
   const state = (k: number) => (s.cleared[MAPS[k].id] ? 'held' : unlocked(k) ? 'current' : 'locked');
@@ -93,6 +126,7 @@ export function board(act: BoardActions): HTMLElement {
   );
   const lift = new Map(things.map((x) => [x.id, 0]));
   let hover: string | undefined, touch = false;
+  const hits = new Map<string, HTMLButtonElement>();
   for (const th of things) {
     const b = el('button', { type: 'button', className: 'hit', ariaLabel: th.label, title: th.label });
     if (th.off) b.setAttribute('aria-disabled', 'true');
@@ -108,7 +142,9 @@ export function board(act: BoardActions): HTMLElement {
       if (!th.off) th.press();
     };
     stage.append(b);
+    hits.set(th.id, b);
   }
+  if (!s.boardTour) tour(stage, things, hits, MAPS[current >= 0 ? current : 0].id);
 
   // ---- Each frame: the board, the string, what moves; the lamp's light over it; what is lit over that ----
   const motes = Array.from({ length: 34 }, (_, k) => ({ x: roll(k, 1), y: roll(k, 2), v: 0.012 + roll(k, 3) * 0.02, ph: roll(k, 4) * 6 }));

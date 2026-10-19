@@ -7,6 +7,7 @@ import { persist, profile } from '../meta/profile.ts';
 import { BODIES, KEY_ACTIONS, TEXT_SIZE, UI_SCALE, defaultKeys, type KeyAction, type Settings } from '../meta/save.ts';
 import { Pen } from '../story/draw.ts';
 import { roll } from '../story/kit.ts';
+import { buildTag } from './build.ts';
 import { el } from './hud.ts';
 import { checkBox, faderArt, noteTag, stampTab, parchment, pixelButton, pixelCanvas, pixelText } from './paper.ts';
 import { play, retune } from './sound.ts';
@@ -90,7 +91,7 @@ export function settingsSheet(o: { back: () => void; again: () => void; tags?: [
     el('div', { className: 'rows' }, ...rows[tab]()),
     ...(o.note ? [el('p', { className: 'pencil' }, o.note)] : []),
     el('div', { className: 'sheetfoot' }, storage(), ...(o.tags ?? []).map(([label, press]) => { const [w, h, d] = noteTag(label.toUpperCase(), '#9ad0e0', '#7ab4c8', '#1c3a48'); return pixelButton(label, w, h, d, press, 'tag'); })),
-    el('p', { className: 'build' }, `build ${__BUILD__}`), // which version this device is running, in pencil
+    el('p', { className: 'build' }, buildTag('build')), // which version this device is running, in pencil
   );
   sheet.style.setProperty('--parch', `url(${parch ??= parchment()})`);
   // A shortcut waiting for its key takes the next one pressed (Escape keeps the old one); a key another shortcut had

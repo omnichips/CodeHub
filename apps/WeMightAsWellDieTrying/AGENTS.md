@@ -31,6 +31,7 @@ index.html          page shell AND all the CSS (HUD, menu, end report, settings)
 src/main.ts         boots Phaser (RESIZE scale), registers the service worker, blocks iOS page pinch-zoom
 src/sim/            the headless simulation: world.ts (World: zombies, soldiers, waves, control), grid.ts, routes.ts
 src/game/           everything on screen
+  drill.ts            the tutorial: Site 9 map, its 3 waves (the last unwinnable on purpose), fixed kit, the steps
   scene.ts            Game scene: camera, touch/mouse input, driving a soldier (drive/drive_/stopDriving), HUD state
   hud.ts              HTML HUD over the canvas (status, bar, soldier card, end report, thumb stick)
   menu.ts             Menu scene: main menu, saves, binder pages, Menu.fit() scales the main menu to short screens
@@ -84,7 +85,25 @@ npm test         node --test over art, sim, meta, story tests
   server. Real-phone fps can only be measured on a phone.
 - Balance sims are headless node scripts importing `World`; large maps are slow, so one map per process.
 
+## The tutorial (drill)
+
+- A new save asks after the difficulty: "Play the tutorial?" Yes opens map id `drill` (`DRILL_MAP`, not in `MAPS`, so
+  not a city); Skip sets `tutorialDone`. The drill pays nothing and keeps no setup, medals or stats; finishing or
+  losing it sets `tutorialDone`.
+- Each `DRILL` step waits for `when`, then shows its note in the HUD tip and pauses the fight (mid-wave); it moves on
+  when `done` is true, or on Next if it has no `done`. `spot` is a CSS selector in `#hud` that gets the `.spot` ring.
+- Wave 3 is unwinnable on purpose (the lesson). The end report shows "The line broke" and Continue goes to the board.
+- The war board's one-time tour (`board.ts` `tour`) rings each button; `save.boardTour` records it was shown.
+- Menu screen changes use `wipe()` (`loading.ts`): it slides out only after the new screen has painted.
+
+## Build label
+
+- The main menu footer and Settings show `Build 0.1.1 (19102026.0100P)`; pressing it swaps to `19/10/2026 1:00 PM`. It is a fixed constant in `src/game/build.ts` (Philippine time): change it for each release. `__BUILD__` (vite, build time) is still used by the crash report.
+
 ## Open items (2026-10-19)
+
+- The drill, board tour and wipe fix (commit "basic training") are untested on a phone. The drill's first two waves
+  have not been balanced against the drill's kit (3 riflemen, 1 sniper, 2 sandbags, 2 missiles, easy, 15 leaks).
 
 - Committed `f02426e` "thumbs on the wheel" (thumb stick, scrollable end report, menu re-measuring). **Not yet
   verified on a real phone or on Vercel.** Ask the owner whether: the stick feels right (it is digital, 8-way, full

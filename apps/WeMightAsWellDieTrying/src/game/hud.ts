@@ -22,9 +22,13 @@ export interface HudState {
   selection: string;
   actions: string[];
   tip: string; // the guided start's current step, or ''
+  tipNext: boolean; // the tip has nothing to do: a Next button moves on
+  drill?: boolean; // this is the tutorial
+  focus?: { x: number; y: number; r: number }; // a circle (screen pixels) left lit, the rest of the screen dark
+  spot: string; // a selector for the control the tip points at, or ''
   breakLeft: number; // real seconds left of the break between waves, 0 for none
   card?: { kind: string; name: string; role: string; icon: string; hp: number; max: number; kills: number; where: string; stats: string[]; drivable: boolean; mark: string; driving: boolean }; // the soldier picked (drivable: the player can play as him; mark: the bookmark on his dossier, Remove while planning, Retreat mid-wave)
-  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string };
+  end?: { title: string; detail: string; quote?: string; chips: string[]; total: number; killers: string[]; won: boolean; medals: string[]; sketch: string; drill?: boolean }; // drill: the tutorial is over, a plain black screen instead of the report
 }
 interface Handlers {
   drag(id: string, e: PointerEvent): void;
@@ -43,6 +47,7 @@ interface Handlers {
   retreat(): void;
   walk(dx: number, dy: number): void; // the on-screen stick, each -1 to 1
   drive(): void; // play as the soldier picked, or go back to the whole squad
+  tipNext(): void; // the drill's note is read
   skip(): void; // skips the guided start
   nextWave(): void;
 }
@@ -90,6 +95,13 @@ export class Hud {
   private readonly actions: HTMLElement;
   private readonly tip: HTMLElement;
   private readonly tipText: HTMLElement;
+  private readonly tipNext: HTMLButtonElement;
+  private spotted?: Element; // the control the drill is pointing at
+  private spotSel = '';
+  private readonly peek: HTMLButtonElement; // the eye: hides the bottom controls for a clear view
+  private tipFor = ''; // the tip text on show, to put the note back in the middle when it changes
+  private readonly dim: HTMLElement; // the dark round the circle that is lit
+  private readonly light: HTMLElement; // the yellow box round it, the rest of the screen dark
   private readonly end: HTMLElement;
   private readonly hint: HTMLElement;
   private readonly banners: HTMLElement;
@@ -102,6 +114,7 @@ export class Hud {
   private group: Group = 'units';
   private shown = '';
   private planning = true;
+  private drill = false;
 
   /** `speeds` are the ones bought (1 always); pause is always there. `lefty` mirrors the layout. */
   constructor(root: HTMLElement, items: BarItem[], speeds: number[], lefty: boolean, on: Handlers) {
@@ -116,7 +129,7 @@ export class Hud {
     this.status = [slowed, leakStat.span, killStat.span];
     this.statusText = [slowed, leakStat.t, killStat.t];
     const icon = (art: IconName | Element, label: string, go: () => void) => el('button', { type: 'button', className: 'menu icon', ariaLabel: label, title: label, onclick: go }, typeof art === 'string' ? pixIcon(art) : art);
-    const menu = icon(pixAnim('flag'), 'Menu', () => (this.planning ? on.menu('menu') : this.askRetreat())); // hovered, the flag waves
+    const menu = icon(pixAnim('flag'), 'Menu', () => this.askLeave()); // hovered, the flag waves
     const settings = icon(pixAnim('gear'), 'Settings', () => on.settings()); // and the cog turns
     const routes = el('button', { type: 'button', textContent: 'Routes', title: 'Show the lines the horde keeps to', onclick: () => on.routes() });
     const win = el('button', { type: 'button', textContent: 'Win now', title: 'End the fight as won', onclick: () => on.win() });
@@ -130,7 +143,11 @@ export class Hud {
     this.speeds = el('div', { className: 'speeds' }, ...this.speedList.map((n) => el('button', { type: 'button', textContent: n === 0.5 ? '½×' : n ? `${n}×` : 'Pause', onclick: () => on.speed(n) })));
     const bar = el('div', { className: 'bar' });
     bar.addEventListener('wheel', (e) => { bar.scrollLeft += e.deltaY; }, { passive: true });
-    this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => el('button', { type: 'button', className: 'tab', onclick: () => { this.group = group; bar.scrollLeft = 0; } }, pixIcon(group, 2), label));
+    this.tabs = TABS.filter(([g]) => items.some((i) => i.group === g)).map(([group, label]) => {
+      const b = el('button', { type: 'button', className: 'tab', onclick: () => { this.group = group; bar.scrollLeft = 0; } }, pixIcon(group, 2), label);
+      b.dataset.group = group; // for the drill to point at
+      return b;
+    });
     this.hint = el('div', { className: 'hint', hidden: true });
     for (const { id, name, group, icon, desc } of items) {
       const count = el('span', { className: 'count' });
@@ -164,8 +181,27 @@ export class Hud {
     }
     this.actions = el('div', { className: 'actions' });
     this.tipText = el('p');
-    this.tip = el('div', { className: 'tip', hidden: true }, this.tipText, el('button', { type: 'button', textContent: 'Skip', onclick: () => on.skip() }));
+    this.tipNext = el('button', { type: 'button', className: 'go', textContent: 'Next', hidden: true, onclick: () => on.tipNext() });
+    this.tip = el('div', { className: 'tip', hidden: true }, this.tipText, this.tipNext, el('button', { type: 'button', textContent: 'Skip', title: 'Skip the tutorial notes', onclick: () => (this.drill ? ask('Skip the tutorial?', 'You will not see the rest of the notes. The fight carries on without them.', [{ label: 'Skip', go: true, act: () => on.skip() }, { label: 'Keep going', act: () => {} }]) : on.skip()) }));
+    // The note can be dragged out of the way (by anywhere but its buttons); the next note is back in the middle.
+    this.tip.onpointerdown = (e) => {
+      if ((e.target as Element).closest('button')) return;
+      const sx = e.clientX, sy = e.clientY, [ox, oy] = (this.tip.style.translate || '0px 0px').split(' ').map(parseFloat);
+      this.tip.setPointerCapture(e.pointerId);
+      this.tip.classList.add('moving');
+      this.tip.onpointermove = (m) => { this.tip.style.translate = `${ox + m.clientX - sx}px ${oy + m.clientY - sy}px`; };
+      this.tip.onpointerup = this.tip.onpointercancel = () => { this.tip.classList.remove('moving'); this.tip.onpointermove = null; };
+    };
     this.end = el('div', { className: 'end', hidden: true });
+    this.light = el('div', { className: 'light', hidden: true, ariaHidden: 'true' });
+    this.dim = el('div', { className: 'dim', hidden: true, ariaHidden: 'true' });
+    this.peek = icon('eye', 'Hide the controls to see the street', () => {
+      const bare = this.root.classList.toggle('bare');
+      this.peek.replaceChildren(pixIcon(bare ? 'eyeShut' : 'eye'));
+      this.peek.ariaLabel = this.peek.title = bare ? 'Show the controls' : 'Hide the controls to see the street';
+      this.peek.className = 'menu icon peek';
+    });
+    this.peek.classList.add('peek');
     this.card = el('div', { className: 'card', hidden: true });
     this.vignette = el('div', { className: 'vignette', ariaHidden: 'true' });
     this.pxvig = el('div', { className: 'pxvig', ariaHidden: 'true' });
@@ -184,11 +220,19 @@ export class Hud {
     root.replaceChildren(
       this.vignette,
       el('div', { className: 'status' }, menu, settings, ...this.status), el('div', { className: 'time' }, this.restore, this.start, this.nextWave, this.speeds, this.debug), this.notices, this.card,
-      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.end, this.hint, this.banners, this.keys, this.pxvig, stick,
+      el('div', { className: 'dock' }, el('div', { className: 'tabs' }, ...this.tabs), bar), this.actions, this.tip, this.end, this.hint, this.banners, this.keys, this.pxvig, stick, this.dim, this.light, this.peek,
     );
   }
 
   destroy() { this.root.replaceChildren(); }
+
+  /** The drill's yellow box round `target`. */
+  private lightUp(target?: Element) {
+    this.light.hidden = !target;
+    if (!target) return;
+    const r = target.getBoundingClientRect(), pad = 6;
+    Object.assign(this.light.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
+  }
 
   /** Opens a tab of the bar: soldiers, things to build, or strikes. */
   tab(group: Group) {
@@ -213,9 +257,16 @@ export class Hud {
   }
 
   /** Leaving mid-wave: asked first, on paper. */
+  /** The Menu button: asks first, in the tutorial, while planning and mid-fight. */
+  askLeave() {
+    if (!this.planning) return this.askRetreat();
+    const [title, body] = this.drill ? ['Leave the tutorial?', 'You will not get the rest of the lesson.'] : ['Back to the menu?', 'Nothing is lost, but a defence you have not started is not kept.'];
+    ask(title, body, [{ label: 'Leave', go: true, act: () => this.on.menu('menu') }, { label: 'Stay', act: () => {} }]);
+  }
+
   askRetreat() {
-    ask('Retreat?', 'It counts as a loss: you keep the chips from your kills.', [
-      { label: 'Retreat', go: true, act: () => this.on.retreat() },
+    ask(this.drill ? 'Leave the tutorial?' : 'Retreat?', this.drill ? 'You will not get the rest of the lesson.' : 'It counts as a loss: you keep the chips from your kills.', [
+      { label: this.drill ? 'Leave' : 'Retreat', go: true, act: () => this.on.retreat() },
       { label: 'Keep fighting', act: () => {} },
     ]);
   }
@@ -305,13 +356,28 @@ export class Hud {
       const mark = this.card.querySelector('.bookmark') as HTMLButtonElement | null; // Remove or Retreat, a ribbon out of the top of the dossier
       if (mark) { mark.hidden = !c.mark; text(mark, c.mark); mark.disabled = c.mark === 'Retreating…'; }
       const drive = this.card.querySelector('.drive') as HTMLButtonElement | null;
-      if (drive) { drive.hidden = !c.drivable; drive.setAttribute('aria-pressed', String(c.driving)); drive.title = c.driving ? 'Back to the squad (Esc)' : 'Play as him: WASD to walk, the mouse to aim and shoot'; }
+      if (drive) { drive.hidden = !c.drivable; drive.setAttribute('aria-pressed', String(c.driving)); drive.title = c.driving ? 'Back to the squad (Esc)' : 'Play as him: WASD or the stick to walk, the mouse or a finger to aim. He fires on his own'; }
       const stat = this.card.querySelector('.stat') as HTMLElement | null;
       if (stat) text(stat, `${c.where} · ${c.kills} kill${c.kills === 1 ? '' : 's'}`);
     } else { this.cardKind = ''; this.root.classList.remove('driving'); }
+    this.drill = !!s.drill;
     this.tip.hidden = !s.tip || !!s.end;
+    if (s.tip !== this.tipFor) { this.tipFor = s.tip; this.tip.style.translate = ''; } // each note comes up in the middle
     text(this.tipText, s.tip);
+    this.tipNext.hidden = !s.tipNext;
+    if (s.spot !== this.spotSel) { // what the drill's note is about
+      this.spotSel = s.spot;
+      this.spotted = undefined;
+    }
+    if (s.spot && !this.spotted?.isConnected) this.spotted = this.root.querySelector(s.spot) ?? undefined; // a button that only exists once something is picked
+    const f = s.focus && !this.tip.hidden ? s.focus : undefined;
+    this.dim.hidden = !f;
+    if (f) Object.assign(this.dim.style, { left: `${f.x - f.r}px`, top: `${f.y - f.r}px`, width: `${f.r * 2}px`, height: `${f.r * 2}px` });
+    this.lightUp(!this.tip.hidden && !this.root.classList.contains('bare') ? this.spotted : undefined);
     this.end.hidden = !s.end;
+    this.end.classList.toggle('finish', !!s.end?.drill);
+    if (s.end?.drill && !this.end.childElementCount)
+      this.end.append(el('h2', {}, 'You finished the tutorial!'), el('button', { type: 'button', className: 'go', textContent: 'Proceed', onclick: () => this.on.next() }));
     if (s.end && !this.end.childElementCount) {
       this.end.append(
         el('h2', {}, s.end.title), ...(s.end.quote ? [el('p', { className: 'quote' }, `“${s.end.quote}”`)] : []), el('p', {}, s.end.detail),

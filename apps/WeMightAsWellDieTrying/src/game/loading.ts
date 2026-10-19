@@ -24,7 +24,7 @@ const TIPS = [
   "Rain and fog cut every soldier's range a little. Plan your cones shorter.",
   'The break between waves is the time to bring civilians out.',
 ];
-let since = 0, timer = 0, active = false;
+let since = 0, timer = 0, active = false, wipeTimer = 0;
 
 const parts = () => { const r = document.getElementById('loading')!; return [r, r.querySelector('i') as HTMLElement] as const; };
 
@@ -53,15 +53,23 @@ export function stopLoading() {
 }
 
 /** A wipe between menu screens: black sweeps across with the soldier running in it, `swap` changes the screen while
- *  it covers everything, and it sweeps on off the other side. */
+ *  it covers everything, and it sweeps on off the other side only once the new screen has been drawn. (On a slow phone
+ *  building the screen takes longer than the sweep: a sweep on a timer showed the old screen again, then the new.) */
 export function wipe(swap: () => void) {
   const w = document.getElementById('wipe');
   if (!w || matchMedia('(prefers-reduced-motion: reduce)').matches) return swap();
-  w.classList.remove('go');
+  clearTimeout(wipeTimer);
+  w.classList.remove('in', 'out');
   void w.offsetWidth; // restart the sweep
-  w.classList.add('go');
-  setTimeout(swap, 260);
-  setTimeout(() => w.classList.remove('go'), 600);
+  w.classList.add('in');
+  wipeTimer = window.setTimeout(() => {
+    swap();
+    // A frame for the new screen to be laid out and one for it to be painted, then off.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      w.classList.replace('in', 'out');
+      wipeTimer = window.setTimeout(() => w.classList.remove('out'), 320);
+    }));
+  }, 260);
 }
 
 /** Runs `work` behind the loading screen, once it has faded in (for a screen that is slow to build). */

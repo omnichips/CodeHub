@@ -83,6 +83,28 @@ function radio() {
 const shell = (r: string[], fill = 'h') => r.map((row, y) => [...row].map((c, x) => c === 'h' ? 'j' : c === 'k' && [r[y - 1]?.[x], r[y + 1]?.[x], row[x - 1], row[x + 1]].every((n) => n && n !== '.') ? fill : c).join(''));
 
 export const ICONS = {
+  eye: [
+    '................',
+    '....kkkkkkkk....',
+    '..kkwwwwwwwwkk..',
+    '.kwwwwkzzkwwwwk.',
+    'kwwwwkzkkzkwwwwk',
+    '.kwwwwkzzkwwwwk.',
+    '..kkwwwwwwwwkk..',
+    '....kkkkkkkk....',
+    '................',
+  ],
+  eyeShut: [
+    '................',
+    '................',
+    '..kkkkkkkkkkkk..',
+    '.kwwwwwwwwwwwwk.',
+    'kkkkkkkkkkkkkkkk',
+    '..k..k..k..k..k.',
+    '................',
+    '................',
+    '................',
+  ],
   flag: flag(),
   gear: gear(),
   zombie: [
