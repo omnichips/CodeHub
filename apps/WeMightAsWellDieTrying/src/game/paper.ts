@@ -207,7 +207,7 @@ export function manualNote() {
 
 /** The latest patch notes as a newspaper clipping: torn top and bottom, NEWS and the date, the headline, a red
  *  NEW stamp while unread. Hovered, it lifts and its corner curls. */
-export function clipping(title: string, date: string, unread: boolean) {
+export function clipping(title: string, date: string, unread: boolean, label = 'NEWS') {
   const W = 118, lines = wrap(title, 'person', W - 14).slice(0, 3), H = 40 + lines.length * 10;
   return [W, H, (p: Pen, lift: number, t: number) => {
     const y = 3 - Math.round(lift * 2), h = H - 7;
@@ -215,7 +215,7 @@ export function clipping(title: string, date: string, unread: boolean) {
     p.rect(0, y, W - 4, h, '#cfc6ad');
     for (let x = 0; x < W - 4; x++) { if (roll(x, 5) < 0.3) p.c.clearRect(x, y, 1, 1); if (roll(x, 9) < 0.3) p.c.clearRect(x, y + h - 1, 1, 1); } // torn edges
     for (let k = 0; k < 30; k++) p.px(roll(k, 21) * (W - 6), y + 2 + roll(21, k) * (h - 4), '#bfb393');
-    p.text('NEWS', 6, y + 3, INK);
+    p.text(label, 6, y + 3, INK);
     p.rect(5, y + 12, W - 14, 1, INK); p.rect(5, y + 14, W - 14, 1, INK);
     lines.forEach((l, k) => p.text(l, 6, y + 18 + k * 10, INK));
     p.text(date, 6, y + 20 + lines.length * 10, '#6b6250');

@@ -1,5 +1,12 @@
 [
  {
+  "date": "2026-10-19 14:08",
+  "title": "Report Issues",
+  "notes": [
+   "The main menu now has a Report Issues clipping. Describe what happened and open a pre-filled GitHub issue to send it to the developer."
+  ]
+ },
+ {
   "date": "2026-10-19 13:43",
   "title": "Build 0.1.1",
   "notes": [

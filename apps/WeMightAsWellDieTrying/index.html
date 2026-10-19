@@ -162,7 +162,7 @@
       @keyframes thump { 40% { transform: translate(2px, 3px); } }
       @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
       /* On the right: the latest patch notes, as a clipping. */
-      #menu .aside { position: absolute; right: var(--right); top: var(--top); }
+      #menu .aside { position: absolute; right: var(--right); top: var(--top); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
       @media (max-width: 760px) { #menu .aside canvas { width: 160px !important; } }
       /* The build, and the sound on or off. */
       #menu .foot { position: absolute; right: var(--right); bottom: var(--bottom); display: flex; gap: 10px; align-items: center; color: var(--dim); font-size: calc(11px * var(--text, 1)); }
@@ -516,6 +516,14 @@
       #menu .book .row { background: transparent; border: 0; color: #2e2a22; }
       #menu .book .chips, #menu .book .note { color: #8a5a10; }
       #menu .notes.book, #menu .debug.book { width: min(620px, 100%); gap: 8px; overflow-y: auto; }
+      #menu .report.book { width: min(520px, 100%); gap: 8px; }
+      #menu .report > p { margin: 0; line-height: 1.35; color: #5a5040; }
+      #menu .report form { display: flex; flex-direction: column; gap: 8px; }
+      #menu .report label { display: flex; flex-direction: column; gap: 3px; color: #6b6250; font-size: calc(12px * var(--text, 1)); }
+      #menu .report input, #menu .report textarea { box-sizing: border-box; width: 100%; padding: 7px 8px; font: inherit; color: #2e2a22; background: #fffaf0; border: 2px solid #b9b2a0; resize: vertical; -webkit-user-select: text; user-select: text; touch-action: auto; }
+      #menu .report textarea { min-height: 120px; }
+      #menu .report input:focus, #menu .report textarea:focus { outline: 2px solid #c4a058; outline-offset: 1px; }
+      #menu .report form button { align-self: flex-start; }
       #menu .stats.book { width: min(620px, 100%); }
       #menu .book .head button { color: #2e2a22; background: #c9a86a; border-color: #9c7f48; }
       /* Settings, Controls: the keys, each one's key pressed to change it. */

@@ -35,7 +35,7 @@ import { noStory, record, story } from '../story/record.ts';
 import { order } from '../story/text.ts';
 import { mapOf } from '../story/types.ts';
 
-export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'story' | 'medals' | 'manual';
+export type Screen = 'menu' | 'new' | 'load' | 'save' | 'tree' | 'stats' | 'settings' | 'debug' | 'notes' | 'report' | 'story' | 'medals' | 'manual';
 
 const SHAMBLERS = ['normal', 'normal', 'normal', 'fast', 'bloater', 'armored', 'normal', 'tanky'];
 const SQUAD = ['rifleman', 'sniper', 'shotgunner', 'marksman', 'grenadier', 'medic']; // as many stand as the story has left
@@ -344,7 +344,7 @@ export class Menu extends Phaser.Scene {
     if (screen === 'tree') return whileLoading(async () => { const { skillWeb } = await import('./tree.ts').catch(() => { location.reload(); return new Promise<never>(() => {}); }); if (this.current === 'tree') skillWeb(this, this.root, () => this.show('save')); });
     if ((screen === 'new' || screen === 'load') && !loadingActive() && saves().some((s) => s && !THUMBS.has(`${cityOf(s).id}-${profile.settings.gore !== 'none'}`)))
       return whileLoading(() => this.showNow(screen));
-    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
+    const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), report: () => this.report(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
     this.root.replaceChildren(...[BINDER.includes(screen as Page) ? this.binder(screen as Page, panel as HTMLElement) : panel].flat()); // each panel slides in (CSS)
     this.fit();
   }
@@ -412,7 +412,10 @@ export class Menu extends Phaser.Scene {
     if (intro) setTimeout(() => play('thud', 0.5), 700); // the title landing
     // On the right: the latest patch notes, as a clipping.
     const [cw, ch, draw] = clipping(notes[0]?.title ?? 'Patch notes', NEWEST.slice(0, 10), unread);
-    const aside = el('div', { className: `aside${intro ? ' intro' : ''}` }, pixelButton(unread ? 'Patch notes: something new' : 'Patch notes', cw, ch, draw, () => this.show('notes')));
+    const [rw, rh, reportDraw] = clipping('Report Issues', '', false, 'REPORT');
+    const aside = el('div', { className: `aside${intro ? ' intro' : ''}` },
+      pixelButton(unread ? 'Patch notes: something new' : 'Patch notes', cw, ch, draw, () => this.show('notes')),
+      pixelButton('Report Issues', rw, rh, reportDraw, () => this.show('report')));
     // The sound, on or off, and which build this is.
     const s = profile.settings, mute = el('button', { type: 'button', className: 'icon', ariaLabel: 'Sound', ariaPressed: String(s.master > 0) }, speaker(s.master > 0));
     mute.onclick = () => {
@@ -430,6 +433,30 @@ export class Menu extends Phaser.Scene {
     try { localStorage.setItem(SEEN, NEWEST); } catch { /* storage blocked: the dot stays */ }
     return el('div', { className: 'panel notes book' }, this.head('Patch notes', 'menu'),
       ...notes.map((n) => el('section', {}, el('h3', {}, n.title), el('small', {}, `${n.date} PHT`), el('ul', {}, ...n.notes.map((line) => el('li', {}, line))))));
+  }
+
+  /** Collects a short report and hands it to the repository's GitHub Issues form. */
+  report(): HTMLElement {
+    const title = el('input', { type: 'text', placeholder: 'Short summary', ariaLabel: 'Issue summary', required: true });
+    const details = el('textarea', { placeholder: 'What happened, and how can I reproduce it?', ariaLabel: 'Issue details', required: true, rows: 7 });
+    const status = el('p', { className: 'note', ariaLive: 'polite' });
+    const form = el('form', {},
+      el('label', {}, 'Summary', title),
+      el('label', {}, 'Details', details),
+      el('button', { type: 'submit', className: 'go' }, 'Open GitHub issue'),
+      status);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      if (!title.value.trim() || !details.value.trim()) {
+        status.textContent = 'Tell us what went wrong first.';
+        return;
+      }
+      const body = `Game: We Might As Well Die Trying\nBuild: ${__BUILD__}\nPage: ${location.href}\n\n${details.value.trim()}`;
+      location.href = `https://github.com/omnichips/CodeHub/issues/new?title=${encodeURIComponent(title.value.trim())}&body=${encodeURIComponent(body)}`;
+    };
+    return el('div', { className: 'panel report book' }, this.head('Report Issues', 'menu'),
+      el('p', {}, 'Write what went wrong. This opens a pre-filled GitHub issue; press “Submit new issue” there to send it to the developer.'),
+      form);
   }
 
   /** The slots, to start a new save in or to load one from. Loading also offers export, delete and import. */
