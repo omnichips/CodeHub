@@ -1,5 +1,19 @@
 [
  {
+  "date": "2026-10-19 14:20",
+  "title": "Playable on public",
+  "notes": [
+   "Report Issues is now playable on the public build: send a report directly from the game without opening another site or app."
+  ]
+ },
+ {
+  "date": "2026-10-19 14:15",
+  "title": "Reports send in-game",
+  "notes": [
+   "Report Issues now sends your report directly to the developer without opening another site or app."
+  ]
+ },
+ {
   "date": "2026-10-19 14:08",
   "title": "Report Issues",
   "notes": [

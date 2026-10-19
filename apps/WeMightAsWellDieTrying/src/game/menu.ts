@@ -440,22 +440,39 @@ export class Menu extends Phaser.Scene {
     const title = el('input', { type: 'text', placeholder: 'Short summary', ariaLabel: 'Issue summary', required: true });
     const details = el('textarea', { placeholder: 'What happened, and how can I reproduce it?', ariaLabel: 'Issue details', required: true, rows: 7 });
     const status = el('p', { className: 'note', ariaLive: 'polite' });
+    const send = el('button', { type: 'submit', className: 'go' }, 'Send report');
     const form = el('form', {},
       el('label', {}, 'Summary', title),
       el('label', {}, 'Details', details),
-      el('button', { type: 'submit', className: 'go' }, 'Open GitHub issue'),
+      send,
       status);
-    form.onsubmit = (e) => {
+    form.onsubmit = async (e) => {
       e.preventDefault();
       if (!title.value.trim() || !details.value.trim()) {
         status.textContent = 'Tell us what went wrong first.';
         return;
       }
-      const body = `Game: We Might As Well Die Trying\nBuild: ${__BUILD__}\nPage: ${location.href}\n\n${details.value.trim()}`;
-      location.href = `https://github.com/omnichips/CodeHub/issues/new?title=${encodeURIComponent(title.value.trim())}&body=${encodeURIComponent(body)}`;
+      send.disabled = true;
+      status.textContent = 'Sending report…';
+      try {
+        const response = await fetch(new URL('/api/report', location.origin), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ summary: title.value, details: details.value, build: __BUILD__, page: location.href, userAgent: navigator.userAgent }),
+        });
+        if (!response.ok) throw new Error(`Report request failed (${response.status})`);
+        status.textContent = 'Report sent. Thank you.';
+        title.value = '';
+        details.value = '';
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Could not send the report. Please try again later.';
+      } finally {
+        send.disabled = false;
+      }
     };
     return el('div', { className: 'panel report book' }, this.head('Report Issues', 'menu'),
-      el('p', {}, 'Write what went wrong. This opens a pre-filled GitHub issue; press “Submit new issue” there to send it to the developer.'),
+      el('p', {}, 'Write what went wrong and send it directly to the developer.'),
       form);
   }
 
