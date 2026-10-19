@@ -76,7 +76,7 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
   const info = el('div', { className: 'info' });
   info.style.setProperty('--torn', `url(${tornEdge()})`);
   const demo = el('div', { className: 'demo', hidden: true });
-  const close = () => { demo.hidden = true; stopWatching(); };
+  const close = () => { demo.hidden = true; stopWatching(); scene.game.loop.wake(); }; // the menu's own game rests while a demo runs, and wakes after
   root.replaceChildren(el('div', { className: 'web' },
     el('div', { className: 'top' }, pixelButton('Back', bw, bh, bd, () => { close(); back(); }, 'tag'), chips, el('div', { className: 'tabs' }, ...tabs)), view, info, demo));
   addEventListener('keydown', function esc(e) {
@@ -237,6 +237,7 @@ export function skillWeb(scene: Phaser.Scene, root: HTMLElement, back: () => voi
       screen, el('p', {}, NODE.get(unit)?.desc ?? '')));
     demo.onclick = (e) => { if (e.target === demo) close(); };
     demo.hidden = false;
+    scene.game.loop.sleep(); // two games drawing at once on a phone is a lot of memory and heat: the one behind the tree waits
     watch(unit, screen);
   }
 

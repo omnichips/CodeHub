@@ -11,7 +11,8 @@
    "Soldier dossiers show icons for damage, range, fire rate and health. Phone controls along the bottom are a fifth smaller, and the main menu too.",
    "The end-of-fight report scrolls on a phone with its buttons always in reach. Menu now asks before it leaves.",
    "Fixed a stuck pinch that made dragging the map zoom in and out. Screen changes no longer flash back to the old screen first. The installed app offers a reload when an update arrives.",
-   "Pressing the build label in the menu swaps it between the build code and the date."
+   "Pressing the build label in the menu swaps it between the build code and the date.",
+   "Skill tree: a soldier's demo is cleared from memory when closed, and the menu game rests while one plays. A page left open across an update reloads itself instead of crashing."
   ]
  }
 ]

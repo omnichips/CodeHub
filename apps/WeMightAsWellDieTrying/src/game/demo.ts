@@ -1,6 +1,7 @@
 // The skill tree's demo of a soldier: him (with your upgrades) holding a short street of his own while zombies keep
 // coming, drawn by the game's own scene in a second, small Phaser game inside the tree's demo box. When he falls the
-// street is cleared and he stands again. One demo game is made, and kept for the next.
+// street is cleared and he stands again. The demo game is made when one is opened and thrown away when it is closed:
+// a second game keeps a whole second copy of the art and a second WebGL context, too much to keep on a phone.
 import Phaser from 'phaser';
 import palette from '../data/palette.json' with { type: 'json' };
 import { bake, load } from '../art/atlas.ts';
@@ -132,7 +133,9 @@ export function watch(unit: UnitKind, box: HTMLElement) {
 
 export function stopWatching() {
   holder.remove();
-  if (!game?.isBooted) return;
-  game.scene.stop('demo');
-  game.loop.sleep();
+  const g = game;
+  game = undefined;
+  if (!g) return;
+  if (g.isBooted) g.destroy(true);
+  else g.events.once('ready', () => g.destroy(true)); // closed before it was ready
 }

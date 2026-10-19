@@ -47,5 +47,16 @@ visualViewport?.addEventListener('resize', () => {
   meta.content = fixed.replace('initial-scale=1', 'initial-scale=1.001');
   setTimeout(() => { meta.content = fixed; }, 60);
 });
+// A file the page asks for later (the skill tree) is gone when a newer build went up while it was open: load the new page,
+// but only once in a while, so a real outage cannot loop.
+addEventListener('vite:preloadError', (e) => {
+  e.preventDefault();
+  try {
+    const last = Number(sessionStorage.getItem('dietrying.reloaded') ?? 0);
+    if (Date.now() - last < 30000) return;
+    sessionStorage.setItem('dietrying.reloaded', String(Date.now()));
+  } catch { /* storage blocked: reload anyway */ }
+  location.reload();
+});
 addEventListener('orientationchange', settle);
 visualViewport?.addEventListener('resize', settle);

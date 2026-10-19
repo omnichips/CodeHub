@@ -340,7 +340,8 @@ export class Menu extends Phaser.Scene {
   current?: Screen;
 
   showNow(screen: Screen): void {
-    if (screen === 'tree') return whileLoading(async () => { const { skillWeb } = await import('./tree.ts'); if (this.current === 'tree') skillWeb(this, this.root, () => this.show('save')); }); // fetched when first opened
+    // The tree is fetched when first opened; a build newer than this page has taken its file away, so load the new page.
+    if (screen === 'tree') return whileLoading(async () => { const { skillWeb } = await import('./tree.ts').catch(() => { location.reload(); return new Promise<never>(() => {}); }); if (this.current === 'tree') skillWeb(this, this.root, () => this.show('save')); });
     if ((screen === 'new' || screen === 'load') && !loadingActive() && saves().some((s) => s && !THUMBS.has(`${cityOf(s).id}-${profile.settings.gore !== 'none'}`)))
       return whileLoading(() => this.showNow(screen));
     const panel = { menu: () => this.main(), new: () => this.slots('new'), load: () => this.slots('load'), save: () => this.save(), stats: () => this.stats(), settings: () => this.settings(), debug: () => this.debug(), notes: () => this.notes(), story: () => this.storyLog(), medals: () => this.medals(), manual: () => this.manual() }[screen]();
