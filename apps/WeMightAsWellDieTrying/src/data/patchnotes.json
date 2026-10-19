@@ -1,16 +1,23 @@
 [
  {
+  "date": "2026-10-19 14:26",
+  "title": "GitHub issue reports",
+  "notes": [
+   "Report Issues opens a pre-filled GitHub issue again. Review it and press Submit new issue to send it to the developer."
+  ]
+ },
+ {
   "date": "2026-10-19 14:20",
   "title": "Playable on public",
   "notes": [
-   "Report Issues is now playable on the public build: send a report directly from the game without opening another site or app."
+   "Report Issues is now playable on the public build: describe an issue in-game and open a pre-filled GitHub issue."
   ]
  },
  {
   "date": "2026-10-19 14:15",
   "title": "Reports send in-game",
   "notes": [
-   "Report Issues now sends your report directly to the developer without opening another site or app."
+   "Report Issues now prepares a GitHub issue with the game build and page details included."
   ]
  },
  {
