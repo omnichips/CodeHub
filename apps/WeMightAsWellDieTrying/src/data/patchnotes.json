@@ -1,5 +1,18 @@
 [
  {
+  "date": "2026-10-23 15:00",
+  "title": "Tougher cities, stronger upgrades",
+  "notes": [
+   "Each city sends 12% more zombies than the last, compounding: the White House has about 2.5x Main Street.",
+   "Skill upgrades are about a third stronger: range +8%, damage +16%, fire rate +12%, health +50% / +33%, power +20%.",
+   "Easy no longer cuts chips. Hard pays x1.6 chips. New saves start with free chips: 15 Easy, 13 Normal, 10 Hard.",
+   "Soldiers shoot anything that gets within a few pixels, even outside their cone. The small circle shows on the cone.",
+   "A tighter cone reaches farther, a wider one less (x1.25 to x0.75 range).",
+   "Builds and strikes in the skill tree unlock with just the node they connect to.",
+   "The report shows medals as pixel-art icons that bob until hovered, with the description on hover."
+  ]
+ },
+ {
   "date": "2026-10-19 14:26",
   "title": "GitHub issue reports",
   "notes": [

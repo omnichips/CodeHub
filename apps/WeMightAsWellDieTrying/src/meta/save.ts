@@ -66,11 +66,11 @@ export interface Fallen { name: string; kind: string; kills: number; city: strin
 export const MEMORIAL = 200;
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-/** What each difficulty does to a fight: zombie health and numbers, how many leaks lose it, the chips it pays. */
-export const DIFFICULTY: Record<Difficulty, { name: string; hp: number; count: number; leaks: number; chips: number; weather: number; desc: string }> = {
-  easy: { name: 'Easy', hp: 0.75, count: 1, leaks: 1.5, chips: 0.8, weather: 0.03, desc: 'Weaker zombies, more leaks allowed, fewer chips.' },
-  normal: { name: 'Normal', hp: 1, count: 1, leaks: 1, chips: 1, weather: 0.05, desc: 'The fight as it was meant.' },
-  hard: { name: 'Hard', hp: 1.3, count: 1.25, leaks: 0.75, chips: 1.25, weather: 0.07, desc: 'Tougher zombies, more of them, fewer leaks allowed, more chips.' },
+/** What each difficulty does to a fight: zombie health and numbers, how many leaks lose it, the chips it pays, the chips a new save starts with. */
+export const DIFFICULTY: Record<Difficulty, { name: string; hp: number; count: number; leaks: number; chips: number; start: number; weather: number; desc: string }> = {
+  easy: { name: 'Easy', hp: 0.75, count: 1, leaks: 1.5, chips: 1, start: 15, weather: 0.03, desc: 'Weaker zombies, more leaks allowed.' },
+  normal: { name: 'Normal', hp: 1, count: 1, leaks: 1, chips: 1, start: 13, weather: 0.05, desc: 'The fight as it was meant.' },
+  hard: { name: 'Hard', hp: 1.3, count: 1.25, leaks: 0.75, chips: 1.6, start: 10, weather: 0.07, desc: 'Tougher zombies, more of them, fewer leaks allowed, x1.6 chips.' },
 };
 
 export const SLOTS = 3;
@@ -81,7 +81,7 @@ const key = (slot: number) => (slot ? `dietrying.save.${slot + 1}` : 'dietrying.
 const SETTINGS = 'dietrying.settings';
 
 export const noStats = (): Stats => ({ runs: 0, wins: 0, kills: 0, leaks: 0, chips: 0, time: 0 });
-export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: 0, skills: { ...STARTING }, cleared: {}, tutorialDone: false, boardTour: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [], fallen: [] });
+export const fresh = (name = 'Save', difficulty: Difficulty = 'normal'): Save => ({ version: VERSION, name, chips: DIFFICULTY[difficulty].start, skills: { ...STARTING }, cleared: {}, tutorialDone: false, boardTour: false, stats: noStats(), setups: {}, played: Date.now(), story: noStory(), difficulty, medals: {}, met: [], fallen: [] });
 export const defaultKeys = () => Object.fromEntries(Object.entries(KEY_ACTIONS).map(([a, [k]]) => [a, k])) as Record<KeyAction, string>;
 export const defaults = (): Settings => ({ gore: 'normal', quality: 'high', lefty: false, bodies: 300, master: 0.8, sfx: 0.8, music: 0.6, dust: 0.5, mix: false, story: 'full', voices: 'blips', shake: true, haptics: true, colorblind: false, ui: 1, text: 1, keys: defaultKeys() });
 

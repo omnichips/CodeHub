@@ -70,6 +70,14 @@ export function medal(p: Pen, x: number, y: number, [a, b]: readonly [string, st
   p.rect(x + 1, y + 5, 5, 7, dark); p.rect(x, y + 6, 7, 5, dark); p.rect(x + 1, y + 6, 5, 5, face); p.px(x + 2, y + 7, hi);
 }
 
+/** One medal on its own little canvas, `scale` screen pixels to an art pixel, `title` shown when hovered. */
+export function medalIcon(ribbon: readonly [string, string], title: string, scale = 3) {
+  const cv = el('canvas', { width: 7, height: 12, title });
+  cv.style.cssText = `width:${7 * scale}px;height:${12 * scale}px;image-rendering:pixelated`;
+  medal(new Pen(cv.getContext('2d')!), 0, 0, ribbon);
+  return cv;
+}
+
 /** The save's dossier: a manila folder, CONTINUE on its tab, the save's name, a pip for each city (red and crossed:
  *  lost; gold: the one it is on), its chips and cities, the day stamped on it, the save's medals pinned to its front.
  *  Hovered, the sheet inside slides up. */

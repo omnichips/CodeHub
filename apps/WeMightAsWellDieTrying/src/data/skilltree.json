@@ -72,12 +72,12 @@
    ],
    "parent": "rifleman.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "rifleman",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -95,12 +95,12 @@
    ],
    "parent": "rifleman.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "rifleman",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -118,12 +118,12 @@
    ],
    "parent": "rifleman.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "rifleman",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -167,12 +167,12 @@
    ],
    "parent": "rifleman.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "rifleman",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -190,12 +190,12 @@
    ],
    "parent": "rifleman.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "rifleman",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -213,12 +213,12 @@
    ],
    "parent": "rifleman.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "rifleman",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -241,12 +241,12 @@
     "rifleman.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "rifleman",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -305,12 +305,12 @@
    ],
    "parent": "shield.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shield",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -328,12 +328,12 @@
    ],
    "parent": "shield.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shield",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -351,12 +351,12 @@
    ],
    "parent": "shield.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shield",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -400,12 +400,12 @@
    ],
    "parent": "shield.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shield",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -423,12 +423,12 @@
    ],
    "parent": "shield.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shield",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -446,12 +446,12 @@
    ],
    "parent": "shield.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shield",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -474,12 +474,12 @@
     "shield.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "shield",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -559,12 +559,12 @@
    ],
    "parent": "shotgunner.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shotgunner",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -582,12 +582,12 @@
    ],
    "parent": "shotgunner.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shotgunner",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -605,12 +605,12 @@
    ],
    "parent": "shotgunner.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shotgunner",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -654,12 +654,12 @@
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "shotgunner",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -677,12 +677,12 @@
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "shotgunner",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -700,12 +700,12 @@
    ],
    "parent": "shotgunner.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "shotgunner",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -728,12 +728,12 @@
     "shotgunner.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "shotgunner",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -813,12 +813,12 @@
    ],
    "parent": "machinegunner.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "machinegunner",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -836,12 +836,12 @@
    ],
    "parent": "machinegunner.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "machinegunner",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -859,12 +859,12 @@
    ],
    "parent": "machinegunner.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "machinegunner",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -908,12 +908,12 @@
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "machinegunner",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -931,12 +931,12 @@
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "machinegunner",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -954,12 +954,12 @@
    ],
    "parent": "machinegunner.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "machinegunner",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -982,12 +982,12 @@
     "machinegunner.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "machinegunner",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -1046,12 +1046,12 @@
    ],
    "parent": "marksman.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "marksman",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1069,12 +1069,12 @@
    ],
    "parent": "marksman.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "marksman",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1092,12 +1092,12 @@
    ],
    "parent": "marksman.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "marksman",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1141,12 +1141,12 @@
    ],
    "parent": "marksman.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "marksman",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1164,12 +1164,12 @@
    ],
    "parent": "marksman.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "marksman",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1187,12 +1187,12 @@
    ],
    "parent": "marksman.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "marksman",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1215,12 +1215,12 @@
     "marksman.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "marksman",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -1279,12 +1279,12 @@
    ],
    "parent": "grenadier.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "grenadier",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1302,12 +1302,12 @@
    ],
    "parent": "grenadier.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "grenadier",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1325,12 +1325,12 @@
    ],
    "parent": "grenadier.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "grenadier",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1374,12 +1374,12 @@
    ],
    "parent": "grenadier.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "grenadier",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1397,12 +1397,12 @@
    ],
    "parent": "grenadier.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "grenadier",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1420,12 +1420,12 @@
    ],
    "parent": "grenadier.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "grenadier",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1448,12 +1448,12 @@
     "grenadier.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "grenadier",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -1533,12 +1533,12 @@
    ],
    "parent": "medic.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "medic",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1604,12 +1604,12 @@
    ],
    "parent": "medic.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "medic",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1654,12 +1654,12 @@
     "medic.heal2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "medic",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -1718,12 +1718,12 @@
    ],
    "parent": "flamethrower.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "flamethrower",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1741,12 +1741,12 @@
    ],
    "parent": "flamethrower.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "flamethrower",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1764,12 +1764,12 @@
    ],
    "parent": "flamethrower.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "flamethrower",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1813,12 +1813,12 @@
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "flamethrower",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1836,12 +1836,12 @@
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "flamethrower",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -1859,12 +1859,12 @@
    ],
    "parent": "flamethrower.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "flamethrower",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -1887,12 +1887,12 @@
     "flamethrower.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "flamethrower",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -1972,12 +1972,12 @@
    ],
    "parent": "sniper.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "sniper",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -1995,12 +1995,12 @@
    ],
    "parent": "sniper.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "sniper",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2018,12 +2018,12 @@
    ],
    "parent": "sniper.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "sniper",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2067,12 +2067,12 @@
    ],
    "parent": "sniper.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "sniper",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2090,12 +2090,12 @@
    ],
    "parent": "sniper.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "sniper",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2113,12 +2113,12 @@
    ],
    "parent": "sniper.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "sniper",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2141,12 +2141,12 @@
     "sniper.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "sniper",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -2226,12 +2226,12 @@
    ],
    "parent": "bazooka.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "bazooka",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2249,12 +2249,12 @@
    ],
    "parent": "bazooka.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "bazooka",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2272,12 +2272,12 @@
    ],
    "parent": "bazooka.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "bazooka",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2321,12 +2321,12 @@
    ],
    "parent": "bazooka.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "bazooka",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2344,12 +2344,12 @@
    ],
    "parent": "bazooka.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "bazooka",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2367,12 +2367,12 @@
    ],
    "parent": "bazooka.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "bazooka",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2395,12 +2395,12 @@
     "bazooka.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "bazooka",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -2480,12 +2480,12 @@
    ],
    "parent": "engineer.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "engineer",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2551,12 +2551,12 @@
    ],
    "parent": "engineer.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "engineer",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2601,12 +2601,12 @@
     "engineer.repair2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "engineer",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -2665,12 +2665,12 @@
    ],
    "parent": "mortar.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "mortar",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2688,12 +2688,12 @@
    ],
    "parent": "mortar.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "mortar",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2711,12 +2711,12 @@
    ],
    "parent": "mortar.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "mortar",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2760,12 +2760,12 @@
    ],
    "parent": "mortar.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "mortar",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2783,12 +2783,12 @@
    ],
    "parent": "mortar.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "mortar",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2806,12 +2806,12 @@
    ],
    "parent": "mortar.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "mortar",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -2834,12 +2834,12 @@
     "mortar.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "mortar",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -2919,12 +2919,12 @@
    ],
    "parent": "operator.more",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "operator",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -2942,12 +2942,12 @@
    ],
    "parent": "operator.more",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "operator",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -2965,12 +2965,12 @@
    ],
    "parent": "operator.more",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "operator",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -3014,12 +3014,12 @@
    ],
    "parent": "operator.more2",
    "icon": "icon-range/0",
-   "desc": "Shoots farther. +6% a level.",
+   "desc": "Shoots farther. +8% a level.",
    "effects": [
     {
      "stat": "range",
      "of": "operator",
-     "by": 0.06
+     "by": 0.08
     }
    ]
   },
@@ -3037,12 +3037,12 @@
    ],
    "parent": "operator.more2",
    "icon": "icon-damage/0",
-   "desc": "Every hit does more. +12% a level.",
+   "desc": "Every hit does more. +16% a level.",
    "effects": [
     {
      "stat": "damage",
      "of": "operator",
-     "by": 0.12
+     "by": 0.16
     }
    ]
   },
@@ -3060,12 +3060,12 @@
    ],
    "parent": "operator.more2",
    "icon": "icon-rate/0",
-   "desc": "Shoots faster. +9% a level.",
+   "desc": "Shoots faster. +12% a level.",
    "effects": [
     {
      "stat": "fireRate",
      "of": "operator",
-     "by": 0.09
+     "by": 0.12
     }
    ]
   },
@@ -3088,12 +3088,12 @@
     "operator.rate2"
    ],
    "icon": "icon-hp/0",
-   "desc": "More health. +37.5% a level.",
+   "desc": "More health. +50% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "operator",
-     "by": 0.375
+     "by": 0.5
     }
    ]
   },
@@ -3174,12 +3174,12 @@
    ],
    "parent": "plastic.more",
    "icon": "icon-hp/0",
-   "desc": "Takes more to break. +25% a level.",
+   "desc": "Takes more to break. +33% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "plastic",
-     "by": 0.25
+     "by": 0.33
     }
    ]
   },
@@ -3239,12 +3239,12 @@
    ],
    "parent": "wood.more",
    "icon": "icon-hp/0",
-   "desc": "Takes more to break. +25% a level.",
+   "desc": "Takes more to break. +33% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "wood",
-     "by": 0.25
+     "by": 0.33
     }
    ]
   },
@@ -3259,10 +3259,6 @@
     30
    ],
    "parent": "wood",
-   "needs": [
-    "wood.more",
-    "wood.hp"
-   ],
    "icon": "sandbags/0",
    "desc": "A tough roadblock.",
    "effects": [
@@ -3307,12 +3303,12 @@
    ],
    "parent": "sandbags.more",
    "icon": "icon-hp/0",
-   "desc": "Takes more to break. +25% a level.",
+   "desc": "Takes more to break. +33% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "sandbags",
-     "by": 0.25
+     "by": 0.33
     }
    ]
   },
@@ -3327,10 +3323,6 @@
     65
    ],
    "parent": "sandbags",
-   "needs": [
-    "sandbags.more",
-    "sandbags.hp"
-   ],
    "icon": "car/0",
    "desc": "A heavy roadblock.",
    "effects": [
@@ -3375,12 +3367,12 @@
    ],
    "parent": "car.more",
    "icon": "icon-hp/0",
-   "desc": "Takes more to break. +25% a level.",
+   "desc": "Takes more to break. +33% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "car",
-     "by": 0.25
+     "by": 0.33
     }
    ]
   },
@@ -3395,10 +3387,6 @@
     130
    ],
    "parent": "car",
-   "needs": [
-    "car.more",
-    "car.hp"
-   ],
    "icon": "cement/0",
    "desc": "Very strong, very limited, and never moves once placed.",
    "effects": [
@@ -3443,12 +3431,12 @@
    ],
    "parent": "cement.more",
    "icon": "icon-hp/0",
-   "desc": "Takes more to break. +25% a level.",
+   "desc": "Takes more to break. +33% a level.",
    "effects": [
     {
      "stat": "hp",
      "of": "cement",
-     "by": 0.25
+     "by": 0.33
     }
    ]
   },
@@ -3463,10 +3451,6 @@
     15
    ],
    "parent": "plastic",
-   "needs": [
-    "plastic.more",
-    "plastic.hp"
-   ],
    "icon": "wire/0",
    "desc": "Slows zombies crossing it. Jumpers leap it.",
    "effects": [
@@ -3511,12 +3495,12 @@
    ],
    "parent": "wire.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "wire",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3531,10 +3515,6 @@
     30
    ],
    "parent": "wire",
-   "needs": [
-    "wire.more",
-    "wire.power"
-   ],
    "icon": "spikes/0",
    "desc": "Short-lived. Strong against Fast zombies.",
    "effects": [
@@ -3579,12 +3559,12 @@
    ],
    "parent": "spikes.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "spikes",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3599,10 +3579,6 @@
     55
    ],
    "parent": "spikes",
-   "needs": [
-    "spikes.more",
-    "spikes.power"
-   ],
    "icon": "noise/0",
    "desc": "Pulls zombies toward it for a few seconds.",
    "effects": [
@@ -3647,12 +3623,12 @@
    ],
    "parent": "noise.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "noise",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3667,10 +3643,6 @@
     40
    ],
    "parent": "wire",
-   "needs": [
-    "wire.more",
-    "wire.power"
-   ],
    "icon": "mine/0",
    "desc": "Explodes on contact. Can hurt your soldiers.",
    "effects": [
@@ -3715,12 +3687,12 @@
    ],
    "parent": "mine.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "mine",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3735,10 +3707,6 @@
     75
    ],
    "parent": "mine",
-   "needs": [
-    "mine.more",
-    "mine.power"
-   ],
    "icon": "explosives/0",
    "desc": "You set them off. Can hurt your soldiers.",
    "effects": [
@@ -3783,12 +3751,12 @@
    ],
    "parent": "explosives.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "explosives",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3803,10 +3771,6 @@
     145
    ],
    "parent": "explosives",
-   "needs": [
-    "explosives.more",
-    "explosives.power"
-   ],
    "icon": "rigged/0",
    "desc": "Rams the zombies ahead of it, then stays as a roadblock.",
    "effects": [
@@ -3851,12 +3815,12 @@
    ],
    "parent": "rigged.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "rigged",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3871,10 +3835,6 @@
     90
    ],
    "parent": "mine",
-   "needs": [
-    "mine.more",
-    "mine.power"
-   ],
    "icon": "puddle/0",
    "desc": "Shocks and slows zombies. Comes with a generator to put inside a building.",
    "effects": [
@@ -3923,12 +3883,12 @@
    ],
    "parent": "puddle.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "puddle",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -3943,10 +3903,6 @@
     25
    ],
    "parent": "wood",
-   "needs": [
-    "wood.more",
-    "wood.hp"
-   ],
    "icon": "nest/0",
    "desc": "Cover: the soldier in it takes half damage.",
    "effects": [
@@ -3991,12 +3947,12 @@
    ],
    "parent": "nest.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "nest",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4011,10 +3967,6 @@
     55
    ],
    "parent": "nest",
-   "needs": [
-    "nest.more",
-    "nest.power"
-   ],
    "icon": "watchtower/0",
    "desc": "The soldier in it reaches 40% farther.",
    "effects": [
@@ -4059,12 +4011,12 @@
    ],
    "parent": "watchtower.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "watchtower",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4079,10 +4031,6 @@
     50
    ],
    "parent": "sandbags",
-   "needs": [
-    "sandbags.more",
-    "sandbags.hp"
-   ],
    "icon": "ammo/0",
    "desc": "Soldiers near it fire 40% faster.",
    "effects": [
@@ -4127,12 +4075,12 @@
    ],
    "parent": "ammo.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "ammo",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4147,10 +4095,6 @@
     90
    ],
    "parent": "ammo",
-   "needs": [
-    "ammo.more",
-    "ammo.power"
-   ],
    "icon": "incendiary/0",
    "desc": "Soldiers near it fire burning rounds.",
    "effects": [
@@ -4195,12 +4139,12 @@
    ],
    "parent": "incendiary.more",
    "icon": "icon-power/0",
-   "desc": "Works harder. +15% a level.",
+   "desc": "Works harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "incendiary",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4260,12 +4204,12 @@
    ],
    "parent": "missile.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "missile",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4280,10 +4224,6 @@
     45
    ],
    "parent": "missile",
-   "needs": [
-    "missile.charge",
-    "missile.power"
-   ],
    "icon": "a10/0",
    "desc": "Strafes a line along the direction you drag.",
    "effects": [
@@ -4328,12 +4268,12 @@
    ],
    "parent": "a10.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "a10",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4348,10 +4288,6 @@
     35
    ],
    "parent": "missile",
-   "needs": [
-    "missile.charge",
-    "missile.power"
-   ],
    "icon": "smoke/0",
    "desc": "Stalls zombies in an area for a few seconds.",
    "effects": [
@@ -4396,12 +4332,12 @@
    ],
    "parent": "smoke.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "smoke",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4416,10 +4352,6 @@
     75
    ],
    "parent": "missile",
-   "needs": [
-    "missile.charge",
-    "missile.power"
-   ],
    "icon": "artillery/0",
    "desc": "A wide area, hit after a short delay.",
    "effects": [
@@ -4464,12 +4396,12 @@
    ],
    "parent": "artillery.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "artillery",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4484,10 +4416,6 @@
     55
    ],
    "parent": "smoke",
-   "needs": [
-    "smoke.charge",
-    "smoke.power"
-   ],
    "icon": "flare/0",
    "desc": "Draws zombies away from your lines.",
    "effects": [
@@ -4532,12 +4460,12 @@
    ],
    "parent": "flare.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "flare",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },
@@ -4552,10 +4480,6 @@
     85
    ],
    "parent": "a10",
-   "needs": [
-    "a10.charge",
-    "a10.power"
-   ],
    "icon": "napalm/0",
    "desc": "Area fire that lingers.",
    "effects": [
@@ -4600,12 +4524,12 @@
    ],
    "parent": "napalm.charge",
    "icon": "icon-power/0",
-   "desc": "Hits harder. +15% a level.",
+   "desc": "Hits harder. +20% a level.",
    "effects": [
     {
      "stat": "power",
      "of": "napalm",
-     "by": 0.15
+     "by": 0.2
     }
    ]
   },

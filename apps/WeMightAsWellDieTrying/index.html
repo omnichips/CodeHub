@@ -440,7 +440,14 @@
       #hud .end .quote, #hud .end .total { color: var(--pen); }
       #hud .end button:not(.go) { color: var(--pen); background: var(--manila); border: 0; border-bottom: 3px solid var(--manila-dark); }
       #hud .end .go { transform: none; }
-      #hud .end .medals li { color: var(--red-ink); }
+      #hud .end .medal-icons { display: flex; flex-wrap: wrap; gap: 6px; }
+      /* Unseen medals bob up and down until hovered; the name and what earned it appear at once on hover. */
+      #hud .end .medal { position: relative; display: block; cursor: help; outline: none; }
+      #hud .end .medal:not(.seen) { animation: medal-bob 1s ease-in-out infinite; }
+      #hud .end .medal::after { content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 5; width: max-content; max-width: 200px; padding: 4px 8px; font-size: calc(11px * var(--text, 1)); line-height: 1.3; color: var(--pen); background: var(--manila); border-bottom: 2px solid var(--manila-dark); box-shadow: 3px 4px 0 rgba(6, 4, 3, 0.5); display: none; pointer-events: none; }
+      #hud .end .medal:hover::after, #hud .end .medal:focus-visible::after { display: block; }
+      @keyframes medal-bob { 50% { transform: translateY(-5px); } }
+      @media (prefers-reduced-motion: reduce) { #hud .end .medal:not(.seen) { animation: none; } }
       /* How far through the horde: a strip of paper under the status, the wave, a bar inked in, how many are left. */
       /* The picked soldier: a manila card, his photo pinned to it. */
       #hud .card { bottom: var(--bottom); right: var(--right); display: flex; gap: 10px; width: min(300px, 40vw); padding: 10px 12px 10px 10px; box-sizing: border-box; color: var(--pen); background: var(--manila); border-bottom: 3px solid var(--manila-dark); box-shadow: 4px 6px 0 rgba(6, 4, 3, 0.55); animation: pop 0.15s ease-out; pointer-events: none; }
@@ -676,7 +683,7 @@
       }
       /* The report: the writing scrolls, the buttons stay under it. (Its paper style above leaves overflow visible for the REPORT tab, so the scrolling is on the inside.) */
       #hud .end:not(.finish) { display: flex; flex-direction: column; max-height: calc(100% - 68px); }
-      #hud .end .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+      #hud .end .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; overscroll-behavior: contain; }
       #hud .end .buttons { flex: none; padding-top: 8px; }
       @media (max-height: 520px) {
         #hud .end:not(.finish) { padding: 10px 16px; }

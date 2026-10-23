@@ -2,7 +2,9 @@
 // controls, a Debug button (the horde's routes on or off), the bar
 // you drag soldiers, structures and strikes from (one tab each), the actions for what is selected, the guided-start
 // tip, notices when a soldier falls, and the end-of-run panel with the chips the run paid and who made the kills.
+import { MEDALS } from '../meta/medals.ts';
 import { ask } from './dialog.ts';
+import { medalIcon } from './paper.ts';
 import { pixAnim, pixIcon, type IconName } from './pixicons.ts';
 
 export type Group = 'units' | 'build' | 'strikes';
@@ -415,7 +417,7 @@ export class Hud {
         el('div', { className: 'cols' },
           el('div', {}, el('h3', {}, 'Chips'), el('ul', { className: 'chips' }, ...s.end.chips.map((line) => el('li', {}, line))), el('p', { className: 'total' }, `+${s.end.total} chips`)),
           ...(s.end.killers.length ? [el('div', {}, el('h3', {}, 'Who made the kills'), el('ul', { className: 'chips' }, ...s.end.killers.map((line) => el('li', {}, line))))] : []),
-          ...(s.end.medals.length ? [el('div', { className: 'medals' }, el('h3', {}, 'Medals earned'), el('ul', { className: 'chips' }, ...s.end.medals.map((line) => el('li', {}, line))))] : []))),
+          ...(s.end.medals.length ? [el('div', { className: 'medals' }, el('h3', {}, 'Medals earned'), el('div', { className: 'medal-icons' }, ...s.end.medals.map((name) => { const m = MEDALS.find((x) => x.name === name); const tip = `${name}: ${m?.desc ?? ''}`, b = el('span', { className: 'medal', tabIndex: 0, ariaLabel: tip }, medalIcon(m?.ribbon ?? ['#d6a23e', '#8a6420'], '')); b.dataset.tip = tip; b.addEventListener('pointerenter', () => b.classList.add('seen'), { once: true }); b.addEventListener('focus', () => b.classList.add('seen'), { once: true }); return b; })))] : []))),
         el('div', { className: 'buttons' },
         ...(s.end.won ? [el('button', { type: 'button', className: 'go continue', textContent: 'Continue', onclick: () => this.on.next() })] : []),
         el('div', { className: 'row' },

@@ -136,6 +136,7 @@ export interface Civilian {
   walking: boolean;
   dest?: { x: number; y: number; field: Float32Array };
 }
+export const CLOSE_CALL = 24; // pixels: a zombie this near gets shot at even outside the cone
 const SPAT_FOR = 10; // seconds of fight a soldier spat on goes for spitters first
 export const CIVILIAN_HOLD = 15; // seconds of fight a soldier must hold the door: 3 s at 1× (PACE 5)
 const CIVILIAN = { hp: 60, speed: 34, radius: 4, reach: 22 }; // reach: how near the door a soldier must stand
@@ -606,8 +607,16 @@ export class World {
     return ((c.widest + (c.narrowest - c.widest) * t) * Math.PI) / 180;
   }
 
+  /** A tight cone reaches farther, a wide one less: x0.75 at the widest, x1.25 at the narrowest. */
+  private focus(s: Soldier) {
+    const u = this.stats.units[s.kind];
+    if (indirect(u)) return 1;
+    const c = coneOf(u);
+    return 0.75 + 0.5 * clamp((s.reach - c.handleMin) / (c.handleMax - c.handleMin), 0, 1);
+  }
+
   /** How far a soldier reaches, a watchtower or a window included. */
-  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * s.rangeBy * this.sightBy * (s.indoor ? this.stats.indoor.rangeBy : 1) * (this.control?.s === s ? CONTROL_RANGE : 1); }
+  rangeOf(s: Soldier) { return this.stats.units[s.kind].range * this.focus(s) * s.rangeBy * this.sightBy * (s.indoor ? this.stats.indoor.rangeBy : 1) * (this.control?.s === s ? CONTROL_RANGE : 1); }
 
   /** What one hit of his does: less from indoors. */
   private damageOf(s: Soldier) { return this.stats.units[s.kind].damage! * (s.indoor ? this.stats.indoor.damageBy : 1); }
@@ -1539,13 +1548,28 @@ export class World {
       const [x, y] = this.aimPoint(s);
       return this.within(x, y, u.scatter! + u.blast!).length > 0;
     }
-    return this.inCone(s, this.rangeOf(s)).length > 0;
+    return this.inCone(s, this.rangeOf(s)).length > 0 || this.closest(s) >= 0;
+  }
+
+  /** Self-preservation: the nearest zombie within a few pixels of a gun, cone or no cone (-1 for none). */
+  private closest(s: Soldier) {
+    const u = this.stats.units[s.kind];
+    if (u.weapon !== 'bullet' && u.weapon !== 'pellets' && u.weapon !== 'sniper') return -1;
+    let best = -1, bd = CLOSE_CALL * CLOSE_CALL;
+    for (const j of this.near(s.x - CLOSE_CALL, s.y - CLOSE_CALL, s.x + CLOSE_CALL, s.y + CLOSE_CALL)) {
+      const d2 = (this.zx[j] - s.x) ** 2 + (this.zy[j] - s.y) ** 2;
+      if (d2 <= bd) { bd = d2; best = j; }
+    }
+    return best;
   }
 
   /** The way to his mark: inside his cone, a soldier picks the zombie his priority says (the nearest, unless told). */
   private markAngle(s: Soldier) {
     const marks = this.inCone(s, this.rangeOf(s));
-    if (!marks.length) return s.angle;
+    if (!marks.length) {
+      const j = this.closest(s);
+      return j < 0 ? s.angle : Math.atan2(this.zy[j] - s.y, this.zx[j] - s.x);
+    }
     const spat = s.spatAt !== undefined && this.time - s.spatAt < SPAT_FOR;
     const score = (j: number) => {
       const d = Math.hypot(this.zx[j] - s.x, this.zy[j] - s.y), z = ZOMBIES[this.zkind[j]];

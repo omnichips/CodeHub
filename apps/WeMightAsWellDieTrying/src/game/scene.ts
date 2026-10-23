@@ -17,7 +17,7 @@ import { Flames } from './flame.ts';
 import { mapAnims } from './mapanims.ts';
 import { drawn, paintMap } from './mapart.ts';
 import {
-  CIVILIAN_HOLD, PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
+  CIVILIAN_HOLD, CLOSE_CALL, PRIORITIES, ROADBLOCKS, STEP, STRUCTS, UNITS, USABLES, World, ZOMBIE_KINDS, ZOMBIES, indirect, support,
   type BlockKind, type Civilian, type Roadblock, type Soldier, type StructKind, type Structure, type UnitKind, type UsableKind,
 } from '../sim/world.ts';
 import { Hud, type Group } from './hud.ts';
@@ -34,7 +34,8 @@ import { LOST_LINES } from '../story/storyConfig.ts';
 
 /** The order things appear in the bar. Only what the skill web has unlocked is shown. */
 const ORDER = [...Object.keys(UNITS).filter((k) => k !== 'turret'), 'plastic', 'wood', 'sandbags', 'car', 'cement', ...Object.keys(STRUCTS), ...Object.keys(USABLES)];
-const QUALITY = { low: { corpses: 40, particles: 0.35 }, medium: { corpses: 120, particles: 0.7 }, high: { corpses: 300, particles: 1 } };
+const LEVEL_GROWTH = 1.12;
+const QUALITY ={ low: { corpses: 40, particles: 0.35 }, medium: { corpses: 120, particles: 0.7 }, high: { corpses: 300, particles: 1 } };
 const CORPSE_LIFE = { none: 0, some: 12 * PACE, normal: 30 * PACE }; // seconds of fight before a corpse fades (as long on screen as before PACE)
 /** The tip for civilians, shown once on a device (the first fight with them) until one is brought out or it is skipped. */
 const CIV_TIP = 'A light by a door or a car: someone is still hiding there. Stand a soldier there for 3 seconds to bring them out, then tap or drag them to the safe zone.';
@@ -183,7 +184,7 @@ export class Game extends Phaser.Scene {
     this.loadout = this.build.loadout;
     this.world = new World(m.data, m.waves, (Math.random() * 1e9) | 0, this.build.stats);
     this.world.hpBy = diff.hp;
-    this.world.countBy = diff.count;
+    this.world.countBy = diff.count * (this.drill || this.debug ? 1 : LEVEL_GROWTH ** Math.max(0, MAPS.findIndex((x) => x.id === m.id))); // each city on: 12% more zombies, compounding
     if (blinds(weatherOf(m.id))) this.world.sightBy = 1 - diff.weather;
     if (!this.debug && !this.drill) this.world.placeCivilians(3);
     this.civTip = !this.debug && this.world.civilians.length > 0 && !civTipSeen();
@@ -1208,6 +1209,8 @@ export class Game extends Phaser.Scene {
         for (const j of [0, 0.7 / z]) floor.beginPath().moveTo(s.x + j, s.y + j).lineTo(...at(a0, R - j)).arc(s.x + j, s.y + j, R - j, a0, a1).lineTo(s.x + j, s.y + j).strokePath();
         floor.lineStyle(1 / z, PENCIL, Math.min(0.5, alpha * 1.8));
         for (let k = 1; k < 5; k++) floor.lineBetween(...at(a0, (R * k) / 5), ...at(a1, (R * (k + 0.6)) / 5));
+        // The close-call circle: anything this near is shot at, cone or no cone. A fixed size, whatever the upgrades.
+        if (u.weapon === 'bullet' || u.weapon === 'pellets' || u.weapon === 'sniper') floor.fillStyle(paint, alpha * 0.5).fillCircle(s.x, s.y, CLOSE_CALL).lineStyle(1 / z, PENCIL, Math.min(0.6, alpha * 2.5)).strokeCircle(s.x, s.y, CLOSE_CALL);
       }
     };
     for (const s of w.soldiers) if (!s.dead) cone(s, s === sel ? 0.18 : 0.07, s === sel);
