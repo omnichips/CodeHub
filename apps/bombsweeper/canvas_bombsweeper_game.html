@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sleek Canvas Bombsweeper</title>
+    <!-- Tailwind CSS for sleek utility layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter font import for premium interface look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Share+Tech+Mono&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            overscroll-behavior: none;
+        }
+
+        .digital-font {
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* Customize scrollbars if layout ever overflows slightly */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between items-center p-2 sm:p-4 select-none overflow-x-hidden">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-lg text-center mt-2 mb-2">
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 drop-shadow-sm">
+            BOMBSWEEPER
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">A highly polished premium HTML5 Canvas experience</p>
+    </header>
+
+    <!-- Main Game Wrapper -->
+    <main class="w-full max-w-xl bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-3 sm:p-5 shadow-2xl flex flex-col gap-4">
+        
+        <!-- Controls & Difficulty Select -->
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div class="flex gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 w-full sm:w-auto justify-around">
+                <button onclick="changeDifficulty('beginner')" id="btn-beginner" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 uppercase tracking-wider bg-indigo-600 text-white">
+                    Easy
+                </button>
+                <button onclick="changeDifficulty('intermediate')" id="btn-intermediate" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 uppercase tracking-wider text-slate-400 hover:text-white">
+                    Medium
+                </button>
+                <button onclick="changeDifficulty('expert')" id="btn-expert" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 uppercase tracking-wider text-slate-400 hover:text-white">
+                    Hard
+                </button>
+            </div>
+            
+            <!-- Quick Reset & Action Panel -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <!-- Mobile Flag Mode Toggle Button -->
+                <button id="flagModeBtn" onclick="toggleMobileFlagMode()" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition-all duration-150">
+                    <span id="flagIndicatorText" class="text-xs font-semibold uppercase text-slate-400">Flag Mode: Off</span>
+                    <span id="flagIcon" class="text-sm">⛏️</span>
+                </button>
+
+                <button onclick="initGame()" class="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 active:scale-95 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all duration-150">
+                    <span class="text-lg" id="smileyState">😀</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Real-Time Score Board -->
+        <div class="grid grid-cols-3 gap-3 bg-slate-950/90 p-3 rounded-xl border border-slate-800 text-center">
+            <div class="flex flex-col items-center justify-center">
+                <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400">Mines Left</span>
+                <span id="bomb-count" class="digital-font text-2xl sm:text-3xl text-indigo-400 font-bold">015</span>
+            </div>
+            <div class="flex flex-col items-center justify-center border-x border-slate-800">
+                <span class="text-[10px] uppercase font-bold tracking-widest text-purple-400 text-slate-400">Status</span>
+                <span id="game-status" class="text-xs sm:text-sm font-extrabold tracking-wide text-indigo-300 mt-1">READY TO PLAY</span>
+            </div>
+            <div class="flex flex-col items-center justify-center">
+                <span class="text-[10px] uppercase font-bold tracking-widest text-pink-400">Elapsed Time</span>
+                <span id="timer" class="digital-font text-2xl sm:text-3xl text-pink-400 font-bold">000</span>
+            </div>
+        </div>
+
+        <!-- Interactive Canvas Holder with Responsive Sizing Container -->
+        <div class="w-full flex justify-center items-center overflow-hidden bg-slate-950 rounded-xl border border-slate-800 p-2 relative">
+            <canvas id="gameCanvas" class="max-w-full block select-none h-auto transition-shadow duration-300"></canvas>
+            
+            <!-- Beautiful Screen overlay for Game Over / Victory States -->
+            <div id="gameOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-all duration-300">
+                <span id="overlayEmoji" class="text-5xl animate-bounce">🏆</span>
+                <h2 id="overlayTitle" class="text-2xl font-black uppercase tracking-wider">Victory!</h2>
+                <p id="overlaySubtitle" class="text-xs text-slate-400 px-4 text-center">You cleared the field flawlessly!</p>
+                <button onclick="hideOverlayAndRestart()" class="mt-2 px-5 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Helpful Interactive Tips/Instructions Footer -->
+        <footer class="text-[11px] text-slate-500 flex flex-col gap-1 text-center bg-slate-950/30 p-2.5 rounded-lg">
+            <div class="hidden sm:flex justify-around text-slate-400">
+                <span>🖱️ <b class="text-slate-300">Left Click:</b> Dig Cell</span>
+                <span>🖱️ <b class="text-slate-300">Right Click:</b> Toggle Flag</span>
+                <span>⚡ <b class="text-slate-300">Quick-dig:</b> Click cleared digits to expand</span>
+            </div>
+            <div class="flex sm:hidden justify-center items-center text-slate-400">
+                <span>📱 Use <b class="text-slate-200">Flag Mode</b> toggle to switch tap behavior</span>
+            </div>
+        </footer>
+    </main>
+
+    <!-- App Bottom Signature -->
+    <div class="w-full text-center py-2 text-[10px] text-slate-600 tracking-wider">
+        PREMIUM CANVAS ENGINE &bull; RESPONSIVE FLUID LAYOUT
+    </div>
+
+    <!-- Core Game Logic Engine Script -->
+    <script>
+        // Game presets and configuration
+        const DIFFICULTY_PRESETS = {
+            beginner: { rows: 9, cols: 9, mines: 10, cellSize: 42 },
+            intermediate: { rows: 16, cols: 16, mines: 40, cellSize: 32 },
+            expert: { rows: 16, cols: 30, mines: 99, cellSize: 26 }
+        };
+
+        // Active preset properties
+        let currentDifficulty = 'beginner';
+        let gridRows = DIFFICULTY_PRESETS.beginner.rows;
+        let gridCols = DIFFICULTY_PRESETS.beginner.cols;
+        let mineCount = DIFFICULTY_PRESETS.beginner.mines;
+        let baseCellSize = DIFFICULTY_PRESETS.beginner.cellSize;
+        let currentCellSize = baseCellSize;
+
+        // UI Canvas variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlayEl = document.getElementById('gameOverlay');
+
+        // State Tracking
+        let grid = [];
+        let gameActive = false;
+        let firstClickMade = false;
+        let mineRemainingCount = mineCount;
+        let gameStartTime = 0;
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+        let activeHoveredCell = null;
+        let mobileFlagMode = false; // Flag mode toggled primarily for touchscreen taps
+
+        // Aesthetic Visual Particles Array
+        let particleExplosions = [];
+        let victoryFloaters = [];
+        let winColorShiftHue = 0;
+
+        // Custom Board Styling Colors
+        const NumberColors = [
+            null, // 0 index
+            '#3b82f6', // 1: Vibrant Blue
+            '#22c55e', // 2: Green
+            '#ef4444', // 3: Bright Red
+            '#a855f7', // 4: Purple
+            '#f97316', // 5: Orange
+            '#06b6d4', // 6: Cyan
+            '#ec4899', // 7: Deep Pink
+            '#e2e8f0'  // 8: Slate White
+        ];
+
+        // Ensure canvas sizing adapts responsively
+        function resizeCanvasToFit() {
+            const containerWidth = canvas.parentElement.clientWidth - 16; // Margin padding offsets
+            const optimalWidth = gridCols * baseCellSize;
+            
+            if (optimalWidth > containerWidth) {
+                // Shrink cell size fluidly to maintain full visibility on mobile viewports
+                currentCellSize = Math.floor(containerWidth / gridCols);
+            } else {
+                currentCellSize = baseCellSize;
+            }
+
+            canvas.width = gridCols * currentCellSize;
+            canvas.height = gridRows * currentCellSize;
+            drawGrid();
+        }
+
+        // Change Difficulty and automatically rebuild game loop
+        function changeDifficulty(presetKey) {
+            currentDifficulty = presetKey;
+            
+            // Toggle styles of button toggles
+            ['beginner', 'intermediate', 'expert'].forEach(key => {
+                const button = document.getElementById(`btn-${key}`);
+                if (key === presetKey) {
+                    button.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 uppercase tracking-wider bg-indigo-600 text-white shadow-lg shadow-indigo-500/20";
+                } else {
+                    button.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800/50";
+                }
+            });
+
+            const preset = DIFFICULTY_PRESETS[presetKey];
+            gridRows = preset.rows;
+            gridCols = preset.cols;
+            mineCount = preset.mines;
+            baseCellSize = preset.cellSize;
+
+            initGame();
+        }
+
+        // Toggles mobile flag mode switch visually and functionally
+        function toggleMobileFlagMode() {
+            mobileFlagMode = !mobileFlagMode;
+            const btn = document.getElementById('flagModeBtn');
+            const txt = document.getElementById('flagIndicatorText');
+            const icon = document.getElementById('flagIcon');
+
+            if (mobileFlagMode) {
+                btn.classList.add('bg-rose-500/20', 'border-rose-500/80', 'text-rose-400');
+                btn.classList.remove('bg-slate-800', 'border-slate-700');
+                txt.innerText = "Flag Mode: ON";
+                txt.classList.add('text-rose-400');
+                txt.classList.remove('text-slate-400');
+                icon.innerText = "🚩";
+            } else {
+                btn.classList.remove('bg-rose-500/20', 'border-rose-500/80', 'text-rose-400');
+                btn.classList.add('bg-slate-800', 'border-slate-700');
+                txt.innerText = "Flag Mode: OFF";
+                txt.classList.remove('text-rose-400');
+                txt.classList.add('text-slate-400');
+                icon.innerText = "⛏️";
+            }
+        }
+
+        // Generates clean empty state
+        function initGame() {
+            // Unbind prior interval clock loops
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = null;
+            elapsedSeconds = 0;
+            document.getElementById('timer').innerText = "000";
+
+            gameActive = true;
+            firstClickMade = false;
+            mineRemainingCount = mineCount;
+            document.getElementById('bomb-count').innerText = String(mineRemainingCount).padStart(3, '0');
+            document.getElementById('game-status').innerText = "SWEOPING...";
+            document.getElementById('game-status').className = "text-xs sm:text-sm font-extrabold tracking-wide text-indigo-400 mt-1";
+            document.getElementById('smileyState').innerText = "😀";
+            overlayEl.className = "absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-all duration-300";
+
+            particleExplosions = [];
+            victoryFloaters = [];
+
+            // Generate multidimensional board arrays
+            grid = [];
+            for (let r = 0; r < gridRows; r++) {
+                grid[r] = [];
+                for (let c = 0; c < gridCols; c++) {
+                    grid[r][c] = {
+                        row: r,
+                        col: c,
+                        isMine: false,
+                        isRevealed: false,
+                        isFlagged: false,
+                        adjacentCount: 0,
+                        revealScale: 0.1 // For smooth scale popping on reveals
+                    };
+                }
+            }
+
+            resizeCanvasToFit();
+        }
+
+        // Guaranteed safety on first tap! Moves bomb if clicked on start or around initial cell
+        function generateMines(restrictedRow, restrictedCol) {
+            let placedMines = 0;
+
+            // Generate mine positions avoiding the initial first tap space
+            while (placedMines < mineCount) {
+                const randRow = Math.floor(Math.random() * gridRows);
+                const randCol = Math.floor(Math.random() * gridCols);
+
+                // Ensure it is not a mine already, and not on or directly adjacent to the first click cell
+                const isTooClose = Math.abs(randRow - restrictedRow) <= 1 && Math.abs(randCol - restrictedCol) <= 1;
+
+                if (!grid[randRow][randCol].isMine && !isTooClose) {
+                    grid[randRow][randCol].isMine = true;
+                    placedMines++;
+                }
+            }
+
+            // Calculate adjacent danger numbers
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    if (grid[r][c].isMine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            const nr = r + dr;
+                            const nc = c + dc;
+                            if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                                if (grid[nr][nc].isMine) count++;
+                            }
+                        }
+                    }
+                    grid[r][c].adjacentCount = count;
+                }
+            }
+        }
+
+        function startTimer() {
+            gameStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+                // Clamp display to digital display limit 999
+                document.getElementById('timer').innerText = String(Math.min(999, elapsedSeconds)).padStart(3, '0');
+            }, 1000);
+        }
+
+        // Draw the complete updated state inside canvas frame
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Backboard background plate
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    const cell = grid[r][c];
+                    const x = c * currentCellSize;
+                    const y = r * currentCellSize;
+                    const isHovered = activeHoveredCell && activeHoveredCell.row === r && activeHoveredCell.col === c;
+
+                    // Compute dynamic padding gap offsets
+                    const padding = 1.5;
+                    const rectSize = currentCellSize - (padding * 2);
+
+                    if (cell.isRevealed) {
+                        if (cell.isMine) {
+                            // Hit Mine state
+                            ctx.fillStyle = '#ef4444';
+                            ctx.fillRect(x + padding, y + padding, rectSize, rectSize);
+
+                            // Draw graphical mine bomb vector shape
+                            ctx.save();
+                            ctx.translate(x + currentCellSize/2, y + currentCellSize/2);
+                            ctx.fillStyle = '#1e1b4b';
+                            ctx.beginPath();
+                            ctx.arc(0, 0, rectSize * 0.28, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Mine Spikes
+                            ctx.strokeStyle = '#1e1b4b';
+                            ctx.lineWidth = 3;
+                            for (let i = 0; i < 8; i++) {
+                                ctx.rotate(Math.PI / 4);
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.lineTo(0, rectSize * 0.4);
+                                ctx.stroke();
+                            }
+                            ctx.restore();
+                        } else {
+                            // Safely revealed clean background plate
+                            ctx.fillStyle = '#1e293b';
+                            ctx.fillRect(x + padding, y + padding, rectSize, rectSize);
+
+                            // Reveal popping scaling animations
+                            if (cell.revealScale < 1) {
+                                cell.revealScale += 0.15;
+                                if (cell.revealScale > 1) cell.revealScale = 1;
+                            }
+
+                            // Write adjacent counts
+                            if (cell.adjacentCount > 0) {
+                                ctx.save();
+                                ctx.translate(x + currentCellSize/2, y + currentCellSize/2);
+                                ctx.scale(cell.revealScale, cell.revealScale);
+
+                                ctx.font = `bold ${Math.floor(currentCellSize * 0.55)}px 'Inter', sans-serif`;
+                                ctx.fillStyle = NumberColors[cell.adjacentCount];
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(cell.adjacentCount, 0, 0);
+                                ctx.restore();
+                            }
+                        }
+                    } else {
+                        // Unrevealed Cells visual design
+                        ctx.save();
+                        // Sleek transition highlight gradient when hovered
+                        if (isHovered && gameActive) {
+                            let gradient = ctx.createLinearGradient(x, y, x + currentCellSize, y + currentCellSize);
+                            gradient.addColorStop(0, '#6366f1');
+                            gradient.addColorStop(1, '#4f46e5');
+                            ctx.fillStyle = gradient;
+                        } else {
+                            let gradient = ctx.createLinearGradient(x, y, x + currentCellSize, y + currentCellSize);
+                            gradient.addColorStop(0, '#334155');
+                            gradient.addColorStop(1, '#1e293b');
+                            ctx.fillStyle = gradient;
+                        }
+
+                        // Round inner block shapes
+                        const radius = 4;
+                        const drawX = x + padding;
+                        const drawY = y + padding;
+                        ctx.beginPath();
+                        ctx.roundRect(drawX, drawY, rectSize, rectSize, radius);
+                        ctx.fill();
+
+                        // Bevel edges highlight lines
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Draw Flags
+                        if (cell.isFlagged) {
+                            ctx.shadowColor = 'rgba(239, 68, 68, 0.4)';
+                            ctx.shadowBlur = 6;
+                            
+                            ctx.fillStyle = '#ef4444';
+                            ctx.font = `${Math.floor(currentCellSize * 0.5)}px Arial`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('🚩', x + currentCellSize/2, y + currentCellSize/2);
+                        }
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Draw Explosive Loss Particle Animations
+            drawParticles();
+            drawVictoryFloaters();
+        }
+
+        // Reveals cell safely, triggering recursive search if empty
+        function revealCell(r, c) {
+            if (!gameActive || grid[r][c].isRevealed || grid[r][c].isFlagged) return;
+
+            // Trigger safety check on initial board click
+            if (!firstClickMade) {
+                firstClickMade = true;
+                generateMines(r, c);
+                startTimer();
+            }
+
+            grid[r][c].isRevealed = true;
+
+            if (grid[r][c].isMine) {
+                triggerGameOver(r, c);
+                return;
+            }
+
+            // Standard cascading flood-fill
+            if (grid[r][c].adjacentCount === 0) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                            revealCell(nr, nc);
+                        }
+                    }
+                }
+            }
+
+            checkVictoryCondition();
+        }
+
+        // Toggle Flag placements
+        function flagCell(r, c) {
+            if (!gameActive || grid[r][c].isRevealed) return;
+
+            // Start clock if placing flag on the first turn
+            if (!firstClickMade) {
+                firstClickMade = true;
+                generateMines(r, c);
+                startTimer();
+            }
+
+            grid[r][c].isFlagged = !grid[r][c].isFlagged;
+            
+            // Adjust counting stats
+            let totalFlagsPlaced = 0;
+            for (let r0 = 0; r0 < gridRows; r0++) {
+                for (let c0 = 0; c0 < gridCols; c0++) {
+                    if (grid[r0][c0].isFlagged) totalFlagsPlaced++;
+                }
+            }
+
+            mineRemainingCount = Math.max(0, mineCount - totalFlagsPlaced);
+            document.getElementById('bomb-count').innerText = String(mineRemainingCount).padStart(3, '0');
+        }
+
+        // Quick-Dig Shortcut: If a user clicks a revealed number tile whose adjacent cells matches its flag counts, automatic sweep reveals the remaining tiles.
+        function executeChordShortcut(r, c) {
+            const cell = grid[r][c];
+            if (!cell.isRevealed || cell.adjacentCount === 0) return;
+
+            // Count surrounding flag assets
+            let flaggedNeighbors = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                        if (grid[nr][nc].isFlagged) flaggedNeighbors++;
+                    }
+                }
+            }
+
+            // If match, sweep the unflagged neighbors!
+            if (flaggedNeighbors === cell.adjacentCount) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                            if (!grid[nr][nc].isFlagged && !grid[nr][nc].isRevealed) {
+                                revealCell(nr, nc);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if all non-mine cells are cleared
+        function checkVictoryCondition() {
+            let matchesCompleted = true;
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    if (!grid[r][c].isMine && !grid[r][c].isRevealed) {
+                        matchesCompleted = false;
+                        break;
+                    }
+                }
+            }
+
+            if (matchesCompleted) {
+                triggerWin();
+            }
+        }
+
+        // Game Over Trigger
+        function triggerGameOver(hitR, hitC) {
+            gameActive = false;
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById('smileyState').innerText = "😵";
+            document.getElementById('game-status').innerText = "EXPLODED!";
+            document.getElementById('game-status').className = "text-xs sm:text-sm font-extrabold tracking-wide text-rose-500 mt-1";
+
+            // Uncover all bombs
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    if (grid[r][c].isMine) {
+                        grid[r][c].isRevealed = true;
+                    }
+                }
+            }
+
+            // Spawn explosion particles on the coordinate that triggered the explosion!
+            spawnExplosionParticles(hitC * currentCellSize + currentCellSize/2, hitR * currentCellSize + currentCellSize/2);
+
+            // Pop end overlay showing results nicely
+            setTimeout(() => {
+                if (gameActive) return; // Safeguard if user immediately restarted
+                document.getElementById('overlayEmoji').innerText = "💥";
+                document.getElementById('overlayTitle').innerText = "Game Over!";
+                document.getElementById('overlayTitle').className = "text-2xl font-black uppercase tracking-wider text-rose-500";
+                document.getElementById('overlaySubtitle').innerText = `Blew up in ${elapsedSeconds}s. Better luck next sweep!`;
+                overlayEl.className = "absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-100 pointer-events-auto transition-all duration-300";
+            }, 1200);
+        }
+
+        // Win Trigger
+        function triggerWin() {
+            gameActive = false;
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById('smileyState').innerText = "😎";
+            document.getElementById('game-status').innerText = "VICTORY!";
+            document.getElementById('game-status').className = "text-xs sm:text-sm font-extrabold tracking-wide text-emerald-400 mt-1";
+
+            // Automatically place flags cleanly over remaining unflagged mine elements
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    if (grid[r][c].isMine) {
+                        grid[r][c].isFlagged = true;
+                    }
+                }
+            }
+            document.getElementById('bomb-count').innerText = "000";
+
+            // Spawn constant floaters
+            spawnVictoryFloaters();
+
+            // Bring up success screens overlay
+            setTimeout(() => {
+                if (gameActive) return; // Safeguard if user already restarted
+                document.getElementById('overlayEmoji').innerText = "🏆";
+                document.getElementById('overlayTitle').innerText = "You Won!";
+                document.getElementById('overlayTitle').className = "text-2xl font-black uppercase tracking-wider text-emerald-400";
+                document.getElementById('overlaySubtitle').innerText = `Swept perfectly in ${elapsedSeconds} seconds! 🎉`;
+                overlayEl.className = "absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-100 pointer-events-auto transition-all duration-300";
+            }, 800);
+        }
+
+        function hideOverlayAndRestart() {
+            overlayEl.className = "absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-all duration-300";
+            initGame();
+        }
+
+        // Particle System Engine for Visual Juice
+        function spawnExplosionParticles(startX, startY) {
+            particleExplosions = [];
+            const count = 60;
+            const colors = ['#f43f5e', '#f97316', '#fbbf24', '#ffffff', '#1e1b4b'];
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 8;
+                particleExplosions.push({
+                    x: startX,
+                    y: startY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    radius: 2 + Math.random() * 5,
+                    alpha: 1,
+                    decay: 0.015 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function drawParticles() {
+            for (let i = particleExplosions.length - 1; i >= 0; i--) {
+                const p = particleExplosions[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15; // Simulated gravity pulling ashes downwards
+                p.alpha -= p.decay;
+
+                if (p.alpha <= 0) {
+                    particleExplosions.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Victory Float Elements Particle engine
+        function spawnVictoryFloaters() {
+            victoryFloaters = [];
+            const emojis = ['🎈', '🎉', '🌟', '✨', '👑', '😎'];
+            for (let i = 0; i < 35; i++) {
+                victoryFloaters.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height + Math.random() * 200,
+                    speedY: -1 - Math.random() * 3,
+                    speedX: (Math.random() - 0.5) * 1.5,
+                    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+                    size: 14 + Math.random() * 14
+                });
+            }
+        }
+
+        function drawVictoryFloaters() {
+            if (victoryFloaters.length === 0) return;
+
+            winColorShiftHue = (winColorShiftHue + 1) % 360;
+
+            // Draw beautiful glowing neon border around canvas frame
+            ctx.save();
+            ctx.strokeStyle = `hsla(${winColorShiftHue}, 80%, 60%, 0.6)`;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // Draw floaters floating up
+            for (let i = 0; i < victoryFloaters.length; i++) {
+                const f = victoryFloaters[i];
+                f.y += f.speedY;
+                f.x += f.speedX;
+
+                // Loop them when scrolling past ceiling
+                if (f.y < -30) {
+                    f.y = canvas.height + 30;
+                    f.x = Math.random() * canvas.width;
+                }
+
+                ctx.save();
+                ctx.font = `${f.size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(f.emoji, f.x, f.y);
+                ctx.restore();
+            }
+        }
+
+        // Core Input Handler translates spatial locations cleanly
+        function handleBoardInteraction(clientX, clientY, isSecondaryAction) {
+            if (!gameActive) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = clientX - rect.left;
+            const clickY = clientY - rect.top;
+
+            const c = Math.floor(clickX / currentCellSize);
+            const r = Math.floor(clickY / currentCellSize);
+
+            // Verify bounds
+            if (r >= 0 && r < gridRows && c >= 0 && c < gridCols) {
+                if (isSecondaryAction) {
+                    flagCell(r, c);
+                } else {
+                    const target = grid[r][c];
+                    // If target clicked is already revealed, activate standard fast chord sweep
+                    if (target.isRevealed) {
+                        executeChordShortcut(r, c);
+                    } else {
+                        revealCell(r, c);
+                    }
+                }
+                drawGrid();
+            }
+        }
+
+        // Hover effect updates
+        function trackHoverCoordinates(clientX, clientY) {
+            if (!gameActive) {
+                activeHoveredCell = null;
+                return;
+            }
+            const rect = canvas.getBoundingClientRect();
+            const clickX = clientX - rect.left;
+            const clickY = clientY - rect.top;
+
+            const c = Math.floor(clickX / currentCellSize);
+            const r = Math.floor(clickY / currentCellSize);
+
+            if (r >= 0 && r < gridRows && c >= 0 && c < gridCols) {
+                if (!activeHoveredCell || activeHoveredCell.row !== r || activeHoveredCell.col !== c) {
+                    activeHoveredCell = { row: r, col: c };
+                    drawGrid();
+                }
+            } else {
+                if (activeHoveredCell !== null) {
+                    activeHoveredCell = null;
+                    drawGrid();
+                }
+            }
+        }
+
+        // Mouse listeners
+        canvas.addEventListener('mousemove', (e) => {
+            trackHoverCoordinates(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            activeHoveredCell = null;
+            drawGrid();
+        });
+
+        canvas.addEventListener('click', (e) => {
+            e.preventDefault();
+            // On mobile layouts or normal desktop, translate click event action depending on options selected
+            const flagTriggered = mobileFlagMode || e.shiftKey;
+            handleBoardInteraction(e.clientX, e.clientY, flagTriggered);
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); // Stop native browser overlay context displays
+            handleBoardInteraction(e.clientX, e.clientY, true);
+        });
+
+        // Touch Listeners for flawless responsive tablet/phone experience
+        canvas.addEventListener('touchstart', (e) => {
+            // Prevent zooming/pinching issues
+            e.preventDefault();
+            const touch = e.touches[0];
+            trackHoverCoordinates(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.changedTouches.length > 0) {
+                const touch = e.changedTouches[0];
+                handleBoardInteraction(touch.clientX, touch.clientY, mobileFlagMode);
+            }
+            activeHoveredCell = null;
+            drawGrid();
+        }, { passive: false });
+
+        // Animation Loop for rendering canvas particles
+        function animationFrameLoop() {
+            drawGrid();
+            requestAnimationFrame(animationFrameLoop);
+        }
+
+        // Adaptive Resizer listener
+        window.addEventListener('resize', resizeCanvasToFit);
+
+        // Boot Init triggers on window loads automatically
+        window.onload = function() {
+            initGame();
+            animationFrameLoop();
+        };
+    </script>
+</body>
+</html>

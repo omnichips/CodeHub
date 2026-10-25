@@ -28,6 +28,26 @@
       "color": "#48512f",
       "icon": "public/icon-192.png",
       "source": { "type": "vite", "dir": "apps/WeMightAsWellDieTrying" }
+    },
+    {
+      "id": "bombsweeper",
+      "name": "Canvas Bombsweeper",
+      "color": "#1e1b4b",
+      "source": {
+        "type": "static",
+        "dir": "apps/bombsweeper",
+        "entry": "canvas_bombsweeper_game.html"
+      }
+    },
+    {
+      "id": "tetrio",
+      "name": "Tetrixia",
+      "color": "#8b5cf6",
+      "source": {
+        "type": "static",
+        "dir": "apps/tetrio",
+        "entry": "tetr_io_web_edition.html"
+      }
     }
   ]
 }
