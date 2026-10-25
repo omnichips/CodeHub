@@ -1,5 +1,6 @@
 -- TETR.IO Web multiplayer schema
--- Run this once in Supabase SQL Editor.
+-- Run this in Supabase SQL Editor. Re-run it after updates so the RPC
+-- definitions stay in sync with the browser client.
 --
 -- Before testing:
 -- 1. In Authentication > Providers, enable Anonymous sign-ins.
@@ -110,6 +111,7 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
     v_player uuid := auth.uid();
     v_room_id uuid;
@@ -166,6 +168,7 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
     v_player uuid := auth.uid();
     v_room public.tetrio_rooms%rowtype;
@@ -226,6 +229,7 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
     v_player uuid := auth.uid();
     v_room public.tetrio_rooms%rowtype;
@@ -313,6 +317,56 @@ begin
 end;
 $$;
 
+create or replace function public.reset_tetrio_room(p_room_id uuid)
+returns public.tetrio_rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_room public.tetrio_rooms%rowtype;
+begin
+    select *
+    into v_room
+    from public.tetrio_rooms
+    where id = p_room_id
+      and status in ('finished', 'lobby')
+    for update;
+
+    if not found then
+        raise exception 'Room is not ready for another round';
+    end if;
+    if not exists (
+        select 1
+        from public.tetrio_players
+        where room_id = p_room_id
+          and player_id = auth.uid()
+          and not is_spectator
+          and left_at is null
+    ) then
+        raise exception 'You are not an active player in this room';
+    end if;
+
+    update public.tetrio_players
+    set is_ready = false,
+        is_alive = true,
+        last_attacked_by = null,
+        last_attacked_at = null
+    where room_id = p_room_id
+      and left_at is null;
+
+    update public.tetrio_rooms
+    set status = 'lobby',
+        winner_id = null,
+        started_at = null,
+        finished_at = null
+    where id = p_room_id
+    returning * into v_room;
+
+    return v_room;
+end;
+$$;
+
 create or replace function public.start_tetrio_match(p_room_id uuid)
 returns public.tetrio_rooms
 language plpgsql
@@ -363,13 +417,16 @@ begin
 end;
 $$;
 
+drop function if exists public.submit_tetrio_attack(uuid, integer, text, integer, boolean, boolean);
+
 create or replace function public.submit_tetrio_attack(
     p_room_id uuid,
     p_rows integer,
     p_clear_type text,
     p_combo integer default -1,
     p_back_to_back boolean default false,
-    p_all_clear boolean default false
+    p_all_clear boolean default false,
+    p_hole_column integer default null
 )
 returns public.tetrio_events
 language plpgsql
@@ -401,6 +458,9 @@ begin
     end if;
     if p_all_clear and p_rows <> 10 then
         raise exception 'An all clear must send exactly 10 rows';
+    end if;
+    if p_hole_column is not null and p_hole_column not between 0 and 9 then
+        raise exception 'Garbage hole column must be between 0 and 9';
     end if;
     if (
         select count(*)
@@ -472,7 +532,8 @@ begin
             'clearType', p_clear_type,
             'combo', p_combo,
             'backToBack', p_back_to_back,
-            'allClear', p_all_clear
+            'allClear', p_all_clear,
+            'holeColumn', p_hole_column
         )
     )
     returning * into v_event;
@@ -514,6 +575,41 @@ begin
         v_player,
         'forfeit',
         jsonb_build_object('playerId', v_player)
+    )
+    returning * into v_event;
+
+    return v_event;
+end;
+$$;
+
+create or replace function public.eliminate_tetrio_player(p_room_id uuid)
+returns public.tetrio_events
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    v_player uuid := auth.uid();
+    v_event public.tetrio_events%rowtype;
+begin
+    update public.tetrio_players
+    set is_alive = false,
+        is_ready = false
+    where room_id = p_room_id
+      and player_id = v_player
+      and left_at is null
+      and not is_spectator;
+
+    if not found then
+        raise exception 'You are not an active player in this room';
+    end if;
+
+    insert into public.tetrio_events (room_id, sender_id, event_type, payload)
+    values (
+        p_room_id,
+        v_player,
+        'forfeit',
+        jsonb_build_object('playerId', v_player, 'eliminated', true)
     )
     returning * into v_event;
 
@@ -583,18 +679,22 @@ grant execute on function public.create_tetrio_room(text) to authenticated;
 grant execute on function public.join_tetrio_room(text, text) to authenticated;
 grant execute on function public.join_tetrio_as_spectator(text, text) to authenticated;
 grant execute on function public.set_tetrio_ready(uuid, boolean) to authenticated;
+grant execute on function public.reset_tetrio_room(uuid) to authenticated;
 grant execute on function public.start_tetrio_match(uuid) to authenticated;
-grant execute on function public.submit_tetrio_attack(uuid, integer, text, integer, boolean, boolean) to authenticated;
+grant execute on function public.submit_tetrio_attack(uuid, integer, text, integer, boolean, boolean, integer) to authenticated;
 grant execute on function public.forfeit_tetrio_player(uuid) to authenticated;
+grant execute on function public.eliminate_tetrio_player(uuid) to authenticated;
 grant execute on function public.mark_tetrio_winner(uuid, uuid) to authenticated;
 revoke execute on function public.is_tetrio_member(uuid) from anon;
 revoke execute on function public.create_tetrio_room(text) from anon;
 revoke execute on function public.join_tetrio_room(text, text) from anon;
 revoke execute on function public.join_tetrio_as_spectator(text, text) from anon;
 revoke execute on function public.set_tetrio_ready(uuid, boolean) from anon;
+revoke execute on function public.reset_tetrio_room(uuid) from anon;
 revoke execute on function public.start_tetrio_match(uuid) from anon;
-revoke execute on function public.submit_tetrio_attack(uuid, integer, text, integer, boolean, boolean) from anon;
+revoke execute on function public.submit_tetrio_attack(uuid, integer, text, integer, boolean, boolean, integer) from anon;
 revoke execute on function public.forfeit_tetrio_player(uuid) from anon;
+revoke execute on function public.eliminate_tetrio_player(uuid) from anon;
 revoke execute on function public.mark_tetrio_winner(uuid, uuid) from anon;
 
 alter table public.tetrio_rooms replica identity full;

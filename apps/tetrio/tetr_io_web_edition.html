@@ -77,6 +77,26 @@
             border: 1px solid rgba(139, 92, 246, 0.2);
             background: rgba(24, 24, 32, 0.7);
         }
+        .multiplayer-player-ready {
+            border-color: rgba(34, 211, 238, 0.45);
+            background: linear-gradient(90deg, rgba(34, 211, 238, 0.12), rgba(24, 24, 32, 0.7));
+        }
+        .opponent-progress-card {
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            background: rgba(12, 12, 22, 0.9);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .opponent-progress-card.attack-launch {
+            animation: attack-launch 0.65s ease-out;
+        }
+        @keyframes attack-launch {
+            0% { border-color: rgba(248, 113, 113, 0.95); box-shadow: 0 0 0 rgba(248, 113, 113, 0); transform: translateX(0); }
+            35% { border-color: rgba(248, 113, 113, 1); box-shadow: 0 0 22px rgba(248, 113, 113, 0.7); transform: translateX(-4px); }
+            100% { border-color: rgba(139, 92, 246, 0.2); box-shadow: none; transform: translateX(0); }
+        }
+        .room-code-glow {
+            text-shadow: 0 0 14px rgba(34, 211, 238, 0.55);
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col justify-between text-gray-100 select-none">
@@ -243,6 +263,9 @@
                         <button id="retryBtn" class="w-full py-2.5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-red-500/10">
                             PLAY AGAIN
                         </button>
+                        <button id="backToRoomBtn" class="hidden w-full py-2.5 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/10">
+                            BACK TO ROOM
+                        </button>
                         <button id="quitGameOverBtn" class="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold rounded-lg transition-colors">
                             MAIN MENU
                         </button>
@@ -271,6 +294,10 @@
                 <div class="w-full mt-2 flex flex-col space-y-2 items-center justify-start bg-black/50 rounded p-2 border border-gray-900 overflow-hidden relative">
                     <canvas id="nextCanvas" width="100" height="380" class="w-full h-[380px]"></canvas>
                 </div>
+            </div>
+            <div id="opponentPanel" class="hidden tetrio-panel rounded-lg p-2 flex flex-col gap-2 relative">
+                <div class="px-1 text-[10px] font-bold tracking-widest text-cyan-400 uppercase">Opponents</div>
+                <div id="opponentProgress" class="space-y-1"></div>
             </div>
         </div>
 
@@ -413,14 +440,15 @@
 
     <!-- Multiplayer room modal -->
     <div id="multiplayerModal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-50 hidden p-4">
-        <div class="tetrio-panel max-w-lg w-full rounded-xl p-6 relative max-h-[90vh] overflow-y-auto">
+        <div class="tetrio-panel max-w-lg w-full rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto border-purple-500/30 shadow-2xl shadow-purple-950/40">
             <button id="closeMultiplayerBtn" class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
             <h3 class="text-2xl font-bold tracking-wider text-purple-400 mb-1 flex items-center">
                 <i class="fa-solid fa-users mr-2"></i> MULTIPLAYER ROOM
             </h3>
-            <p id="multiplayerStatus" class="text-xs text-gray-400 mb-4">Sign in anonymously to create or join a room.</p>
+            <p class="text-xs text-gray-500 mb-4">Race together, send garbage, and rematch without leaving the room.</p>
+            <p id="multiplayerStatus" class="text-xs text-gray-400 mb-4 rounded-lg border border-purple-900/30 bg-black/30 px-3 py-2">Sign in anonymously to create or join a room.</p>
 
             <div id="roomSetup" class="space-y-3">
                 <label class="block text-xs text-gray-400 uppercase tracking-widest">
@@ -437,14 +465,19 @@
             </div>
 
             <div id="roomLobby" class="hidden space-y-3">
-                <div class="flex items-center justify-between">
+                <div class="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 via-purple-950/20 to-black/30 p-4 flex items-center justify-between">
                     <div>
                         <span class="text-[10px] text-gray-500 uppercase tracking-widest block">Room code</span>
-                        <strong id="roomCodeLabel" class="text-2xl tracking-[0.3em] text-cyan-400 retro-mono">------</strong>
+                        <strong id="roomCodeLabel" class="text-3xl tracking-[0.3em] text-cyan-400 retro-mono room-code-glow">------</strong>
+                        <span class="block text-[10px] text-gray-500 mt-1">Share this code with your squad</span>
                     </div>
-                    <button id="copyRoomCodeBtn" class="px-3 py-2 text-xs bg-zinc-800 hover:bg-zinc-700 rounded">COPY</button>
+                    <button id="copyRoomCodeBtn" class="px-3 py-2 text-xs bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/20 text-cyan-200 rounded-lg">COPY</button>
                 </div>
-                <div id="roomPlayers" class="space-y-1"></div>
+                <div class="flex items-center justify-between text-[10px] uppercase tracking-widest text-gray-500">
+                    <span>Players</span>
+                    <span id="roomReadySummary" class="text-purple-300">0/0 ready</span>
+                </div>
+                <div id="roomPlayers" class="space-y-2"></div>
                 <div class="flex gap-2">
                     <button id="readyBtn" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg">READY</button>
                     <button id="leaveRoomBtn" class="px-4 py-2.5 bg-red-950/50 hover:bg-red-900/60 text-red-300 rounded-lg">LEAVE</button>
@@ -753,13 +786,14 @@
                 this.isReady = false;
                 this.channel = null;
                 this.players = [];
+                this.progress = new Map();
                 this.bound = false;
             }
 
             setStatus(message, error = false) {
                 const status = document.getElementById('multiplayerStatus');
                 status.textContent = message;
-                status.className = `text-xs mb-4 ${error ? 'text-red-400' : 'text-gray-400'}`;
+                status.className = `text-xs mb-4 rounded-lg border border-purple-900/30 bg-black/30 px-3 py-2 ${error ? 'text-red-400' : 'text-gray-400'}`;
             }
 
             async connect() {
@@ -839,6 +873,7 @@
                         table: 'tetrio_events',
                         filter: `room_id=eq.${this.roomId}`
                     }, ({ new: event }) => this.handleEvent(event))
+                    .on('broadcast', { event: 'progress' }, ({ payload }) => this.handleProgress(payload))
                     .subscribe((status) => {
                         if (status === 'CHANNEL_ERROR') this.setStatus('Realtime connection failed. Refresh and try again.', true);
                     });
@@ -856,15 +891,20 @@
                 this.players = data;
                 const list = document.getElementById('roomPlayers');
                 list.innerHTML = '';
-                data.forEach((player) => {
+                const activePlayers = data.filter((player) => !player.is_spectator);
+                const readyPlayers = activePlayers.filter((player) => player.is_ready);
+                document.getElementById('roomReadySummary').textContent = `${readyPlayers.length}/${activePlayers.length} ready`;
+                data.forEach((player, index) => {
                     const row = document.createElement('div');
-                    row.className = 'multiplayer-player rounded px-3 py-2 flex items-center justify-between text-sm';
+                    row.className = `multiplayer-player ${player.is_ready ? 'multiplayer-player-ready' : ''} rounded-lg px-3 py-2 flex items-center justify-between text-sm`;
                     const state = player.is_spectator ? 'SPECTATOR' : player.is_ready ? 'READY' : 'NOT READY';
-                    row.innerHTML = `<span class="font-bold">${this.escape(player.nickname)}${player.player_id === this.userId ? ' (YOU)' : ''}</span><span class="text-[10px] text-gray-500">${state}</span>`;
+                    const dot = player.is_spectator ? 'bg-gray-600' : player.is_ready ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,.8)]' : 'bg-yellow-500';
+                    row.innerHTML = `<span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full ${dot}"></span><span class="font-bold">${this.escape(player.nickname)}${player.player_id === this.userId ? ' (YOU)' : ''}</span></span><span class="text-[10px] text-gray-500">${state}</span>`;
                     list.appendChild(row);
                 });
+                this.renderOpponentProgress();
                 const livingPlayers = data.filter((player) => !player.is_spectator && player.is_alive && !player.left_at);
-                if (livingPlayers.length === 1 && gameInstance?.activeMode === 'multiplayer' && gameInstance.gameStarted) {
+                if (livingPlayers.length === 1 && gameInstance?.activeMode === 'multiplayer' && (gameInstance.gameStarted || gameInstance.isGameOver)) {
                     const result = await this.client.rpc('mark_tetrio_winner', {
                         p_room_id: this.roomId,
                         p_winner_id: livingPlayers[0].player_id
@@ -880,7 +920,7 @@
                     document.getElementById('menuWelcome').classList.add('hidden');
                     gameInstance.start('multiplayer');
                 } else if (room.status === 'finished' && gameInstance && gameInstance.activeMode === 'multiplayer') {
-                    gameInstance.gameOver();
+                    gameInstance.gameOver('match');
                 }
             }
 
@@ -888,12 +928,85 @@
                 if (!gameInstance || gameInstance.activeMode !== 'multiplayer') return;
                 if (event.event_type === 'attack' && event.target_id === this.userId) {
                     const rows = Number(event.payload?.rows);
-                    if (Number.isInteger(rows) && rows > 0) gameInstance.receiveGarbage(rows);
+                    if (Number.isInteger(rows) && rows > 0) {
+                        gameInstance.receiveGarbage(rows, Number(event.payload?.holeColumn));
+                        this.setStatus(`Incoming attack: ${rows} row${rows === 1 ? '' : 's'}.`, true);
+                    }
+                }
+                if (event.event_type === 'attack' && event.sender_id === this.userId && event.target_id) {
+                    this.flashOpponent(event.target_id);
                 }
                 if (event.event_type === 'forfeit') this.refreshRoom().catch((error) => this.setStatus(error.message, true));
                 if (event.event_type === 'winner' && event.target_id !== this.userId) {
                     gameInstance.gameOver('match');
                 }
+            }
+
+            handleProgress(payload) {
+                if (!payload?.playerId || payload.playerId === this.userId || !Array.isArray(payload.grid)) return;
+                this.progress.set(payload.playerId, payload);
+                this.renderOpponentProgress();
+            }
+
+            async publishProgress(snapshot) {
+                if (!this.channel || !this.roomId || this.isSpectator || !snapshot) return;
+                const result = await this.channel.send({
+                    type: 'broadcast',
+                    event: 'progress',
+                    payload: {
+                        playerId: this.userId,
+                        nickname: this.players.find((player) => player.player_id === this.userId)?.nickname || 'Player',
+                        ...snapshot
+                    }
+                });
+                if (result !== 'ok' && result?.status !== 'ok') {
+                    console.warn('Tetrixia progress update was not delivered.', result);
+                }
+            }
+
+            renderOpponentProgress() {
+                const panel = document.getElementById('opponentPanel');
+                const list = document.getElementById('opponentProgress');
+                const opponents = this.players.filter((player) => player.player_id !== this.userId && !player.is_spectator && !player.left_at);
+                panel.classList.toggle('hidden', !this.roomId || opponents.length === 0);
+                list.innerHTML = '';
+                opponents.forEach((player) => {
+                    const card = document.createElement('div');
+                    card.id = `opponent-${player.player_id}`;
+                    card.className = 'opponent-progress-card rounded-md p-1.5';
+                    const snapshot = this.progress.get(player.player_id);
+                    card.innerHTML = `<div class="flex items-center justify-between gap-1 mb-1"><span class="truncate text-[9px] font-bold text-gray-300">${this.escape(player.nickname)}</span><span class="text-[8px] text-gray-500 retro-mono">${snapshot?.lines ?? 0}L</span></div><canvas width="60" height="120" class="w-full rounded bg-black/70"></canvas>`;
+                    list.appendChild(card);
+                    this.drawOpponentCanvas(card.querySelector('canvas'), snapshot?.grid);
+                });
+            }
+
+            drawOpponentCanvas(canvas, grid) {
+                const context = canvas.getContext('2d');
+                const rows = 20;
+                const cols = 10;
+                const cellSize = canvas.width / cols;
+                context.fillStyle = '#030306';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                if (!Array.isArray(grid)) return;
+                grid.slice(0, rows).forEach((row, rowIndex) => {
+                    if (!Array.isArray(row)) return;
+                    row.slice(0, cols).forEach((cell, columnIndex) => {
+                        const theme = TETROMINO_COLORS[cell];
+                        if (!theme) return;
+                        context.fillStyle = theme.primary;
+                        context.fillRect(columnIndex * cellSize + 0.5, rowIndex * cellSize + 0.5, cellSize - 1, cellSize - 1);
+                    });
+                });
+            }
+
+            flashOpponent(playerId) {
+                this.renderOpponentProgress();
+                const card = document.getElementById(`opponent-${playerId}`);
+                if (!card) return;
+                card.classList.remove('attack-launch');
+                void card.offsetWidth;
+                card.classList.add('attack-launch');
             }
 
             async setReady() {
@@ -922,7 +1035,8 @@
                     p_clear_type: details.clearType,
                     p_combo: details.combo,
                     p_back_to_back: details.backToBack,
-                    p_all_clear: details.allClear
+                    p_all_clear: details.allClear,
+                    p_hole_column: details.holeColumn
                 });
                 if (error) this.setStatus(error.message, true);
             }
@@ -935,6 +1049,13 @@
                 this.leaveLocalRoom();
             }
 
+            async eliminate() {
+                if (!this.roomId || this.isSpectator) return;
+                const { error } = await this.client.rpc('eliminate_tetrio_player', { p_room_id: this.roomId });
+                if (error) throw error;
+                await this.refreshRoom();
+            }
+
             leaveLocalRoom() {
                 if (this.channel) this.client.removeChannel(this.channel);
                 this.channel = null;
@@ -943,9 +1064,22 @@
                 this.players = [];
                 this.isReady = false;
                 this.isSpectator = false;
+                this.progress.clear();
+                document.getElementById('opponentPanel').classList.add('hidden');
                 document.getElementById('roomSetup').classList.remove('hidden');
                 document.getElementById('roomLobby').classList.add('hidden');
                 document.getElementById('multiplayerStatus').textContent = 'Sign in anonymously to create or join a room.';
+            }
+
+            async returnToRoom() {
+                if (!this.roomId) return;
+                const { error } = await this.client.rpc('reset_tetrio_room', { p_room_id: this.roomId });
+                if (error) throw error;
+                this.isReady = false;
+                document.getElementById('readyBtn').textContent = 'READY';
+                document.getElementById('multiplayerModal').classList.remove('hidden');
+                await this.refreshRoom();
+                this.setStatus('Back in the room. Ready up for another round.');
             }
 
             escape(value) {
@@ -1027,8 +1161,10 @@
                 this.totalPlacedPieces = 0;
                 this.combo = -1;
                 this.backToBack = false;
-                this.pendingGarbage = 0;
+                this.pendingGarbage = [];
                 this.lastActionWasRotation = false;
+                this.lastPlacementColumn = 0;
+                this.lastProgressBroadcast = 0;
 
                 this.particles = [];
                 this.shakeAmount = 0;
@@ -1129,8 +1265,10 @@
                 this.totalPlacedPieces = 0;
                 this.combo = -1;
                 this.backToBack = false;
-                this.pendingGarbage = 0;
+                this.pendingGarbage = [];
                 this.lastActionWasRotation = false;
+                this.lastPlacementColumn = Math.floor(this.cols / 2);
+                this.lastProgressBroadcast = 0;
                 this.gameTime = 0;
                 this.particles = [];
                 this.shakeAmount = 0;
@@ -1153,6 +1291,8 @@
                 document.getElementById('menuWelcome').classList.add('hidden');
                 document.getElementById('menuPaused').classList.add('hidden');
                 document.getElementById('menuGameOver').classList.add('hidden');
+                document.getElementById('retryBtn').classList.toggle('hidden', mode === 'multiplayer');
+                document.getElementById('backToRoomBtn').classList.add('hidden');
                 
                 const menuCountdown = document.getElementById('menuCountdown');
                 menuCountdown.classList.remove('hidden');
@@ -1435,7 +1575,7 @@
                 this.isCountdown = false;
                 audio.playGameOver();
                 if (this.activeMode === 'multiplayer' && reason === 'topout') {
-                    multiplayerClient.forfeit().catch((error) => multiplayerClient.setStatus(error.message, true));
+                    multiplayerClient.eliminate().catch((error) => multiplayerClient.setStatus(error.message, true));
                 }
 
                 // Save dynamic records / High Scores
@@ -1462,6 +1602,8 @@
                 document.getElementById('menuPaused').classList.add('hidden');
                 document.getElementById('menuCountdown').classList.add('hidden');
                 document.getElementById('menuGameOver').classList.remove('hidden');
+                document.getElementById('retryBtn').classList.toggle('hidden', this.activeMode === 'multiplayer');
+                document.getElementById('backToRoomBtn').classList.toggle('hidden', this.activeMode !== 'multiplayer');
 
                 // Game Over banner text customization
                 const gameTitle = document.getElementById('gameOverTitle');
@@ -1680,6 +1822,7 @@
 
                             if (gridY >= 0) {
                                 this.grid[gridY][gridX] = this.currentPiece.type;
+                                this.lastPlacementColumn = gridX;
                             } else {
                                 this.gameOver();
                                 return;
@@ -1744,26 +1887,31 @@
                 return base + comboBonus + backToBackBonus;
             }
 
-            receiveGarbage(rows) {
-                this.pendingGarbage = Math.min(20, this.pendingGarbage + rows);
+            receiveGarbage(rows, holeColumn = null) {
+                const safeHole = Number.isInteger(holeColumn) && holeColumn >= 0 && holeColumn < this.cols
+                    ? holeColumn
+                    : null;
+                for (let i = 0; i < rows && this.pendingGarbage.length < 20; i++) {
+                    this.pendingGarbage.push(safeHole);
+                }
                 this.createAlert(`+${rows} GARBAGE`, 'glow-red');
                 this.updateStatsDisplay();
             }
 
             cancelGarbage(rows) {
-                const cancelled = Math.min(this.pendingGarbage, rows);
-                this.pendingGarbage -= cancelled;
+                const cancelled = Math.min(this.pendingGarbage.length, rows);
+                this.pendingGarbage.splice(0, cancelled);
                 return rows - cancelled;
             }
 
             applyPendingGarbage() {
-                if (!this.pendingGarbage) return;
-                for (let i = 0; i < this.pendingGarbage; i++) {
+                if (!this.pendingGarbage.length) return;
+                while (this.pendingGarbage.length) {
                     this.grid.shift();
-                    const hole = Math.floor(Math.random() * this.cols);
+                    const queuedHole = this.pendingGarbage.shift();
+                    const hole = Number.isInteger(queuedHole) ? queuedHole : Math.floor(Math.random() * this.cols);
                     this.grid.push(Array.from({ length: this.cols }, (_, column) => column === hole ? 0 : 'G'));
                 }
-                this.pendingGarbage = 0;
             }
 
             checkLines() {
@@ -1840,7 +1988,8 @@
                             clearType,
                             combo: this.combo,
                             backToBack: wasBackToBack,
-                            allClear
+                            allClear,
+                            holeColumn: this.lastPlacementColumn
                         });
                     }
 
@@ -2037,6 +2186,31 @@
                 this.renderPlayfield();
                 this.renderHoldPanel();
                 this.renderNextPanel();
+                if (this.activeMode === 'multiplayer' && performance.now() - this.lastProgressBroadcast > 120) {
+                    this.lastProgressBroadcast = performance.now();
+                    multiplayerClient.publishProgress(this.getProgressSnapshot()).catch((error) => {
+                        console.warn('Tetrixia progress update failed.', error);
+                    });
+                }
+            }
+
+            getProgressSnapshot() {
+                const snapshot = this.grid.map((row) => row.slice());
+                if (this.currentPiece) {
+                    this.currentPiece.matrix.forEach((row, rowIndex) => row.forEach((cell, columnIndex) => {
+                        const gridX = this.currentPiece.x + columnIndex;
+                        const gridY = this.currentPiece.y + rowIndex;
+                        if (cell && gridY >= 0 && gridY < this.rows && gridX >= 0 && gridX < this.cols) {
+                            snapshot[gridY][gridX] = this.currentPiece.type;
+                        }
+                    }));
+                }
+                return {
+                    grid: snapshot,
+                    lines: this.linesCleared,
+                    score: this.score,
+                    alive: !this.isGameOver
+                };
             }
 
             updateStatsDisplay() {
@@ -2506,6 +2680,7 @@
 
             const startBtn = document.getElementById('startBtn');
             const retryBtn = document.getElementById('retryBtn');
+            const backToRoomBtn = document.getElementById('backToRoomBtn');
             const resumeBtn = document.getElementById('resumeBtn');
             const restartPausedBtn = document.getElementById('restartPausedBtn');
             const multiplayerModal = document.getElementById('multiplayerModal');
@@ -2578,6 +2753,10 @@
                 gameInstance.restartGame();
             });
 
+            backToRoomBtn.addEventListener('click', () => {
+                multiplayerClient.returnToRoom().catch((error) => multiplayerClient.setStatus(error.message, true));
+            });
+
             resumeBtn.addEventListener('click', () => {
                 gameInstance.togglePause();
             });
@@ -2604,6 +2783,8 @@
                 document.getElementById('menuPaused').classList.add('hidden');
                 document.getElementById('menuGameOver').classList.add('hidden');
                 document.getElementById('menuCountdown').classList.add('hidden');
+                document.getElementById('retryBtn').classList.remove('hidden');
+                document.getElementById('backToRoomBtn').classList.add('hidden');
                 gameInstance.toggleBlurs(false);
             };
 
