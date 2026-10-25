@@ -23,14 +23,27 @@ function appLink(app) {
   const a = el('a', 'app');
   a.href = `/${app.id}/`;
   a.setAttribute('aria-label', app.name);
+  a.style.setProperty('--c', app.color);
   a.append(icon(app), el('span', 'label', app.name));
   a.addEventListener('click', (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return; // let "open in new tab" work
     e.preventDefault();
-    document.body.classList.add('launching');
-    setTimeout(() => (location.href = a.href), reduceMotion ? 0 : 200);
+    launch(a, app.color);
   });
   return a;
+}
+
+// An iris wipe in the app's colour grows from its icon, then the app opens.
+function launch(a, color) {
+  document.body.classList.add('launching');
+  if (reduceMotion) return (location.href = a.href);
+  const box = a.querySelector('.icon').getBoundingClientRect();
+  const wipe = el('div', 'wipe');
+  wipe.style.setProperty('--c', color);
+  wipe.style.setProperty('--x', `${box.left + box.width / 2}px`);
+  wipe.style.setProperty('--y', `${box.top + box.height / 2}px`);
+  document.body.append(wipe);
+  setTimeout(() => (location.href = a.href), 380);
 }
 
 function folderButton(name, members) {
@@ -40,19 +53,22 @@ function folderButton(name, members) {
   const tile = el('span', 'icon folder');
   members.slice(0, 9).forEach((m) => tile.append(icon(m)));
   button.append(tile, el('span', 'label', name));
-  button.addEventListener('click', () => openFolder(name, members, button));
+  button.addEventListener('click', () => {
+    const grid = el('div', 'grid');
+    grid.append(...members.map(appLink));
+    openSheet(name, grid, button);
+  });
   return button;
 }
 
-function openFolder(name, members, opener) {
+// A dialog over the home screen (a folder's apps, settings); closes with Escape or a tap outside.
+function openSheet(title, content, opener) {
   const overlay = el('div', 'overlay');
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', name);
+  overlay.setAttribute('aria-label', title);
   const sheet = el('div', 'sheet');
-  const grid = el('div', 'grid');
-  grid.append(...members.map(appLink));
-  sheet.append(el('h2', '', name), grid);
+  sheet.append(el('h2', '', title), content);
   overlay.append(sheet);
 
   const close = () => {
@@ -61,10 +77,10 @@ function openFolder(name, members, opener) {
     opener.focus();
   };
   const onKey = (e) => e.key === 'Escape' && close();
-  overlay.addEventListener('click', (e) => e.target === overlay && close()); // tap outside the folder
+  overlay.addEventListener('click', (e) => e.target === overlay && close()); // tap outside the sheet
   document.addEventListener('keydown', onKey);
-  document.querySelector('.phone').append(overlay);
-  grid.querySelector('a')?.focus();
+  document.body.append(overlay);
+  content.querySelector('a, button')?.focus();
 }
 
 // Docked apps sit at the bottom; the rest fill the grid, with each folder placed where its first app appears.
@@ -81,11 +97,42 @@ for (const app of apps.filter((a) => !a.dock)) {
 }
 home.append(...items.map((item) => (typeof item === 'string' ? folderButton(item, folders.get(item)) : item)));
 if (apps.length === 0) home.append(el('p', 'empty', 'No apps yet'));
+[...home.children, ...dock.children].forEach((n, i) => n.style.setProperty('--i', i)); // the order cards pop in
 
-// Coming back with the Back button restores this page from memory, still zoomed away.
-addEventListener('pageshow', () => document.body.classList.remove('launching'));
+// Coming back with the Back button restores this page from memory, still mid-launch.
+addEventListener('pageshow', () => {
+  document.body.classList.remove('launching');
+  document.querySelectorAll('.wipe').forEach((w) => w.remove());
+});
 
-const clock = document.getElementById('clock');
-const tick = () => (clock.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
-tick();
-setInterval(tick, 10_000);
+// The wallpaper, remembered on this device. Storage can be blocked (private browsing), so every use is guarded.
+const WALLPAPER_KEY = 'hub.wallpaper';
+const setWallpaper = startWallpaper(document.getElementById('bg'));
+let wallpaper;
+try {
+  wallpaper = setWallpaper(localStorage.getItem(WALLPAPER_KEY));
+} catch {
+  wallpaper = setWallpaper();
+}
+
+const settings = document.getElementById('settings');
+settings.addEventListener('click', () => {
+  const list = el('div', 'wallpapers');
+  for (const wp of WALLPAPERS) {
+    const button = el('button', 'wallpaper');
+    button.type = 'button';
+    button.setAttribute('aria-pressed', wp.id === wallpaper);
+    const thumb = Object.assign(el('canvas'), { width: 40, height: 26 });
+    drawThumb(thumb, wp);
+    button.append(thumb, el('span', '', wp.name));
+    button.addEventListener('click', () => {
+      wallpaper = setWallpaper(wp.id);
+      try {
+        localStorage.setItem(WALLPAPER_KEY, wallpaper);
+      } catch {}
+      list.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === button));
+    });
+    list.append(button);
+  }
+  openSheet('Wallpaper', list, settings);
+});

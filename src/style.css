@@ -1,169 +1,213 @@
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/PressStart2P.ttf') format('truetype');
+  font-display: swap;
+}
+
 :root {
-  --tile: 60px;
-  --glass: rgba(255, 255, 255, 0.18);
+  --tile: 72px;
+  --card: 136px;
+  --ink: #0b0d1a; /* pixel outlines */
+  --panel: rgba(14, 16, 34, 0.82);
+  --pixel: 'Press Start 2P', ui-monospace, monospace;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+html { background: #121428; }
 body {
-  display: grid;
-  place-items: center;
-  background: #0a0b14;
+  min-height: 100dvh;
+  margin: 0;
   color: #fff;
   font: 16px/1.3 -apple-system, system-ui, 'Segoe UI', sans-serif;
   -webkit-text-size-adjust: 100%;
 }
 
-/* A real phone gets the whole screen. */
-.phone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
+/* The animated wallpaper, drawn small and scaled up with hard pixel edges (see wallpapers.js). */
+#bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
   width: 100vw;
-  height: 100dvh;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 60% at 10% 0%, #3b7a57 0%, transparent 60%),
-    radial-gradient(100% 60% at 100% 100%, #6c4bd1 0%, transparent 62%),
-    linear-gradient(170deg, #1a2547, #121428);
+  height: 100lvh;
+  image-rendering: pixelated;
 }
 
-.status { display: none; }
+/* A notched pixel border: four hard shadows, no rounded corners. */
+.app, .settings, .sheet {
+  box-shadow: 0 -4px var(--edge, var(--ink)), 0 4px var(--edge, var(--ink)), -4px 0 var(--edge, var(--ink)), 4px 0 var(--edge, var(--ink)),
+    inset 0 4px rgba(255, 255, 255, 0.08), inset 0 -4px rgba(0, 0, 0, 0.3), 0 var(--drop, 8px) 0 rgba(0, 0, 0, 0.45);
+}
 
 .home {
-  flex: 1;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(var(--card), 1fr));
   align-content: start;
-  gap: 24px 6px;
-  padding: calc(env(safe-area-inset-top) + 20px) 18px 16px;
-  overflow-y: auto;
+  gap: 24px 16px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 76px) max(16px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 32px)
+    max(16px, env(safe-area-inset-left));
 }
 
+/* Each game is a cartridge: its art on a panel, the title underneath. */
 .app {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
   min-width: 0;
   min-height: 48px;
-  padding: 0;
+  padding: 20px 10px 18px;
   border: 0;
-  background: none;
+  background: var(--panel);
   color: inherit;
   font: inherit;
   text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.12s steps(2), box-shadow 0.12s steps(2);
 }
+.app:focus-visible { outline: 4px dashed #fff; outline-offset: 8px; }
 
 .icon {
   display: grid;
   place-items: center;
+  flex: none;
   width: var(--tile);
   height: var(--tile);
-  border-radius: 22%;
   overflow: hidden;
   background: var(--c, #4b5563);
-  font-size: 28px;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
-  transition: transform 0.12s, filter 0.12s;
+  font: 28px var(--pixel);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 4px var(--ink), inset 0 -6px rgba(0, 0, 0, 0.25), inset 0 6px rgba(255, 255, 255, 0.18);
 }
-.icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.app:active .icon { transform: scale(0.92); filter: brightness(0.8); }
-.app:focus-visible { outline: none; }
-.app:focus-visible .icon { outline: 3px solid #fff; outline-offset: 3px; }
+.icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .label {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  font: 10px/1.7 var(--pixel);
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  text-shadow: 2px 2px 0 #000;
 }
 
-.dock {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  margin: 0 12px calc(12px + env(safe-area-inset-bottom));
-  padding: 12px 6px;
-  border-radius: 30px;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+/* On a mouse: the card lifts, its border lights up in the game's colour and the art bobs. */
+@media (hover: hover) {
+  .app:hover { --edge: var(--c, #fff); --drop: 12px; transform: translateY(-4px); }
+  .app:hover .icon { animation: bob 0.6s steps(2) infinite; }
+  .settings:hover svg { transform: rotate(90deg); }
 }
-.dock:empty { display: none; }
-.dock .app { width: 72px; }
-/* Dock icons carry no visible label, but keep the name for screen readers. */
-.dock .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app:active { --drop: 4px; transform: translateY(4px); } /* pressed into the screen */
+@keyframes bob { 50% { transform: translateY(-4px); } }
+
+/* Cards pop in one after another; --i is each card's place, set by launcher.js. */
+.home > *, .dock > * { animation: pop 0.4s steps(4) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes pop { from { opacity: 0; transform: translateY(16px); } }
 
 .icon.folder {
   grid-template-columns: repeat(3, 1fr);
   align-content: center;
-  gap: 3px;
-  padding: 6px;
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  gap: 4px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.12);
 }
-.folder .icon { width: 100%; height: auto; aspect-ratio: 1; font-size: 9px; box-shadow: none; }
+.folder .icon { width: 100%; height: auto; aspect-ratio: 1; font-size: 8px; box-shadow: none; }
+
+.dock {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+}
+.dock:empty { display: none; }
+.dock .app { padding: 12px; }
+/* Dock icons carry no visible label, but keep the name for screen readers. */
+.dock .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.settings {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 16px);
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: var(--panel);
+  color: #cbd5e1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  --drop: 4px;
+}
+.settings svg { width: 21px; height: 21px; transition: transform 0.3s steps(3); }
+.settings:focus-visible { outline: 4px dashed #fff; outline-offset: 6px; }
 
 .overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 5;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: rgba(8, 10, 20, 0.55);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  padding: 24px 20px;
+  background: rgba(6, 8, 18, 0.7);
 }
 .sheet {
   width: 100%;
-  max-width: 340px;
+  max-width: 380px;
   max-height: 100%;
   overflow-y: auto;
-  padding: 18px 14px 22px;
-  border-radius: 32px;
-  background: var(--glass);
+  padding: 20px 16px 24px;
+  background: #14172e;
+  animation: pop 0.24s steps(3);
 }
-.sheet h2 { margin: 0 0 16px; text-align: center; font-size: 18px; font-weight: 600; }
-.sheet .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 6px; }
+.sheet h2 { margin: 0 0 24px; text-align: center; font: 12px/1.6 var(--pixel); }
+.sheet .grid, .wallpapers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 16px; }
 
-.empty { grid-column: 1 / -1; margin: 0; padding: 48px 0; text-align: center; opacity: 0.8; }
+.wallpaper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 6px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 8px/1.6 var(--pixel);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.wallpaper canvas { display: block; width: 100%; aspect-ratio: 40 / 26; image-rendering: pixelated; }
+.wallpaper[aria-pressed='true'] { box-shadow: 0 0 0 4px #facc15; color: #facc15; }
+.wallpaper:focus-visible { outline: 4px dashed #fff; outline-offset: 6px; }
 
-/* Tapping an app: the screen zooms away before the app opens. */
-.launching .home, .launching .dock { transform: scale(1.08); opacity: 0; transition: transform 0.2s, opacity 0.2s; }
+.empty { grid-column: 1 / -1; margin: 0; padding: 48px 0; text-align: center; font: 10px/1.7 var(--pixel); opacity: 0.8; }
+
+/* Opening a game: an iris wipe in its colour grows from the card, in chunky steps. */
+.wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--c);
+  clip-path: circle(0 at var(--x) var(--y));
+  animation: iris 0.36s steps(6) forwards;
+}
+@keyframes iris { to { clip-path: circle(150vmax at var(--x) var(--y)); } }
+
+@media (min-width: 720px) {
+  :root { --tile: 96px; --card: 184px; }
+  .home { gap: 32px 24px; padding-top: calc(env(safe-area-inset-top) + 96px); }
+  .label { font-size: 11px; }
+  .settings { top: 24px; right: 24px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
-}
-
-/* On a computer the home screen sits inside a phone frame. */
-@media (min-width: 560px) and (min-height: 700px) {
-  body { background: radial-gradient(80% 80% at 50% 40%, #1b1f33, #07080f); }
-  .phone {
-    width: 390px;
-    height: 800px;
-    max-height: calc(100dvh - 48px);
-    border-radius: 54px;
-    box-shadow: 0 0 0 10px #15151b, 0 0 0 12px #3a3a46, 0 30px 80px rgba(0, 0, 0, 0.6);
-  }
-  .status {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 34px 0;
-    font-size: 15px;
-    font-weight: 600;
-  }
-  .status > * { flex: 1; }
-  .island { flex: 0 0 110px; height: 30px; border-radius: 20px; background: #000; }
-  .signal { text-align: right; font-size: 8px; letter-spacing: 2px; }
-  .home { padding-top: 28px; }
 }

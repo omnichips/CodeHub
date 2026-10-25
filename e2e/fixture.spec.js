@@ -62,6 +62,16 @@ test('every icon is a comfortable tap target', async ({ page }) => {
   }
 });
 
+test('the wallpaper is picked in Settings and remembered', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('dialog', { name: 'Wallpaper' }).getByRole('button', { name: 'Starfield' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('button', { name: 'Starfield' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Aurora' })).toHaveAttribute('aria-pressed', 'false');
+});
+
 test('the hub makes no request to any other site', async ({ page }) => {
   const external = [];
   page.on('request', (r) => new URL(r.url()).hostname !== 'localhost' && external.push(r.url()));

@@ -33,7 +33,7 @@ test('an app name cannot break out of the page data', () => {
   const r = run([{ ...good, name: '</script><script>alert(1)</script>' }]);
   assert.equal(r.status, 0, r.stderr);
   const html = readFileSync(join(r.out, 'index.html'), 'utf8');
-  assert.equal(html.split('</script>').length, 3, 'only the two real script tags close'); // data script + launcher script
+  assert.equal(html.split('</script>').length, 4, 'only the three real script tags close'); // data + wallpapers + launcher
 });
 
 test('a mistake stops the build with a clear message and writes no site', () => {

@@ -32,7 +32,8 @@
     {
       "id": "bombsweeper",
       "name": "Canvas Bombsweeper",
-      "color": "#1e1b4b",
+      "color": "#dc2626",
+      "icon": "icon.svg",
       "source": {
         "type": "static",
         "dir": "apps/bombsweeper",
@@ -43,6 +44,7 @@
       "id": "tetrixia",
       "name": "Tetrixia",
       "color": "#8b5cf6",
+      "icon": "icon.svg",
       "source": {
         "type": "static",
         "dir": "apps/tetrio",

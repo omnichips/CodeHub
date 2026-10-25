@@ -82,7 +82,7 @@ const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/
 const data = JSON.stringify({ apps: published }).replaceAll('<', '\\u003c'); // cannot close the script tag
 const html = readFileSync(join(hub, 'src', 'index.html'), 'utf8').replaceAll('{{TITLE}}', escape(registry.title.trim())).replace('{{APPS}}', () => data);
 writeFileSync(join(out, 'index.html'), html);
-for (const f of ['style.css', 'launcher.js', 'icon.svg']) cpSync(join(hub, 'src', f), join(out, f));
+for (const f of ['style.css', 'launcher.js', 'wallpapers.js', 'icon.svg', 'fonts']) cpSync(join(hub, 'src', f), join(out, f), { recursive: true });
 cpSync(join(hub, 'vercel.json'), join(out, 'vercel.json')); // so deploying the dist folder carries its own settings
 
 console.log(`\n✓ ${published.length} app${published.length === 1 ? '' : 's'} built into ${out}`);
