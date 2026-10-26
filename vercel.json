@@ -1,6 +1,6 @@
 {
   "trailingSlash": true,
-  "installCommand": "npm install && npm install --prefix apps/fairshare && npm install --prefix apps/WeMightAsWellDieTrying",
+  "installCommand": "npm install && npm install --prefix apps/fairshare && npm install --prefix apps/WeMightAsWellDieTrying && npm install --prefix apps/friendio/web",
   "buildCommand": "npm run build",
   "outputDirectory": "dist"
 }
