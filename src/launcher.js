@@ -2,7 +2,6 @@
 const { apps } = JSON.parse(document.getElementById('apps').textContent);
 const home = document.getElementById('home');
 const dock = document.getElementById('dock');
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const el = (tag, className, text) => Object.assign(document.createElement(tag), { className, ...(text !== undefined && { textContent: text }) });
 
@@ -29,22 +28,21 @@ function appLink(app) {
   a.addEventListener('click', (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return; // let "open in new tab" work
     e.preventDefault();
-    launch(a, app.color);
+    launch(a);
   });
   return a;
 }
 
-// An iris wipe in the app's colour grows from its icon, then the app opens.
-function launch(a, color) {
-  document.body.classList.add('launching');
-  if (reduceMotion) return (location.href = a.href);
-  const box = a.querySelector('.icon').getBoundingClientRect();
-  const wipe = el('div', 'wipe');
-  wipe.style.setProperty('--c', color);
-  wipe.style.setProperty('--x', `${box.left + box.width / 2}px`);
-  wipe.style.setProperty('--y', `${box.top + box.height / 2}px`);
-  document.body.append(wipe);
-  setTimeout(() => (location.href = a.href), 380);
+// The loading screen (splash.html) comes up over the hub and starts drawing the logo while the app loads; the app's page
+// has the same screen and carries on the drawing from where it got to.
+function launch(a) {
+  const splash = hubSplash.cloneNode(true);
+  splash.classList.add('launch');
+  document.body.append(splash);
+  try {
+    sessionStorage.setItem('hub.launch', Date.now());
+  } catch {}
+  requestAnimationFrame(() => requestAnimationFrame(() => (location.href = a.href))); // once it is on screen
 }
 
 function folderButton(name, members) {
@@ -101,11 +99,8 @@ home.append(...items.map((item) => (typeof item === 'string' ? folderButton(item
 if (apps.length === 0) home.append(el('p', 'empty', 'No apps yet'));
 [...home.children, ...dock.children].forEach((n, i) => n.style.setProperty('--i', i)); // the order cards pop in
 
-// Coming back with the Back button restores this page from memory, still mid-launch.
-addEventListener('pageshow', () => {
-  document.body.classList.remove('launching');
-  document.querySelectorAll('.wipe').forEach((w) => w.remove());
-});
+// Coming back with the Back button restores this page from memory, loading screen and all.
+addEventListener('pageshow', () => document.querySelectorAll('.hub-splash.launch').forEach((s) => s.remove()));
 
 // The clock shows Philippine time, the same clock the Meadow wallpaper's daylight follows (see manilaClock).
 const clock = document.getElementById('clock');

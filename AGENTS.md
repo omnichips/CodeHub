@@ -1,8 +1,9 @@
 # Hub: instructions for coding agents
 
 One website that is a pixel-art game launcher; each card is an app. Everything is generated from `apps.json`
-(see README.md). The hub itself is `src/` (cards in `launcher.js`, animated wallpapers in `wallpapers.js`, the
-self-hosted Press Start 2P font in `src/fonts/`). It must make no request to another site (an e2e test checks this). Live site: https://chips-codehub.vercel.app/ — repo: https://github.com/omnichips/CodeHub.git (public).
+(see README.md). The hub itself is `src/` (cards in `launcher.js`, animated wallpapers in `wallpapers.js`, the logo
+loading screen in `splash.html`, which the build also puts at the top of every app's page, the self-hosted Press Start
+2P font in `src/fonts/`). It must make no request to another site (an e2e test checks this). Live site: https://chips-codehub.vercel.app/ — repo: https://github.com/omnichips/CodeHub.git (public).
 
 | App | Path | Live | Kind |
 |---|---|---|---|

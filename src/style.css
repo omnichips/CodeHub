@@ -200,19 +200,8 @@ body {
 
 .empty { grid-column: 1 / -1; margin: 0; padding: 48px 0; text-align: center; font: 10px/1.7 var(--pixel); opacity: 0.8; }
 
-/* Opening a game: an iris wipe in its colour grows from the card, in chunky steps. */
-.wipe {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  background: var(--c);
-  clip-path: circle(0 at var(--x) var(--y));
-  animation: iris 0.36s steps(6) forwards;
-}
-@keyframes iris { to { clip-path: circle(150vmax at var(--x) var(--y)); } }
-
 @media (min-width: 720px) {
-  :root { --tile: 96px; --card: 184px; }
+  :root { --tile: 96px; }
   .home { gap: 32px 24px; padding-top: calc(env(safe-area-inset-top) + 96px); }
   .label { font-size: 11px; }
   .settings { top: 24px; right: 24px; }

@@ -31,6 +31,10 @@ const sizeOf = (p) => (statSync(p).isDirectory() ? readdirSync(p).reduce((sum, f
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, '_icons'), { recursive: true });
 
+// The loading screen (src/splash.html) goes at the top of the hub's page and of every app's.
+const splash = readFileSync(join(hub, 'src', 'splash.html'), 'utf8');
+const withSplash = (page) => page.replace(/<body[^>]*>/i, (tag) => tag + splash);
+
 const published = [];
 for (const app of registry.apps) {
   const src = resolve(dirname(registryFile), app.source.dir);
@@ -47,14 +51,15 @@ for (const app of registry.apps) {
       .replaceAll('{out}', dest);
     if (spawnSync(command, { cwd: src, shell: true, stdio: 'inherit' }).status !== 0) fail(`${app.id}: the build failed`);
     if (!existsSync(join(dest, 'index.html'))) fail(`${app.id}: the build produced no index.html in ${dest}`);
+    // ponytail: added after the build, so a PWA's precache keeps the old revision until the app itself changes
+    writeFileSync(join(dest, 'index.html'), withSplash(readFileSync(join(dest, 'index.html'), 'utf8')));
   } else {
     const entry = app.source.entry ?? 'index.html';
     if (!existsSync(join(src, entry))) fail(`${app.id}: entry file not found: ${join(src, entry)}`);
     if (sizeOf(src) > MAX_APP_MB * 1024 * 1024) fail(`${app.id}: ${src} is over ${MAX_APP_MB} MB. Point "source.dir" at a smaller folder.`);
     cpSync(src, dest, { recursive: true, filter: (p) => !['node_modules', '.git', 'dist', '__pycache__'].includes(basename(p)) });
     if (entry !== 'index.html') cpSync(join(src, entry), join(dest, 'index.html'));
-    const page = readFileSync(join(dest, 'index.html'), 'utf8');
-    if (page.includes('/*HUB_BUILD*/')) writeFileSync(join(dest, 'index.html'), page.replaceAll('/*HUB_BUILD*/', buildLabel));
+    writeFileSync(join(dest, 'index.html'), withSplash(readFileSync(join(dest, 'index.html'), 'utf8')).replaceAll('/*HUB_BUILD*/', buildLabel));
     // An offline-capable static app ships a sw.js with [/*HUB_FILES*/] and /*HUB_VERSION*/ in it:
     // fill in every file it must cache and a hash of their contents, so each change is a new version.
     const sw = join(dest, 'sw.js');
@@ -80,7 +85,7 @@ for (const app of registry.apps) {
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const data = JSON.stringify({ apps: published }).replaceAll('<', '\\u003c'); // cannot close the script tag
-const html = readFileSync(join(hub, 'src', 'index.html'), 'utf8').replaceAll('{{TITLE}}', escape(registry.title.trim())).replace('{{APPS}}', () => data);
+const html = readFileSync(join(hub, 'src', 'index.html'), 'utf8').replaceAll('{{TITLE}}', escape(registry.title.trim())).replace('{{APPS}}', () => data).replace('{{SPLASH}}', () => splash);
 writeFileSync(join(out, 'index.html'), html);
 for (const f of ['style.css', 'launcher.js', 'wallpapers.js', 'icon.svg', 'fonts']) cpSync(join(hub, 'src', f), join(out, f), { recursive: true });
 cpSync(join(hub, 'vercel.json'), join(out, 'vercel.json')); // so deploying the dist folder carries its own settings
