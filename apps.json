@@ -30,6 +30,13 @@
       "source": { "type": "vite", "dir": "apps/WeMightAsWellDieTrying" }
     },
     {
+      "id": "friendio",
+      "name": "Friend.io",
+      "color": "#e85d75",
+      "icon": "public/icon.svg",
+      "source": { "type": "vite", "dir": "apps/friendio/web" }
+    },
+    {
       "id": "bombsweeper",
       "name": "Canvas Bombsweeper",
       "color": "#dc2626",

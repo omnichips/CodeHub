@@ -1,0 +1,10 @@
+{
+  "name": "Friend.io",
+  "short_name": "Friend.io",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#161429",
+  "theme_color": "#e85d75",
+  "icons": []
+}
