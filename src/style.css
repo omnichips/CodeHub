@@ -6,7 +6,8 @@
 
 :root {
   --tile: 72px;
-  --card: 136px;
+  --glass: rgba(255, 255, 255, 0.16);
+  --glass-edge: rgba(255, 255, 255, 0.45);
   --ink: #0b0d1a; /* pixel outlines */
   --panel: rgba(14, 16, 34, 0.82);
   --pixel: 'Press Start 2P', ui-monospace, monospace;
@@ -35,15 +36,16 @@ body {
 }
 
 /* A notched pixel border: four hard shadows, no rounded corners. */
-.app, .settings, .sheet {
+.sheet {
   box-shadow: 0 -4px var(--edge, var(--ink)), 0 4px var(--edge, var(--ink)), -4px 0 var(--edge, var(--ink)), 4px 0 var(--edge, var(--ink)),
     inset 0 4px rgba(255, 255, 255, 0.08), inset 0 -4px rgba(0, 0, 0, 0.3), 0 var(--drop, 8px) 0 rgba(0, 0, 0, 0.45);
 }
 
 .home {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--tile) + 24px), 1fr));
   align-content: start;
+  justify-items: center;
   gap: 24px 16px;
   max-width: 1280px;
   margin: 0 auto;
@@ -51,17 +53,20 @@ body {
     max(16px, env(safe-area-inset-left));
 }
 
-/* Each game is a cartridge: its art on a panel, the title underneath. */
+/* Frosted glass: a see-through tile that blurs the wallpaper behind it, with a thin light rim. */
+.app, .settings, .clock {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px rgba(255, 255, 255, 0.35);
+}
+
+/* Each game is just its icon in a small glass tile; the name is for screen readers and the hover tooltip. */
 .app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-  min-height: 48px;
-  padding: 20px 10px 18px;
-  border: 0;
-  background: var(--panel);
+  display: grid;
+  padding: 6px;
+  border-radius: 22px;
   color: inherit;
   font: inherit;
   text-decoration: none;
@@ -70,7 +75,7 @@ body {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  transition: transform 0.12s steps(2), box-shadow 0.12s steps(2);
+  transition: transform 0.15s ease-out, border-color 0.15s ease-out, background-color 0.15s ease-out;
 }
 .app:focus-visible { outline: 4px dashed #fff; outline-offset: 8px; }
 
@@ -84,26 +89,19 @@ body {
   background: var(--c, #4b5563);
   font: 28px var(--pixel);
   text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
-  box-shadow: 0 0 0 4px var(--ink), inset 0 -6px rgba(0, 0, 0, 0.25), inset 0 6px rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
 }
 .icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-.label {
-  max-width: 100%;
-  font: 10px/1.7 var(--pixel);
-  text-align: center;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
-  text-shadow: 2px 2px 0 #000;
-}
+.label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
-/* On a mouse: the card lifts, its border lights up in the game's colour and the art bobs. */
+/* On a mouse: the tile lifts, the glass brightens and the art bobs. */
 @media (hover: hover) {
-  .app:hover { --edge: var(--c, #fff); --drop: 12px; transform: translateY(-4px); }
+  .app:hover { --glass: rgba(255, 255, 255, 0.26); --glass-edge: rgba(255, 255, 255, 0.8); transform: translateY(-4px); }
   .app:hover .icon { animation: bob 0.6s steps(2) infinite; }
   .settings:hover svg { transform: rotate(90deg); }
 }
-.app:active { --drop: 4px; transform: translateY(4px); } /* pressed into the screen */
+.app:active { transform: scale(0.94); } /* pressed */
 @keyframes bob { 50% { transform: translateY(-4px); } }
 
 /* Cards pop in one after another; --i is each card's place, set by launcher.js. */
@@ -117,7 +115,7 @@ body {
   padding: 8px;
   background: rgba(255, 255, 255, 0.12);
 }
-.folder .icon { width: 100%; height: auto; aspect-ratio: 1; font-size: 8px; box-shadow: none; }
+.folder .icon { width: 100%; height: auto; aspect-ratio: 1; font-size: 8px; border-radius: 4px; }
 
 .dock {
   display: flex;
@@ -126,9 +124,6 @@ body {
   padding: 0 16px calc(32px + env(safe-area-inset-bottom));
 }
 .dock:empty { display: none; }
-.dock .app { padding: 12px; }
-/* Dock icons carry no visible label, but keep the name for screen readers. */
-.dock .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 .settings {
   position: fixed;
@@ -140,15 +135,30 @@ body {
   width: 44px;
   height: 44px;
   padding: 0;
-  border: 0;
-  background: var(--panel);
-  color: #cbd5e1;
+  border-radius: 14px;
+  color: #fff;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  --drop: 4px;
 }
-.settings svg { width: 21px; height: 21px; transition: transform 0.3s steps(3); }
+.settings svg { width: 21px; height: 21px; filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.35)); transition: transform 0.3s steps(3); }
 .settings:focus-visible { outline: 4px dashed #fff; outline-offset: 6px; }
+
+/* Philippine time, top left, opposite the settings button. */
+.clock {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 16px);
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 14px;
+  font: 12px/1 var(--pixel);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
 
 .overlay {
   position: fixed;

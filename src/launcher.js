@@ -23,6 +23,7 @@ function appLink(app) {
   const a = el('a', 'app');
   a.href = `/${app.id}/`;
   a.setAttribute('aria-label', app.name);
+  a.title = app.name;
   a.style.setProperty('--c', app.color);
   a.append(icon(app), el('span', 'label', app.name));
   a.addEventListener('click', (e) => {
@@ -50,6 +51,7 @@ function folderButton(name, members) {
   const button = el('button', 'app');
   button.setAttribute('aria-haspopup', 'dialog');
   button.setAttribute('aria-label', `${name} folder, ${members.length} ${members.length === 1 ? 'app' : 'apps'}`);
+  button.title = name;
   const tile = el('span', 'icon folder');
   members.slice(0, 9).forEach((m) => tile.append(icon(m)));
   button.append(tile, el('span', 'label', name));
@@ -104,6 +106,15 @@ addEventListener('pageshow', () => {
   document.body.classList.remove('launching');
   document.querySelectorAll('.wipe').forEach((w) => w.remove());
 });
+
+// The clock shows Philippine time, the same clock the Meadow wallpaper's daylight follows (see manilaClock).
+const clock = document.getElementById('clock');
+const tick = () => {
+  const m = Math.floor(manilaClock().minutes), hour = Math.floor(m / 60) % 24;
+  clock.textContent = `${((hour + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+};
+tick();
+setInterval(tick, 1000);
 
 // The wallpaper, remembered on this device. Storage can be blocked (private browsing), so every use is guarded.
 const WALLPAPER_KEY = 'hub.wallpaper';
