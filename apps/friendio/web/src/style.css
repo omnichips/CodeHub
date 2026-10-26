@@ -20,7 +20,16 @@ button:disabled { opacity: .5; cursor: wait; }
 button.secondary { color: #fff4e6; background: transparent; border-color: #8d78a8; }
 .join { display: grid; grid-template-columns: 1fr 140px; gap: 8px; margin-top: 8px; }
 .join button { margin-top: 0; }
+.host-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .error { color: #ff8c8c; }
+.loading { text-align: center; }
+.loading h1 { font-size: clamp(16px, 4vw, 24px); }
+.loader { display: flex; justify-content: center; gap: 10px; margin: 24px 0; }
+.loader span { width: 16px; height: 16px; background: #f7c95b; animation: loader-bounce .9s steps(3) infinite; }
+.loader span:nth-child(2) { animation-delay: .15s; }
+.loader span:nth-child(3) { animation-delay: .3s; }
+@keyframes loader-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@media (prefers-reduced-motion: reduce) { .loader span { animation: none; opacity: .7; } }
 .diagnostics { margin-top: 16px; color: #f7c95b; font-size: 10px; }
 .diagnostics summary { cursor: pointer; }
 .diagnostics pre { max-height: 180px; overflow: auto; padding: 10px; color: #ffb3b3; background: #161429; white-space: pre-wrap; user-select: text; }
