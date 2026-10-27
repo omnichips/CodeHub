@@ -1,31 +1,63 @@
 import {
   ARENA_HEIGHT, ARENA_WIDTH, COUNTDOWN_SECONDS, LASER_FIRE_COOLDOWN_SECONDS,
-  LASER_RESPAWN_SECONDS, MATCH_DURATION_SECONDS, MAX_NICKNAME_LENGTH, MAX_PLAYERS,
+  LASER_RESPAWN_SECONDS, MATCH_DURATION_SECONDS, MAX_NICKNAME_LENGTH, maxPlayers, isAvatar,
   PLAYER_RADIUS, PLAYER_SPEED, SERVER_TICK_RATE, SPEAR_LENGTH, SPEAR_RADIUS,
   SPEAR_RECOVERY_SECONDS, SPEAR_THRUST_SECONDS, SPEAR_TURN_SPEED, SPRINT_DRAIN_PER_SECOND,
-  SPRINT_MULTIPLIER, SPRINT_RECHARGE_PER_SECOND, TAG_DISTANCE, TAG_PUSH_COOLDOWN_SECONDS,
+  SPRINT_MULTIPLIER, SPRINT_RECHARGE_PER_SECOND, TAG_DISTANCE, TAG_EXHAUSTED_MULTIPLIER,
+  TAG_EXHAUSTED_SECONDS, TAG_IMMUNE_SECONDS, TAG_IT_SPEED_MULTIPLIER, TAG_LAST_SURVIVOR_BONUS,
+  TAG_STREAK_BONUS, TAG_STREAK_BONUS_SECONDS, TAG_PUSH_COOLDOWN_SECONDS,
   TAG_STUN_SECONDS, TAG_TRANSFER_COOLDOWN_SECONDS, clampInputAxis, pointInVisionCone,
   segmentIntersectsCircle, type GameMode, type MatchPhase, type MovementInput,
 } from './protocol';
+import { obstaclesFor, resolveObstacles } from './obstacles';
 
 export type GamePlayer = {
   id: string; nickname: string; ready: boolean; isHost: boolean; x: number; y: number;
   isIt: boolean; sprint: number; stun: number; pushCooldown: number; itTime: number;
   spearAngle: number; spearTimer: number; alive: boolean; eliminations: number;
   aimAngle: number; fireCooldown: number; respawn: number; kills: number; deaths: number;
+  facing: number; sprinting: boolean; exhausted: number; immune: number; avatar: string;
+  score: number; streak: number;
+  // shirt colour slot, kept for the whole room so a player looks the same in every mode
+  color: number;
 };
 
 export type GameSnapshot = {
   roomId: string; players: GamePlayer[]; phase: MatchPhase; countdown: number;
   timeRemaining: number; mode: GameMode;
+  // ack: the viewer's last input sequence the host has applied; itBoost: whether IT currently gets its speed bonus
+  ack: number; itBoost: boolean;
 };
 
-const BOT_NAMES = ['Pixel', 'Byte', 'Glitch'];
+// One movement step. The host runs it every tick and guests run the same code to predict their own player.
+export function stepMovement(player: GamePlayer, input: MovementInput | undefined, seconds: number, mode: GameMode, itBoost: boolean) {
+  player.sprinting = false;
+  if (!input || player.stun > 0) return;
+  if (typeof input.aim === 'number') player.aimAngle = input.aim;
+  const magnitude = Math.hypot(input.x, input.y);
+  const scale = magnitude > 1 ? 1 / magnitude : 1;
+  const tag = mode === 'tag';
+  const sprinting = tag && input.sprint && player.sprint > 0 && magnitude > 0 && player.exhausted === 0;
+  const speed = PLAYER_SPEED * (sprinting ? SPRINT_MULTIPLIER : 1) * (tag && player.isIt && itBoost ? TAG_IT_SPEED_MULTIPLIER : 1)
+    * (player.exhausted > 0 ? TAG_EXHAUSTED_MULTIPLIER : 1);
+  if (magnitude > 0) player.facing = Math.atan2(input.y, input.x);
+  player.sprinting = sprinting;
+  player.x = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, player.x + input.x * scale * speed * seconds));
+  player.y = Math.max(PLAYER_RADIUS, Math.min(ARENA_HEIGHT - PLAYER_RADIUS, player.y + input.y * scale * speed * seconds));
+  Object.assign(player, resolveObstacles(player.x, player.y, PLAYER_RADIUS, obstaclesFor(mode)));
+  player.sprint = sprinting ? Math.max(0, player.sprint - seconds * SPRINT_DRAIN_PER_SECOND) : Math.min(100, player.sprint + seconds * SPRINT_RECHARGE_PER_SECOND);
+  // running the bar dry leaves you winded for a moment
+  if (sprinting && player.sprint === 0) player.exhausted = TAG_EXHAUSTED_SECONDS;
+}
 
-const spawnPosition =(index: number) => ({
-  x: PLAYER_RADIUS + 80 + (index % 2) * (ARENA_WIDTH - 160),
-  y: PLAYER_RADIUS + 80 + Math.floor(index / 2) * (ARENA_HEIGHT - 160),
-});
+const BOT_NAMES = ['Pixel', 'Byte', 'Glitch'];
+const MATCH_RESET = { sprint: 100, stun: 0, pushCooldown: 0, itTime: 0, spearAngle: 0, spearTimer: 0, alive: true,
+  eliminations: 0, aimAngle: 0, fireCooldown: 0, respawn: 0, kills: 0, deaths: 0, facing: 0, sprinting: false, exhausted: 0, immune: 0, score: 0, streak: 0 };
+
+// six spots: the four corners, then top and bottom middle
+const SPAWNS = [[98, 98], [ARENA_WIDTH - 98, ARENA_HEIGHT - 98], [ARENA_WIDTH - 98, 98], [98, ARENA_HEIGHT - 98],
+  [ARENA_WIDTH / 2, 98], [ARENA_WIDTH / 2, ARENA_HEIGHT - 98]];
+const spawnPosition = (index: number) => ({ x: SPAWNS[index % SPAWNS.length][0], y: SPAWNS[index % SPAWNS.length][1] });
 
 const cleanNickname = (value: unknown) => {
   if (typeof value !== 'string') throw new Error('Nickname is required.');
@@ -48,30 +80,39 @@ export class FriendGame {
   private inputs = new Map<string, MovementInput>();
   private readonly bots = new Map<string, number>();
   private botSequence = 0;
+  private lastIt = '';
+  private readonly botStuck = new Map<string, { x: number; y: number; check: number; detour: number }>();
 
   constructor(roomId: string) {
     this.roomId = roomId;
   }
 
   addPlayer(id: string, nickname: unknown) {
-    if (this.players.size >= MAX_PLAYERS) throw new Error('Room is full.');
+    if (this.players.size >= maxPlayers(this.mode)) throw new Error('Room is full.');
     if (this.phase !== 'lobby') throw new Error('Match already in progress.');
     const player: GamePlayer = {
       id, nickname: cleanNickname(nickname), ready: false, isHost: this.players.size === 0,
-      x: 0, y: 0, isIt: false, sprint: 100, stun: 0, pushCooldown: 0, itTime: 0,
-      spearAngle: 0, spearTimer: 0, alive: true, eliminations: 0, aimAngle: 0,
-      fireCooldown: 0, respawn: 0, kills: 0, deaths: 0,
+      x: 0, y: 0, isIt: false, avatar: '', ...MATCH_RESET,
+      color: [0, 1, 2, 3, 4, 5].find((slot) => ![...this.players.values()].some((other) => other.color === slot)) ?? 0,
     };
     this.players.set(id, player);
     return player;
   }
 
-  addBot() {
+  // stationary dummies are never driven, so they just stand there as targets
+  addBot(stationary = false) {
     const name = BOT_NAMES[this.bots.size % BOT_NAMES.length];
-    const player = this.addPlayer(`bot-${this.bots.size}`, `${name} bot`);
+    const player = stationary
+      ? this.addPlayer(`dummy-${this.players.size}`, `Dummy ${this.players.size}`)
+      : this.addPlayer(`bot-${this.bots.size}`, `${name} bot`);
     player.ready = true;
-    this.bots.set(player.id, Math.random() * Math.PI * 2);
+    if (!stationary) this.bots.set(player.id, Math.random() * Math.PI * 2);
     return player;
+  }
+
+  setAvatar(id: string, avatar: unknown) {
+    const player = this.players.get(id);
+    if (this.phase === 'lobby' && player && isAvatar(avatar)) player.avatar = avatar;
   }
 
   removePlayer(id: string) {
@@ -99,9 +140,7 @@ export class FriendGame {
     this.transferCooldown = 0;
     players.forEach((entry, index) => {
       const position = spawnPosition(index);
-      Object.assign(entry, { ...position, isIt: index === 0, sprint: 100, stun: 0, pushCooldown: 0,
-        itTime: 0, spearAngle: 0, spearTimer: 0, alive: true, eliminations: 0, aimAngle: 0,
-        fireCooldown: 0, respawn: 0, kills: 0, deaths: 0 });
+      Object.assign(entry, { ...position, ...MATCH_RESET, isIt: index === 0 });
     });
     this.countdown = COUNTDOWN_SECONDS;
     this.timeRemaining = MATCH_DURATION_SECONDS;
@@ -130,7 +169,7 @@ export class FriendGame {
     if (!player || player.stun > 0 || player.pushCooldown > 0) return;
     player.pushCooldown = TAG_PUSH_COOLDOWN_SECONDS;
     this.players.forEach((target) => {
-      if (target.id !== id && target.stun === 0 && Math.hypot(target.x - player.x, target.y - player.y) <= TAG_DISTANCE * 2) {
+      if (target.id !== id && target.stun === 0 && target.immune === 0 && Math.hypot(target.x - player.x, target.y - player.y) <= TAG_DISTANCE * 2) {
         target.stun = TAG_STUN_SECONDS;
       }
     });
@@ -147,8 +186,8 @@ export class FriendGame {
     if (this.phase !== 'active') return;
     this.elapsed += seconds;
     this.timeRemaining = Math.max(0, MATCH_DURATION_SECONDS - Math.floor(this.elapsed));
-    if (this.timeRemaining === 0) { this.phase = 'results'; return; }
-    this.driveBots();
+    if (this.timeRemaining === 0) { this.awardLastSurvivor(); this.phase = 'results'; return; }
+    this.driveBots(seconds);
     this.players.forEach((player) => this.tickPlayer(player, seconds));
     if (this.mode === 'gladiator' && [...this.players.values()].filter((player) => player.alive).length <= 1) this.phase = 'results';
     if (this.mode === 'tag') {
@@ -157,7 +196,7 @@ export class FriendGame {
       const target = it && this.transferCooldown === 0
         ? [...this.players.values()].find((player) => !player.isIt && player.stun === 0 && Math.hypot(player.x - it.x, player.y - it.y) <= TAG_DISTANCE)
         : undefined;
-      if (it && target) { it.isIt = false; target.isIt = true; this.transferCooldown = TAG_TRANSFER_COOLDOWN_SECONDS; }
+      if (it && target) { this.lastIt = it.id; it.isIt = false; target.isIt = true; it.immune = TAG_IMMUNE_SECONDS; this.transferCooldown = TAG_TRANSFER_COOLDOWN_SECONDS; }
     }
   }
 
@@ -168,7 +207,8 @@ export class FriendGame {
       || pointInVisionCone(viewer.x, viewer.y, viewer.aimAngle, player.x, player.y),
     );
     return { roomId: this.roomId, players: players.map((player) => ({ ...player })), phase: this.phase,
-      countdown: this.countdown, timeRemaining: this.timeRemaining, mode: this.mode };
+      countdown: this.countdown, timeRemaining: this.timeRemaining, mode: this.mode,
+      ack: (viewerId ? this.inputs.get(viewerId)?.sequence : undefined) ?? -1, itBoost: this.transferCooldown === 0 };
   }
 
   private tickPlayer(player: GamePlayer, seconds: number) {
@@ -188,17 +228,22 @@ export class FriendGame {
     }
     player.stun = Math.max(0, player.stun - seconds);
     player.pushCooldown = Math.max(0, player.pushCooldown - seconds);
-    if (player.isIt) player.itTime += seconds;
-    const input = this.inputs.get(player.id);
-    if (!input || player.stun > 0) return;
-    if (typeof input.aim === 'number') player.aimAngle = input.aim;
-    const magnitude = Math.hypot(input.x, input.y);
-    const scale = magnitude > 1 ? 1 / magnitude : 1;
-    const sprinting = this.mode === 'tag' && input.sprint && player.sprint > 0 && magnitude > 0;
-    const speed = PLAYER_SPEED * (sprinting ? SPRINT_MULTIPLIER : 1);
-    player.x = Math.max(PLAYER_RADIUS, Math.min(ARENA_WIDTH - PLAYER_RADIUS, player.x + input.x * scale * speed * seconds));
-    player.y = Math.max(PLAYER_RADIUS, Math.min(ARENA_HEIGHT - PLAYER_RADIUS, player.y + input.y * scale * speed * seconds));
-    player.sprint = sprinting ? Math.max(0, player.sprint - seconds * SPRINT_DRAIN_PER_SECOND) : Math.min(100, player.sprint + seconds * SPRINT_RECHARGE_PER_SECOND);
+    player.immune = Math.max(0, player.immune - seconds);
+    player.exhausted = Math.max(0, player.exhausted - seconds);
+    if (player.isIt) { player.itTime += seconds; player.streak = 0; }
+    else if (this.mode === 'tag') {
+      const before = player.streak;
+      player.streak += seconds;
+      const bonus = Math.floor(player.streak / TAG_STREAK_BONUS_SECONDS) > Math.floor(before / TAG_STREAK_BONUS_SECONDS) ? TAG_STREAK_BONUS : 0;
+      player.score += seconds + bonus;
+    }
+    stepMovement(player, this.inputs.get(player.id), seconds, this.mode, this.transferCooldown === 0);
+  }
+
+  private awardLastSurvivor() {
+    if (this.mode !== 'tag') return;
+    const best = [...this.players.values()].sort((a, b) => b.streak - a.streak)[0];
+    if (best) best.score += TAG_LAST_SURVIVOR_BONUS;
   }
 
   private fire(id: string) {
@@ -226,8 +271,8 @@ export class FriendGame {
     });
   }
 
-  // ponytail: steer straight at/away from one target with a wobble; no pathing or prediction
-  private driveBots() {
+  // ponytail: steer straight at/away from one target with a wobble; no pathing or prediction, so bots slide along walls
+  private driveBots(seconds: number) {
     const players = [...this.players.values()];
     const it = players.find((player) => player.isIt);
     this.bots.forEach((seed, id) => {
@@ -236,11 +281,22 @@ export class FriendGame {
       const distanceTo = (player: GamePlayer) => Math.hypot(player.x - bot.x, player.y - bot.y);
       const others = players.filter((player) => player.id !== id && player.alive).sort((a, b) => distanceTo(a) - distanceTo(b));
       const fleeing = this.mode === 'tag' && !bot.isIt && it !== undefined && it.id !== id;
-      const target = fleeing ? it : others.find((player) => this.mode !== 'tag' || player.stun === 0) ?? others[0];
+      // an IT bot leaves whoever just tagged it alone, otherwise two bots tag each other back forever
+      const target = fleeing ? it : others.find((player) => this.mode !== 'tag' || (player.stun === 0 && player.id !== this.lastIt)) ?? others[0];
       if (!target) return;
       const distance = distanceTo(target);
       const aim = Math.atan2(target.y - bot.y, target.x - bot.x);
-      const heading = (fleeing ? aim + Math.PI : aim) + Math.sin(this.elapsed * 1.7 + seed) * 0.7;
+      // a bot that barely moved in half a second is pinned on a wall: sidestep for a moment
+      const stuck = this.botStuck.get(id) ?? { x: bot.x, y: bot.y, check: 0, detour: 0 };
+      this.botStuck.set(id, stuck);
+      stuck.check += seconds;
+      stuck.detour = Math.max(0, stuck.detour - seconds);
+      if (stuck.check >= 0.5) {
+        if (Math.hypot(bot.x - stuck.x, bot.y - stuck.y) < 15) stuck.detour = 0.8;
+        Object.assign(stuck, { x: bot.x, y: bot.y, check: 0 });
+      }
+      const heading = (fleeing ? aim + Math.PI : aim) + Math.sin(this.elapsed * 1.7 + seed) * 0.7
+        + (stuck.detour > 0 ? (seed > Math.PI ? 1 : -1) * Math.PI / 2 : 0);
       // fleeing bots lean toward the middle so they don't pin themselves in a corner
       const pull = fleeing ? 0.8 : 0;
       const x = Math.cos(heading) + pull * (ARENA_WIDTH / 2 - bot.x) / (ARENA_WIDTH / 2);

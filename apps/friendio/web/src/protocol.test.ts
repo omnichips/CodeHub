@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clampInputAxis, pointInVisionCone, segmentIntersectsCircle } from '../../shared/protocol';
 import { FriendGame } from '../../shared/game';
+import { OBSTACLES } from '../../shared/obstacles';
 
 describe('movement input validation', () => {
   it('clamps invalid and oversized axes', () => {
@@ -33,6 +34,69 @@ describe('movement input validation', () => {
     game.tick(1000);
     expect(game.phase).toBe('active');
     expect(game.players.get('host')!.x).toBeGreaterThan(before);
+  });
+
+  it('applies tag rules: 6 players, IT speed, immunity, exhaustion, still dummies', () => {
+    const game = new FriendGame('TAG001');
+    game.addPlayer('host', 'Host');
+    for (let index = 0; index < 5; index += 1) game.addBot(true);
+    expect(() => game.addPlayer('extra', 'Extra')).toThrow('Room is full.');
+    game.removePlayer('dummy-5');
+    game.toggleReady('host');
+    game.start('host');
+    for (let tick = 0; tick < 31; tick += 1) game.tick(100);
+    const host = game.players.get('host')!;
+    const dummy = game.players.get('dummy-1')!;
+    const spawn = { x: dummy.x, y: dummy.y };
+    // IT outruns the normal speed
+    const before = host.x;
+    game.receiveMovement('host', { sequence: 1, x: 1, y: 0, sprint: false });
+    game.tick(100);
+    expect(host.x - before).toBeGreaterThan(22);
+    // tagging passes IT on; the old IT is immune and gets a 1s head start before IT speed applies
+    Object.assign(host, { x: dummy.x - 10, y: dummy.y });
+    game.tick(10);
+    expect(dummy.isIt && !dummy.immune && host.immune > 0).toBe(true);
+    game.action('dummy-1');
+    expect(host.stun).toBe(0);
+    expect({ x: dummy.x, y: dummy.y }).toEqual(spawn);
+    // sprinting the bar dry leaves you winded
+    host.x = 100;
+    game.receiveMovement('host', { sequence: 2, x: 0, y: 1, sprint: true });
+    for (let tick = 0; tick < 25; tick += 1) game.tick(100);
+    expect(host.exhausted).toBeGreaterThan(0);
+  });
+
+  it('blocks movement through walls', () => {
+    const game = new FriendGame('WALL01');
+    game.mode = 'gladiator'; // the plain block layout
+    game.addPlayer('host', 'Host');
+    game.addPlayer('guest', 'Guest');
+    game.toggleReady('host');
+    game.toggleReady('guest');
+    game.start('host');
+    for (let tick = 0; tick < 31; tick += 1) game.tick(100);
+    const host = game.players.get('host')!;
+    Object.assign(host, { x: 120, y: 200 });
+    game.receiveMovement('host', { sequence: 1, x: 1, y: 0, sprint: false });
+    for (let tick = 0; tick < 20; tick += 1) game.tick(100);
+    expect(host.x).toBeLessThanOrEqual(OBSTACLES[1].x - 18 + 0.01);
+  });
+
+  it('scores tag by survival: seconds, streak bonus, last-survivor bonus', () => {
+    const game = new FriendGame('SCORE1');
+    game.addPlayer('host', 'Host');
+    game.addBot(true);
+    game.toggleReady('host');
+    game.start('host');
+    for (let tick = 0; tick < 31; tick += 1) game.tick(100);
+    for (let tick = 0; tick < 150; tick += 1) game.tick(100);
+    expect(game.players.get('host')!.score).toBe(0);
+    expect(game.players.get('dummy-1')!.score).toBeGreaterThan(19);
+    for (let tick = 0; tick < 1800 && game.phase !== 'results'; tick += 1) game.tick(100);
+    expect(game.phase).toBe('results');
+    // 180s untagged = 180 + 18 streak bonuses (90) + 10 last survivor, minus a little for the countdown tick rounding
+    expect(game.players.get('dummy-1')!.score).toBeGreaterThan(270);
   });
 
   it.each(['tag', 'gladiator', 'laser'] as const)('runs a solo %s match where bots move and score', (mode) => {
