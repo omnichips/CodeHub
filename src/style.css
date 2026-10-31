@@ -64,6 +64,7 @@ body {
 
 /* Each game is just its icon in a small glass tile; the name is for screen readers and the hover tooltip. */
 .app {
+  position: relative;
   display: grid;
   padding: 6px;
   border-radius: 22px;
@@ -94,6 +95,19 @@ body {
 .icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* A yellow sticker on the card's corner ("tag" in apps.json, like WIP). */
+.tag {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  padding: 4px 4px 3px;
+  background: #facc15;
+  color: var(--ink);
+  font: 8px/1 var(--pixel);
+  box-shadow: 0 0 0 2px var(--ink), 0 3px 0 2px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
 
 /* On a mouse: the tile lifts, the glass brightens and the art bobs. */
 @media (hover: hover) {
@@ -197,6 +211,24 @@ body {
 .wallpaper canvas { display: block; width: 100%; aspect-ratio: 40 / 26; image-rendering: pixelated; }
 .wallpaper[aria-pressed='true'] { box-shadow: 0 0 0 4px #facc15; color: #facc15; }
 .wallpaper:focus-visible { outline: 4px dashed #fff; outline-offset: 6px; }
+
+/* A download's checklist; the Download link stays grey and dead until every box is ticked. */
+.download .file { margin: -12px 0 20px; text-align: center; font: 8px/1.6 var(--pixel); opacity: 0.75; overflow-wrap: anywhere; }
+.check { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.check input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: #facc15; cursor: pointer; }
+.get {
+  display: block;
+  margin-top: 24px;
+  padding: 14px;
+  text-align: center;
+  background: #facc15;
+  color: var(--ink);
+  font: 10px/1 var(--pixel);
+  text-decoration: none;
+  box-shadow: 0 0 0 4px var(--ink);
+}
+.get:not([href]) { background: #3a3d55; color: rgba(255, 255, 255, 0.45); cursor: not-allowed; }
+.get:focus-visible { outline: 4px dashed #fff; outline-offset: 6px; }
 
 .empty { grid-column: 1 / -1; margin: 0; padding: 48px 0; text-align: center; font: 10px/1.7 var(--pixel); opacity: 0.8; }
 

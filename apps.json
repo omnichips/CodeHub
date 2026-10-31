@@ -34,6 +34,7 @@
       "name": "Friend.io",
       "color": "#e85d75",
       "icon": "public/icon.svg",
+      "tag": "WIP",
       "source": { "type": "vite", "dir": "apps/friendio/web" }
     },
     {
@@ -57,6 +58,42 @@
         "dir": "apps/tetrio",
         "entry": "tetr_io_web_edition.html"
       }
+    },
+    {
+      "id": "kindered",
+      "name": "Kindered",
+      "color": "#ff5fd2",
+      "icon": "public/icon.svg",
+      "source": { "type": "vite", "dir": "apps/kindered/web" }
+    },
+    {
+      "id": "volumeboost",
+      "name": "VolumeBoost",
+      "color": "#fff4e6",
+      "icon": "icon.png",
+      "source": { "type": "download", "dir": "apps/VolumeBooster", "file": "dist/VolumeBoost.exe" },
+      "confirm": [
+        "This is a Windows program (.exe) for a PC. It does not run on a phone or a Mac.",
+        "It needs Equalizer APO installed. It was made for Realtek laptop speakers and may do nothing on other speakers.",
+        "It replaces Equalizer APO's config.txt. The first run keeps the old one as config.txt.bak.",
+        "Windows will warn that the publisher is unknown, because it is not code-signed. To run it anyway: More info, then Run anyway.",
+        "It adds a startup entry that puts the volume back to 100% each time you log in.",
+        "Going past 100% can distort the sound and damage speakers or hearing. I will start low."
+      ]
+    },
+    {
+      "id": "videosniffer",
+      "name": "Video Sniffer",
+      "color": "#111827",
+      "icon": "video-sniffer/icon128.png",
+      "source": { "type": "download", "dir": "apps/video-sniffer-extension", "file": "video-sniffer" },
+      "confirm": [
+        "This is a Chrome extension for a computer. It does not work on a phone.",
+        "It is not on the Chrome Web Store. To install it: unzip, open chrome://extensions, turn on Developer mode, press Load unpacked and pick the video-sniffer folder.",
+        "It can see the address of every page and request in Chrome, because that is how it finds videos.",
+        "Without the separate yt-dlp helper (not included) some sites' videos will not download.",
+        "I will only download videos I have the right to save."
+      ]
     }
   ]
 }

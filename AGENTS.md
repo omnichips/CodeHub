@@ -11,6 +11,13 @@ loading screen in `splash.html`, which the build also puts at the top of every a
 | Elevator Anomaly (roguelike) | `apps/htmlroguemobile` | `/elevator/` | static |
 | QSendr (QR file sending) | `apps/qrscans` | `/qsendr/` | static + Python |
 | Die Trying (zombie horde defence) | `apps/WeMightAsWellDieTrying` | `/dietrying/` | vite |
+| Kindered (Jackbox-style party games, PeerJS) | `apps/kindered/web` (+ `shared/`) | `/kindered/` | vite |
+| VolumeBoost (Windows tray volume booster, Python) | `apps/VolumeBooster` | `/volumeboost/VolumeBoost.exe` | download |
+| Video Sniffer (Chrome extension; helper not shipped) | `apps/video-sniffer-extension` | `/videosniffer/video-sniffer.zip` | download |
+
+A `download` card opens a checklist (`confirm` in `apps.json`) before the file. `"tag": "WIP"` puts a yellow sticker on
+any card. VolumeBoost's exe is committed (`.gitignore` re-includes its `dist/`): rebuild it with PyInstaller from
+`VolumeBoost.spec`, then commit the new exe.
 
 Die Trying has its own, longer `AGENTS.md` in its folder. Read it before touching the game.
 

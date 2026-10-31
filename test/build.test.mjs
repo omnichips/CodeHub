@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { inflateRawSync } from 'node:zlib';
 
 const build = fileURLToPath(new URL('../scripts/build.mjs', import.meta.url));
 
@@ -12,7 +13,10 @@ const build = fileURLToPath(new URL('../scripts/build.mjs', import.meta.url));
 function run(apps, { files = { 'index.html': '<h1>hi</h1>' } } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'hub-'));
   mkdirSync(join(dir, 'app'));
-  for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, 'app', name), text);
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, 'app', name)), { recursive: true });
+    writeFileSync(join(dir, 'app', name), text);
+  }
   writeFileSync(join(dir, 'apps.json'), JSON.stringify({ title: 'Test <&> "site"', apps }));
   const result = spawnSync(process.execPath, [build], { env: { ...process.env, HUB_REGISTRY: join(dir, 'apps.json'), HUB_OUT: join(dir, 'out') }, encoding: 'utf8' });
   return { ...result, out: join(dir, 'out') };
@@ -81,4 +85,24 @@ test("a static app's /*HUB_BUILD*/ becomes the commit and date it was built from
   assert.equal(r.status, 0, r.stderr);
   const html = readFileSync(join(r.out, 'one', 'index.html'), 'utf8');
   assert.match(html, /const BUILD = '(\w{7}|local) · \d{4}-\d{2}-\d{2}';/);
+});
+
+test('a download app ships its file, or its folder as a zip that unzips into that folder', () => {
+  const tool = { id: 'tool', name: 'Tool', tag: 'WIP', source: { type: 'download', dir: 'app', file: 'tool.exe' }, confirm: ['Windows only.'] };
+  const ext = { id: 'ext', name: 'Ext', source: { type: 'download', dir: 'app', file: 'ext' } };
+  const r = run([tool, ext], { files: { 'tool.exe': 'MZ', 'ext/manifest.json': '{}', 'ext/deep/a.js': 'hi', 'ext/node_modules/x.js': 'no' } });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(readFileSync(join(r.out, 'tool', 'tool.exe'), 'utf8'), 'MZ');
+  const html = readFileSync(join(r.out, 'index.html'), 'utf8');
+  assert.ok(html.includes('"tag":"WIP","download":{"href":"/tool/tool.exe","name":"tool.exe","bytes":2,"confirm":["Windows only."]}'));
+
+  const z = readFileSync(join(r.out, 'ext', 'ext.zip'));
+  const entries = {};
+  for (let at = 0; z.readUInt32LE(at) === 0x04034b50; ) {
+    const size = z.readUInt32LE(at + 18), nameLength = z.readUInt16LE(at + 26), start = at + 30 + nameLength;
+    entries[z.toString('utf8', at + 30, start)] = inflateRawSync(z.subarray(start, start + size)).toString();
+    at = start + size;
+  }
+  assert.deepEqual(entries, { 'ext/deep/a.js': 'hi', 'ext/manifest.json': '{}' }, 'node_modules is left out');
+  assert.equal(z.readUInt16LE(z.length - 12), 2, 'the central directory lists both files');
 });

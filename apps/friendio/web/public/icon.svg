@@ -1,13 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
-  <rect width="64" height="64" fill="#161429"/>
-  <rect x="8" y="8" width="48" height="48" fill="#2a2140"/>
-  <rect x="12" y="12" width="40" height="40" fill="#e85d75"/>
-  <rect x="16" y="16" width="32" height="32" fill="#f7c95b"/>
-  <rect x="20" y="20" width="24" height="24" fill="#161429"/>
-  <rect x="24" y="24" width="6" height="6" fill="#e85d75"/>
-  <rect x="34" y="24" width="6" height="6" fill="#e85d75"/>
-  <rect x="26" y="34" width="12" height="4" fill="#f7c95b"/>
-  <rect x="10" y="26" width="6" height="12" fill="#e85d75"/>
-  <rect x="48" y="26" width="6" height="12" fill="#e85d75"/>
-  <rect x="26" y="48" width="12" height="6" fill="#7de2a8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- A teddy bear scribbled in crayon on sketchbook paper. Each colour sits a little off its outline, like a kid's colouring. -->
+  <defs>
+    <filter id="crayon" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7" result="wobble"/>
+      <feDisplacementMap in="SourceGraphic" in2="wobble" scale="6" xChannelSelector="R" yChannelSelector="G" result="wobbly"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.2" seed="3" result="grain"/>
+      <feDisplacementMap in="wobbly" in2="grain" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+  <rect width="128" height="128" fill="#fff4e6"/>
+  <g filter="url(#crayon)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ears -->
+    <g fill="#c8834a" transform="translate(3 2)"><circle cx="34" cy="30" r="15"/><circle cx="94" cy="30" r="15"/></g>
+    <g fill="#f2c48d" transform="translate(2 2)"><circle cx="35" cy="31" r="7"/><circle cx="93" cy="31" r="7"/></g>
+    <g fill="none" stroke="#3b2314" stroke-width="4.5"><circle cx="34" cy="30" r="15"/><circle cx="94" cy="30" r="15"/></g>
+    <!-- arms: one down, one waving -->
+    <g fill="#c8834a" transform="translate(3 2)">
+      <ellipse cx="34" cy="100" rx="9" ry="15" transform="rotate(25 34 100)"/>
+      <ellipse cx="100" cy="80" rx="9" ry="15" transform="rotate(-40 100 80)"/>
+    </g>
+    <g fill="none" stroke="#3b2314" stroke-width="4.5">
+      <ellipse cx="34" cy="100" rx="9" ry="15" transform="rotate(25 34 100)"/>
+      <ellipse cx="100" cy="80" rx="9" ry="15" transform="rotate(-40 100 80)"/>
+    </g>
+    <!-- body -->
+    <ellipse cx="67" cy="106" rx="27" ry="23" fill="#c8834a"/>
+    <path d="M48 96l10-10 4 16 9-17 5 19 8-16 3 14M50 112l9-8 3 14 8-13 4 14 9-12" fill="none" stroke="#a8642f" stroke-width="2.5" opacity="0.7"/>
+    <ellipse cx="66" cy="110" rx="14" ry="11" fill="#f2c48d"/>
+    <ellipse cx="64" cy="104" rx="27" ry="23" fill="none" stroke="#3b2314" stroke-width="4.5"/>
+    <ellipse cx="64" cy="108" rx="14" ry="11" fill="none" stroke="#3b2314" stroke-width="3"/>
+    <path d="M59 105l4 4m0-4l-4 4M66 110l4 4m0-4l-4 4" stroke="#3b2314" stroke-width="2"/>
+    <!-- head -->
+    <ellipse cx="67" cy="58" rx="34" ry="28" fill="#c8834a"/>
+    <path d="M38 52l12-18 4 22 10-24 6 26 10-24 5 22 10-16M40 70l10-10 3 12" fill="none" stroke="#a8642f" stroke-width="2.5" opacity="0.7"/>
+    <ellipse cx="66" cy="68" rx="13" ry="10" fill="#f2c48d"/>
+    <ellipse cx="64" cy="56" rx="34" ry="28" fill="none" stroke="#3b2314" stroke-width="4.5"/>
+    <ellipse cx="64" cy="66" rx="13" ry="10" fill="none" stroke="#3b2314" stroke-width="3"/>
+    <!-- face: button eyes, nose, stitched smile, blush -->
+    <circle cx="44" cy="62" r="5" fill="#e85d75" opacity="0.45"/>
+    <circle cx="86" cy="62" r="5" fill="#e85d75" opacity="0.45"/>
+    <circle cx="50" cy="50" r="5" fill="#1a0f08"/>
+    <circle cx="78" cy="50" r="5" fill="#1a0f08"/>
+    <circle cx="48.5" cy="48.5" r="1.6" fill="#fff4e6"/>
+    <circle cx="76.5" cy="48.5" r="1.6" fill="#fff4e6"/>
+    <ellipse cx="64" cy="61" rx="5.5" ry="4" fill="#1a0f08"/>
+    <path d="M64 64v5M56 68q4 6 8 1q4 5 8-1" fill="none" stroke="#1a0f08" stroke-width="2.5"/>
+    <!-- bow tie, in Friend.io pink -->
+    <path d="M64 84l-13-7v14zM64 84l13-7v14z" fill="#e85d75" transform="translate(2 1)"/>
+    <path d="M64 84l-13-7v14zM64 84l13-7v14z" fill="none" stroke="#3b2314" stroke-width="3"/>
+    <circle cx="64" cy="84" r="3.5" fill="#f7c95b" stroke="#3b2314" stroke-width="2"/>
+  </g>
 </svg>

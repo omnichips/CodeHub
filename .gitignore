@@ -4,3 +4,10 @@ dist-test
 test-results
 __pycache__
 *.jfif
+# VolumeBoost: PyInstaller's scratch folder stays out; its built exe is the hub's download.
+apps/VolumeBooster/build
+!apps/VolumeBooster/dist
+# Video Sniffer: install.ps1 writes these with this PC's paths and extension ID.
+apps/video-sniffer-extension/helper/config.json
+apps/video-sniffer-extension/helper/com.videosniffer.helper.json
+apps/video-sniffer-extension/helper/vsniff-helper.bat

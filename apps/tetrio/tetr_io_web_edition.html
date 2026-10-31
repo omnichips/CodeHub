@@ -97,6 +97,57 @@
         .room-code-glow {
             text-shadow: 0 0 14px rgba(34, 211, 238, 0.55);
         }
+        /* Phones: 100vh hides the bottom behind Safari's toolbar; dvh does not. */
+        body { height: 100dvh; }
+        button { touch-action: manipulation; }
+        #gameCanvas { object-fit: contain; }
+        /* Pause has a key on a keyboard; on a touch screen it needs a button. */
+        #pauseBtn { display: none; }
+        @media (pointer: coarse) { #pauseBtn { display: inline-block; } }
+        /* Short screens (landscape phones, small laptops): the board shrinks to fit instead of being cut off. */
+        @media (max-height: 820px) and (min-width: 768px) {
+            footer { display: none !important; }
+            #gameCanvas { height: calc(100dvh - 100px); width: auto; }
+            #nextCanvas { height: min(380px, calc(100dvh - 140px)); object-fit: contain; }
+        }
+        /* Portrait phones: hold, stats and the next 3 pieces in a strip above the board; opponents in a row below it. */
+        @media (max-width: 767px) {
+            header { height: 48px !important; padding: 0 10px !important; }
+            header .space-x-6 > * + * { margin-left: 8px !important; }
+            #highScoreLabel { font-size: 9px; }
+            #headerHighScore { font-size: 1rem; }
+            footer { display: none !important; }
+            #gameWorkspace {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                gap: 12px 8px;
+                padding: 14px 8px 8px;
+                align-items: stretch;
+                touch-action: none; /* swipes steer the piece instead of scrolling or zooming */
+            }
+            #leftPanel { grid-area: 1 / 1; flex-direction: row; gap: 8px; width: auto; margin: 0; }
+            #leftPanel > * { margin-top: 0 !important; }
+            #leftPanel > :first-child { width: 64px; flex: none; padding: 6px; }
+            #holdKeyLabel { display: none; }
+            #leftPanel > :last-child { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; gap: 2px 10px; padding: 8px; }
+            #leftPanel > :last-child span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #leftPanel > :last-child > * { margin-top: 0 !important; }
+            #leftPanel > :last-child > :nth-child(n+5) { display: none; } /* divider, PPS and APM */
+            #leftPanel > :last-child > :nth-child(4) { grid-column: 1 / -1; }
+            #leftPanel .text-xs { font-size: 9px; }
+            #statScore { font-size: 1.1rem; }
+            #statLines, #statLevel, #statTime { font-size: 0.95rem; }
+            #rightPanel { display: contents; }
+            #rightPanel > :first-child { grid-area: 1 / 2; padding: 6px; }
+            #nextCanvas { width: 132px; height: 56px; }
+            #boardContainer { grid-area: 2 / 1 / 3 / 3; min-height: 0; height: 100%; justify-content: center; }
+            #playfieldWrapper { height: 100%; max-width: 100%; }
+            #gameCanvas { height: 100%; width: auto; max-width: 100%; }
+            #opponentPanel { grid-area: 3 / 1 / 4 / 3; margin: 0 !important; flex-direction: row; align-items: center; }
+            #opponentProgress { display: flex; gap: 6px; overflow-x: auto; }
+            #opponentProgress > * { width: 48px; flex: none; margin-top: 0 !important; }
+        }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col justify-between text-gray-100 select-none">
@@ -114,6 +165,9 @@
         
         <!-- Top Stats / Quick Controls -->
         <div class="flex items-center space-x-6">
+            <button id="pauseBtn" class="text-gray-400 hover:text-white transition-colors duration-150 p-2 rounded hover:bg-white/5" title="Pause">
+                <i class="fa-solid fa-pause text-lg"></i>
+            </button>
             <button id="soundBtn" class="text-gray-400 hover:text-white transition-colors duration-150 p-2 rounded hover:bg-white/5" title="Mute/Unmute Audio">
                 <i class="fa-solid fa-volume-high text-lg" id="soundIcon"></i>
             </button>
@@ -336,6 +390,18 @@
                         <div>Rotate 180°: <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded">W</kbd></div>
                         <div>Hold Block: <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded">Shift</kbd> or <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded">C</kbd></div>
                         <div>Pause Game: <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded">Esc</kbd> or <kbd class="px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded">P</kbd></div>
+                    </div>
+                </div>
+                <div class="border-b border-purple-900/20 pb-3">
+                    <span class="text-purple-400 font-bold block mb-2">Touch Screen</span>
+                    <div class="grid grid-cols-2 gap-y-2 text-xs">
+                        <div>Move: drag left / right</div>
+                        <div>Soft Drop: drag down</div>
+                        <div>Hard Drop: flick down</div>
+                        <div>Hold: flick up</div>
+                        <div>Rotate CW: tap right half</div>
+                        <div>Rotate CCW: tap left half</div>
+                        <div>Pause: <i class="fa-solid fa-pause"></i> at the top</div>
                     </div>
                 </div>
                 <div class="text-xs text-purple-300">
@@ -1187,6 +1253,7 @@
 
                 // Initialize system binding hooks
                 this.bindInputs();
+                this.bindTouch();
                 this.initSettingsModal();
                 this.updateThemeNameFooter();
                 this.updateHeaderHighScoreDisplay();
@@ -1439,6 +1506,61 @@
                     delete this.keyStates[key];
                     delete this.keyStates[e.key.toLowerCase()];
                 });
+            }
+
+            // Touch: drag sideways to move (one column per column-width dragged), drag down to soft drop,
+            // flick down to hard drop, flick up to hold, tap the right/left half to rotate CW/CCW.
+            bindTouch() {
+                const area = document.getElementById('gameWorkspace');
+                const playing = () => this.gameStarted && !this.isPaused && !this.isGameOver && !this.isCountdown && this.currentPiece;
+                let g = null; // the finger being followed
+
+                document.getElementById('pauseBtn').addEventListener('click', () => {
+                    if (this.gameStarted && !this.isGameOver) this.togglePause();
+                });
+
+                area.addEventListener('pointerdown', (e) => {
+                    if (e.pointerType !== 'touch' || g || !playing()) return;
+                    g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: e.timeStamp, axis: null, trail: [[e.timeStamp, e.clientY]] };
+                });
+
+                area.addEventListener('pointermove', (e) => {
+                    if (!g || e.pointerId !== g.id || !playing()) return;
+                    g.trail.push([e.timeStamp, e.clientY]);
+                    // Pick an axis once the finger has really moved, so a sideways drag never drops the piece by accident.
+                    if (!g.axis && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > 12) {
+                        g.axis = Math.abs(e.clientX - g.x0) > Math.abs(e.clientY - g.y0) ? 'x' : 'y';
+                    }
+                    const cell = this.canvas.getBoundingClientRect().width / this.cols;
+                    if (g.axis === 'x') {
+                        while (Math.abs(e.clientX - g.x) >= cell) {
+                            const dir = Math.sign(e.clientX - g.x);
+                            this.movePiece(dir);
+                            g.x += dir * cell;
+                        }
+                    } else if (g.axis === 'y') {
+                        while (e.clientY - g.y >= cell) {
+                            this.dropStep(true);
+                            g.y += cell;
+                        }
+                    }
+                });
+
+                area.addEventListener('pointerup', (e) => {
+                    if (!g || e.pointerId !== g.id) return;
+                    const gesture = g;
+                    g = null;
+                    if (!playing()) return;
+                    // Speed over the last 100 ms tells a flick from a slow drag.
+                    const [t, y] = gesture.trail.find(([time]) => e.timeStamp - time < 100) ?? gesture.trail[gesture.trail.length - 1];
+                    const speed = (e.clientY - y) / Math.max(16, e.timeStamp - t); // px per ms, + is down
+                    const dy = e.clientY - gesture.y0;
+                    if (speed > 0.8 && dy > 40) this.hardDrop();
+                    else if (speed < -0.8 && dy < -40) this.triggerHold();
+                    else if (!gesture.axis && e.timeStamp - gesture.t0 < 300) this.rotatePiece(e.clientX > window.innerWidth / 2);
+                });
+
+                area.addEventListener('pointercancel', () => { g = null; });
             }
 
             // Map keys dynamically to engine actions
@@ -2341,8 +2463,15 @@
                 this.nextCtx.fillStyle = '#020205';
                 this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
 
+                // On a phone the queue is a short strip (see the CSS): 3 pieces side by side instead of 5 stacked.
+                const strip = matchMedia('(max-width: 767px)').matches;
+                if (strip !== (this.nextCanvas.width > this.nextCanvas.height)) {
+                    [this.nextCanvas.width, this.nextCanvas.height] = strip ? [264, 112] : [100, 380];
+                    this.nextCtx.fillStyle = '#020205';
+                    this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
+                }
                 const blockRenderHeight = 70;
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < (strip ? 3 : 5); i++) {
                     const nextType = this.nextQueue[i];
                     if (!nextType) continue;
 
@@ -2351,6 +2480,14 @@
 
                     const bw = defaultMatrix[0].length;
                     const bh = defaultMatrix.length;
+                    if (strip) {
+                        const size = 20, slot = this.nextCanvas.width / 3;
+                        this.nextCtx.save();
+                        this.nextCtx.translate(i * slot + (slot - bw * size) / 2, (this.nextCanvas.height - bh * size) / 2);
+                        this.drawBlockGroup(this.nextCtx, 0, 0, defaultMatrix, nextColor, size);
+                        this.nextCtx.restore();
+                        continue;
+                    }
                     const ox = (this.nextCanvas.width - bw * 18) / 2;
                     const oy = (i * blockRenderHeight) + (blockRenderHeight - bh * 18) / 2 + 10;
 

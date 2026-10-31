@@ -20,11 +20,15 @@ export function validateRegistry(reg) {
     if (a.folder !== undefined && (typeof a.folder !== 'string' || !a.folder.trim())) errors.push(`${at}: "folder" must be a name`);
     if (a.dock && a.folder) errors.push(`${at}: an app cannot be in the dock and in a folder`);
     if (a.dock && ++docked > 4) errors.push(`${at}: the dock holds at most 4 apps`);
+    // A small sticker on the card's corner, like WIP while you are changing an app.
+    if (a.tag !== undefined && !(typeof a.tag === 'string' && /^\S{1,6}$/.test(a.tag))) errors.push(`${at}: "tag" must be one short word (at most 6 letters), like WIP`);
+    if (a.confirm !== undefined && !(Array.isArray(a.confirm) && a.confirm.every((c) => typeof c === 'string' && c.trim()))) errors.push(`${at}: "confirm" must be a list of sentences`);
 
     const s = a.source;
-    if (!s || !['vite', 'static'].includes(s.type)) errors.push(`${at}: "source.type" must be "vite" or "static"`);
+    if (!s || !['vite', 'static', 'download'].includes(s.type)) errors.push(`${at}: "source.type" must be "vite", "static" or "download"`);
     else if (typeof s.dir !== 'string' || !s.dir) errors.push(`${at}: "source.dir" is required`);
     else if (s.type === 'static' && s.entry !== undefined && typeof s.entry !== 'string') errors.push(`${at}: "source.entry" must be a file name`);
+    else if (s.type === 'download' && (typeof s.file !== 'string' || !s.file)) errors.push(`${at}: "source.file" is required: the file to download, or a folder to zip`);
   });
   return errors;
 }

@@ -18,19 +18,46 @@ function icon(app) {
   return tile;
 }
 
+// A card opens its app, or for a download, the checklist before the file. Its tag (like WIP) sits on the corner.
 function appLink(app) {
-  const a = el('a', 'app');
-  a.href = `/${app.id}/`;
-  a.setAttribute('aria-label', app.name);
-  a.title = app.name;
+  const a = el(app.download ? 'button' : 'a', 'app');
+  if (app.download) a.setAttribute('aria-haspopup', 'dialog');
+  else a.href = `/${app.id}/`;
+  const name = app.tag ? `${app.name} (${app.tag})` : app.name;
+  a.setAttribute('aria-label', name);
+  a.title = name;
   a.style.setProperty('--c', app.color);
   a.append(icon(app), el('span', 'label', app.name));
+  if (app.tag) a.append(el('span', 'tag', app.tag));
   a.addEventListener('click', (e) => {
+    if (app.download) return openSheet(app.name, downloadSheet(app.download), a);
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return; // let "open in new tab" work
     e.preventDefault();
     launch(a);
   });
   return a;
+}
+
+// Every warning has to be ticked before the Download link gets its address.
+function downloadSheet({ href, name, bytes, confirm }) {
+  const box = el('div', 'download');
+  const size = bytes < 1048576 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+  const checks = confirm.map((text) => {
+    const label = el('label', 'check');
+    label.append(Object.assign(el('input'), { type: 'checkbox' }), el('span', '', text));
+    return label;
+  });
+  const link = Object.assign(el('a', 'get', 'Download'), { download: name });
+  const update = () => {
+    const ready = checks.every((c) => c.firstChild.checked);
+    if (ready) link.href = href;
+    else link.removeAttribute('href');
+    link.setAttribute('aria-disabled', !ready);
+  };
+  box.addEventListener('change', update);
+  update();
+  box.append(el('p', 'file', `${name} · ${size}`), ...checks, link);
+  return box;
 }
 
 // The loading screen (splash.html) comes up over the hub and starts drawing the logo while the app loads; the app's page
@@ -80,7 +107,7 @@ function openSheet(title, content, opener) {
   overlay.addEventListener('click', (e) => e.target === overlay && close()); // tap outside the sheet
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);
-  content.querySelector('a, button')?.focus();
+  content.querySelector('a[href], button, input')?.focus();
 }
 
 // Docked apps sit at the bottom; the rest fill the grid, with each folder placed where its first app appears.

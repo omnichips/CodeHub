@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Video Sniffer blocker test</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; }
+    section { margin: 20px 0; padding-top: 12px; border-top: 1px solid #ddd; }
+    .expect { color: #555; font-size: 13px; }
+    video { width: 100%; background: #000; }
+    /* The bad overlay: invisible, covers the whole window, opens an "ad" on click */
+    #overlay { position: fixed; inset: 0; z-index: 10; }
+  </style>
+</head>
+<body>
+  <h1>Blocker test page</h1>
+  <p class="expect">Each case says what should happen with Video Sniffer's blocker on. Every link and popup goes to example.com.</p>
+
+  <section>
+    <h2>1. Real button opens a window</h2>
+    <button onclick="window.open('https://example.com/?case=1')">Open example.com</button>
+    <p class="expect">Should open. A click on a real button is allowed.</p>
+  </section>
+
+  <section>
+    <h2>2. Real link with target=_blank</h2>
+    <a href="https://example.com/?case=2" target="_blank">Open example.com in a new tab</a>
+    <p class="expect">Should open.</p>
+  </section>
+
+  <section>
+    <h2>3. Delayed popup after a click</h2>
+    <button onclick="setTimeout(() => window.open('https://example.com/?case=3'), 3000)">Start (opens in 3 seconds)</button>
+    <p class="expect">Should be blocked; the extension popup then shows "Blocked 1 on this page". Without the extension, Chrome would allow it.</p>
+  </section>
+
+  <section>
+    <h2>4. Invisible overlay (an ad trap)</h2>
+    <p>
+      <button onclick="document.body.append(Object.assign(document.createElement('div'), { id: 'overlay', onclick: () => window.open('https://example.com/?case=4') }))">Step 1: Add the trap</button>
+      <button onclick="document.querySelector('#hits').textContent = +document.querySelector('#hits').textContent + 1">Step 2: Click me</button>
+      Clicks that reached the page: <strong id="hits">0</strong>
+    </p>
+    <p class="expect">Press "Step 1" (nothing visible changes: an invisible layer now covers the page).
+      Press "Step 2". That first press should do nothing: no new tab, and the number stays 0.
+      Press "Step 2" again: the number goes up to 1, because the extension switched the trap off.
+      The extension popup now shows "Blocked 2 on this page" and "Restore overlay".</p>
+  </section>
+
+  <section>
+    <h2>5. Normal player, no trap</h2>
+    <video controls preload="metadata" src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4"></video>
+    <p class="expect">Reload the page (F5) first. Then play, pause, drag the timeline and go full screen. Everything should work normally,
+      and the extension popup should list Big_Buck_Bunny_360_10s_1MB.mp4 with its size.
+      If the player stays black and never plays, the test video didn't load; do this check on the hls.js demo page instead.</p>
+  </section>
+</body>
+</html>

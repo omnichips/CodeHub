@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Video Sniffer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Video Sniffer</h1>
+    <button id="scan" class="primary">Scan</button>
+  </header>
+  <p id="note" class="notice"></p>
+  <p id="status" aria-live="polite"></p>
+  <p id="problem" class="notice" hidden></p>
+  <section id="yt" hidden></section>
+  <section id="page">
+    <p id="drm" class="notice" hidden>Protected (DRM). This video can't be downloaded.</p>
+    <ul id="list"></ul>
+    <p id="empty" class="quiet" hidden>Nothing found yet. Play the video, or press Scan.</p>
+  </section>
+  <form id="paste" hidden>
+    <input type="url" id="link" placeholder="Paste a page or video link" required aria-label="Video link">
+    <button>Check</button>
+  </form>
+  <p id="blocked" class="quiet" hidden><span id="blocked-text"></span> <button type="button" id="undo" class="link">Undo</button></p>
+  <details id="settings">
+    <summary>Settings</summary>
+    <label><input type="checkbox" id="block"> Block popups on this site</label>
+    <label><input type="checkbox" id="login"> Use my browser login</label>
+    <p class="quiet hint">Sends this site's cookies to your own yt-dlp, nowhere else.</p>
+    <label><input type="checkbox" id="all"> Show earlier pages and segments</label>
+    <p id="versions" class="quiet"></p>
+    <button type="button" id="sites" class="link">Sites with blocking off</button>
+  </details>
+  <script src="types.js"></script>
+  <script src="streams.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

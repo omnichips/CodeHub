@@ -32,6 +32,12 @@
             background: rgba(99, 102, 241, 0.5);
             border-radius: 3px;
         }
+
+        /* The board scrolls when pinched bigger than the screen. One finger pans (natively); the page itself never zooms.
+           margin:auto centres a small board but lets a big one scroll all the way to its left/top edge. */
+        #board { overflow: auto; max-height: 70dvh; touch-action: pan-x pan-y; overscroll-behavior: contain; }
+        #gameCanvas { margin: auto; flex: none; }
+        button { touch-action: manipulation; }
     </style>
 </head>
 <body class="min-h-screen text-slate-100 flex flex-col justify-between items-center p-2 sm:p-4 select-none overflow-x-hidden">
@@ -62,12 +68,7 @@
             </div>
             
             <!-- Quick Reset & Action Panel -->
-            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                <!-- Mobile Flag Mode Toggle Button -->
-                <button id="flagModeBtn" onclick="toggleMobileFlagMode()" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 rounded-xl transition-all duration-150">
-                    <span id="flagIndicatorText" class="text-xs font-semibold uppercase text-slate-400">Flag Mode: Off</span>
-                    <span id="flagIcon" class="text-sm">⛏️</span>
-                </button>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
 
                 <button onclick="initGame()" class="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 active:scale-95 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all duration-150">
                     <span class="text-lg" id="smileyState">😀</span>
@@ -92,9 +93,11 @@
         </div>
 
         <!-- Interactive Canvas Holder with Responsive Sizing Container -->
-        <div class="w-full flex justify-center items-center overflow-hidden bg-slate-950 rounded-xl border border-slate-800 p-2 relative">
-            <canvas id="gameCanvas" class="max-w-full block select-none h-auto transition-shadow duration-300"></canvas>
-            
+        <div class="relative">
+        <div id="board" class="w-full flex bg-slate-950 rounded-xl border border-slate-800 p-2">
+            <canvas id="gameCanvas" class="block select-none transition-shadow duration-300"></canvas>
+        </div>
+
             <!-- Beautiful Screen overlay for Game Over / Victory States -->
             <div id="gameOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 opacity-0 pointer-events-none transition-all duration-300">
                 <span id="overlayEmoji" class="text-5xl animate-bounce">🏆</span>
@@ -106,6 +109,12 @@
             </div>
         </div>
 
+        <!-- Flag Mode toggle: big and right under the board, where a thumb reaches it -->
+        <button id="flagModeBtn" onclick="toggleMobileFlagMode()" class="w-full flex items-center justify-center gap-3 py-4 bg-slate-800 hover:bg-slate-700 active:scale-95 border-2 border-slate-700 rounded-xl transition-all duration-150">
+            <span id="flagIcon" class="text-2xl">⛏️</span>
+            <span id="flagIndicatorText" class="text-base font-bold uppercase tracking-wider text-slate-400">Flag Mode: OFF</span>
+        </button>
+
         <!-- Helpful Interactive Tips/Instructions Footer -->
         <footer class="text-[11px] text-slate-500 flex flex-col gap-1 text-center bg-slate-950/30 p-2.5 rounded-lg">
             <div class="hidden sm:flex justify-around text-slate-400">
@@ -114,7 +123,7 @@
                 <span>⚡ <b class="text-slate-300">Quick-dig:</b> Click cleared digits to expand</span>
             </div>
             <div class="flex sm:hidden justify-center items-center text-slate-400">
-                <span>📱 Use <b class="text-slate-200">Flag Mode</b> toggle to switch tap behavior</span>
+                <span>📱 Tap to dig &bull; <b class="text-slate-200">Flag Mode</b> to flag &bull; Pinch to zoom, drag to move</span>
             </div>
         </footer>
     </main>
@@ -176,16 +185,18 @@
         ];
 
         // Ensure canvas sizing adapts responsively
+        // The cell size that fits the whole board on screen; pinching multiplies it by boardZoom (1 = fits).
+        let fitCellSize = baseCellSize;
+        let boardZoom = 1;
+        const FINGER_CELL = 44; // pinching stops once a cell is this big
+        const maxZoom = () => Math.max(1, FINGER_CELL / fitCellSize);
+
         function resizeCanvasToFit() {
             const containerWidth = canvas.parentElement.clientWidth - 16; // Margin padding offsets
-            const optimalWidth = gridCols * baseCellSize;
-            
-            if (optimalWidth > containerWidth) {
-                // Shrink cell size fluidly to maintain full visibility on mobile viewports
-                currentCellSize = Math.floor(containerWidth / gridCols);
-            } else {
-                currentCellSize = baseCellSize;
-            }
+            // Shrink cells to fit the width; a board taller than #board's max-height scrolls inside it.
+            fitCellSize = Math.max(8, Math.min(baseCellSize, Math.floor(containerWidth / gridCols)));
+            boardZoom = Math.min(boardZoom, maxZoom());
+            currentCellSize = Math.round(fitCellSize * boardZoom);
 
             canvas.width = gridCols * currentCellSize;
             canvas.height = gridRows * currentCellSize;
@@ -258,6 +269,14 @@
 
             particleExplosions = [];
             victoryFloaters = [];
+
+            // A wide board (Hard, 16x30) is laid out tall on a portrait screen so its cells come out bigger.
+            // Only at the start of a game: turning the phone mid-game keeps the board as it is.
+            const preset = DIFFICULTY_PRESETS[currentDifficulty];
+            const tall = window.innerHeight > window.innerWidth;
+            gridRows = tall ? Math.max(preset.rows, preset.cols) : preset.rows;
+            gridCols = tall ? Math.min(preset.rows, preset.cols) : preset.cols;
+            boardZoom = 1;
 
             // Generate multidimensional board arrays
             grid = [];
@@ -725,8 +744,8 @@
             const clickX = clientX - rect.left;
             const clickY = clientY - rect.top;
 
-            const c = Math.floor(clickX / currentCellSize);
-            const r = Math.floor(clickY / currentCellSize);
+            const c = Math.floor(clickX / (rect.width / gridCols));
+            const r = Math.floor(clickY / (rect.height / gridRows));
 
             // Verify bounds
             if (r >= 0 && r < gridRows && c >= 0 && c < gridCols) {
@@ -755,8 +774,8 @@
             const clickX = clientX - rect.left;
             const clickY = clientY - rect.top;
 
-            const c = Math.floor(clickX / currentCellSize);
-            const r = Math.floor(clickY / currentCellSize);
+            const c = Math.floor(clickX / (rect.width / gridCols));
+            const r = Math.floor(clickY / (rect.height / gridRows));
 
             if (r >= 0 && r < gridRows && c >= 0 && c < gridCols) {
                 if (!activeHoveredCell || activeHoveredCell.row !== r || activeHoveredCell.col !== c) {
@@ -794,22 +813,59 @@
         });
 
         // Touch Listeners for flawless responsive tablet/phone experience
+        // A tap digs (or flags in Flag Mode). One finger drags the board around (the browser scrolls #board);
+        // two fingers pinch it bigger or smaller. A touch that panned or pinched is not a tap.
+        const board = document.getElementById('board');
+        let touchStart = null; // { x, y } of the first finger; null once it is no longer a tap
+        let pinch = null;      // { dist, zoom } when two fingers came down
+
+        const fingerGap = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
         canvas.addEventListener('touchstart', (e) => {
-            // Prevent zooming/pinching issues
+            if (e.touches.length === 1) {
+                touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                trackHoverCoordinates(touchStart.x, touchStart.y);
+            } else {
+                touchStart = null;
+                pinch = e.touches.length === 2 ? { dist: fingerGap(e.touches), zoom: boardZoom } : null;
+            }
+        }, { passive: true });
+
+        canvas.addEventListener('touchmove', (e) => {
+            const t = e.touches[0];
+            if (touchStart && Math.hypot(t.clientX - touchStart.x, t.clientY - touchStart.y) > 10) {
+                touchStart = null; // a pan
+                activeHoveredCell = null;
+            }
+            if (!pinch || e.touches.length !== 2) return;
             e.preventDefault();
-            const touch = e.touches[0];
-            trackHoverCoordinates(touch.clientX, touch.clientY);
+            const zoom = Math.min(maxZoom(), Math.max(1, pinch.zoom * fingerGap(e.touches) / pinch.dist));
+            if (Math.round(fitCellSize * zoom) === currentCellSize) return;
+            // Keep the spot between the fingers under the fingers while the board grows.
+            const rect = board.getBoundingClientRect();
+            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+            const before = currentCellSize;
+            boardZoom = zoom;
+            resizeCanvasToFit();
+            const grow = currentCellSize / before;
+            board.scrollLeft = (board.scrollLeft + midX) * grow - midX;
+            board.scrollTop = (board.scrollTop + midY) * grow - midY;
         }, { passive: false });
 
         canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            if (e.changedTouches.length > 0) {
+            e.preventDefault(); // no mouse click after the touch, or every tap would act twice
+            if (e.touches.length === 0) pinch = null;
+            if (touchStart && e.changedTouches.length > 0) {
                 const touch = e.changedTouches[0];
                 handleBoardInteraction(touch.clientX, touch.clientY, mobileFlagMode);
             }
+            touchStart = null;
             activeHoveredCell = null;
             drawGrid();
         }, { passive: false });
+
+        canvas.addEventListener('touchcancel', () => { touchStart = null; pinch = null; });
 
         // Animation Loop for rendering canvas particles
         function animationFrameLoop() {

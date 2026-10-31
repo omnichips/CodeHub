@@ -9,6 +9,7 @@ const problems = (r) => validateRegistry(r).join(' | ');
 test('accepts a good registry, with or without apps', () => {
   assert.deepEqual(validateRegistry(reg(app(), app({ id: 'tetris-2', source: { type: 'static', dir: 'x', entry: 'tetris.html' }, folder: 'Games', icon: 'i.png' }))), []);
   assert.deepEqual(validateRegistry(reg()), []);
+  assert.deepEqual(validateRegistry(reg(app({ tag: 'WIP' }), app({ id: 'tool', source: { type: 'download', dir: 'x', file: 'tool.exe' }, confirm: ['Windows only.'] }))), []);
 });
 
 test('rejects ids that would make bad web addresses or clash', () => {
@@ -24,6 +25,9 @@ test('rejects missing or malformed fields', () => {
   assert.match(problems(reg(app({ icon: 'logo.gif' }))), /\.svg or \.png/);
   assert.match(problems(reg(app({ source: { type: 'php', dir: 'x' } }))), /source\.type/);
   assert.match(problems(reg(app({ source: { type: 'static' } }))), /source\.dir/);
+  assert.match(problems(reg(app({ source: { type: 'download', dir: 'x' } }))), /source\.file/);
+  for (const tag of ['', 'TOO LONG', 'SEVENSS', 5]) assert.match(problems(reg(app({ tag }))), /"tag"/, String(tag));
+  for (const confirm of ['Sure?', [''], [1]]) assert.match(problems(reg(app({ confirm }))), /"confirm"/, JSON.stringify(confirm));
   assert.match(problems(reg(null)), /must be an object/);
 });
 
