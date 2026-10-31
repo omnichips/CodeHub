@@ -15,6 +15,10 @@ loading screen in `splash.html`, which the build also puts at the top of every a
 | VolumeBoost (Windows tray volume booster, Python) | `apps/VolumeBooster` | `/volumeboost/VolumeBoost.exe` | download |
 | Video Sniffer (Chrome extension; helper not shipped) | `apps/video-sniffer-extension` | `/videosniffer/video-sniffer.zip` | download |
 
+Tetrixia (`apps/tetrio`, `/tetrixia/`) and Bombsweeper are single-file static games, playable by touch. Tetrixia is an installable
+PWA that works offline: `sw.js` + `manifest.webmanifest`, and Tailwind, Font Awesome and the fonts live in `apps/tetrio/vendor/`
+(no CDN, except Supabase for multiplayer). Swipe controls are `bindTouch()`; the phone layout is the `max-width: 767px` CSS block.
+
 A `download` card opens a checklist (`confirm` in `apps.json`) before the file. `"tag": "WIP"` puts a yellow sticker on
 any card. VolumeBoost's exe is committed (`.gitignore` re-includes its `dist/`): rebuild it with PyInstaller from
 `VolumeBoost.spec`, then commit the new exe.

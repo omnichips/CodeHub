@@ -2,16 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#050508">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Tetrixia">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <script>
+        // The visible height. 100vh includes the part hidden behind a phone browser's address bar, which
+        // covered the bottom of the board; innerHeight is only what you can actually see.
+        const fitHeight = () => document.documentElement.style.setProperty('--app-h', innerHeight + 'px');
+        fitHeight();
+        addEventListener('resize', fitHeight);
+        addEventListener('orientationchange', fitHeight);
+        if (window.visualViewport) visualViewport.addEventListener('resize', fitHeight);
+    </script>
     <title>Tetrixia - Premium Singleplayer Tetris</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts for Orbitron/Rajdhani style typing -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind, fonts and icons are kept in vendor/ so the game works offline -->
+    <script src="vendor/tailwind.js"></script>
+    <link rel="stylesheet" href="vendor/fonts.css">
+    <link rel="stylesheet" href="vendor/fontawesome.css">
     <style>
         body {
             font-family: 'Rajdhani', sans-serif;
@@ -98,7 +111,7 @@
             text-shadow: 0 0 14px rgba(34, 211, 238, 0.55);
         }
         /* Phones: 100vh hides the bottom behind Safari's toolbar; dvh does not. */
-        body { height: 100dvh; }
+        body { height: var(--app-h, 100dvh); padding-bottom: env(safe-area-inset-bottom); }
         button { touch-action: manipulation; }
         #gameCanvas { object-fit: contain; }
         /* Pause has a key on a keyboard; on a touch screen it needs a button. */
@@ -110,38 +123,48 @@
             #gameCanvas { height: calc(100dvh - 100px); width: auto; }
             #nextCanvas { height: min(380px, calc(100dvh - 140px)); object-fit: contain; }
         }
-        /* Portrait phones: hold, stats and the next 3 pieces in a strip above the board; opponents in a row below it. */
+        /* Portrait phones: a thin strip on top (small hold + all stats in ONE row), the board with a small
+           next queue on its right, opponents in a row below. */
         @media (max-width: 767px) {
-            header { height: 48px !important; padding: 0 10px !important; }
-            header .space-x-6 > * + * { margin-left: 8px !important; }
-            #highScoreLabel { font-size: 9px; }
-            #headerHighScore { font-size: 1rem; }
+            header { height: 44px !important; padding: 0 10px !important; }
+            header .space-x-6 > * + * { margin-left: 4px !important; }
+            header button { padding: 4px !important; }
+            #highScoreLabel { font-size: 8px; }
+            #headerHighScore { font-size: 0.95rem; }
             footer { display: none !important; }
             #gameWorkspace {
                 display: grid;
-                grid-template-columns: 1fr auto;
+                grid-template-columns: minmax(0, 1fr) auto;
                 grid-template-rows: auto minmax(0, 1fr) auto;
-                gap: 12px 8px;
-                padding: 14px 8px 8px;
+                gap: 8px 6px;
+                padding: 8px 8px 6px;
                 align-items: stretch;
                 touch-action: none; /* swipes steer the piece instead of scrolling or zooming */
             }
-            #leftPanel { grid-area: 1 / 1; flex-direction: row; gap: 8px; width: auto; margin: 0; }
+            /* the little HOLD / STATS / NEXT tags would only cost height */
+            #leftPanel .absolute, #rightPanel .absolute { display: none; }
+
+            #leftPanel { grid-area: 1 / 1 / 2 / 3; flex-direction: row; gap: 6px; width: auto; margin: 0; }
             #leftPanel > * { margin-top: 0 !important; }
-            #leftPanel > :first-child { width: 64px; flex: none; padding: 6px; }
+            #leftPanel > :first-child { width: 40px; flex: none; padding: 3px; }
+            #leftPanel > :first-child > div { margin-top: 0; }
             #holdKeyLabel { display: none; }
-            #leftPanel > :last-child { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: center; gap: 2px 10px; padding: 8px; }
-            #leftPanel > :last-child span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            #leftPanel > :last-child > * { margin-top: 0 !important; }
+            /* stats: score, lines, level, time side by side */
+            #leftPanel > :last-child { flex: 1; min-width: 0; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 4px; padding: 3px 8px; }
+            #leftPanel > :last-child > * { margin: 0 !important; min-width: 0; }
             #leftPanel > :last-child > :nth-child(n+5) { display: none; } /* divider, PPS and APM */
-            #leftPanel > :last-child > :nth-child(4) { grid-column: 1 / -1; }
-            #leftPanel .text-xs { font-size: 9px; }
-            #statScore { font-size: 1.1rem; }
-            #statLines, #statLevel, #statTime { font-size: 0.95rem; }
+            #leftPanel > :last-child > :nth-child(4) { display: contents; } /* level and time join the row */
+            #leftPanel > :last-child > :nth-child(4) > * { min-width: 0; }
+            #leftPanel .text-xs { font-size: 7px; line-height: 1.2; white-space: nowrap; }
+            #leftPanel > :last-child span { white-space: nowrap; }
+            #statScore { font-size: 0.85rem; line-height: 1.1; }
+            #statLines, #statLevel, #statTime { font-size: 0.8rem; line-height: 1.1; }
+
             #rightPanel { display: contents; }
-            #rightPanel > :first-child { grid-area: 1 / 2; padding: 6px; }
-            #nextCanvas { width: 132px; height: 56px; }
-            #boardContainer { grid-area: 2 / 1 / 3 / 3; min-height: 0; height: 100%; justify-content: center; }
+            #rightPanel > :first-child { grid-area: 2 / 2; align-self: start; padding: 3px; }
+            #rightPanel > :first-child > div { margin-top: 0; padding: 2px; }
+            #nextCanvas { width: 44px; height: 132px; }
+            #boardContainer { grid-area: 2 / 1; min-height: 0; height: 100%; justify-content: center; }
             #playfieldWrapper { height: 100%; max-width: 100%; }
             #gameCanvas { height: 100%; width: auto; max-width: 100%; }
             #opponentPanel { grid-area: 3 / 1 / 4 / 3; margin: 0 !important; flex-direction: row; align-items: center; }
@@ -150,7 +173,7 @@
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col justify-between text-gray-100 select-none">
+<body class="w-screen flex flex-col justify-between text-gray-100 select-none">
 
     <!-- Header / Top Bar -->
     <header class="w-full h-14 border-b border-purple-900/20 px-6 flex items-center justify-between bg-black/80 z-10">
@@ -272,6 +295,10 @@
                     <button id="multiplayerBtn" class="w-full py-2.5 bg-zinc-900 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 font-bold tracking-wider rounded-lg transition-colors">
                         <i class="fa-solid fa-users mr-2"></i> MULTIPLAYER ROOM
                     </button>
+                    <button id="installBtn" class="hidden w-full py-2 text-sm bg-zinc-900 hover:bg-cyan-900/40 border border-cyan-500/30 text-cyan-300 font-bold tracking-wider rounded-lg transition-colors">
+                        <i class="fa-solid fa-mobile-screen mr-2"></i> ADD TO HOME SCREEN
+                    </button>
+                    <p id="installHint" class="hidden text-xs text-cyan-200 -mt-2"></p>
                     <button id="startBtn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-lg tracking-wider rounded-lg shadow-lg hover:shadow-purple-500/20 active:scale-98 transition-all duration-150">
                         START GAME
                     </button>
@@ -2463,15 +2490,16 @@
                 this.nextCtx.fillStyle = '#020205';
                 this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
 
-                // On a phone the queue is a short strip (see the CSS): 3 pieces side by side instead of 5 stacked.
-                const strip = matchMedia('(max-width: 767px)').matches;
-                if (strip !== (this.nextCanvas.width > this.nextCanvas.height)) {
-                    [this.nextCanvas.width, this.nextCanvas.height] = strip ? [264, 112] : [100, 380];
+                // On a phone the queue is a narrow column of 3 small pieces (see the CSS), not 5 big ones.
+                const small = matchMedia('(max-width: 767px)').matches;
+                if (small !== this.nextIsSmall) {
+                    this.nextIsSmall = small;
+                    [this.nextCanvas.width, this.nextCanvas.height] = small ? [44, 132] : [100, 380];
                     this.nextCtx.fillStyle = '#020205';
                     this.nextCtx.fillRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
                 }
                 const blockRenderHeight = 70;
-                for (let i = 0; i < (strip ? 3 : 5); i++) {
+                for (let i = 0; i < (small ? 3 : 5); i++) {
                     const nextType = this.nextQueue[i];
                     if (!nextType) continue;
 
@@ -2480,10 +2508,10 @@
 
                     const bw = defaultMatrix[0].length;
                     const bh = defaultMatrix.length;
-                    if (strip) {
-                        const size = 20, slot = this.nextCanvas.width / 3;
+                    if (small) {
+                        const size = 9, slot = this.nextCanvas.height / 3;
                         this.nextCtx.save();
-                        this.nextCtx.translate(i * slot + (slot - bw * size) / 2, (this.nextCanvas.height - bh * size) / 2);
+                        this.nextCtx.translate((this.nextCanvas.width - bw * size) / 2, i * slot + (slot - bh * size) / 2);
                         this.drawBlockGroup(this.nextCtx, 0, 0, defaultMatrix, nextColor, size);
                         this.nextCtx.restore();
                         continue;
@@ -2811,6 +2839,28 @@
         // APPLICATION INITIALIZATION ENTRYPOINT
         // ============================================================================
         let gameInstance = null;
+
+        // Offline: sw.js keeps every file of the game after the first visit (it does nothing unbuilt, see sw.js).
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+
+        // Add to Home Screen. Android/Chrome offers a real prompt; iPhone Safari has none, so we explain the Share menu.
+        (() => {
+            const btn = document.getElementById('installBtn');
+            const hint = document.getElementById('installHint');
+            if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return; // already installed
+            let prompt = null;
+            addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); prompt = e; btn.classList.remove('hidden'); });
+            addEventListener('appinstalled', () => { btn.classList.add('hidden'); hint.classList.add('hidden'); });
+            const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (ios) btn.classList.remove('hidden');
+            btn.addEventListener('click', async () => {
+                if (prompt) { prompt.prompt(); prompt = null; return; }
+                hint.textContent = ios ? 'Tap the Share button in Safari, then "Add to Home Screen".' : 'Open your browser menu, then "Install app" or "Add to Home screen".';
+                hint.classList.remove('hidden');
+            });
+        })();
 
         window.addEventListener('load', () => {
             gameInstance = new GameEngine();
