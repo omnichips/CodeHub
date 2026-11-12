@@ -148,6 +148,7 @@ function commit() {
     }
   }
   saveDraft(s);
+  if (panel === 'export') prepare(); // the collage changed under an open export sheet
   refresh();
 }
 function travel(step) {
@@ -487,6 +488,7 @@ function select(t) {
 function openPanel(name) {
   if (state.selection.type === 'cell') state.selection = NONE; // the photo sheet is making way
   panel = panel === name ? null : name;
+  if (panel === 'export') prepare();
   refresh();
 }
 
@@ -979,32 +981,50 @@ async function output() {
   full.width = 0;
   return files;
 }
-$('#save').addEventListener('click', async () => {
-  const files = await output();
+// The files are made when the export sheet opens (and again when the collage or format changes), so a tap on
+// Share / Save to Photos opens the share menu at once: Safari refuses it if the tap was more than a moment ago.
+let ready = null;
+const prepare = () => (ready = output());
+function download(files) {
   files.forEach((f, i) => setTimeout(() => { // spaced out: browsers drop downloads fired at the same moment
     const url = URL.createObjectURL(f);
     Object.assign(document.createElement('a'), { href: url, download: f.name }).click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }, i * 400));
   toast(files.length > 1 ? `Saved ${files.length} images` : 'Saved');
-});
-$('#share').addEventListener('click', async () => {
-  try {
-    const files = await output();
-    if (!navigator.canShare?.({ files })) return toast('Sharing did not work here. Use Save.');
-    await navigator.share({ files });
-    toast('Shared');
-  } catch (err) {
-    if (err.name !== 'AbortError') toast('Sharing did not work here. Use Save.'); // cancelling says nothing
-  }
-});
-try {
-  $('#share').hidden = !navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] });
-} catch {
-  $('#share').hidden = true;
 }
-radios('format', () => ($('#qualityRow').hidden = !$('#jpg').checked));
+async function share(done) {
+  try {
+    const files = await (ready ?? prepare());
+    if (!navigator.canShare?.({ files })) return toast('Sharing did not work here.');
+    await navigator.share({ files });
+    toast(done);
+  } catch (err) {
+    if (err.name !== 'AbortError') toast('Sharing did not work here.'); // cancelling says nothing
+  }
+}
+// iPhone: a web page cannot write to Photos itself, and a download lands in Files. The share menu's
+// "Save Image" puts it straight in Photos, so there Save opens that menu.
+const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let canShareFiles = false;
+try {
+  canShareFiles = !!navigator.canShare?.({ files: [new File([new Uint8Array([137, 80, 78, 71])], 'a.png', { type: 'image/png' })] });
+} catch {}
+const toPhotos = ios && canShareFiles;
+$('#share').hidden = !canShareFiles || toPhotos; // on iPhone the one button does both
+if (toPhotos) {
+  $('#save').textContent = 'Save to Photos';
+  $('#save').classList.add('primary');
+  $('#saveNote').hidden = false;
+}
+$('#save').addEventListener('click', async () => (toPhotos ? share('Saved') : download(await (ready ?? prepare()))));
+$('#share').addEventListener('click', () => share('Shared'));
+radios('format', () => {
+  $('#qualityRow').hidden = !$('#jpg').checked;
+  prepare();
+});
 $('#quality').addEventListener('input', () => ($('#qualityValue').textContent = $('#quality').value));
+$('#quality').addEventListener('change', prepare);
 
 // ---------- opening screen: continue the saved collage, install ----------
 const openEditor = () => {
