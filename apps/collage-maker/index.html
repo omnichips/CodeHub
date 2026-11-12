@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Collage Maker</title>
+  <meta name="description" content="Make photo collages for Instagram on your phone. Works offline; photos never leave the device.">
+  <meta name="theme-color" content="#f6f1fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e0a16" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="picker">
+    <div class="top">
+      <h1>Pick a layout</h1>
+      <button id="install" hidden>Install app</button>
+    </div>
+    <p id="installHint" class="note" hidden></p>
+    <div id="resume" class="card" hidden>
+      <p><strong>Continue your last collage?</strong> Picking a layout starts a new one.</p>
+      <div class="row"><button id="continue" class="primary">Continue</button><button id="startNew">Start new</button></div>
+    </div>
+    <div class="sizes" id="pickerSizes"></div>
+    <div class="thumbs" id="pickerLayouts"></div>
+  </main>
+
+  <div id="editor" hidden>
+    <header>
+      <button id="undo" aria-label="Undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></svg></button>
+      <button id="redo" aria-label="Redo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" /></svg></button>
+      <span class="spacer"></span>
+      <button id="export" class="primary">Export</button>
+    </header>
+
+    <div id="stage"><canvas id="c" aria-label="Collage preview"></canvas><div id="marks" aria-hidden="true"></div></div>
+    <button id="add" class="primary">+ Add photos</button>
+
+    <div id="sheet" hidden>
+      <section class="panel" data-panel="layout">
+        <div class="sizes" id="sizes"></div>
+        <div class="thumbs" id="layouts"></div>
+        <div class="row"><button id="shuffle">Shuffle photos</button></div>
+        <div class="row"><label for="free">Freeform</label><input type="checkbox" id="free"><span class="spacer"></span><button id="addFrame" class="free">+ Add frame</button></div>
+        <p class="note free">Drag a frame to move it, the corner dot to resize, two fingers to turn. Tap a frame for layer order.</p>
+      </section>
+
+      <section class="panel" data-panel="style">
+        <label class="row"><span>Gap</span><input type="range" id="gap" min="0" max="60"></label>
+        <label class="row"><span>Padding</span><input type="range" id="padding" min="0" max="120"></label>
+        <label class="row"><span>Corners</span><input type="range" id="radius" min="0" max="160"></label>
+        <div class="row"><span>Background</span>
+          <div class="seg">
+            <label><input type="radio" name="bg" value="solid"><span>Solid</span></label>
+            <label><input type="radio" name="bg" value="gradient"><span>Gradient</span></label>
+          </div>
+        </div>
+        <div class="row"><span>Colors</span>
+          <input type="color" id="c1" aria-label="Background color">
+          <input type="color" id="c2" class="grad" aria-label="Second gradient color">
+        </div>
+        <label class="row grad"><span>Angle</span><input type="range" id="angle" min="0" max="360"></label>
+      </section>
+
+      <section class="panel" data-panel="text">
+        <button id="addText">+ Add caption</button>
+        <div id="textEdit">
+          <div class="row"><textarea id="textValue" rows="2" aria-label="Caption text" autocomplete="off"></textarea></div>
+          <div class="row">
+            <div class="seg" role="radiogroup" aria-label="Caption look">
+              <label><input type="radio" name="look" value="none"><span>Plain</span></label>
+              <label><input type="radio" name="look" value="shadow"><span>Shadow</span></label>
+              <label><input type="radio" name="look" value="outline"><span>Outline</span></label>
+              <label><input type="radio" name="look" value="box"><span>Box</span></label>
+            </div>
+          </div>
+          <div class="row"><span>Colors</span><input type="color" id="color" aria-label="Text color"><span id="lookColor"><input type="color" id="color2" aria-label="Outline or box color"></span></div>
+          <label class="row"><span>Font</span><select id="font"></select></label>
+          <label class="row"><span>Size</span><input type="range" id="size" min="24" max="400"></label>
+          <div class="row"><span class="spacer"></span><button id="delText">Delete caption</button></div>
+        </div>
+      </section>
+
+      <section class="panel" data-panel="stickers">
+        <div class="row" id="stickerEdit"><span>Sticker</span><span class="spacer"></span><button id="delSticker">Delete</button></div>
+        <div class="emoji" id="emoji"></div>
+      </section>
+
+      <section class="panel" data-panel="photo">
+        <div class="row"><strong>Photo</strong><span class="spacer"></span><button id="closePhoto">Done</button></div>
+        <div class="row free"><span>Drag moves</span>
+          <div class="seg">
+            <label><input type="radio" name="adjust" value="frame"><span>Frame</span></label>
+            <label><input type="radio" name="adjust" value="photo"><span>Photo</span></label>
+          </div>
+        </div>
+        <div id="photoOnly">
+          <label class="row"><span>Zoom</span><input type="range" id="zoom" min="1" max="5" step="0.01"></label>
+          <div class="row"><label for="rotate">Rotate</label><input type="range" id="rotate" min="-180" max="180"><button id="resetRotate">Reset</button></div>
+          <label class="row"><span>Brightness</span><input type="range" id="brightness" min="0" max="200"></label>
+          <label class="row"><span>Contrast</span><input type="range" id="contrast" min="0" max="200"></label>
+          <label class="row"><span>Saturation</span><input type="range" id="saturation" min="0" max="200"></label>
+          <div class="row"><label for="bw">B&amp;W</label><input type="checkbox" id="bw"><span class="spacer"></span><button id="resetFilters">Reset filters</button></div>
+          <div class="row"><button id="flip">Flip</button><button id="resetPhoto" title="Or double-tap the photo">Reset photo</button></div>
+        </div>
+        <div class="row"><button id="replace">Replace photo</button><button id="remove">Remove photo</button></div>
+        <div class="row free"><button id="front">To front</button><button id="back">To back</button><button id="delFrame">Delete frame</button></div>
+      </section>
+
+      <section class="panel" data-panel="export">
+        <div class="row"><span>Format</span>
+          <div class="seg">
+            <label><input type="radio" name="format" value="png" checked><span>PNG</span></label>
+            <label><input type="radio" name="format" value="jpg" id="jpg"><span>JPG</span></label>
+          </div>
+        </div>
+        <label class="row" id="qualityRow" hidden><span>Quality <output id="qualityValue">92</output>%</span><input type="range" id="quality" min="40" max="100" value="92"></label>
+        <p class="note" id="slidesNote" hidden></p>
+        <div class="row"><button id="share" class="primary">Share</button><button id="save">Save</button></div>
+      </section>
+    </div>
+
+    <nav id="tabs">
+      <button data-tab="layout">Layout</button>
+      <button data-tab="style">Style</button>
+      <button data-tab="text">Text</button>
+      <button data-tab="stickers">Stickers</button>
+    </nav>
+  </div>
+
+  <input type="file" id="file" accept="image/*" hidden>
+  <canvas id="ghost" width="192" height="192" hidden></canvas>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

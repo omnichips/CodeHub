@@ -67,6 +67,13 @@
       "source": { "type": "vite", "dir": "apps/kindered/web" }
     },
     {
+      "id": "collage",
+      "name": "Collage Maker",
+      "color": "#c2255c",
+      "icon": "icon.svg",
+      "source": { "type": "static", "dir": "apps/collage-maker" }
+    },
+    {
       "id": "volumeboost",
       "name": "VolumeBoost",
       "color": "#fff4e6",

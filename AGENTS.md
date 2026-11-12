@@ -19,6 +19,11 @@ Tetrixia (`apps/tetrio`, `/tetrixia/`) and Bombsweeper are single-file static ga
 PWA that works offline: `sw.js` + `manifest.webmanifest`, and Tailwind, Font Awesome and the fonts live in `apps/tetrio/vendor/`
 (no CDN, except Supabase for multiplayer). Swipe controls are `bindTouch()`; the phone layout is the `max-width: 767px` CSS block.
 
+Collage Maker (`apps/collage-maker`, `/collage/`) is a static, offline PWA with no dependencies: `app.js` holds the state,
+one `draw()` for preview and export, gestures and undo; `cover.js` is the cover-fit maths, tested by `test/collage.test.mjs`.
+All spec phases are built, plus carousel sizes (2/3 slides, exported one file per slide) and a draft kept in IndexedDB
+(`collage-maker` db; the opening screen offers Continue / Start new). The breathing "+" over empty cells is DOM (`#marks`), not canvas.
+
 A `download` card opens a checklist (`confirm` in `apps.json`) before the file. `"tag": "WIP"` puts a yellow sticker on
 any card. VolumeBoost's exe is committed (`.gitignore` re-includes its `dist/`): rebuild it with PyInstaller from
 `VolumeBoost.spec`, then commit the new exe.
