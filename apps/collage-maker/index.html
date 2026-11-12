@@ -37,6 +37,11 @@
       <button id="export" class="primary">Export</button>
     </header>
 
+    <div id="pager">
+      <div id="strip" aria-label="Collages in this set. Hold one and drag to reorder."></div>
+      <button id="newPage" aria-label="New collage">+ New collage</button>
+      <button id="delPage" aria-label="Delete this collage"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></button>
+    </div>
     <div id="stage"><canvas id="c" aria-label="Collage preview"></canvas><div id="marks" aria-hidden="true"></div></div>
     <button id="add" class="primary">+ Add photos</button>
 
@@ -115,6 +120,12 @@
       </section>
 
       <section class="panel" data-panel="export">
+        <div class="row" id="whichRow"><span>Export</span>
+          <div class="seg">
+            <label><input type="radio" name="which" value="one" checked><span>This one</span></label>
+            <label><input type="radio" name="which" value="all"><span>All <output id="allCount"></output></span></label>
+          </div>
+        </div>
         <div class="row"><span>Format</span>
           <div class="seg">
             <label><input type="radio" name="format" value="png" checked><span>PNG</span></label>
@@ -126,6 +137,7 @@
         <p class="note" id="resNote"></p>
         <p class="note" id="slidesNote" hidden></p>
         <div class="row"><button id="share" class="primary">Share</button><button id="save">Save</button></div>
+        <p class="note" id="exportProgress" role="status" hidden></p>
         <p class="note" id="saveNote" hidden>Opens the share menu: tap <strong>Save Image</strong> to put it in Photos.</p>
       </section>
     </div>

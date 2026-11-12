@@ -23,6 +23,8 @@ Collage Maker (`apps/collage-maker`, `/collage/`) is a static, offline PWA with 
 one `draw()` for preview and export, gestures and undo; `cover.js` is the cover-fit maths, tested by `test/collage.test.mjs`.
 All spec phases are built, plus carousel sizes (2/3 slides, exported one file per slide) and a draft kept in IndexedDB
 (`collage-maker` db; the opening screen offers Continue / Start new). The breathing "+" over empty cells is DOM (`#marks`), not canvas.
+A collage is one page of a set (`state.pages`, at most 10) sharing canvas, layout and style; the page on screen lives in
+the top-level `PAGE_KEYS` fields, so call `stash()` before reading `state.pages`. Picking more photos than empty cells makes new pages.
 
 A `download` card opens a checklist (`confirm` in `apps.json`) before the file. `"tag": "WIP"` puts a yellow sticker on
 any card. VolumeBoost's exe is committed (`.gitignore` re-includes its `dist/`): rebuild it with PyInstaller from

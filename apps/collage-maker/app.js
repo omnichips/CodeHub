@@ -12,11 +12,13 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
 // Photos are shrunk on import to save memory: more when the layout has many cells (each is small anyway),
 // less with one or two cells so a 2x export stays sharp. Phones that report little memory always get the small size.
-// ponytail: chosen from the layout at import time; switching from 3x3 to 1 photo afterwards keeps the smaller copies.
-function importEdge() {
-  if ((navigator.deviceMemory ?? 8) <= 2) return 2400;
-  const n = state.cells.length;
-  return n <= 2 ? 3600 : n <= 4 ? 3000 : 2400;
+// With many collages the photos together are held to about 300 MB (4 bytes a pixel, photos about 4:3), so a set of
+// 10 does not run an iPhone out of memory.
+// ponytail: chosen at import time; switching from 3x3 to 1 photo afterwards keeps the smaller copies.
+function importEdge(adding = 1) {
+  const n = state.cells.length, byLayout = (navigator.deviceMemory ?? 8) <= 2 ? 2400 : n <= 2 ? 3600 : n <= 4 ? 3000 : 2400;
+  const total = allPhotoIds().length + adding;
+  return Math.min(byLayout, Math.max(1600, Math.floor(Math.sqrt(3e8 / (3 * total)))));
 }
 // Every canvas draws in Display P3, the iPhone camera's colour range, so vivid colours survive the export.
 // Browsers without it ignore the option and use sRGB.
@@ -76,9 +78,33 @@ const state = {
   stickers: [],
   free: false, // freeform: each cell has its own frame in frames[i] instead of the layout's rect
   frames: [], // { cx, cy, w, h, rotate, z } in canvas px
-  photos: {}, // id -> ImageBitmap (or canvas)
+  // A set of collages that share canvas, layout and style. The one on screen lives in the fields above
+  // (PAGE_KEYS); pages[page] is brought up to date from them by stash() before anything reads the list.
+  pages: [],
+  page: 0,
+  photos: {}, // id -> canvas
   selection: NONE,
 };
+const PAGE_KEYS = ['cells', 'spare', 'texts', 'stickers', 'free', 'frames'];
+const MAX_PAGES = 10;
+const stash = () => (state.pages[state.page] = Object.fromEntries(PAGE_KEYS.map((k) => [k, state[k]])));
+const unstash = () => PAGE_KEYS.forEach((k) => (state[k] = state.pages[state.page][k]));
+const blankPage = () => ({ cells: layout().cells.map(() => emptyCell()), spare: [], texts: [], stickers: [], free: false, frames: [] });
+// Run fn with collage i on screen (for drawing it), then put the current one back.
+function withPage(i, fn) {
+  stash();
+  const was = state.page;
+  state.page = i;
+  unstash();
+  try {
+    return fn();
+  } finally {
+    stash();
+    state.page = was;
+    unstash();
+  }
+}
+const allPhotoIds = () => (stash(), state.pages.flatMap((p) => [...p.cells, ...p.spare].map((c) => c.photoId).filter(Boolean)));
 const blobs = {}; // id -> the picked file, kept to save the draft
 let panel = null; // which sheet is open: layout | style | text | stickers | photo | export
 let live = false; // a slider is being dragged: filters use a small copy
@@ -107,7 +133,7 @@ function store(name, mode, fn) {
     t.onerror = t.onabort = () => no(t.error);
   }));
 }
-const hasWork = () => state.cells.some((c) => c.photoId) || state.spare.length || state.texts.length || state.stickers.length;
+const hasWork = () => (stash(), state.pages.some((p) => p.cells.some((c) => c.photoId) || p.spare.length || p.texts.length || p.stickers.length));
 // ponytail: an emptied collage is not saved, so removing everything and reopening brings the last one back.
 function saveDraft(snapshot) {
   if (!hasWork()) return;
@@ -123,17 +149,20 @@ function saveDraft(snapshot) {
   navigator.storage?.persist?.().catch(() => {});
 }
 async function resume() {
-  const snapshot = await store('draft', 'readonly', (s) => s.get('current'));
-  JSON.parse(snapshot).forEach((v, i) => v !== undefined && (state[KEYS[i]] = v));
-  for (const id of new Set([...state.cells, ...state.spare].map((c) => c.photoId).filter(Boolean))) {
+  restore(await store('draft', 'readonly', (s) => s.get('current')));
+  const ids = [...new Set(allPhotoIds())], edge = importEdge(0);
+  for (const id of ids) {
     try {
       const saved = await store('photos', 'readonly', (s) => s.get(id)), b = new Blob([saved.data], { type: saved.type });
-      state.photos[id] = await loadPhoto(b);
+      state.photos[id] = await loadPhoto(b, edge);
       blobs[id] = b;
     } catch {} // a lost photo leaves its cell empty
   }
-  state.cells = state.cells.map((c) => (c.photoId && !state.photos[c.photoId] ? emptyCell() : c));
-  state.spare = state.spare.filter((c) => state.photos[c.photoId]);
+  for (const p of state.pages) {
+    p.cells = p.cells.map((c) => (c.photoId && !state.photos[c.photoId] ? emptyCell() : c));
+    p.spare = p.spare.filter((c) => state.photos[c.photoId]);
+  }
+  unstash();
   history = [];
   at = -1;
   state.cells.forEach((c, i) => c.photoId && pop(`cell:${c.photoId}`, i * 40));
@@ -141,10 +170,20 @@ async function resume() {
 }
 
 // ---------- undo / redo: snapshots of everything but the bitmaps ----------
-const KEYS = ['canvas', 'layoutId', 'style', 'cells', 'spare', 'texts', 'stickers', 'free', 'frames'];
+const KEYS = ['canvas', 'layoutId', 'style', 'pages', 'page'];
 let history = [], at = -1;
+const snapshot = () => (stash(), JSON.stringify(Object.fromEntries(KEYS.map((k) => [k, state[k]]))));
+function restore(text) {
+  let o = JSON.parse(text);
+  if (Array.isArray(o)) { // a draft saved before collages came in sets: one collage, fields in this order
+    const old = Object.fromEntries(['canvas', 'layoutId', 'style', ...PAGE_KEYS].map((k, i) => [k, o[i]]));
+    o = { ...old, pages: [{ ...blankPage(), ...Object.fromEntries(PAGE_KEYS.filter((k) => old[k] !== undefined).map((k) => [k, old[k]])) }], page: 0 };
+  }
+  for (const k of KEYS) if (o[k] !== undefined) state[k] = o[k];
+  unstash();
+}
 function commit() {
-  const s = JSON.stringify(KEYS.map((k) => state[k]));
+  const s = snapshot();
   if (s !== history[at]) {
     history = [...history.slice(Math.max(0, at - 48), at + 1), s]; // 50 steps
     at = history.length - 1;
@@ -158,6 +197,7 @@ function commit() {
     }
   }
   saveDraft(s);
+  drawThumbs();
   if (panel === 'export') { // the collage changed under an open export sheet
     showRes();
     prepare();
@@ -167,7 +207,8 @@ function commit() {
 function travel(step) {
   if (!history[at + step]) return;
   at += step;
-  JSON.parse(history[at]).forEach((v, i) => (state[KEYS[i]] = v));
+  restore(history[at]);
+  drawThumbs();
   select(null);
   saveDraft(history[at]);
 }
@@ -559,6 +600,12 @@ function refresh() {
   $('#redo').disabled = at >= history.length - 1;
   $('#add').hidden = panel === 'export' || state.cells.every((c) => c.photoId);
   $('#stage').classList.toggle('locked', panel === 'export');
+  const pages = Math.max(1, state.pages.length);
+  $('#newPage').textContent = pages < 2 ? '+ New collage' : '+';
+  $('#delPage').hidden = pages < 2;
+  markThumbs();
+  $('#whichRow').hidden = pages < 2;
+  $('#allCount').textContent = pages;
   $('#textEdit').hidden = sel !== 'text';
   $('#lookColor').hidden = !['outline', 'box'].includes(text?.look);
   $('#stickerEdit').hidden = sel !== 'sticker';
@@ -597,14 +644,19 @@ function toast(message) {
 }
 
 // ---------- layouts, sizes, shuffle, freeform ----------
-function setLayout(id) {
-  const photos = [...state.cells.filter((c) => c.photoId), ...state.spare];
+// The layout is shared by every collage in the set; onlyThis (leaving freeform) touches the one on screen.
+function setLayout(id, onlyThis = false) {
   state.layoutId = id;
-  state.free = false;
-  state.frames = [];
   const n = layout().cells.length;
-  state.cells = Array.from({ length: n }, (_, i) => photos[i] ?? emptyCell());
-  state.spare = photos.slice(n);
+  stash();
+  for (const p of onlyThis ? [state.pages[state.page]] : state.pages) {
+    const photos = [...p.cells.filter((c) => c.photoId), ...p.spare];
+    p.cells = Array.from({ length: n }, (_, i) => photos[i] ?? emptyCell());
+    p.spare = photos.slice(n);
+    p.free = false;
+    p.frames = [];
+  }
+  unstash();
   state.selection = NONE;
   state.cells.forEach((c, i) => c.photoId && pop(`cell:${c.photoId}`, i * 40));
   commit();
@@ -625,11 +677,12 @@ function setSize(s) {
   const { w, h } = state.canvas;
   if (s.w === w && s.h === h) return;
   const sx = s.w / w, sy = s.h / h;
-  for (const it of [...state.texts, ...state.stickers]) {
+  stash(); // every collage in the set changes size
+  for (const it of state.pages.flatMap((p) => [...p.texts, ...p.stickers])) {
     it.x *= sx;
     it.y *= sy;
   }
-  for (const f of state.frames) {
+  for (const f of state.pages.flatMap((p) => p.frames)) {
     f.cx *= sx;
     f.cy *= sy;
     f.w *= sx;
@@ -675,7 +728,7 @@ $('#shuffle').addEventListener('click', () => {
 });
 
 $('#free').addEventListener('change', () => {
-  if (!$('#free').checked) return setLayout(state.layoutId); // back to the preset
+  if (!$('#free').checked) return setLayout(state.layoutId, true); // back to the preset
   state.frames = state.cells.map((_, i) => ({ ...rect(i), z: i }));
   state.free = true;
   adjust = 'frame';
@@ -741,13 +794,23 @@ file.addEventListener('change', async () => {
   const files = [...file.files];
   file.value = '';
   if (!files.length) return;
-  const slots = pickFor !== null ? [pickFor] : state.cells.flatMap((c, i) => (c.photoId ? [] : [i]));
-  const cells = state.cells; // if the layout changes while photos load, they still land in these cells
+  // the cells to fill, held directly so photos still land right if the layout changes while they load.
+  // More photos than empty cells: new collages in the same layout take the rest, up to MAX_PAGES.
+  stash();
+  const targets = pickFor !== null ? [state.cells[pickFor]] : state.cells.filter((c) => !c.photoId);
+  let made = 0;
+  while (pickFor === null && targets.length < files.length && state.pages.length < MAX_PAGES) {
+    const p = blankPage();
+    state.pages.push(p);
+    targets.push(...p.cells);
+    made++;
+  }
+  const slots = targets, edge = importEdge(Math.min(files.length, targets.length));
   let failed = 0;
   // one at a time: decoding several big photos at once can run a phone out of memory
   for (const [n, f] of files.slice(0, slots.length).entries()) {
     try {
-      const bmp = await loadPhoto(f), id = uid('p'), cell = cells[slots[n]];
+      const bmp = await loadPhoto(f, edge), id = uid('p'), cell = targets[n];
       state.photos[id] = bmp;
       blobs[id] = f;
       // bytes, not the File itself: some Safari versions cannot keep a Blob in IndexedDB
@@ -763,7 +826,8 @@ file.addEventListener('change', async () => {
   commit();
   const extra = files.length - slots.length;
   if (failed) toast(`${failed} photo${failed === 1 ? '' : 's'} could not be opened`);
-  else if (extra > 0) toast(`${extra} extra photo${extra === 1 ? '' : 's'} not used`);
+  else if (extra > 0) toast(`${extra} extra photo${extra === 1 ? '' : 's'} not used${made || state.pages.length >= MAX_PAGES ? ` (${MAX_PAGES} collages at most)` : ''}`);
+  else if (made) toast(`Made ${made} more collage${made === 1 ? '' : 's'}. Use ‹ › to look through them`);
 });
 $('#add').addEventListener('click', () => pick());
 
@@ -887,6 +951,10 @@ cv.addEventListener('pointermove', (e) => {
     pts.set(e.pointerId, p);
     moveGhost(p);
     g.over = cellAt(p.x, p.y);
+    // over another collage's thumbnail: it will move there
+    const t = document.elementFromPoint(p.cx, p.cy)?.closest('.pthumb'), to = t ? thumbs$().indexOf(t) : -1;
+    g.overPage = to !== state.page ? to : -1;
+    thumbs$().forEach((b, i) => b.classList.toggle('drop', i === g.overPage));
   } else if (pts.size === 2) {
     const [a0, b0] = [...pts.values()];
     pts.set(e.pointerId, p);
@@ -904,10 +972,12 @@ cv.addEventListener('pointermove', (e) => {
 function release(e) {
   if (!pts.delete(e.pointerId) || !g || pts.size) return; // a finger still down carries on as a drag
   clearTimeout(g.timer);
-  const { target, moved, multi, swap, over } = g;
+  const { target, moved, multi, swap, over, overPage = -1 } = g;
   g = null;
   ghost.hidden = true;
-  if (swap) {
+  thumbs$().forEach((b) => b.classList.remove('drop'));
+  if (swap && e.type === 'pointerup' && overPage >= 0) movePhoto(target.id, overPage);
+  else if (swap) {
     if (e.type === 'pointerup' && over >= 0 && over !== target.id) {
       [state.cells[target.id], state.cells[over]] = [state.cells[over], state.cells[target.id]];
       for (const i of [target.id, over]) if (state.cells[i].photoId) pop(`cell:${state.cells[i].photoId}`);
@@ -1061,34 +1131,56 @@ for (const [button, type] of [['#delText', 'text'], ['#delSticker', 'sticker']])
 const MAX_PIXELS = 16e6;
 const maxScale = () => Math.min(2, Math.floor(Math.sqrt(MAX_PIXELS / (state.canvas.w * state.canvas.h)) * 2) / 2);
 const scale = () => Math.min(+$('#res').value, maxScale());
+const exportAll = () => state.pages.length > 1 && $('[name="which"][value="all"]').checked;
+// One file per collage (the one on screen, or the whole set) and per slide, in order.
+let outputRun = 0;
+function progress(run, text) { // only the newest run may write, so a superseded one does not flicker the note
+  if (run !== outputRun) return;
+  $('#exportProgress').hidden = !text;
+  $('#exportProgress').textContent = text;
+}
 async function output() {
   const { w, h } = state.canvas, n = slides(), s = scale(), jpg = $('#jpg').checked, type = jpg ? 'image/jpeg' : 'image/png';
-  const full = document.createElement('canvas'), sw = SLIDE * s;
-  full.width = w * s;
-  full.height = h * s;
-  draw(ctx2d(full), false, s); // full size, no outlines, guides or placeholders
+  const sw = SLIDE * s, all = exportAll(), run = ++outputRun;
   const d = new Date(), p = (v) => String(v).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
   const files = [];
-  for (let i = 0; i < n; i++) {
-    let c = full;
-    if (n > 1) {
-      c = document.createElement('canvas');
-      c.width = sw;
-      c.height = full.height;
-      ctx2d(c).drawImage(full, i * sw, 0, sw, full.height, 0, 0, sw, full.height);
+  stash();
+  const list = all ? state.pages.map((_, i) => i) : [state.page];
+  for (const [k, page] of list.entries()) {
+    if (list.length > 1) progress(run, `Making ${k + 1} of ${list.length}…`);
+    await new Promise(requestAnimationFrame); // let the note show before the work
+    const full = document.createElement('canvas');
+    full.width = w * s;
+    full.height = h * s;
+    withPage(page, () => draw(ctx2d(full), false, s)); // full size, no outlines, guides or placeholders
+    for (let i = 0; i < n; i++) {
+      let c = full;
+      if (n > 1) {
+        c = document.createElement('canvas');
+        c.width = sw;
+        c.height = full.height;
+        ctx2d(c).drawImage(full, i * sw, 0, sw, full.height, 0, 0, sw, full.height);
+      }
+      const blob = await new Promise((done) => c.toBlob(done, type, $('#quality').value / 100));
+      if (c !== full) c.width = 0;
+      files.push(new File([blob], `collage-${stamp}${all ? `-${page + 1}` : ''}${n > 1 ? `-${i + 1}` : ''}.${jpg ? 'jpg' : 'png'}`, { type }));
     }
-    const blob = await new Promise((done) => c.toBlob(done, type, $('#quality').value / 100));
-    if (c !== full) c.width = 0;
-    files.push(new File([blob], `collage-${stamp}${n > 1 ? `-${i + 1}` : ''}.${jpg ? 'jpg' : 'png'}`, { type }));
+    full.width = 0; // one collage's canvas at a time
   }
-  full.width = 0;
+  progress(run, list.length > 1 ? `${files.length} images ready` : '');
   return files;
 }
 // The files are made when the export sheet opens (and again when the collage or format changes), so a tap on
 // Share / Save to Photos opens the share menu at once: Safari refuses it if the tap was more than a moment ago.
+// The buttons wait (greyed) until the files are ready.
 let ready = null;
-const prepare = () => (ready = output());
+function prepare() {
+  const buttons = [$('#save'), $('#share')], p = (ready = output());
+  buttons.forEach((b) => (b.disabled = true));
+  p.finally(() => ready === p && buttons.forEach((b) => (b.disabled = false))).catch(() => {});
+  return p;
+}
 function download(files) {
   files.forEach((f, i) => setTimeout(() => { // spaced out: browsers drop downloads fired at the same moment
     const url = URL.createObjectURL(f);
@@ -1129,6 +1221,144 @@ radios('format', () => {
 });
 $('#quality').addEventListener('input', () => ($('#qualityValue').textContent = $('#quality').value));
 $('#quality').addEventListener('change', prepare);
+radios('which', prepare);
+
+// ---------- the set of collages: ‹ n / total ›, + New, delete ----------
+function goPage(i) {
+  if (i === state.page || !state.pages[i]) return;
+  const dir = Math.sign(i - state.page);
+  stash();
+  state.page = i;
+  unstash();
+  state.selection = NONE;
+  if (panel === 'photo') panel = null;
+  // the collage slides in from the side it lives on
+  cv.animate(reduce.matches ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateX(${dir * 24}px)` }, { opacity: 1, transform: 'none' }], { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+  if (panel === 'export') prepare();
+  refresh();
+}
+// The strip: a small drawing of every collage. Tap one to show it; hold one and drag it along to reorder.
+const strip = $('#strip');
+const thumbs$ = () => [...strip.children];
+let thumbTimer, marked = -1;
+function drawThumbs() {
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(() => { // after the edit settles, not on every commit of a fast run
+    stash();
+    const n = Math.max(1, state.pages.length), H = 104, s = H / state.canvas.h; // 2x the 52px shown, for sharpness
+    while (strip.children.length > n) strip.lastChild.remove();
+    while (strip.children.length < n) {
+      const b = document.createElement('button');
+      b.className = 'pthumb';
+      b.append(document.createElement('canvas'));
+      strip.append(b);
+    }
+    thumbs$().forEach((b, i) => {
+      const c = b.firstChild;
+      c.width = Math.round(state.canvas.w * s);
+      c.height = H;
+      if (state.pages[i]) withPage(i, () => draw(ctx2d(c), false, s));
+      b.setAttribute('aria-label', `Collage ${i + 1} of ${n}`);
+    });
+    marked = -1;
+    markThumbs();
+  }, 150);
+}
+function markThumbs() {
+  thumbs$().forEach((b, i) => b.setAttribute('aria-current', i === state.page));
+  if (marked !== state.page) strip.children[state.page]?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
+  marked = state.page;
+}
+function movePage(from, to) {
+  stash();
+  const current = state.pages[state.page], [p] = state.pages.splice(from, 1);
+  state.pages.splice(to, 0, p);
+  state.page = state.pages.indexOf(current);
+  commit();
+}
+let reorder = null, skipClick = false;
+strip.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('.pthumb');
+  if (!b) return;
+  reorder = { b, from: thumbs$().indexOf(b), x0: e.clientX, to: -1, active: false };
+  reorder.timer = setTimeout(() => {
+    reorder.active = true;
+    navigator.vibrate?.(15);
+    b.classList.add('lifted');
+    b.setPointerCapture(e.pointerId);
+  }, 350);
+});
+strip.addEventListener('pointermove', (e) => {
+  if (!reorder) return;
+  if (!reorder.active) {
+    if (Math.abs(e.clientX - reorder.x0) > 8) { // the strip is being scrolled
+      clearTimeout(reorder.timer);
+      reorder = null;
+    }
+    return;
+  }
+  reorder.b.style.translate = `${e.clientX - reorder.x0}px 0`;
+  reorder.to = thumbs$().findIndex((t) => { const r = t.getBoundingClientRect(); return t !== reorder.b && e.clientX >= r.left && e.clientX <= r.right; });
+  thumbs$().forEach((t, i) => t.classList.toggle('drop', i === reorder.to));
+});
+function endReorder() {
+  if (!reorder) return;
+  clearTimeout(reorder.timer);
+  const { b, from, to, active } = reorder;
+  reorder = null;
+  b.classList.remove('lifted');
+  b.style.translate = '';
+  thumbs$().forEach((t) => t.classList.remove('drop'));
+  if (!active) return; // a plain tap: the click below shows that collage
+  skipClick = true;
+  if (to >= 0) movePage(from, to);
+}
+strip.addEventListener('pointerup', endReorder);
+strip.addEventListener('pointercancel', endReorder);
+strip.addEventListener('touchmove', (e) => reorder?.active && e.preventDefault(), { passive: false }); // no scrolling mid-drag
+strip.addEventListener('contextmenu', (e) => e.preventDefault());
+strip.addEventListener('click', (e) => {
+  if (skipClick) return (skipClick = false);
+  const b = e.target.closest('.pthumb');
+  if (b) goPage(thumbs$().indexOf(b));
+});
+
+// A photo dropped on another collage's thumbnail moves there: into its first empty cell, or, when it is full,
+// swapping with the photo in the same spot.
+function movePhoto(i, to) {
+  stash();
+  const dest = state.pages[to], cell = state.cells[i], k = dest.cells.findIndex((c) => !c.photoId);
+  if (k >= 0) {
+    dest.cells[k] = cell;
+    state.cells[i] = emptyCell();
+  } else {
+    const same = Math.min(i, dest.cells.length - 1);
+    state.cells[i] = dest.cells[same];
+    dest.cells[same] = cell;
+    pop(`cell:${state.cells[i].photoId}`);
+  }
+  state.selection = NONE;
+  if (panel === 'photo') panel = null;
+  commit();
+  toast(k >= 0 ? `Moved to collage ${to + 1}` : `Collage ${to + 1} was full: swapped with its photo`);
+}
+$('#newPage').addEventListener('click', () => {
+  if (state.pages.length >= MAX_PAGES) return toast(`${MAX_PAGES} collages at most`);
+  stash();
+  state.pages.splice(state.page + 1, 0, blankPage()); // same layout and style, no photos yet
+  goPage(state.page + 1);
+  commit();
+});
+$('#delPage').addEventListener('click', () => {
+  if (state.pages.length < 2) return;
+  stash();
+  state.pages.splice(state.page, 1);
+  state.page = Math.min(state.page, state.pages.length - 1);
+  unstash();
+  state.selection = NONE;
+  commit();
+  toast('Collage deleted. Undo brings it back');
+});
 function showRes() {
   const s = scale(), n = slides();
   $('#res').max = maxScale();
