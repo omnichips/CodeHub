@@ -10,7 +10,17 @@ const rad = (d) => (d * Math.PI) / 180;
 const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180; // degrees into -180..180
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
-const MAX_EDGE = 2400; // photos are shrunk to this on import (memory)
+// Photos are shrunk on import to save memory: more when the layout has many cells (each is small anyway),
+// less with one or two cells so a 2x export stays sharp. Phones that report little memory always get the small size.
+// ponytail: chosen from the layout at import time; switching from 3x3 to 1 photo afterwards keeps the smaller copies.
+function importEdge() {
+  if ((navigator.deviceMemory ?? 8) <= 2) return 2400;
+  const n = state.cells.length;
+  return n <= 2 ? 3600 : n <= 4 ? 3000 : 2400;
+}
+// Every canvas draws in Display P3, the iPhone camera's colour range, so vivid colours survive the export.
+// Browsers without it ignore the option and use sRGB.
+const ctx2d = (c, options) => c.getContext('2d', { colorSpace: 'display-p3', ...options });
 // ponytail: a filtered photo is drawn from a copy at most this big, so it is a little softer than an unfiltered
 // one when zoomed far in. Raise it if that shows; each copy costs width*height*4 bytes.
 const FILTER_EDGE = 1600;
@@ -59,7 +69,7 @@ const NONE = { type: null, id: null };
 const state = {
   canvas: { w: 1080, h: 1350 },
   layoutId: '2x2',
-  style: { gap: 12, padding: 24, radius: 0, bg: { type: 'solid', c1: '#ffffff', c2: '#f783ac', angle: 135 } },
+  style: { gap: 0, padding: 0, radius: 0, bg: { type: 'solid', c1: '#ffffff', c2: '#f783ac', angle: 135, blur: 60, photoId: null } },
   cells: [],
   spare: [], // photos a smaller layout had no cell for; a bigger layout gets them back
   texts: [],
@@ -77,7 +87,7 @@ let seq = 0;
 const uid = (p) => `${p}${Date.now().toString(36)}${(++seq).toString(36)}`; // unique across sessions (drafts)
 const slides = () => Math.round(state.canvas.w / SLIDE);
 
-const cv = $('#c'), view = cv.getContext('2d'), file = $('#file'), marks = $('#marks');
+const cv = $('#c'), view = ctx2d(cv), file = $('#file'), marks = $('#marks');
 
 // ---------- saved draft (IndexedDB: 'draft' holds the snapshot, 'photos' the picked files by id) ----------
 let dbp, saving = Promise.resolve(), saveFailed = false;
@@ -142,13 +152,16 @@ function commit() {
   // free the photos no step of the history can bring back
   for (const id in state.photos) {
     if (!history.some((h) => h.includes(`"${id}"`))) {
-      state.photos[id].close?.();
+      state.photos[id].width = 0; // a photo is a canvas: this hands its memory back at once (iOS keeps it otherwise)
       delete state.photos[id];
       delete blobs[id];
     }
   }
   saveDraft(s);
-  if (panel === 'export') prepare(); // the collage changed under an open export sheet
+  if (panel === 'export') { // the collage changed under an open export sheet
+    showRes();
+    prepare();
+  }
   refresh();
 }
 function travel(step) {
@@ -211,17 +224,17 @@ const selItem = (type) => (state.selection.type === type ? itemOf(state.selectio
 
 // ---------- filters: per-pixel, because ctx.filter is unreliable on iOS Safari ----------
 const filtered = new Map(), used = new Set(); // "photo|filters|live" -> canvas
-function source(cell, small) {
+function source(cell, small, edge = FILTER_EDGE) {
   const img = state.photos[cell.photoId], f = cell.filters;
   if (f.brightness === 1 && f.contrast === 1 && f.saturation === 1 && !f.bw) return img;
-  const key = [cell.photoId, f.brightness, f.contrast, f.saturation, f.bw, small].join('|');
+  const key = [cell.photoId, f.brightness, f.contrast, f.saturation, f.bw, small, edge].join('|');
   used.add(key);
   if (!filtered.has(key)) {
-    const k = Math.min(1, (small ? LIVE_EDGE : FILTER_EDGE) / Math.max(img.width, img.height));
+    const k = Math.min(1, (small ? LIVE_EDGE : edge) / Math.max(img.width, img.height));
     const c = document.createElement('canvas');
     c.width = Math.round(img.width * k);
     c.height = Math.round(img.height * k);
-    const x = c.getContext('2d', { willReadFrequently: true });
+    const x = ctx2d(c, { willReadFrequently: true });
     x.drawImage(img, 0, 0, c.width, c.height);
     const data = x.getImageData(0, 0, c.width, c.height), p = data.data, sat = f.bw ? 0 : f.saturation;
     for (let i = 0; i < p.length; i += 4) {
@@ -260,8 +273,81 @@ function shape(c, x, y, w, h, r) {
   else c.rect(x, y, w, h); // ponytail: Safari before 16 gets square corners
 }
 
-function draw(c, preview) {
+// ---------- blurred-photo background ----------
+// The photo the background uses: the one picked, or the first in the collage when that one has gone.
+function bgPhoto() {
+  const ids = state.cells.map((c) => c.photoId).filter(Boolean);
+  return ids.includes(state.style.bg.photoId) ? state.style.bg.photoId : ids[0];
+}
+// A blur that looks the same in every browser (ctx.filter is unreliable on iOS Safari): shrink the photo to a
+// few dozen pixels by halving, so each pixel averages its area, then grow it back in steps so it stays smooth.
+let blurCache = { key: '', canvas: null };
+// Three box blurs of radius r in each direction, which together look like a gaussian. Edges repeat the last pixel.
+function boxBlur(x, c, r) {
+  if (r < 1) return;
+  const { width: w, height: h } = c, data = x.getImageData(0, 0, w, h), a = data.data, b = new Uint8ClampedArray(a.length);
+  const pass = (src, dst, across) => {
+    const len = across ? w : h, lines = across ? h : w, at = (line, i) => (across ? line * w + i : i * w + line) * 4;
+    for (let line = 0; line < lines; line++) {
+      for (let i = 0; i < len; i++) {
+        let sr = 0, sg = 0, sb = 0;
+        for (let d = -r; d <= r; d++) {
+          const p = at(line, clamp(i + d, 0, len - 1));
+          sr += src[p];
+          sg += src[p + 1];
+          sb += src[p + 2];
+        }
+        const q = at(line, i), n = 2 * r + 1;
+        dst[q] = sr / n;
+        dst[q + 1] = sg / n;
+        dst[q + 2] = sb / n;
+        dst[q + 3] = 255;
+      }
+    }
+  };
+  for (let t = 0; t < 3; t++) {
+    pass(a, b, true);
+    pass(b, a, false);
+  }
+  x.putImageData(data, 0, 0);
+}
+function blurredBg(id, blur) {
+  const img = state.photos[id], { w, h } = state.canvas, key = `${id}|${blur}|${w}x${h}`;
+  if (blurCache.key === key) return blurCache.canvas;
+  const make = (cw, ch) => {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(cw));
+    c.height = Math.max(1, Math.round(ch));
+    const x = ctx2d(c);
+    x.imageSmoothingQuality = 'high';
+    return [c, x];
+  };
+  const TINY = 72; // the photo is blurred at this width, where it costs almost nothing
+  const k = Math.max(w / img.width, h / img.height), cropW = w / k, cropH = h / k; // cover the canvas
+  let [c, x] = make(cropW / 2, cropH / 2);
+  x.drawImage(img, (img.width - cropW) / 2, (img.height - cropH) / 2, cropW, cropH, 0, 0, c.width, c.height);
+  while (c.width > TINY) {
+    const [n, nx] = make(Math.max(TINY, c.width / 2), Math.max(1, (c.height * Math.max(TINY, c.width / 2)) / c.width));
+    nx.drawImage(c, 0, 0, n.width, n.height);
+    c.width = 0;
+    [c, x] = [n, nx];
+  }
+  boxBlur(x, c, Math.round((blur / 100) * 9));
+  while (c.width * 2 < w) {
+    const [n, nx] = make(c.width * 2, c.height * 2);
+    nx.drawImage(c, 0, 0, n.width, n.height);
+    c.width = 0;
+    c = n;
+  }
+  if (blurCache.canvas) blurCache.canvas.width = 0;
+  blurCache = { key, canvas: c };
+  return c;
+}
+
+// s: export resolution. Everything is laid out in canvas units, so a bigger export is the same drawing scaled.
+function draw(c, preview, s = 1) {
   const { w, h } = state.canvas, bg = state.style.bg, radius = state.style.radius;
+  c.setTransform(s, 0, 0, s, 0, 0);
   c.fillStyle = bg.c1;
   if (bg.type === 'gradient') {
     const dx = Math.sin(rad(bg.angle)), dy = -Math.cos(rad(bg.angle)), len = (Math.abs(w * dx) + Math.abs(h * dy)) / 2;
@@ -270,7 +356,11 @@ function draw(c, preview) {
     gr.addColorStop(1, bg.c2);
     c.fillStyle = gr;
   }
-  c.fillRect(0, 0, w, h);
+  const bgId = bg.type === 'photo' && bgPhoto();
+  if (bgId) {
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(blurredBg(bgId, bg.blur ?? 60), 0, 0, w, h);
+  } else c.fillRect(0, 0, w, h);
 
   for (const i of order()) {
     const cell = state.cells[i], r = rect(i);
@@ -295,7 +385,7 @@ function draw(c, preview) {
       c.translate(f.dx, f.dy);
       c.rotate(rad(t.rotate));
       c.scale(t.flip ? -f.s : f.s, f.s);
-      c.drawImage(source(cell, preview && live), -img.width / 2, -img.height / 2, img.width, img.height);
+      c.drawImage(source(cell, preview && live, FILTER_EDGE * s), -img.width / 2, -img.height / 2, img.width, img.height);
     }
     c.restore();
   }
@@ -384,7 +474,7 @@ function draw(c, preview) {
 
 // The breathing "+" over each empty cell. Positions are % of the canvas, so they follow its size on screen.
 function placeMarks() {
-  const empty = state.cells.flatMap((c, i) => (c.photoId ? [] : [i])), { w, h } = state.canvas;
+  const empty = panel === 'export' ? [] : state.cells.flatMap((c, i) => (c.photoId ? [] : [i])), { w, h } = state.canvas;
   while (marks.children.length > empty.length) marks.lastChild.remove();
   while (marks.children.length < empty.length) {
     const el = document.createElement('i');
@@ -410,7 +500,7 @@ function render() {
   requestAnimationFrame(() => {
     queued = false;
     used.clear();
-    draw(view, true);
+    draw(view, panel !== 'export'); // while exporting, show exactly what will be saved
     placeMarks();
     for (const [key, c] of filtered) {
       if (!used.has(key)) { // a filtered copy nothing draws any more
@@ -459,6 +549,7 @@ function refresh() {
   for (const b of $$('.thumb')) b.setAttribute('aria-pressed', !state.free && b.dataset.id === state.layoutId);
   for (const b of $$('.chip')) b.setAttribute('aria-pressed', b.textContent === SIZES.find((s) => s.w === w && s.h === h)?.name);
   for (const el of $$('.grad')) el.hidden = state.style.bg.type !== 'gradient';
+  for (const el of $$('.bgphoto')) el.hidden = state.style.bg.type !== 'photo';
   for (const el of $$('.free')) el.hidden = !state.free;
   check('bg', state.style.bg.type);
   check('adjust', adjust);
@@ -466,7 +557,8 @@ function refresh() {
   $('#free').checked = state.free;
   $('#undo').disabled = at <= 0;
   $('#redo').disabled = at >= history.length - 1;
-  $('#add').hidden = state.cells.every((c) => c.photoId);
+  $('#add').hidden = panel === 'export' || state.cells.every((c) => c.photoId);
+  $('#stage').classList.toggle('locked', panel === 'export');
   $('#textEdit').hidden = sel !== 'text';
   $('#lookColor').hidden = !['outline', 'box'].includes(text?.look);
   $('#stickerEdit').hidden = sel !== 'sticker';
@@ -486,9 +578,12 @@ function select(t) {
   refresh();
 }
 function openPanel(name) {
-  if (state.selection.type === 'cell') state.selection = NONE; // the photo sheet is making way
+  if (state.selection.type === 'cell' || name === 'export') state.selection = NONE; // the sheet is making way
   panel = panel === name ? null : name;
-  if (panel === 'export') prepare();
+  if (panel === 'export') {
+    showRes();
+    prepare();
+  }
   refresh();
 }
 
@@ -617,22 +712,19 @@ radios('adjust', (v) => {
 });
 
 // ---------- photos in ----------
-async function loadPhoto(f) {
+async function loadPhoto(f, edge = importEdge()) {
   const img = new Image(), url = URL.createObjectURL(f);
   try {
     img.src = url;
     await img.decode(); // an <img> applies the camera's rotation for us
-    const k = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
-    try {
-      const bmp = await createImageBitmap(img, { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' });
-      if (bmp.width <= w + 1) return bmp;
-      bmp.close(); // an old browser ignored the resize
-    } catch {}
+    const k = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight));
+    // a P3 canvas, not createImageBitmap's resize, which Safari may squash into sRGB
     const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    c.width = Math.round(img.naturalWidth * k);
+    c.height = Math.round(img.naturalHeight * k);
+    const x = ctx2d(c);
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(img, 0, 0, c.width, c.height);
     return c;
   } finally {
     URL.revokeObjectURL(url);
@@ -743,7 +835,7 @@ function apply(t, dx, dy, k, deg) {
 }
 
 cv.addEventListener('pointerdown', (e) => {
-  if (pts.size >= 2) return;
+  if (pts.size >= 2 || panel === 'export') return; // the collage is locked while the export sheet is open
   cv.setPointerCapture(e.pointerId);
   const p = at2(e);
   pts.set(e.pointerId, p);
@@ -872,6 +964,14 @@ bind('#angle', () => state.style.bg.angle, (v) => (state.style.bg.angle = v));
 radios('bg', (v) => {
   state.style.bg.type = v;
   commit();
+  if (v === 'photo' && !bgPhoto()) toast('Add a photo first; until then the color is used');
+});
+bind('#blur', () => state.style.bg.blur ?? 60, (v) => (state.style.bg.blur = v));
+$('#bgNext').addEventListener('click', () => {
+  const ids = state.cells.map((c) => c.photoId).filter(Boolean);
+  if (ids.length < 2) return toast(ids.length ? 'Only one photo in the collage' : 'Add a photo first');
+  state.style.bg.photoId = ids[(ids.indexOf(bgPhoto()) + 1) % ids.length];
+  commit();
 });
 
 // ---------- photo sheet ----------
@@ -957,12 +1057,16 @@ for (const [button, type] of [['#delText', 'text'], ['#delSticker', 'sticker']])
 }
 
 // ---------- export: one file, or one per slide for a carousel ----------
+// iPhone Safari refuses a canvas over about 16.7 million pixels, so the resolution slider stops below that.
+const MAX_PIXELS = 16e6;
+const maxScale = () => Math.min(2, Math.floor(Math.sqrt(MAX_PIXELS / (state.canvas.w * state.canvas.h)) * 2) / 2);
+const scale = () => Math.min(+$('#res').value, maxScale());
 async function output() {
-  const { w, h } = state.canvas, n = slides(), jpg = $('#jpg').checked, type = jpg ? 'image/jpeg' : 'image/png';
-  const full = document.createElement('canvas');
-  full.width = w;
-  full.height = h;
-  draw(full.getContext('2d'), false); // full size, no outlines, guides or placeholders
+  const { w, h } = state.canvas, n = slides(), s = scale(), jpg = $('#jpg').checked, type = jpg ? 'image/jpeg' : 'image/png';
+  const full = document.createElement('canvas'), sw = SLIDE * s;
+  full.width = w * s;
+  full.height = h * s;
+  draw(ctx2d(full), false, s); // full size, no outlines, guides or placeholders
   const d = new Date(), p = (v) => String(v).padStart(2, '0');
   const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
   const files = [];
@@ -970,9 +1074,9 @@ async function output() {
     let c = full;
     if (n > 1) {
       c = document.createElement('canvas');
-      c.width = SLIDE;
-      c.height = h;
-      c.getContext('2d').drawImage(full, i * SLIDE, 0, SLIDE, h, 0, 0, SLIDE, h);
+      c.width = sw;
+      c.height = full.height;
+      ctx2d(c).drawImage(full, i * sw, 0, sw, full.height, 0, 0, sw, full.height);
     }
     const blob = await new Promise((done) => c.toBlob(done, type, $('#quality').value / 100));
     if (c !== full) c.width = 0;
@@ -1025,6 +1129,16 @@ radios('format', () => {
 });
 $('#quality').addEventListener('input', () => ($('#qualityValue').textContent = $('#quality').value));
 $('#quality').addEventListener('change', prepare);
+function showRes() {
+  const s = scale(), n = slides();
+  $('#res').max = maxScale();
+  $('#res').disabled = maxScale() <= 1;
+  $('#resValue').textContent = `${s}×`;
+  const each = `${SLIDE * s} × ${state.canvas.h * s}`;
+  $('#resNote').textContent = n > 1 ? `Each image ${each} px` :`${state.canvas.w * s} × ${state.canvas.h * s} px${s > 1 ? ', a bigger file' : ''}`;
+}
+$('#res').addEventListener('input', showRes);
+$('#res').addEventListener('change', prepare);
 
 // ---------- opening screen: continue the saved collage, install ----------
 const openEditor = () => {

@@ -57,8 +57,11 @@
           <div class="seg">
             <label><input type="radio" name="bg" value="solid"><span>Solid</span></label>
             <label><input type="radio" name="bg" value="gradient"><span>Gradient</span></label>
+            <label><input type="radio" name="bg" value="photo"><span>Photo</span></label>
           </div>
         </div>
+        <label class="row bgphoto"><span>Blur</span><input type="range" id="blur" min="0" max="100"></label>
+        <div class="row bgphoto"><button id="bgNext">Next photo</button></div>
         <div class="row"><span>Colors</span>
           <input type="color" id="c1" aria-label="Background color">
           <input type="color" id="c2" class="grad" aria-label="Second gradient color">
@@ -119,6 +122,8 @@
           </div>
         </div>
         <label class="row" id="qualityRow" hidden><span>Quality <output id="qualityValue">92</output>%</span><input type="range" id="quality" min="40" max="100" value="92"></label>
+        <label class="row"><span>Resolution <output id="resValue">1×</output></span><input type="range" id="res" min="1" max="2" step="0.5" value="1"></label>
+        <p class="note" id="resNote"></p>
         <p class="note" id="slidesNote" hidden></p>
         <div class="row"><button id="share" class="primary">Share</button><button id="save">Save</button></div>
         <p class="note" id="saveNote" hidden>Opens the share menu: tap <strong>Save Image</strong> to put it in Photos.</p>

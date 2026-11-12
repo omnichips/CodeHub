@@ -178,6 +178,9 @@ header svg { display: block; width: 22px; height: 22px; fill: none; stroke: curr
   box-shadow: 0 0 0 1px var(--glass-edge), 0 14px 40px rgba(15, 10, 25, 0.3);
   touch-action: none;
 }
+/* export sheet open: the collage is a finished picture, not something to edit */
+#stage.locked #c { cursor: default; }
+#stage.locked #c, #stage.locked { pointer-events: none; }
 /* the "+" over empty cells, breathing slowly */
 #marks { position: absolute; pointer-events: none; }
 #marks i { position: absolute; aspect-ratio: 1; animation: breathe 2.6s var(--ease-in-out) infinite alternate; }
