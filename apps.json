@@ -6,28 +6,40 @@
       "name": "FairsHare",
       "color": "#3f7d46",
       "icon": "public/icon.svg",
-      "source": { "type": "vite", "dir": "apps/fairshare" }
+      "source": {
+        "type": "vite",
+        "dir": "apps/fairshare"
+      }
     },
     {
       "id": "elevator",
       "name": "Elevator Anomaly",
       "color": "#0f172a",
       "icon": "assets/player.png",
-      "source": { "type": "static", "dir": "apps/htmlroguemobile" }
+      "source": {
+        "type": "static",
+        "dir": "apps/htmlroguemobile"
+      }
     },
     {
       "id": "qsendr",
       "name": "QSendr",
       "color": "#1b2a4a",
       "icon": "logo.png",
-      "source": { "type": "static", "dir": "apps/qrscans" }
+      "source": {
+        "type": "static",
+        "dir": "apps/qrscans"
+      }
     },
     {
       "id": "dietrying",
       "name": "Die Trying",
       "color": "#48512f",
       "icon": "public/icon-192.png",
-      "source": { "type": "vite", "dir": "apps/WeMightAsWellDieTrying" }
+      "source": {
+        "type": "vite",
+        "dir": "apps/WeMightAsWellDieTrying"
+      }
     },
     {
       "id": "friendio",
@@ -35,7 +47,10 @@
       "color": "#e85d75",
       "icon": "public/icon.svg",
       "tag": "WIP",
-      "source": { "type": "vite", "dir": "apps/friendio/web" }
+      "source": {
+        "type": "vite",
+        "dir": "apps/friendio/web"
+      }
     },
     {
       "id": "bombsweeper",
@@ -64,21 +79,31 @@
       "name": "Kindered",
       "color": "#ff5fd2",
       "icon": "public/icon.svg",
-      "source": { "type": "vite", "dir": "apps/kindered/web" }
+      "source": {
+        "type": "vite",
+        "dir": "apps/kindered/web"
+      }
     },
     {
       "id": "collage",
       "name": "Collage Maker",
       "color": "#c2255c",
       "icon": "icon.svg",
-      "source": { "type": "static", "dir": "apps/collage-maker" }
+      "source": {
+        "type": "static",
+        "dir": "apps/collage-maker"
+      }
     },
     {
       "id": "volumeboost",
       "name": "VolumeBoost",
       "color": "#fff4e6",
       "icon": "icon.png",
-      "source": { "type": "download", "dir": "apps/VolumeBooster", "file": "dist/VolumeBoost.exe" },
+      "source": {
+        "type": "download",
+        "dir": "apps/VolumeBooster",
+        "file": "dist/VolumeBoost.exe"
+      },
       "confirm": [
         "This is a Windows program (.exe) for a PC. It does not run on a phone or a Mac.",
         "It needs Equalizer APO installed. It was made for Realtek laptop speakers and may do nothing on other speakers.",
@@ -93,7 +118,11 @@
       "name": "Video Sniffer",
       "color": "#111827",
       "icon": "video-sniffer/icon128.png",
-      "source": { "type": "download", "dir": "apps/video-sniffer-extension", "file": "video-sniffer" },
+      "source": {
+        "type": "download",
+        "dir": "apps/video-sniffer-extension",
+        "file": "video-sniffer"
+      },
       "confirm": [
         "This is a Chrome extension for a computer. It does not work on a phone.",
         "It is not on the Chrome Web Store. To install it: unzip, open chrome://extensions, turn on Developer mode, press Load unpacked and pick the video-sniffer folder.",
@@ -101,6 +130,18 @@
         "Without the separate yt-dlp helper (not included) some sites' videos will not download.",
         "I will only download videos I have the right to save."
       ]
+    },
+    {
+      "id": "drifters",
+      "name": "Drifters",
+      "color": "#1e293b",
+      "icon": "index.icon.png",
+      "tag": "WIP",
+      "source": {
+        "type": "static",
+        "dir": "apps/drifters",
+        "entry": "index.html"
+      }
     }
   ]
 }
