@@ -9,7 +9,10 @@ const CACHE = `drifters-${VERSION}`;
 
 self.addEventListener('install', (event) => {
   if (!FILES.length) return;
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
+  // no-store: the page downloads the same big files at the same moment on a first visit, and sharing the browser's
+  // HTTP cache entry with it makes one of the two downloads fail (ERR_CACHE_WRITE_FAILURE), so the game won't start.
+  const fresh = FILES.map((f) => new Request(f, { cache: 'no-store' }));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(fresh)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
