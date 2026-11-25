@@ -11,7 +11,7 @@ import { validateRegistry } from './registry.mjs';
 const hub = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const registryFile = resolve(hub, process.env.HUB_REGISTRY ?? 'apps.json');
 const out = resolve(hub, process.env.HUB_OUT ?? 'dist');
-const MAX_APP_MB = 70; // Vercel's free plan has size limits; one big app should not sink the deploy
+const MAX_APP_MB = 200; // a guard against one huge app sinking the deploy; Drifters passed 70 with Mubariz (owner raised it 2026-11-25)
 
 const fail = (message) => {
   console.error(`\n✗ ${message}`);
