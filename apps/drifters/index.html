@@ -84,7 +84,7 @@ body {
 <meta name="apple-mobile-web-app-title" content="Drifters">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0d1226">
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script>if ('serviceWorker' in navigator) { var hadSW = !!navigator.serviceWorker.controller; navigator.serviceWorker.register('sw.js'); navigator.serviceWorker.addEventListener('controllerchange', function () { if (!hadSW) { hadSW = true; return; } var b = document.createElement('div'); b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a1a2e;color:#f0e8d8;font:14px sans-serif;padding:8px;text-align:center;border-bottom:2px solid #dc3640'; b.textContent = 'This version is outdated. A new one is ready. '; var u = document.createElement('button'); u.textContent = 'Update'; u.onclick = function () { location.reload(); }; b.appendChild(u); document.body.appendChild(b); }); }</script>
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -103,7 +103,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":37267168,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":37267248,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
